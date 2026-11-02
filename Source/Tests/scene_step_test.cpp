@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "Tests/TestViewCamera.h"
 
@@ -223,4 +224,51 @@ TEST(SceneStep, AStepWithoutTheWorldAdvancesOnlyTheRealTimeMembers)
     EXPECT_EQ(after.sensorStays, before.sensorStays);
     EXPECT_EQ(after.flashRemaining, before.flashRemaining);
     EXPECT_FLOAT_EQ(after.padLeft, before.padLeft);
+}
+
+// 書かれなかったフレームは Gamepad::Update が 0 にするので、世界を進めない歩も振動を書く
+TEST(SceneStep, AStepWithoutTheWorldKeepsThePadVibrating)
+{
+    StepScene world;
+    ASSERT_TRUE(world.IsValid());
+    ASSERT_NO_FATAL_FAILURE(world.Start());
+    world.Scene().SetWorldSpeed(0.0f);
+    NS::OS::Gamepad& pad = NS::OS::Input::Get().Gamepad();
+    pad.Update();
+    const float before = world.View().padLeft;
+    ASSERT_GT(before, 0.0f);
+
+    world.Step(1);
+    pad.Update();
+
+    // 世界が進まないので、曲線も進まず同じ速さを書く
+    EXPECT_FLOAT_EQ(world.View().padLeft, before);
+}
+
+// 世界の歩の実時間は、前の世界の歩から実際に回した固定フレーム数で決まる
+TEST(SceneStep, WorldStepSecondsCountsTheStepsSinceTheLastWorldStep)
+{
+    NS::Scene scene;
+    const float fixedDelta = NS::OS::FrameTimer::FixedDelta();
+    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta);
+    scene.SetWorldSpeed(0.25f);
+    for (int i = 0; i < 4; ++i)
+    {
+        scene.OnUpdate();
+    }
+    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta * 4.0f);
+    // 歩の途中で速さが変わっても、回した歩の実時間は変わらない
+    scene.SetWorldSpeed(0.05f);
+    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta * 4.0f);
+}
+
+// OnShutdown を通さずに壊すシーン (エディタの下見) も、図形を次の世界へ残さない
+TEST(SceneStep, DestroyingTheSceneClearsTheDebugShapes)
+{
+    {
+        NS::Scene scene;
+        NS::Gfx::DebugDraw::Line(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+        ASSERT_GT(NS::Gfx::DebugDraw::VertexCount(), 0u);
+    }
+    EXPECT_EQ(NS::Gfx::DebugDraw::VertexCount(), 0u);
 }

@@ -317,10 +317,18 @@ namespace NS
 
     void SceneActor::ReloadActorFileOnlyValues()
     {
+        ReloadActorFileOnlyValuesExceptActions();
+        if (m_actionTimeline)
+        {
+            m_actionTimeline->ReloadActions(this);
+        }
+    }
+
+    void SceneActor::ReloadActorFileOnlyValuesExceptActions()
+    {
         // clang-format off
         if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
-        if (m_actionTimeline) { m_actionTimeline->ReloadActions(this); }
         // clang-format on
     }
 

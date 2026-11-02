@@ -1,5 +1,6 @@
 #include "Game/Level/FollowCameraActor.h"
 
+#include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -45,6 +46,18 @@ namespace GL
             m_vcam->ClearRebound();
             NS::DisableVirtualCamera(this, m_vcam.get());
             NS::SceneActor::OnDisappear();
+        }
+
+        bool FollowCameraActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver)
+        {
+            (void)sender;
+            (void)receiver;
+            if (NS::IsMsg<MsgCourseStart>(msg))
+            {
+                m_vcam->ResetPose();
+                return true;
+            }
+            return false;
         }
 
         void FollowCameraActor::OnEndPlay()

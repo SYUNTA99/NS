@@ -1,5 +1,6 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
@@ -13,6 +14,8 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -296,6 +299,62 @@ TEST(GameScene, RespawnKeepsAHoldStartedByThePlayer)
     EXPECT_TRUE(scene.IsSceneStopped());
 }
 
+// 同じ歩に自機が頼んで、まだ効いていない止めも、リスポーンで解かない
+TEST(GameScene, RespawnKeepsAHoldThePlayerRequestedInTheSameStep)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    scene.StartPlay();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    scene.RequestStopScene(player, 30);
+    ASSERT_FALSE(scene.IsSceneStopped());
+
+    scene.RespawnActors();
+    scene.OnUpdate();
+
+    EXPECT_TRUE(scene.IsSceneStopped());
+}
+
+// 出し直すアクターが頼んだ止めは、効く前でも解く
+TEST(GameScene, RespawnDropsAHoldAnotherActorRequestedInTheSameStep)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    scene.StartPlay();
+    const NS::SceneActor* other = nullptr;
+    for (const NS::SceneActor* actor : scene.Actors())
+    {
+        if (std::string_view{actor->ClassName()} != "PlayerActor")
+        {
+            other = actor;
+        }
+    }
+    ASSERT_NE(other, nullptr);
+    scene.RequestStopScene(other, 30);
+
+    scene.RespawnActors();
+    scene.OnUpdate();
+
+    EXPECT_FALSE(scene.IsSceneStopped());
+}
+
+// 組み直さずに始めるエディタのプレイでも、仮想カメラは今の初期の向きから始まる
+TEST(GameScene, StartPlayPutsTheFollowCameraAtTheCurrentInitialPose)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    GL::Level::FollowCameraActor* follow = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+    ASSERT_NE(follow, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(&follow->Vcam(), nlohmann::json{{"初期ヨー", 1.0f}}), 0u);
+    ASSERT_FLOAT_EQ(follow->Vcam().InitialYaw(), 1.0f);
+    ASSERT_NE(follow->Vcam().Yaw(), 1.0f);
+
+    scene.StartPlay();
+
+    EXPECT_FLOAT_EQ(follow->Vcam().Yaw(), 1.0f);
+}
+
 TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
 {
     GL::Level::GameScene scene;
@@ -396,6 +455,62 @@ TEST(GameScene, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
     EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
     EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
     EXPECT_FALSE(scene.IsClearing());
+}
+
+// 当たりを検知した歩に押したリスポーンは断る。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
+TEST(GameScene, RespawnPressedInTheStepOfAHitLeavesTheTargetInPlace)
+{
+    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    const NS::Vector3 playerAt{0.0f, 1.0f, 0.0f};
+    const NS::Vector3 rockAt{0.0f, 1.0f, 2.0f};
+    constexpr int k_MaxSteps = 30;
+
+    // 当たるまでの歩は毎回同じなので、押さずに回して当たる歩を数えてから、その歩で押して回す
+    int hitStep = -1;
+    {
+        GL::Level::GameScene scene;
+        scene.ResetFromJson(doc);
+        scene.StartPlay();
+        PlayerActor* player = FindPlayer(scene.Actors());
+        ASSERT_NE(player, nullptr);
+        NS::SceneActor* rock = FindProp(scene);
+        ASSERT_NE(rock, nullptr);
+        player->Root().SetPosition(playerAt);
+        rock->Root().SetPosition(rockAt);
+        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+        for (int step = 0; step < k_MaxSteps && hitStep < 0; ++step)
+        {
+            scene.OnUpdate();
+            if (player->Resolver().Answer().lastImpact.sequence > 0)
+            {
+                hitStep = step;
+            }
+        }
+    }
+    ASSERT_GE(hitStep, 0);
+
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(doc);
+    scene.StartPlay();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* rock = FindProp(scene);
+    ASSERT_NE(rock, nullptr);
+    player->Root().SetPosition(playerAt);
+    rock->Root().SetPosition(rockAt);
+    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
+    for (int step = 0; step < hitStep; ++step)
+    {
+        scene.OnUpdate();
+    }
+    {
+        const KeyPress press{NS::OS::Key::R};
+        scene.OnUpdate();
+    }
+
+    ASSERT_GT(player->Resolver().Answer().lastImpact.sequence, 0u);
+    // 開始時の姿は x = 5 にある。戻っていなければ、置いた x = 0 の近くに居る
+    EXPECT_NEAR(rock->Root().Position().x, rockAt.x, 0.5f);
 }
 
 TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)

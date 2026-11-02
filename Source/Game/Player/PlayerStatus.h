@@ -125,16 +125,16 @@ namespace GL
             {
                 m_remaining = 1;
                 m_direction = NS::Vector3{};
-                m_intendedDirection = NS::Vector3{};
-                m_tiltDirection = NS::Vector3{};
-                m_tiltSeconds = 0.0f;
                 m_dashSpeed = 0.0f;
                 m_pressed = false;
                 m_intended = NS::Vector3{};
                 m_reboundElapsed = 0.0f;
                 m_steeredRadians = 0.0f;
                 m_steerStarted = false;
-                m_shiftApplied = false;
+                m_reboundStopFrames = 0;
+                m_reboundChosen = false;
+                m_stickMoving = false;
+                m_steadyDirection = NS::Vector3{};
             }
 
         private:
@@ -142,9 +142,6 @@ namespace GL
 
             int m_remaining = 1;
             NS::Vector3 m_direction{};   // 今のダッシュの水平の向き。正規化済み
-            NS::Vector3 m_intendedDirection{}; // ダッシュの向きに使う。無ければゼロ
-            NS::Vector3 m_tiltDirection{};     // 今倒している水平の向き。倒していなければゼロ
-            float m_tiltSeconds = 0.0f;        // m_tiltDirection を倒し続けた秒
             float m_dashSpeed = 0.0f;    // 今のダッシュの速さ (m/s)。状態に入った時に控え、途中の読み直しで変えない
             bool m_prevPressHeld = false; // 直前の歩にボタンを押していたか。押した瞬間を見分ける
             bool m_pressed = false;       // この歩に押した瞬間か。DecideStep の頭で書き、状態機械で読む
@@ -152,7 +149,11 @@ namespace GL
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
             bool m_steerStarted = false;   // 補正の段に入ってダッシュを戻したか
-            bool m_shiftApplied = false;   // 今の反動でずらしを掛けたか。掛けるのは反動 1 回に 1 度
+            NS::Vector3 m_prevStick{};     // 直前の歩の左スティック (向き × 倒した量)。動いたかを動いた量で見る
+            bool m_stickMoving = false;    // この歩に左スティックが動いているか。止めの延長とエアダッシュの向きが読む
+            NS::Vector3 m_steadyDirection{}; // 最後に止まっていた歩の左スティックの水平の向き。デッドゾーンの中なら 0
+            int m_reboundStopFrames = 0;   // 今の反動で止めたフレーム数。当たったフレームを入れて数える
+            bool m_reboundChosen = false;  // 今の反動の向きを、止めが明けたフレームに選んだか。選ぶのは反動 1 回に 1 度
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };

@@ -48,6 +48,21 @@ TEST(ImpactMarks, ReleasedPropLeavesAMarkOnTheFloorBelowIt)
     EXPECT_NEAR(position.z, 0.0f, 0.001f);
 }
 
+// やり直した置物は、前の周に残した跡を持ち越さない
+TEST(ImpactMarks, RestartingTheCourseRemovesTheMarks)
+{
+    NS::Scene scene;
+    GL::Level::PropActor* rock = PlaceRockOnFloor(scene);
+    ASSERT_NE(rock, nullptr);
+    ASSERT_TRUE(GL::Level::SendMsgCourseStart(rock));
+    rock->Marks().Spawn(NS::Vector3{1.0f, 0.0f, 2.0f});
+    ASSERT_EQ(rock->Marks().LiveCount(), 1u);
+
+    ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
+
+    EXPECT_EQ(rock->Marks().LiveCount(), 0u);
+}
+
 TEST(ImpactMarks, MarkShrinksAndLeavesAfterItsLife)
 {
     NS::Scene scene;

@@ -5,6 +5,7 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
@@ -28,7 +29,6 @@
 #include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -59,6 +59,7 @@ NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_resolver, "ImpactResolver")
 NS_CLASSOBJ(m_targetMarker, "TargetMarker")
 NS_CLASSOBJ(m_slamArrow, "SlamArrow")
+NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
@@ -94,6 +95,8 @@ void PlayerActor::OnInit()
     NS::InitOverlay(this, m_targetMarker.get());
     CreateClassObj(m_slamArrow);
     NS::InitOverlay(this, m_slamArrow.get());
+    CreateClassObj(m_reboundPreview);
+    NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
     CreateClassObj(m_impactEffects);
     CreateClassObj(m_sound);
@@ -239,21 +242,14 @@ void PlayerActor::DecideStep()
     {
         m_input->Update(this);
     }
-    // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
-    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
-    if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
-    {
-        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
-        {
-            game->RequestRespawnActors();
-        }
-    }
+    // 明けのフレームは、この後で当たりの状態を抜けるので、ここで読んでおく
+    const bool hitAtStepStart = IsHitStopping() || IsInTackleHit();
     // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
-    UpdateIntendedDirection(NS::GetFrameDelta(this));
+    ObserveStick();
+    ExtendReboundStop();
     ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 
@@ -268,6 +264,17 @@ void PlayerActor::DecideStep()
     }
     ApplyImpactOrders(m_resolver->Answer());
     DecideBeforeContact(m_resolver->Answer());
+    // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす。
+    // 当たりを検知した歩も断るので、検知の後で読む。
+    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
+    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
+    if (m_input->RespawnPressed() && !hitAtStepStart && !IsHeldByTackleHit())
+    {
+        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
+        {
+            game->RequestRespawnActors();
+        }
+    }
     m_stateStepPrepared = PrepareOrSkipStateStep();
 }
 
@@ -367,6 +374,9 @@ void PlayerActor::VisualStep()
     m_targetMarker->Update(m_charge);
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
+#if !defined(NS_SHIPPING)
+    UpdateReboundPreview();
+#endif
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
@@ -377,8 +387,8 @@ void PlayerActor::VisualStep()
     m_impactEffects->UpdateSlam(this, center, m_slam, motion, impact);
     m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
-    // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない固定フレームの秒で数える
-    m_playerSounds->Update(this, NS::OS::FrameTimer::FixedDelta());
+    // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない実時間の秒で数える
+    m_playerSounds->Update(this, OwningScene()->WorldStepSeconds());
 #if !defined(NS_SHIPPING)
     DrawChargeRing();
 #endif
@@ -473,6 +483,7 @@ void PlayerActor::OnEndPlay()
     NS::SceneActor::OnEndPlay();
     NS::EndOverlay(this, m_targetMarker.get());
     NS::EndOverlay(this, m_slamArrow.get());
+    NS::EndOverlay(this, m_reboundPreview.get());
 }
 
 void PlayerActor::OnAppear()
@@ -482,6 +493,7 @@ void PlayerActor::OnAppear()
     {
         NS::ShowOverlay(this, m_targetMarker.get());
         NS::ShowOverlay(this, m_slamArrow.get());
+        NS::ShowOverlay(this, m_reboundPreview.get());
     }
 }
 
@@ -490,6 +502,7 @@ void PlayerActor::OnDisappear() noexcept
     NS::SceneActor::OnDisappear();
     NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_slamArrow.get());
+    NS::HideOverlay(this, m_reboundPreview.get());
 }
 
 // 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
@@ -846,6 +859,7 @@ void PlayerActor::ResetState() noexcept
     m_skid = GL::Player::SkidStatus{};
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
+    m_reboundPreview->Hide();
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);

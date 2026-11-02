@@ -8,6 +8,9 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cmath>
+
 namespace
 {
     // 動く体の当たりと置く当たりを 1 つずつ持つ SceneActor。根は原点で、球の半径は 0.5
@@ -57,6 +60,46 @@ TEST(CollisionWindow, CapsuleOverlapUsesTheRealShapeOfATurnedBox)
     const NS::Phys::Capsule acrossTheFace{.center = NS::Vector3{1.3f, 0.0f, 0.0f}, .halfHeight = 0.2f, .radius = 0.2f};
     EXPECT_FALSE(NS::OverlapsCapsuleCollision(placed->collider.get(), nearTheBoundsCorner));
     EXPECT_TRUE(NS::OverlapsCapsuleCollision(placed->collider.get(), acrossTheFace));
+}
+
+TEST(CollisionWindow, CapsuleCastFindsTheFacingWallAndSkipsTheFloorItTouches)
+{
+    NS::Scene scene;
+    // 奥の壁の面は z = 5。床の上の面は y = -0.4 で、投げる球の底が触れている
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 6.0f}, NS::Quaternion::Identity, NS::Vector3{3.0f, 3.0f, 1.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -1.4f, 0.0f}, NS::Quaternion::Identity, NS::Vector3{8.0f, 1.0f, 8.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
+    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.4f};
+
+    NS::Phys::CapsuleCastHit hit{};
+    ASSERT_TRUE(NS::CastCapsuleCollision(placed->collider.get(), ball, NS::Vector3{0.0f, 0.0f, 1.0f}, 10.0f, 0.1f, hit));
+    EXPECT_NEAR(hit.distance, 4.6f, 1.0e-3f);
+    EXPECT_NEAR(hit.normal.z, -1.0f, 1.0e-3f);
+    EXPECT_NEAR(hit.point.z, 5.0f, 1.0e-3f);
+
+    NS::Phys::CapsuleCastHit untouched{.distance = 7.0f};
+    EXPECT_FALSE(
+        NS::CastCapsuleCollision(placed->collider.get(), ball, NS::Vector3{0.0f, 0.0f, 1.0f}, 3.0f, 0.1f, untouched));
+    EXPECT_FLOAT_EQ(untouched.distance, 7.0f);
+}
+
+TEST(CollisionWindow, CapsuleCastAtABoxEdgeReturnsAFaceNormalLikeTheMovingBody)
+{
+    // 柱の縦の角の辺に玉の縁で当てる。動く体 (CharacterVirtual) は箱の面の法線を読むので、投げた時も面の法線を返す。
+    // 接触の法線 (辺から玉の中心への向き) は (-0.62, 0, -0.78) の斜めで、反動の向きの割り当てが動く体と食い違った
+    NS::Scene scene;
+    // 柱の左の面は x = 0.4、手前の面は z = 3
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{1.4f, 0.0f, 4.0f}, NS::Quaternion::Identity, NS::Vector3{1.0f, 3.0f, 1.0f}),
+                           NS::Phys::ObjectLayers::Terrain);
+    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.65f};
+
+    NS::Phys::CapsuleCastHit hit{};
+    ASSERT_TRUE(NS::CastCapsuleCollision(placed->collider.get(), ball, NS::Vector3{0.0f, 0.0f, 1.0f}, 10.0f, -1.0f, hit));
+    EXPECT_NEAR(hit.normal.y, 0.0f, 1.0e-3f);
+    EXPECT_NEAR(std::max(std::abs(hit.normal.x), std::abs(hit.normal.z)), 1.0f, 1.0e-3f) << "面の法線は軸にそろう";
 }
 
 TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
