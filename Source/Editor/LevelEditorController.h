@@ -349,7 +349,6 @@ private:
 
     //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
     void RenderSelectionOutlines(NS::Gfx::DebugShapes& shapes) noexcept;
-    void RefreshGizmoSelectables();
     void ResolveSelectionFromId() noexcept;
 
     //! 主対象だけを差し替える。選択集合には触らない
@@ -393,9 +392,6 @@ private:
     void TickStageBuild(const NS::OS::InputPresses& presses);
 
     NS::Editor::GizmoEditor m_gizmo{};
-
-    std::vector<NS::SceneActor*> m_selectablePtrs;
-    std::vector<NS::uint8> m_selectablePickable; // 1 は Model を持つアクター。ギズモが先に選ぶ
 
     NS::uint32 m_selectedActorId = NS::k_NoActorId; // 主対象の永続 id。選択の一次情報
     std::vector<NS::uint32> m_selectionIds;           // 選択中の全アクター。主対象も含む

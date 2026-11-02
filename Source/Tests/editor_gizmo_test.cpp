@@ -1,6 +1,7 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/Core/Windows/Input.h"
 
@@ -55,6 +56,7 @@ TEST(EditorGizmo, DeactivatingEndsTheDrag)
     ASSERT_TRUE(handle.has_value());
 
     NS::Transform target;
+    NS::ActorList actors;
     NS::Editor::GizmoEditor gizmo;
     gizmo.SetInput(&input);
     gizmo.SetActive(true);
@@ -62,7 +64,7 @@ TEST(EditorGizmo, DeactivatingEndsTheDrag)
     input.Mouse().OnMove(static_cast<int>(handle->x), static_cast<int>(handle->y));
     NS::OS::InputReader reader;
     input.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
-    gizmo.Tick(viewProjection, view, true, false, reader.Read());
+    gizmo.Tick(viewProjection, view, true, false, reader.Read(), actors);
     ASSERT_TRUE(gizmo.IsDragging());
 
     gizmo.SetActive(false);

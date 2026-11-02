@@ -570,7 +570,6 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
     NS::SetActorJsonFile(after, name);
     m_editor.Undo().Push(
         std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)), m_applier);
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
     return true;
 }

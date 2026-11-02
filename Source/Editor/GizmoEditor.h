@@ -20,7 +20,7 @@ namespace NS
 namespace NS
 {
     class Transform;
-    class SceneActor;
+    class ActorList;
 } // namespace NS
 
 namespace NS
@@ -68,11 +68,6 @@ namespace NS
         public:
             void SetInput(OS::Input* input) noexcept { m_input = input; }
 
-            //! 選択候補を非所有で参照する。配列の格納元は使用中、有効に保つ
-            //! pickable は objects と同じ添字。1 に当たらない場合だけ 0 を調べ、省略時は同じ優先度
-            void SetSelectableActors(std::span<SceneActor* const> objects,
-                                      std::span<const uint8> pickable = {}) noexcept;
-
             //! ギズモ操作の有効を切り替える。休ませると進行中のドラッグを取り消す
             void SetActive(bool active) noexcept
             {
@@ -106,11 +101,13 @@ namespace NS
             //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。
             //! 真の間は道具と座標系を切り替えるキーを受けない
             //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
+            //! @param[in] actors クリックの時に選択の候補を作るアクターの一覧
             void Tick(const Matrix& viewProjection,
                       const ViewRect& view,
                       bool viewHovered,
                       bool editShortcutsBlocked,
-                      const OS::InputPresses& presses) noexcept;
+                      const OS::InputPresses& presses,
+                      const ActorList& actors) noexcept;
 
             //! 現在の選択対象に対するギズモのUI描画コマンドを発行する。パネル外はクリップされる
             void Render(const Matrix& viewProjection, const ViewRect& view) noexcept;
@@ -186,9 +183,6 @@ namespace NS
 
         private:
             OS::Input* m_input = nullptr;
-
-            std::span<SceneActor* const> m_objects{};
-            std::span<const uint8> m_pickable{}; // 選択の優先度。1 のアクターを先に選ぶ
 
             bool m_active = false;
             GizmoTool m_tool = GizmoTool::Move;
