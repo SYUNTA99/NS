@@ -30,7 +30,7 @@
 TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
 
@@ -46,7 +46,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
     ASSERT_TRUE(item.has_value());
 
@@ -108,7 +108,7 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 TEST(EditorPlacement, UndoRemovesPlacedActor)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
 
@@ -131,7 +131,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
 
     const TestLogCapture log;
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
@@ -154,7 +154,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
     ASSERT_TRUE(cube.has_value());
     editor.PlaceItem(*cube);
@@ -227,7 +227,7 @@ TEST(StageBuild, InvalidSizeAndAParallelRayDoNotProduceAPlacement)
 TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 {
     GL::Level::GameScene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.StageBuilder().SelectPart(NS::Editor::StageBuildTool::Part::Slope);
     editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
     editor.StageBuilder().Size() = {2.5f, 1.5f, 3.5f};
@@ -272,7 +272,7 @@ TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
         NS::OS::Mouse& mouse = app.Input().Mouse();

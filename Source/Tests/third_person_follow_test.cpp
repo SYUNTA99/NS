@@ -192,7 +192,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterTheInspectorRewritesIt)
     ASSERT_TRUE(world.camera->IsAppeared());
     EXPECT_NEAR(world.LookAfterUpdate().x, 0.0f, 1.0e-4f);
 
-    LevelEditorController editor(&world.scene);
+    LevelEditorController editor(world.scene);
     ASSERT_EQ(NS::ApplyJsonFields(&world.camera->Vcam(),
                                   nlohmann::json{{"追従対象", nlohmann::json{{"ref", world.second->Id()}}}}),
               0u);

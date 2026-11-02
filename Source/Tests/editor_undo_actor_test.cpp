@@ -103,7 +103,7 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
     GL::Level::GameScene scene;
     (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
     const NS::uint32 id = scene.SpawnActor<CountedProp>("PropActor")->Id();
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const Registrations before = CountRegistrations(scene);
     CountedProp::s_endPlays = 0;
     CountedProp::s_destroyed = 0;

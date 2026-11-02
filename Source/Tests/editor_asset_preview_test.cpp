@@ -140,7 +140,7 @@ namespace
         NS::AssetManagerScope m_useAssets{m_assets};
         NS::UI::ImGuiContext m_gui{m_app.Window(), m_app.Device()};
         NS::Scene m_scene;
-        LevelEditorController m_editor{&m_scene};
+        LevelEditorController m_editor{m_scene};
         NS::Editor::InspectorPanel m_inspector;
         NS::Editor::AssetsPanel m_assetsPanel;
     };

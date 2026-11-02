@@ -45,7 +45,7 @@ TEST(EditorPlayResume, ResumeDropsPausedPressesForThePlayerOnly)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.EnterPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -71,7 +71,7 @@ TEST(EditorPlayResume, StepFrameDropsPausedPressesForThePlayerOnly)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.EnterPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);

@@ -786,7 +786,7 @@ TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
     NS::SceneJsonActors(doc).push_back(std::move(object));
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.EnterPlay();
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
@@ -1004,7 +1004,7 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     const ScopedActorFileDirectory scope("EditorWritesActorFile");
     NS::Scene scene;
     ResetTwoProps(scene);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
@@ -1033,7 +1033,7 @@ TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
     const ScopedActorFileDirectory scope("UndoKeepsActions");
     NS::Scene scene;
     ResetTwoProps(scene);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
@@ -1067,7 +1067,7 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
     const ScopedActorFileDirectory scope("EditorWritesPlacement");
     NS::Scene scene;
     ResetTwoProps(scene);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(first, nullptr);
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("PropActor");
@@ -1089,7 +1089,7 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
     const ScopedActorFileDirectory scope("PlayEditActorFile");
     GL::Level::GameScene scene;
     ResetTwoProps(scene);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.EnterPlay();
     const nlohmann::json frozen = editor.PlayBaseline();
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
@@ -1145,7 +1145,7 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     const ScopedActorFileDirectory scope("AssetWindowActorFile");
     NS::Scene scene;
     ResetTwoProps(scene);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::SceneActor* selected = SelectActorFile(editor, scope.Path(), "PropActor");
     ASSERT_NE(selected, nullptr);
     EXPECT_FALSE(editor.SelectedAssetPath().empty());
@@ -1183,7 +1183,7 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
     NS::SceneJsonActors(doc).push_back(std::move(overridden));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     GL::Level::PropActor* selected = NS::Cast<GL::Level::PropActor>(SelectActorFile(editor, scope.Path(), "PropActor"));
     ASSERT_NE(selected, nullptr);
 
@@ -1504,7 +1504,7 @@ TEST(ActorFile, WritingTheBaseUpdatesDerivedActorsAndKeepsSceneOverrides)
     NS::SceneJsonActors(doc).push_back(std::move(overridden));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     GL::Level::PropActor* selected = NS::Cast<GL::Level::PropActor>(SelectActorFile(editor, scope.Path(), "PropActor"));
     ASSERT_NE(selected, nullptr);
     NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(selected->CollisionClassObj());
@@ -1579,7 +1579,7 @@ TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
     const ScopedActorFileDirectory scope("SharedFieldOnDerived");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json derivedBefore = *NS::ActorFileLibrary::Get().Find("HeavyRock");
     NS::SceneActor* heavy = scene.Actors().FindByActorId(2);
     ASSERT_NE(heavy, nullptr);
@@ -1603,7 +1603,7 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     const ScopedActorFileDirectory scope("CreateDerived");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
 
     ASSERT_TRUE(editor.CreateDerivedActorFile("PropActor", "WideRock"));
@@ -1651,7 +1651,7 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     const ScopedActorFileDirectory scope("DeriveFromActor");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     GL::Level::PropActor* first = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(first, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(first->ShadowClassObj(), DiameterEntry(9.0f)), 0u);
@@ -1690,7 +1690,7 @@ TEST(ActorFile, WritingTheBaseHitReactionsReachesActorsOfItsDerived)
     const ScopedActorFileDirectory scope("BaseHitReactions");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::HitReactionSet set;
     set.name = "Hit";
     set.stopFrames = 12;

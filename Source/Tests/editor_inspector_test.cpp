@@ -613,7 +613,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -654,7 +654,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -692,7 +692,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
     NS::SceneActor* parts = editor.SelectedActor();
     ASSERT_NE(parts, nullptr);
@@ -745,7 +745,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -792,7 +792,7 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
         NS::SceneActor* parts = editor.SelectedActor();
         ASSERT_NE(parts, nullptr);
@@ -812,7 +812,7 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     nlohmann::json doc = NS::MakeSceneJson();
     NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
     InspectorFrames frames(editor);
@@ -838,7 +838,7 @@ TEST(EditorInspector, MusicVolumeEditUndoesThroughTheEnvironmentHistory)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
     const float volumeBefore = scene.Environment().musicVolume;
     ASSERT_NE(volumeBefore, 0.25f);
@@ -895,7 +895,7 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
     ASSERT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
@@ -917,7 +917,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     const ScopedActorFileDirectory scope("InspectorHitSets");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
@@ -976,7 +976,7 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     const ScopedActorFileDirectory scope("InspectorOwnerValues");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");

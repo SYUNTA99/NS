@@ -162,7 +162,7 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
 {
     const std::string name = WriteLevel("saved", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
     editor.Editor().Undo().Record(
@@ -329,7 +329,7 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
 TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -362,7 +362,7 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
 {
     const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.SetGizmoToolActive(false);
     NS::Editor::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(

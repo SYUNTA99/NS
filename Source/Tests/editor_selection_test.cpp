@@ -135,7 +135,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -165,7 +165,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -195,7 +195,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -231,7 +231,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -264,7 +264,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     NS::SceneJsonActors(doc).push_back(std::move(object));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     editor.SelectActorById(1);
@@ -304,7 +304,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         NS::Editor::ActorSnapshotApplier applier(&scene);
         editor.Editor().SetApplier(&applier);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
@@ -377,7 +377,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         const std::string stone = "Assets/Materials/stone.mat";
         const std::string stonePath = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone);
         const NS::Vector3 stoneColor = app.Assets().LoadMaterial(stone)->BaseColor().ToVector3();
@@ -412,7 +412,7 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(item.has_value());
@@ -458,7 +458,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -512,7 +512,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -565,7 +565,7 @@ TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(2);
         ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
@@ -588,7 +588,7 @@ TEST(EditorBrush, ClickPlacesBesideTheHitCellAndRightClickRemovesIt)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
@@ -636,7 +636,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
@@ -670,7 +670,7 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -756,7 +756,7 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -810,7 +810,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     NS::Editor::ActorSnapshotApplier applier(&scene);
     editor.Editor().SetApplier(&applier);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
@@ -883,7 +883,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
 TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -923,7 +923,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         ASSERT_TRUE(stoneText.has_value());
 
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
@@ -1015,7 +1015,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
         const std::optional<NS::Editor::PlacementItem> camera = NS::Editor::FindPlacementItem("FollowCameraActor");
@@ -1131,7 +1131,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             std::as_bytes(std::span<const char>{levelText.data(), levelText.size()})));
 
         GL::Level::GameScene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Editor::PlacementItem> cube =
             NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
@@ -1210,7 +1210,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(&scene);
+        LevelEditorController editor(scene);
         editor.Setup({});
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);

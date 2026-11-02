@@ -790,7 +790,7 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     });
     ASSERT_NE(row, nullptr);
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("EffectEditorRock");
-    LevelEditorController controller{&scene};
+    LevelEditorController controller{scene};
     controller.SelectActorById(1);
     const std::size_t undoBefore = controller.Editor().Undo().UndoSize();
     controller.BeginClassObjEdit();
@@ -838,7 +838,7 @@ TEST(SceneActor, FailedDirectEffectSaveStaysPendingAfterTheSceneHistoryIsCleared
     ASSERT_NE(row, nullptr);
     const std::string blocker = NS::OS::FileSystem::Combine(directory.Path(), "FailedEffectRock.actor.tmp");
     ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(blocker));
-    LevelEditorController editor(&scene);
+    LevelEditorController editor(scene);
     editor.SelectActorById(1);
     editor.BeginClassObjEdit();
     ASSERT_EQ(NS::ApplyJsonFields(&rock->Effects(), {{"飛び出しの尾の資産", "6e4f2fccb9df5a339885b53d42fafd45"}}), 0u);
