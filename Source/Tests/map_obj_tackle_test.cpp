@@ -131,11 +131,11 @@ TEST(MapObjTackle, AHitStopsTheRockForItsOwnSet)
     for (int frame = 1; frame <= 12; ++frame)
     {
         SCOPED_TRACE(frame);
-        rock->UpdateMotion();
+        rock->Update();
         EXPECT_TRUE(rock->IsFrozen());
         EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.06f);
     }
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
     EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
@@ -169,7 +169,7 @@ TEST(MapObjTackle, TheRockShakesAndSpreadsGhostsFromItsOwnSet)
     for (int frame = 1; frame <= 14; ++frame)
     {
         SCOPED_TRACE(frame);
-        rock->UpdateMotion();
+        rock->Update();
         const GL::Level::TackleGhost& ghost = *rock->Ghost();
         const NS::Vector3 offset = rock->ModelClassObj()->GetDrawOffset();
         if (frame < 12)
@@ -197,7 +197,7 @@ TEST(MapObjTackle, TheReleaseTremblesFromItsOwnSetThenLaunches)
     ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
     for (int frame = 0; frame < 12; ++frame)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     const NS::Vector3 pushedIn = rock->Root().Position();
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
@@ -206,7 +206,7 @@ TEST(MapObjTackle, TheReleaseTremblesFromItsOwnSetThenLaunches)
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
     // 明けで戻した当たりも、次の更新を待たずに元の位置にある
     EXPECT_FALSE(RayHitsTheRockAt(scene, 4.53f));
-    rock->UpdateMotion();
+    rock->Update();
     const NS::Gfx::TremorCB tremor = rock->ModelClassObj()->GetDrawTremor();
     EXPECT_GT(tremor.amplitude, 0.0f);
     // 触れた点は、震えを始めた時の食い込んだ根からのずれで持つ
@@ -220,7 +220,7 @@ TEST(MapObjTackle, AReleaseWithoutAHitDoesNotTremble)
     GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene);
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_TRUE(rock->IsArc());
     EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.0f);
 }
@@ -241,7 +241,7 @@ namespace
         EXPECT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
         for (int frame = 0; frame < 12; ++frame)
         {
-            rock->UpdateMotion();
+            rock->Update();
         }
         const NS::Vector3 pushedIn = rock->Root().Position();
         EXPECT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
@@ -281,7 +281,7 @@ TEST(MapObjTackle, TheReleaseTremorRunsForItsSetLength)
     for (int frame = 1; frame <= 14; ++frame)
     {
         SCOPED_TRACE(frame);
-        rock->UpdateMotion();
+        rock->Update();
         const NS::Gfx::TremorCB tremor = rock->ModelClassObj()->GetDrawTremor();
         if (frame > 12)
         {
@@ -316,7 +316,7 @@ TEST(MapObjTackle, TheReleaseTremorReadsItsSetFields)
         for (int frame = 1; frame <= 12; ++frame)
         {
             SCOPED_TRACE(frame);
-            rock->UpdateMotion();
+            rock->Update();
             EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.14f * RockRadius(rock), 1.0e-6f);
         }
         // 震えの間に遠ざかっている。ピクセルの欄なら振れ幅が伸びる場面
@@ -328,7 +328,7 @@ TEST(MapObjTackle, TheReleaseTremorReadsItsSetFields)
         GL::Level::PropActor* rock = PlaceRockBeforePlayer(scene, "ReferenceTremorRock");
         ASSERT_NE(rock, nullptr);
         (void)HitAndRelease(scene, rock);
-        rock->UpdateMotion();
+        rock->Update();
         const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(rock);
         ASSERT_TRUE(pose.has_value());
         EXPECT_NEAR(rock->ModelClassObj()->GetDrawTremor().amplitude,
@@ -349,10 +349,10 @@ TEST(MapObjTackle, AStopOverrideReplacesTheSetsStopAndDoesNotSquash)
     EXPECT_TRUE(rock->ModelClassObj()->GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     for (int frame = 0; frame < 20; ++frame)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     EXPECT_TRUE(rock->IsFrozen());
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_FALSE(rock->IsFrozen());
 }
 
@@ -416,13 +416,13 @@ TEST(MapObjTackle, ARestartClearsTheRocksStopAndHit)
     ASSERT_NE(rock, nullptr);
     ASSERT_TRUE(GL::Level::SendMsgCourseStart(rock));
     ASSERT_TRUE(SendHit(scene, rock, GL::Level::HitTier::Center));
-    rock->UpdateMotion();
+    rock->Update();
     ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
     EXPECT_FALSE(rock->IsFrozen());
     EXPECT_EQ(rock->HitStopFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(rock->Root().Position().z, 4.0f);
     ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, ForwardRelease()));
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_FLOAT_EQ(rock->ModelClassObj()->GetDrawTremor().amplitude, 0.0f);
 }
 
