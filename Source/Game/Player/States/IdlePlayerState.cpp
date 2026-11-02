@@ -22,7 +22,7 @@ namespace GL
 
             const NS::Body& body = player->Body();
             const bool hasInput =
-                PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), player->Params().StickDeadzone());
+                PlayerJudgeMoveInput::Judge(player->Input().DesiredSpeedScale(), player->Params().StickDeadzone());
             const bool stopped = PlayerJudgeStopped::Judge(body.LateralVelocity());
             if (PlayerJudgeFall::Judge(body.IsGrounded()))
             {

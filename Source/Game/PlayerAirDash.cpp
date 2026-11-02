@@ -84,8 +84,8 @@ bool PlayerActor::BeginAirDash() noexcept
     // 押す直前に倒し直した向きより、倒し続けていた向きを優先する
     NS::Vector3 direction = m_airDash.m_intendedDirection;
     const bool stick = direction.LengthSquared() > 0.0f ||
-                       (DesiredSpeedScale() >= m_params->StickDeadzone() &&
-                        NS::TryNormalizeHorizontal(DesiredDirection(), direction));
+                       (m_input->DesiredSpeedScale() >= m_params->StickDeadzone() &&
+                        NS::TryNormalizeHorizontal(m_input->DesiredDirection(), direction));
     if (!stick && !NS::TryNormalizeHorizontal(m_facingDir, direction))
     {
         direction = NS::CalcCameraForwardHorizontal(this);
@@ -112,7 +112,8 @@ bool PlayerActor::BeginAirDash() noexcept
 void PlayerActor::UpdateIntendedDirection(float dt) noexcept
 {
     NS::Vector3 tilt{};
-    if (DesiredSpeedScale() < m_params->StickDeadzone() || !NS::TryNormalizeHorizontal(DesiredDirection(), tilt))
+    if (m_input->DesiredSpeedScale() < m_params->StickDeadzone() ||
+        !NS::TryNormalizeHorizontal(m_input->DesiredDirection(), tilt))
     {
         m_airDash.m_intendedDirection = NS::Vector3{};
         m_airDash.m_tiltDirection = NS::Vector3{};
@@ -397,12 +398,12 @@ void PlayerActor::ApplyReboundShift() noexcept
 GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
 {
     const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
-    if (DesiredSpeedScale() < m_params->StickDeadzone())
+    if (m_input->DesiredSpeedScale() < m_params->StickDeadzone())
     {
         return GL::Level::ReboundChoice{.direction = hit.assigned};
     }
     const GL::Level::ScreenAxes screen = ReboundScreenAxes();
-    const NS::Vector3 desired = DesiredDirection();
+    const NS::Vector3 desired = m_input->DesiredDirection();
     const GL::Level::ReboundChoiceLimits limits{
         .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
         .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
@@ -494,12 +495,12 @@ GL::Level::ScreenAxes PlayerActor::ReboundScreenAxes() const noexcept
 
 NS::Vector3 PlayerActor::ReboundShiftInput(const NS::Vector3& assigned) const noexcept
 {
-    if (DesiredSpeedScale() < m_params->StickDeadzone())
+    if (m_input->DesiredSpeedScale() < m_params->StickDeadzone())
     {
         return NS::Vector3{};
     }
     const GL::Level::ScreenAxes screen = ReboundScreenAxes();
-    const NS::Vector3 desired = DesiredDirection();
+    const NS::Vector3 desired = m_input->DesiredDirection();
     return GL::Level::ShiftInputOnScreen(assigned,
                                          screen.right,
                                          screen.up,

@@ -20,7 +20,7 @@ namespace GL
             {
                 return;
             }
-            if (PlayerJudgeClimbLedge::Judge(player->ClimbForward()))
+            if (PlayerJudgeClimbLedge::Judge(player->Input().ClimbForward()))
             {
                 player->ClimbLedge();
                 return;

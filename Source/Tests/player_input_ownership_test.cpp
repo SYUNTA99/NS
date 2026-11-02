@@ -17,14 +17,14 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
     input->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     movement.SetGrounded(true);
     player.AccelerateToInputDirection(0.1f);
-    EXPECT_FLOAT_EQ(player.DesiredDirection().x, 1.0f);
+    EXPECT_FLOAT_EQ(player.Input().DesiredDirection().x, 1.0f);
     EXPECT_NEAR(movement.LateralVelocity().x, 4.0f, 0.00001f);
     input->SetDesiredMove(NS::Vector3{-1.0f, 0.0f, 0.0f}, 0.5f);
-    EXPECT_FLOAT_EQ(player.DesiredDirection().x, -1.0f);
-    EXPECT_FLOAT_EQ(player.DesiredSpeedScale(), 0.5f);
+    EXPECT_FLOAT_EQ(player.Input().DesiredDirection().x, -1.0f);
+    EXPECT_FLOAT_EQ(player.Input().DesiredSpeedScale(), 0.5f);
     input->SetClimbMove(2.0f, -2.0f);
-    EXPECT_FLOAT_EQ(player.ClimbRight(), 1.0f);
-    EXPECT_FLOAT_EQ(player.ClimbForward(), -1.0f);
+    EXPECT_FLOAT_EQ(player.Input().ClimbRight(), 1.0f);
+    EXPECT_FLOAT_EQ(player.Input().ClimbForward(), -1.0f);
 }
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)

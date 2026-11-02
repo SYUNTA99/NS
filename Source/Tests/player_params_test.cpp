@@ -19,6 +19,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
@@ -143,7 +144,7 @@ TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
     EXPECT_EQ(NS::ApplyJsonFields(params, {{"走行速度", 10.0f}, {"加速度", 7.0f}, {"上昇重力", -15.0f}}), 0u);
     EXPECT_FLOAT_EQ(player.RunSpeed(), 10.0f);
     movement->SetGrounded(true);
-    player.SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player.Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player.AccelerateToInputDirection(0.1f);
     EXPECT_NEAR(movement->LateralVelocity().x, 0.7f, 0.00001f);
     movement->SetVerticalVelocity(2.0f);

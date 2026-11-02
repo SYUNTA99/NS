@@ -193,7 +193,7 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int i = 0; i < 5; ++i)
     {
         player->Update(false);
@@ -209,8 +209,8 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
     {
         StepPlayer(player);
     }
-    EXPECT_FLOAT_EQ(player->DesiredDirection().Length(), 0.0f);
-    EXPECT_FLOAT_EQ(player->DesiredSpeedScale(), 0.0f);
+    EXPECT_FLOAT_EQ(player->Input().DesiredDirection().Length(), 0.0f);
+    EXPECT_FLOAT_EQ(player->Input().DesiredSpeedScale(), 0.0f);
     // 床の無い空中では手を放しても横は減らないので、加速し続けないことを見る
     EXPECT_LE(player->Body().LateralVelocity().Length(), lockedSpeed);
 }

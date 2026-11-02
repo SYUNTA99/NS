@@ -121,12 +121,12 @@ void PlayerActor::TickTimers(float dt) noexcept
 
 bool PlayerActor::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
 {
-    if (!GL::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
-        !NS::TryNormalizeHorizontal(DesiredDirection(), outDirection))
+    if (!GL::Player::PlayerJudgeMoveInput::Judge(m_input->DesiredSpeedScale(), m_params->StickDeadzone()) ||
+        !NS::TryNormalizeHorizontal(m_input->DesiredDirection(), outDirection))
     {
         return false;
     }
-    outTopSpeed = std::max(MaxSpeed() * DesiredSpeedScale(), m_params->m_walkSpeed);
+    outTopSpeed = std::max(MaxSpeed() * m_input->DesiredSpeedScale(), m_params->m_walkSpeed);
     return true;
 }
 
@@ -511,12 +511,12 @@ void PlayerActor::DropLedge() noexcept
 
 void PlayerActor::Shimmy(float dt) noexcept
 {
-    if (ClimbRight() != 0.0f)
+    if (m_input->ClimbRight() != 0.0f)
     {
         // 面法線に水平直交する縁方向へ進め、移動先で見つけた面から半径だけ外と上面の高さへ置き直す。面が折れていても面に沿う
         const NS::Vector3 pos = Root().Position();
         const NS::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
-        const NS::Vector3 step = alongDir * (ClimbRight() * m_params->m_ledgeShimmySpeed * dt);
+        const NS::Vector3 step = alongDir * (m_input->ClimbRight() * m_params->m_ledgeShimmySpeed * dt);
         const NS::Vector3 shimmied = pos + step;
         // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
         float top = 0.0f;

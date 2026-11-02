@@ -166,7 +166,7 @@ TEST(PlayerStateSequence, ClimbEndRestoresWhatALandingRestores)
             PlayerActor* player = LandAfterAirSlam(scene, byClimb);
             ASSERT_NE(player, nullptr);
             player->Body().SetGrounded(false);
-            player->SetJumpPressed();
+            player->Input().SetJumpPressed();
             player->Jump(0.0f);
             EXPECT_GT(player->Body().VerticalVelocity(), 0.0f);
         }
@@ -181,12 +181,12 @@ TEST(PlayerStateSequence, LedgeJumpSpendsTheJumpLikeAGroundJump)
     PlayerActor* player = LandAfterAirSlam(scene, false);
     ASSERT_NE(player, nullptr);
     player->Body().SetGrounded(false);
-    player->SetJumpPressed();
+    player->Input().SetJumpPressed();
     ASSERT_TRUE(player->LedgeJump());
     EXPECT_EQ(player->JumpsRemaining(), 0);
     EXPECT_EQ(player->CoyoteRemaining(), 0.0f);
     player->Body().SetVerticalVelocity(0.0f);
-    player->SetJumpPressed();
+    player->Input().SetJumpPressed();
     player->Jump(0.0f);
     EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(), 0.0f);
 }
@@ -524,7 +524,7 @@ TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
     const NS::Vector3 initial = player->ReboundVelocityFor(arc);
     ASSERT_TRUE(player->BeginRebound(arc));
     EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
-    player->SetJumpPressed();
+    player->Input().SetJumpPressed();
     player->States().Step(0.01f);
     EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.125f, 0.00001f);
     EXPECT_TRUE(player->States().IsCurrent<GL::Player::ReboundPlayerState>());

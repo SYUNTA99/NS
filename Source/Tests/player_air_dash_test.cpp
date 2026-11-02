@@ -12,6 +12,7 @@
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestLogCapture.h"
 #include "Tests/TestSceneSetup.h"
@@ -87,9 +88,9 @@ namespace
     // +Z へ押した瞬間にダッシュし、放したスティックのまま壁へ当てる。反動へ移ったら true
     bool DashIntoFrontWall(PlayerActor* player)
     {
-        player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+        player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
         player->Update(true);
-        player->SetDesiredMove(NS::Vector3{}, 0.0f);
+        player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
         for (int frame = 0; frame < 30; ++frame)
         {
             if (player->IsDashRebounding())
@@ -117,10 +118,10 @@ namespace
         PlayerActor* player = PlaceFloatingPlayer(scene);
         ASSERT_NE(player, nullptr);
         const TestLogCapture log;
-        player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+        player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
         player->Update(true);
         EXPECT_FALSE(player->IsAirDashing());
-        EXPECT_EQ(player->AirDashesRemaining(), 1);
+        EXPECT_EQ(player->AirDash().Remaining(), 1);
         EXPECT_EQ(log.WarningCount(), 1);
     }
 } // namespace
@@ -155,7 +156,7 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     const float speed = DashSpeed(player);
     const float startX = player->Root().Position().x;
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     EXPECT_TRUE(player->IsAirDashing());
     EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
@@ -167,7 +168,7 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
         player->Update(true);
     }
     EXPECT_FALSE(player->IsAirDashing());
-    EXPECT_EQ(player->AirDashesRemaining(), 0);
+    EXPECT_EQ(player->AirDash().Remaining(), 0);
     // 距離はダッシュの速さで進む分。終わるフレームは残る速さで進むので、1 フレームで進む分だけずれてよい
     EXPECT_NEAR(player->Root().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
 }
@@ -181,7 +182,7 @@ TEST(PlayerAirDashTest, DashFromTheAirAllowsTheNextLandingSound)
     ASSERT_GT(AirDashLength(player), 0);
     ASSERT_FALSE(player->Sounds().IsLandAllowed());
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     EXPECT_TRUE(player->Sounds().IsLandAllowed());
@@ -194,12 +195,12 @@ TEST(PlayerAirDashTest, TiltJustBeforeThePressKeepsTheDirectionHeldBefore)
     ASSERT_NE(player, nullptr);
     const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < hold + 2; ++frame)
     {
         player->Update(false);
     }
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     EXPECT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-3f);
@@ -213,12 +214,12 @@ TEST(PlayerAirDashTest, HoldingTheNewDirectionLongerThanTheWindowDashesThatWay)
     ASSERT_NE(player, nullptr);
     const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < hold + 2; ++frame)
     {
         player->Update(false);
     }
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     for (int frame = 0; frame < hold + 2; ++frame)
     {
         player->Update(false);
@@ -236,14 +237,14 @@ TEST(PlayerAirDashTest, ReleasingTheStickForgetsTheDirectionHeldBefore)
     ASSERT_NE(player, nullptr);
     const int hold = FramesFor(ParamsFields(player).at("行きたい向きとみなす秒").get<float>());
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < hold + 2; ++frame)
     {
         player->Update(false);
     }
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     player->Update(false);
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     EXPECT_GT(player->Body().Velocity().x, 0.0f);
@@ -260,9 +261,9 @@ TEST(PlayerAirDashTest, DashLastsTheActionLengthThenKeepsTheExitSpeed)
     ASSERT_GT(length, 0);
     const float speed = DashSpeed(player);
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int step = 1; step < length; ++step)
     {
         SCOPED_TRACE(step);
@@ -297,9 +298,9 @@ TEST(PlayerAirDashTest, TheDashLengthAndSpeedComeFromTheAirDashAction)
     const float speed = ParamsFields(player).at("エアダッシュの距離").get<float>() /
                         (10.0f * NS::OS::FrameTimer::FixedDelta());
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
     for (int step = 1; step < 10; ++step)
     {
@@ -488,9 +489,9 @@ TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
     ASSERT_NE(player, nullptr);
     ASSERT_GT(AirDashLength(player), 10);
     const float speed = DashSpeed(player);
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
     {
@@ -520,9 +521,9 @@ TEST(PlayerAirDashTest, TheDashEndsEvenIfTheActionIsReloadedMidway)
     ASSERT_NE(player, nullptr);
     const int length = AirDashLength(player);
     ASSERT_GT(length, 1);
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
     player->ActionTimelineClassObj()->ReloadActions(player);
@@ -600,7 +601,7 @@ TEST(PlayerAirDashTest, GroundReboundStillLocksTheDashWhileTheCountIsBack)
     ASSERT_TRUE(DashIntoFrontWall(player));
 
     player->Update(false);
-    EXPECT_EQ(player->AirDashesRemaining(), 1);
+    EXPECT_EQ(player->AirDash().Remaining(), 1);
     player->Update(true);
     EXPECT_TRUE(player->IsDashRebounding());
     EXPECT_FALSE(player->IsAirDashing());
@@ -614,16 +615,16 @@ TEST(PlayerAirDashTest, LandingRestoresTheDash)
     // 自機の 5 m 下の床
     AddBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{50.0f, 0.5f, 50.0f});
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 240 && !player->Body().IsGrounded(); ++frame)
     {
         player->Update(false);
     }
     ASSERT_TRUE(player->Body().IsGrounded());
     player->Update(false);
-    EXPECT_EQ(player->AirDashesRemaining(), 1);
+    EXPECT_EQ(player->AirDash().Remaining(), 1);
 }
 
 TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
@@ -641,7 +642,7 @@ TEST(PlayerAirDashTest, SteeringNeverTurnsMoreThanTheLimit)
         player->Update(false);
     }
     // 補正の段の間ずっと真横へ倒す
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const int frames = FramesFor(fields.at("反動の補正が終わる秒").get<float>());
     float largest = 0.0f;
     for (int frame = 0; frame < frames && player->IsDashRebounding(); ++frame)
@@ -670,7 +671,7 @@ TEST(PlayerAirDashTest, HoldingForwardThroughTheSteerStageBendsUpNotSideways)
         {
             player->Update(false);
         }
-        player->SetDesiredMove(desired, scale);
+        player->Input().SetDesiredMove(desired, scale);
         const float end = fields.at("反動の補正が終わる秒").get<float>();
         for (int frame = 0; frame < 120 && player->AirDash().ReboundElapsed() + 0.05f < end; ++frame)
         {
@@ -696,20 +697,20 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
     ASSERT_NE(player, nullptr);
     AddFrontWall(scene);
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     const GL::Player::CameraTargetState dashing = player->GetCameraTargetState();
     EXPECT_TRUE(dashing.rebound.widenView);
     EXPECT_FALSE(dashing.rebound.rebounding);
 
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
     {
         player->Update(false);
     }
     ASSERT_TRUE(player->IsDashRebounding());
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < 30 && player->AirDash().LastRebound().shifted.y <= 0.5f; ++frame)
     {
         player->Update(false);
@@ -737,7 +738,7 @@ TEST(PlayerAirDashTest, TiltAfterTheHitShiftsTheReboundOneStep)
     ASSERT_TRUE(DashIntoFrontWall(player));
     ASSERT_NEAR(player->AirDash().LastRebound().shifted.y, 0.0f, 1.0e-3f);
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < 60 && player->AirDash().ReboundElapsed() <= lock; ++frame)
     {
         player->Update(false);
@@ -756,7 +757,7 @@ TEST(PlayerAirDashTest, HoldingTheDashStickThroughTheHitShiftsTheReboundOneStep)
     AddFrontWall(scene);
     const float lock = ParamsFields(player).at("反動の操作なしの秒").get<float>();
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     player->Update(true);
     for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
     {
@@ -785,7 +786,7 @@ TEST(PlayerAirDashTest, TiltAfterTheLockDoesNotShift)
         player->Update(false);
     }
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     for (int frame = 0; frame < 5; ++frame)
     {
         player->Update(false);
@@ -801,7 +802,7 @@ TEST(PlayerAirDashTest, PressFrameCurlsIntoTheBall)
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(player->IsCurled());
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     EXPECT_TRUE(player->IsCurled());
@@ -815,7 +816,7 @@ TEST(PlayerAirDashTest, PressInTheAirKeepsTheBallAtTheBodyCenter)
     ASSERT_FALSE(player->Body().IsGrounded());
     const float before = player->Root().Position().y;
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     ASSERT_TRUE(player->IsCurled());
@@ -833,9 +834,9 @@ TEST(PlayerAirDashTest, BallRollsTowardTheVelocityDuringTheDashAndTheRebound)
         NS::SerializeClassObjFields(&player->Appearance()).at("エアダッシュの 1 m で回る角度").get<float>();
     const float dt = NS::OS::FrameTimer::FixedDelta();
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
     // +Z へ進む前転の軸は 上 × 前 = (1, 0, 0)
@@ -870,9 +871,9 @@ TEST(PlayerAirDashTest, BallStaysCurledInTheAirAndUncurlsAfterLanding)
     ASSERT_NE(player, nullptr);
     AddBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{50.0f, 0.5f, 50.0f});
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 60 && player->IsAirDashing(); ++frame)
     {
         player->Update(false);
@@ -901,7 +902,7 @@ TEST(PlayerAirDashTest, ResetStateEndsTheReboundAndRestoresTheDash)
     player->ResetState();
     EXPECT_FALSE(player->IsDashRebounding());
     EXPECT_FALSE(player->IsAirDashing());
-    EXPECT_EQ(player->AirDashesRemaining(), 1);
+    EXPECT_EQ(player->AirDash().Remaining(), 1);
 }
 
 TEST(PlayerAirDashTest, AirControlComesBackGraduallyAfterTheDash)
@@ -912,16 +913,16 @@ TEST(PlayerAirDashTest, AirControlComesBackGraduallyAfterTheDash)
     const nlohmann::json fields = ParamsFields(player);
     const float fullDrag = fields.at("曲がる時の抵抗").get<float>() * NS::OS::FrameTimer::FixedDelta();
 
-    player->SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
     player->Update(true);
-    player->SetDesiredMove(NS::Vector3{}, 0.0f);
+    player->Input().SetDesiredMove(NS::Vector3{}, 0.0f);
     for (int frame = 0; frame < 60 && player->IsAirDashing(); ++frame)
     {
         player->Update(false);
     }
     ASSERT_FALSE(player->IsAirDashing());
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     float before = player->Body().Velocity().z;
     player->Update(false);
     const float first = before - player->Body().Velocity().z;
@@ -948,7 +949,7 @@ TEST(PlayerAirDashTest, PlainFallHasFullAirControlFromTheFirstFrame)
     player->Update(false);
     player->Update(false);
 
-    player->SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     const float before = player->Body().Velocity().x;
     player->Update(false);
     EXPECT_NEAR(player->Body().Velocity().x - before, full, 1.0e-3f);

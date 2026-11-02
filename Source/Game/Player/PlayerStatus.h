@@ -112,6 +112,7 @@ namespace GL
         class AirDashStatus
         {
         public:
+            //! 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
             [[nodiscard]] int Remaining() const noexcept { return m_remaining; }
             //! 地形の反動を始めてからの秒。反動の状態の外では最後の反動の値のまま
             [[nodiscard]] float ReboundElapsed() const noexcept { return m_reboundElapsed; }
