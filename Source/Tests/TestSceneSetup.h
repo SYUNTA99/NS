@@ -53,5 +53,5 @@ AddTerrainBox(NS::Scene& scene, const NS::Vector3& center, float halfExtentX, fl
     box.halfExtentX = halfExtentX;
     box.halfExtentY = halfExtentY;
     box.halfExtentZ = halfExtentZ;
-    return scene.Physics().AddBox(box, NS::Phys::ObjectLayers::Terrain);
+    return scene.Physics().AddBox(box, NS::Phys::k_TerrainObjectLayer);
 }

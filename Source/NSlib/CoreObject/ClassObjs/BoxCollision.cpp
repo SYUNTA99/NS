@@ -91,6 +91,6 @@ namespace NS
 
     JPH::BodyID BoxCollision::SyncBody(Phys::PhysicsScene& physics, JPH::BodyID current, const Matrix& world)
     {
-        return physics.SyncBox(current, WorldOBB(world), Phys::ObjectLayers::Terrain);
+        return physics.SyncBox(current, WorldOBB(world), Phys::k_TerrainObjectLayer);
     }
 } // namespace NS

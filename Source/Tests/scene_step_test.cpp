@@ -267,8 +267,8 @@ TEST(SceneStep, DestroyingTheSceneClearsTheDebugShapes)
 {
     {
         NS::Scene scene;
-        NS::Gfx::DebugDraw::Line(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
-        ASSERT_GT(NS::Gfx::DebugDraw::VertexCount(), 0u);
+        NS::Gfx::DrawDebugLine(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+        ASSERT_GT(NS::Gfx::DebugDrawVertexCount(), 0u);
     }
-    EXPECT_EQ(NS::Gfx::DebugDraw::VertexCount(), 0u);
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), 0u);
 }

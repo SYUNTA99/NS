@@ -25,25 +25,17 @@ namespace NS
     namespace Phys
     {
         //! body の種別を表す ObjectLayer。body はどれも動かないので、body どうしは当たらない
-        namespace ObjectLayers
-        {
-            inline constexpr JPH::ObjectLayer Terrain = 0;
-            inline constexpr uint Count = 1;
-        } // namespace ObjectLayers
+        inline constexpr JPH::ObjectLayer k_TerrainObjectLayer = 0;
+        inline constexpr uint k_ObjectLayerCount = 1;
 
-        namespace BroadPhaseLayers
+        //! ObjectLayer と同じ番号の BroadPhaseLayer を作る
+        //! BroadPhaseLayerInterface は ObjectLayer をそのまま番号へキャストして割り当てる
+        constexpr JPH::BroadPhaseLayer BroadPhaseLayerFromObjectLayer(JPH::ObjectLayer layer) noexcept
         {
-            //! ObjectLayer と同じ番号の BroadPhaseLayer を作る
-            //! BroadPhaseLayerInterface は ObjectLayer をそのまま番号へキャストして割り当てる
-            //! 定数側にも番号を書くと、ObjectLayers を並べ替えた時に片方だけ古い番号が残る
-            constexpr JPH::BroadPhaseLayer FromObjectLayer(JPH::ObjectLayer layer) noexcept
-            {
-                return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
-            }
+            return JPH::BroadPhaseLayer{static_cast<JPH::BroadPhaseLayer::Type>(layer)};
+        }
 
-            inline constexpr JPH::BroadPhaseLayer Terrain = FromObjectLayer(ObjectLayers::Terrain);
-            inline constexpr uint Count = ObjectLayers::Count;
-        } // namespace BroadPhaseLayers
+        inline constexpr uint k_BroadPhaseLayerCount = k_ObjectLayerCount;
 
         //! 重力の向き。真下に決めて、シーンでは変えない
         inline constexpr Vector3 k_GravityDirection{0.0f, -1.0f, 0.0f};

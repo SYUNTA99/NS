@@ -935,7 +935,7 @@ TEST(PlayerAirDashTest, MatchingAtTheReleaseTurnsTheWeakReactionIntoTheFullOne)
     // 面の向きを縦の軸のまわりに 40 度回した壁。正面から +Z へ当てると当て方は cos 40° になる
     const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitY, NS::k_Pi * 40.0f / 180.0f);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 5.0f, 3.5f}, turn, NS::Vector3{20.0f, 20.0f, 0.5f}),
-                           NS::Phys::ObjectLayers::Terrain);
+                           NS::Phys::k_TerrainObjectLayer);
     const float full = ParamsFields(player).at("全部返ったに数える当て方の下限").get<float>();
     ASSERT_TRUE(DashIntoFrontWall(player));
     ASSERT_LT(player->AirDash().LastRebound().facing, full);

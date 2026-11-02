@@ -15,7 +15,6 @@
 
 namespace
 {
-    namespace DD = NS::Gfx::DebugDraw;
 
     // 当たりと赤の欄を持つ置物を 1 体置く。置いた物は選ばれる
     void PlaceMapObj(LevelEditorController& editor)
@@ -33,7 +32,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
     LevelEditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
     editor.EnterPlay();
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
 
     NS::Gfx::DebugShapes shapes;
     editor.DrawSceneViewShapes(shapes, NS::Matrix::Identity);
@@ -51,8 +50,8 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
         EXPECT_EQ(shapes.VertexCount(), lines);
         EXPECT_EQ(shapes.FaceVertexCount(), faces);
     }
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
 }
 
 // 編集中は世界が進まず歩の頭で捨てる者が居ない。描くたびに作って捨てるので何度描いても溜まらない
@@ -61,7 +60,7 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
     NS::Scene scene;
     LevelEditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
-    DD::Clear();
+    NS::Gfx::ClearDebugDraw();
 
     NS::Gfx::DebugShapes first;
     editor.DrawSceneViewShapes(first, NS::Matrix::Identity);
@@ -74,8 +73,8 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
         EXPECT_EQ(shapes.VertexCount(), first.VertexCount());
         EXPECT_EQ(shapes.FaceVertexCount(), first.FaceVertexCount());
     }
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
 }
 
 // 枠は主対象以外の選択物にだけ出る。主対象はギズモで見えるので枠を重ねない

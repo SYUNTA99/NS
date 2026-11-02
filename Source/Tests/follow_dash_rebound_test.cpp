@@ -264,7 +264,7 @@ TEST(FollowDashRebound, TerrainBesideTheHeadDoesNotCollapseWhenTheBodySeesTheCam
     beam.halfExtentX = 3.0f;
     beam.halfExtentY = 0.3f;
     beam.halfExtentZ = 0.25f;
-    (void)dash.scene.Physics().AddBox(beam, NS::Phys::ObjectLayers::Terrain);
+    (void)dash.scene.Physics().AddBox(beam, NS::Phys::k_TerrainObjectLayer);
 
     float shortest = distance;
     for (int frame = 0; frame < 10; ++frame)

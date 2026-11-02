@@ -115,32 +115,32 @@ TEST(ActorListTicker, ActorRunsBeforeItsPartInItsOwnStep)
 // ステップの図形は世界の物なので、世界を組み直したら前の世界の線と面を残さない
 TEST(SceneStepShapes, RebuildingTheWorldDropsTheStepShapes)
 {
-    namespace DD = NS::Gfx::DebugDraw;
     NS::Scene scene;
-    DD::Clear();
-    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
-    DD::Triangle(NS::Vector3{0.0f, 0.0f, 0.0f},
-                 NS::Vector3{1.0f, 0.0f, 0.0f},
-                 NS::Vector3{0.0f, 1.0f, 0.0f},
-                 NS::Color{1.0f, 1.0f, 1.0f, 0.5f});
+    NS::Gfx::ClearDebugDraw();
+    NS::Gfx::DrawDebugLine(
+        NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    NS::Gfx::DrawDebugTriangle(NS::Vector3{0.0f, 0.0f, 0.0f},
+                               NS::Vector3{1.0f, 0.0f, 0.0f},
+                               NS::Vector3{0.0f, 1.0f, 0.0f},
+                               NS::Color{1.0f, 1.0f, 1.0f, 0.5f});
 
     scene.ResetFromJson(NS::MakeSceneJson());
 
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
-    EXPECT_EQ(DD::FaceVertexCount(), std::size_t{0});
-    DD::Clear();
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
+    EXPECT_EQ(NS::Gfx::DebugDrawFaceVertexCount(), std::size_t{0});
+    NS::Gfx::ClearDebugDraw();
 }
 
 // シーンを畳んだ後に、畳んだ世界の線が次のシーンの最初の描画へ残らない
 TEST(SceneStepShapes, ShutdownDropsTheStepShapes)
 {
-    namespace DD = NS::Gfx::DebugDraw;
     NS::Scene scene;
-    DD::Clear();
-    DD::Line(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
+    NS::Gfx::ClearDebugDraw();
+    NS::Gfx::DrawDebugLine(
+        NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
 
     scene.OnShutdown();
 
-    EXPECT_EQ(DD::VertexCount(), std::size_t{0});
-    DD::Clear();
+    EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), std::size_t{0});
+    NS::Gfx::ClearDebugDraw();
 }

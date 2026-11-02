@@ -166,7 +166,7 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
-    scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+    scene.Physics().AddBox(floor, NS::Phys::k_TerrainObjectLayer);
     ReleaseRock(rock);
     for (int step = 0; step < 55; ++step)
     {
@@ -243,7 +243,7 @@ TEST(MapObjMotion, LandingDustStartsOnTheActorUpdateThatLands)
     floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
     floor.halfExtentX = 100.0f;
     floor.halfExtentZ = 100.0f;
-    scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+    scene.Physics().AddBox(floor, NS::Phys::k_TerrainObjectLayer);
     ReleaseRock(rock);
     const NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);
