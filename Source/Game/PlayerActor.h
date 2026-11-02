@@ -142,23 +142,6 @@ public:
     void OnEndPlay() override;
     void PrepareRender() override;
 
-    //! 世界座標系の目標移動方向と速度スケール (0..1 に丸める) を渡す
-    void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
-    //! 直近に渡された目標速度スケール 0..1
-    [[nodiscard]] float DesiredSpeedScale() const noexcept;
-    //! 直近に渡された世界座標系の目標移動方向。長さは入力の強さのままで正規化されていない
-    [[nodiscard]] NS::Vector3 DesiredDirection() const noexcept;
-    //! 掴まり中の生ローカル入力 (-1..1)。SetDesiredMove とは別に持つ
-    void SetClimbMove(float localRight, float localForward) noexcept;
-    [[nodiscard]] float ClimbRight() const noexcept;
-    [[nodiscard]] float ClimbForward() const noexcept;
-    //! ジャンプの押下を一度記録する。更新の終わりに消費する
-    void SetJumpPressed() noexcept;
-    //! 手放しの押下を一度記録する。更新の終わりに消費する
-    void SetReleaseLedgePressed() noexcept;
-    //! ジャンプボタンの長押し状態を渡す。上昇中に離すと縦速度を縮める
-    void SetJumpHeld(bool held) noexcept;
-
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
     //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
     [[nodiscard]] float CoyoteRemaining() const noexcept { return m_coyoteTimer; }
@@ -194,8 +177,6 @@ public:
     [[nodiscard]] bool IsRebounding() const noexcept;
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
-    //! 今出せるエアダッシュの回数。接地の間と、反動の補正の段に入った時に 1 に戻る
-    [[nodiscard]] int AirDashesRemaining() const noexcept { return m_airDash.Remaining(); }
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
     //! エアダッシュの動作 ("AirDash") を今の状態に結んで始める。タイムラインが無いか開始できなければ false
     [[nodiscard]] bool StartAirDashAction() noexcept;

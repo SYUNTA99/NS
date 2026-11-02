@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 
 #include <gtest/gtest.h>
 
@@ -319,7 +320,7 @@ TEST(LaunchPitchTest, ChargedSlamStartsFromTheGivenVerticalSpeed)
         player.RequestBodySlam(1.0f, forward, 4.5f);
         player.RequestBodySlam(1.0f);
         player.Body().SetVerticalVelocity(8.0f);
-        player.SetDesiredMove(forward, 1.0f);
+        player.Input().SetDesiredMove(forward, 1.0f);
         ASSERT_TRUE(player.BodySlam());
         EXPECT_FLOAT_EQ(player.Body().VerticalVelocity(), 0.0f);
     }

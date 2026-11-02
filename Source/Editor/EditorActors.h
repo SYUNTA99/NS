@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -57,6 +58,9 @@ namespace NS
         //! エディタが並べて番号を振るアクター。objects の並びのまま
         //! アクター一覧・その数・参照先の候補はこの並びと番号で出す
         [[nodiscard]] std::vector<SceneActor*> PlacedActors(const ActorList& objects);
+
+        //! id のアクターの今の姿を JSON へ書き出す。居なければ nullopt
+        [[nodiscard]] std::optional<nlohmann::json> CaptureActor(ActorList& actors, uint32 id);
 
         //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。

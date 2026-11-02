@@ -75,7 +75,8 @@ namespace
 
     // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
     // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
-    std::vector<std::unique_ptr<NS::Editor::ICommand>> MakePlayEditCommands(const nlohmann::json& playStart,
+    std::vector<std::unique_ptr<NS::Editor::ICommand>> MakePlayEditCommands(NS::Scene& scene,
+                                                                            const nlohmann::json& playStart,
                                                                             const nlohmann::json& playEnd)
     {
         std::vector<std::unique_ptr<NS::Editor::ICommand>> commands;
@@ -94,20 +95,19 @@ namespace
                 continue;
             }
             commands.push_back(std::make_unique<NS::Editor::ActorSnapshotCommand>(
-                id, std::optional<nlohmann::json>{before}, std::optional<nlohmann::json>{after}));
+                scene, id, std::optional<nlohmann::json>{before}, std::optional<nlohmann::json>{after}));
         }
         return commands;
     }
 } // namespace
 
-LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scene(scene), m_applier(scene)
+LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scene(scene)
 {
     // シーンだけで決まる物は Setup の前から使えるよう、ここで差す。入力は Application が要るので Setup で差す
     m_editor.SetActors(&m_scene.Actors());
     m_editor.SetSceneCamera(&MainCamera());
     m_editor.SetCaptureLevelFn([this]() { return m_scene.ToJson(); });
-    m_editor.SetApplier(&m_applier);
-    m_editor.SetAllocateIdFn([this]() { return m_scene.Actors().AllocateActorId(); });
+    m_editor.SetScene(&m_scene);
     m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
     m_editor.SetLoadLevelFn([this](nlohmann::json&& fresh) {
         CommitTransformEdit();
@@ -120,7 +120,6 @@ LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scen
         m_scene.ResetFromJson(std::move(fresh));
         m_scene.SetSimulationEnabled(false);
         FocusLoadedScene();
-        RefreshGizmoSelectables();
     });
 }
 
@@ -136,8 +135,8 @@ namespace
         {
         }
 
-        void Do(NS::Editor::IActorSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_after); }
-        void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { m_scene.SetEnvironment(m_before); }
+        void Do() noexcept override { m_scene.SetEnvironment(m_after); }
+        void Undo() noexcept override { m_scene.SetEnvironment(m_before); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
         {
             return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() + m_before.music.name.size() +
@@ -225,8 +224,7 @@ bool LevelEditorController::SetSkyboxPath(std::string_view path)
     {
         NS::SceneEnvironment after = m_scene.Environment();
         after.skybox = std::move(normalized);
-        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)),
-                             m_applier);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
     }
     return true;
 }
@@ -253,8 +251,7 @@ bool LevelEditorController::SetSceneMusic(const NS::SoundName& music, float volu
     if (after.music.name != m_scene.Environment().music.name ||
         after.musicVolume != m_scene.Environment().musicVolume)
     {
-        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)),
-                             m_applier);
+        m_editor.Undo().Push(std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
     }
     return true;
 }
@@ -361,8 +358,6 @@ void LevelEditorController::Setup(std::string_view startLevelName)
     if (!opened)
     {
         FocusLoadedScene();
-        // 選択候補の生ポインタは組み直しの後に集める。先に集めると破棄済みの相手を指す
-        RefreshGizmoSelectables();
     }
 }
 
@@ -388,8 +383,6 @@ void LevelEditorController::Teardown()
 {
     // ギズモはアクターの Transform を非所有参照するので、scene 破棄前に選択を外す
     m_gizmo.ClearSelection();
-    m_selectablePtrs.clear();
-    m_selectablePickable.clear();
 }
 
 void LevelEditorController::EnterPlay() noexcept
@@ -427,7 +420,6 @@ void LevelEditorController::EnterPlay() noexcept
     // プレイ突入はカーソルを消し、マウスを相対モードにして視点操作をカーソル位置から切り離す
     ApplyPlayCursor(NS::Editor::PlayCursor::Captured);
 
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -451,7 +443,6 @@ void LevelEditorController::EnterEdit() noexcept
     m_editBlendElapsed = 0.0f;
     m_editBlending = true;
     // 編集復帰の組み直しを跨いだ選択を、id から現在のオブジェクトへ貼り直してから編集へ戻る
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -503,7 +494,7 @@ void LevelEditorController::LeavePlayForEdit()
     std::vector<std::unique_ptr<NS::Editor::ICommand>> playEdits;
     if (m_playStartBaseline)
     {
-        playEdits = MakePlayEditCommands(*m_playStartBaseline, baseline);
+        playEdits = MakePlayEditCommands(m_scene, *m_playStartBaseline, baseline);
         m_playStartBaseline.reset();
     }
     // 履歴は残す。持っているアクターは組み直しが捨てる管理クラスを指すので、先に解放して JSON から戻す形にする
@@ -705,13 +696,12 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
         // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
         SyncFollowCameraPoses();
 
-        // 組み直しで破棄されたアクターを参照しないよう、候補と選択を現在の実体へ引き直す
-        RefreshGizmoSelectables();
+        // 組み直しで破棄されたアクターを参照しないよう、選択を現在の実体へ引き直す
         ResolveSelectionFromId();
 
         const NS::Matrix vp = Cameras().ViewProjection();
         const bool wasDragging = m_gizmoWasDragging;
-        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses);
+        m_gizmo.Tick(vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses, m_scene.Actors());
 
         // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
         CaptureSelectionFromGizmo();
@@ -752,9 +742,8 @@ void LevelEditorController::TickEdit(const NS::OS::InputPresses& presses)
     m_editor.Tick(m_editShortcutsBlocked, presses);
     if (m_editor.IsLevelDirty())
     {
-        // grid 編集・undo・読込は applier / reload がアクターを組み直し済。候補と gizmo を今の実体へ貼り直す
+        // grid 編集・undo・読込はコマンド / reload がアクターを組み直し済。gizmo を今の実体へ貼り直す
         // 消えた選択や読込での id 振り直しは解決が自然に外す
-        RefreshGizmoSelectables();
         ResolveSelectionFromId();
         m_editor.ClearLevelDirty();
     }
@@ -867,24 +856,6 @@ bool LevelEditorController::SelectedIsPlayerActor() const noexcept
 {
     NS::SceneActor* player = FindPlayer(m_scene.Actors());
     return player != nullptr && m_selectedActorId != NS::k_NoActorId && m_selectedActorId == player->Id();
-}
-
-void LevelEditorController::RefreshGizmoSelectables()
-{
-    m_selectablePtrs.clear();
-    m_selectablePickable.clear();
-    m_selectablePtrs.reserve(m_scene.Actors().ActorCount());
-    m_selectablePickable.reserve(m_scene.Actors().ActorCount());
-
-    // 可視メッシュを持つ候補は 1、見えないカメラ等は 0。ギズモは 1 の候補を先に選ぶ
-    // 全アクターをギズモ候補に積む。判定箱はギズモがクリックの時にアクターから引く
-    for (NS::SceneActor* object : NS::Editor::PlacedActors(m_scene.Actors()))
-    {
-        m_selectablePtrs.push_back(object);
-        m_selectablePickable.push_back(static_cast<NS::uint8>(object->ModelClassObj() != nullptr));
-    }
-
-    m_gizmo.SetSelectableActors(m_selectablePtrs, m_selectablePickable);
 }
 
 NS::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
@@ -1110,7 +1081,6 @@ NS::uint32 LevelEditorController::PlaceStagePart(const NS::Ray& ray)
     {
         return NS::k_NoActorId;
     }
-    RefreshGizmoSelectables();
     return created.front();
 }
 
@@ -1146,7 +1116,6 @@ void LevelEditorController::CreateActorAndSelect(nlohmann::json object)
     m_selectionIds.assign(1, created.front());
     ClearAssetSelection();
     SetGizmoToolActive(true);
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -1157,7 +1126,7 @@ void LevelEditorController::RenameActor(NS::uint32 id, std::string_view name)
         return;
     }
     NS::SceneActor* object = m_scene.Actors().FindByActorId(id);
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(id);
+    std::optional<nlohmann::json> before = NS::Editor::CaptureActor(m_scene.Actors(), id);
     if (object == nullptr || !before)
     {
         return;
@@ -1171,12 +1140,11 @@ void LevelEditorController::RenameActor(NS::uint32 id, std::string_view name)
         return; // 同じ名前で履歴を汚さない
     }
 
-    std::optional<nlohmann::json> after = m_applier.CaptureActor(id);
+    std::optional<nlohmann::json> after = NS::Editor::CaptureActor(m_scene.Actors(), id);
     // 実体は既に after なので Do を呼ばず履歴だけ積む
     m_editor.Undo().Record(
-        std::make_unique<NS::Editor::ActorSnapshotCommand>(id, std::move(before), std::move(after)));
+        std::make_unique<NS::Editor::ActorSnapshotCommand>(m_scene, id, std::move(before), std::move(after)));
 
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -1199,7 +1167,7 @@ void LevelEditorController::DuplicateSelectedActor()
         {
             continue;
         }
-        std::optional<nlohmann::json> source = m_applier.CaptureActor(id);
+        std::optional<nlohmann::json> source = NS::Editor::CaptureActor(m_scene.Actors(), id);
         if (!source)
         {
             continue;
@@ -1215,7 +1183,6 @@ void LevelEditorController::DuplicateSelectedActor()
 
     const NS::uint32 primary = created.back();
     SelectActors(std::move(created), primary);
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -1238,23 +1205,22 @@ void LevelEditorController::DeleteSelectedActor()
     commands.reserve(m_selectionIds.size());
     for (const NS::uint32 victim : m_selectionIds)
     {
-        std::optional<nlohmann::json> before = m_applier.CaptureActor(victim);
+        std::optional<nlohmann::json> before = NS::Editor::CaptureActor(m_scene.Actors(), victim);
         if (!before)
         {
             continue;
         }
         commands.push_back(
-            std::make_unique<NS::Editor::ActorSnapshotCommand>(victim, std::move(before), std::nullopt));
+            std::make_unique<NS::Editor::ActorSnapshotCommand>(m_scene, victim, std::move(before), std::nullopt));
     }
     if (commands.empty())
     {
         return;
     }
 
-    m_editor.Undo().Push(MakeUndoUnit(std::move(commands)), m_applier);
+    m_editor.Undo().Push(MakeUndoUnit(std::move(commands)));
 
     SelectActorById(NS::k_NoActorId);
-    RefreshGizmoSelectables();
     ResolveSelectionFromId();
 }
 
@@ -1382,12 +1348,12 @@ void LevelEditorController::BeginTransformEdit() noexcept
     // 選択している分をまとめて控える。動かなかった物は確定時に落ちる
     for (const NS::uint32 id : m_selectionIds)
     {
-        std::optional<nlohmann::json> baseline = m_applier.CaptureActor(id);
+        std::optional<nlohmann::json> baseline = NS::Editor::CaptureActor(m_scene.Actors(), id);
         if (!baseline)
         {
             continue;
         }
-        // 控えが取れたので、m_applier と同じシーンにこのアクターが居る
+        // 控えが取れたので、m_scene にこのアクターが居る
         const NS::SceneActor* actor = m_scene.Actors().FindByActorId(id);
         if (actor != nullptr)
         {
@@ -1420,12 +1386,12 @@ void LevelEditorController::CommitTransformEdit() noexcept
         {
             AddChangedSceneOverrides(*actor, entry.fields);
         }
-        std::optional<nlohmann::json> after = m_applier.CaptureActor(id);
+        std::optional<nlohmann::json> after = NS::Editor::CaptureActor(m_scene.Actors(), id);
         if (!after || *after == baseline)
         {
             continue;
         }
-        commands.push_back(std::make_unique<NS::Editor::ActorSnapshotCommand>(id, baseline, std::move(*after)));
+        commands.push_back(std::make_unique<NS::Editor::ActorSnapshotCommand>(m_scene, id, baseline, std::move(*after)));
     }
     m_editBaselines.clear();
     // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
@@ -1444,7 +1410,7 @@ void LevelEditorController::BeginClassObjEdit() noexcept
     {
         return;
     }
-    std::optional<nlohmann::json> baseline = m_applier.CaptureActor(m_selectedActorId);
+    std::optional<nlohmann::json> baseline = NS::Editor::CaptureActor(m_scene.Actors(), m_selectedActorId);
     if (!baseline)
     {
         return;
@@ -1469,7 +1435,7 @@ void LevelEditorController::CommitClassObjEdit() noexcept
     {
         return;
     }
-    std::optional<nlohmann::json> after = m_applier.CaptureActor(m_classObjEditBaselineId);
+    std::optional<nlohmann::json> after = NS::Editor::CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
     if (!after || *after == m_classObjEditBaseline)
     {
         return;
@@ -1477,5 +1443,5 @@ void LevelEditorController::CommitClassObjEdit() noexcept
 
     // 実体は既に after なので Do を呼ばず履歴だけ積む
     m_editor.Undo().Record(std::make_unique<NS::Editor::ActorSnapshotCommand>(
-        m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
+        m_scene, m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
 }

@@ -3,7 +3,6 @@
 #include "Editor/EditorAppearance.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
@@ -1015,16 +1014,37 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
 
-    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
+}
+
+// 読めない .actor へ欄の変更を書かない。保存していない動作がファイルへ入らず、壊れた中身も残り、未保存と分かる
+TEST(ActorFile, UnreadableActorFileIsNotOverwrittenAndStaysUnsaved)
+{
+    const ScopedActorFileDirectory scope("UnreadableActorFile");
+    NS::Scene scene;
+    ResetTwoProps(scene);
+    LevelEditorController editor(scene);
+    NS::SceneActor* first = scene.Actors().FindByActorId(1);
+    ASSERT_NE(first, nullptr);
+    NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(first->CollisionClassObj());
+    ASSERT_NE(sphere, nullptr);
+    const std::string path = NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor");
+    const std::string broken = "{ broken";
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{broken.data(), broken.size()})));
+
+    sphere->SetRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, sphere, "半径"));
+
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), broken);
+    EXPECT_TRUE(editor.HasUnsavedAssetWrites());
 }
 
 // 欄を直した後に動作の窓が .actor の動作を書いても、欄の取り消しとやり直しは欄だけを戻し、動作は残る
@@ -1047,14 +1067,13 @@ TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
     NS::WriteActorActions(document, {NS::ActorAction{"Jump", {}, {}}});
     ASSERT_TRUE(library.Set("PropActor", std::move(document)));
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
     std::vector<NS::ActorAction> actions = NS::ReadActorActions("PropActor", *library.Find("PropActor"));
     ASSERT_EQ(actions.size(), 1u);
     EXPECT_EQ(actions[0].name, "Jump");
 
-    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     actions = NS::ReadActorActions("PropActor", *library.Find("PropActor"));
     ASSERT_EQ(actions.size(), 1u);
@@ -1161,8 +1180,7 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 
     // 戻すと .actor とアクターの全部が前の値へ戻り、選んだ .actor も前の値を見せる
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
@@ -1208,8 +1226,7 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
         EXPECT_TRUE(savedParams == nullptr || !savedParams->contains("基本直径"));
     }
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 2.0f);
     EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 5.0f);
 }
@@ -1629,8 +1646,7 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     EXPECT_TRUE(NS::ActorJsonClassObjs(tuned).empty());
     EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "TunedHeavyRock");
     EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), baseMass);
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "HeavyRock");
     EXPECT_FLOAT_EQ(MassOf(scene.Actors().FindByActorId(2)), 4.0f);
 
@@ -1674,8 +1690,7 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     EXPECT_FALSE(NS::HasField(*NS::ClassObjFields(afterObject, "Shadow"), "基本直径"));
     EXPECT_EQ(*SavedFields(afterObject, "Transform"), *SavedFields(beforeObject, "Transform"));
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     const NS::SceneActor* restored = scene.Actors().FindByActorId(1);
     ASSERT_NE(restored, nullptr);
     EXPECT_EQ(restored, first);

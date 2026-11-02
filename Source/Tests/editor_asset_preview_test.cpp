@@ -1,7 +1,6 @@
 #include "Editor/InspectorPanel.h"
 #include "Editor/AssetsPanel.h"
 #include "Editor/AssetPicker.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Editor/PanelIds.h"
 #include "Editor/LevelEditorController.h"
 #include "NSlib/App/Application.h"
@@ -154,8 +153,6 @@ TEST_F(EditorAssetPreview, TextureSelectionDisplaysTheSelectedImage)
 
 TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 {
-    NS::Editor::ActorSnapshotApplier applier{m_scene};
-    m_editor.Editor().SetApplier(&applier);
     const nlohmann::json before = m_scene.ToJson();
     const std::vector<NS::Editor::AssetOption> options =
         NS::Editor::CollectSkyboxOptions(NS::OS::FileSystem::ContentRoot());
@@ -213,8 +210,6 @@ TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 
 TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackground)
 {
-    NS::Editor::ActorSnapshotApplier applier{m_scene};
-    m_editor.Editor().SetApplier(&applier);
     (void)Frame();
     Click(45.0f, 245.0f);
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);

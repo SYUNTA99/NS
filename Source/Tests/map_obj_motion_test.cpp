@@ -42,7 +42,7 @@ TEST(MapObjMotion, ActorMovesAndUpdatesStaticCollision)
     ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     EXPECT_GT(rock->Root().Position().x, 1.0f);
     EXPECT_GT(rock->Root().Position().y, 0.5f);
@@ -61,7 +61,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     ReleaseRock(rock);
     for (int step = 0; step < 300; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     GL::Level::TackleTargetAnswer answer;
     ASSERT_TRUE(GL::Level::SendMsgAskTackleTarget(rock->HitSensorsClassObj()->Find("Body"), answer));
@@ -69,7 +69,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     EXPECT_GT(rock->Root().Position().x, 5.0f);
     EXPECT_NEAR(rock->Root().Position().y, 0.5f, 0.002f);
     const NS::Vector3 stopped = rock->Root().Position();
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, stopped.x);
     EXPECT_FLOAT_EQ(rock->Root().Position().y, stopped.y);
 }
@@ -85,7 +85,7 @@ TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
     bool reflected = false;
     for (int step = 0; step < 35; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
         const float current = rock->Root().Position().x;
         EXPECT_LE(current, 1.401f);
         if (current < previous)
@@ -110,7 +110,7 @@ TEST(MapObjMotion, UnobstructedFlightKeepsAnalyticArc)
     for (int step = 0; step < 45; ++step)
     {
         seconds += NS::OS::FrameTimer::FixedDelta();
-        rock->UpdateMotion();
+        rock->Update();
         const NS::Vector3 expected = GL::Level::LaunchArcOffsetAt(arc, seconds);
         EXPECT_NEAR(rock->Root().Position().x, expected.x, 0.0001f);
         EXPECT_NEAR(rock->Root().Position().y, 0.5f + expected.y, 0.0001f);
@@ -126,11 +126,11 @@ TEST(MapObjMotion, RestartCancelsFlightAndRestoresPlacement)
     ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     ASSERT_TRUE(GL::Level::SendMsgCourseRestart(rock));
     EXPECT_FALSE(rock->IsFlying());
-    rock->UpdateMotion();
+    rock->Update();
     EXPECT_FLOAT_EQ(rock->Root().Position().x, 0.0f);
     EXPECT_FLOAT_EQ(rock->Root().Position().y, 0.5f);
     EXPECT_FLOAT_EQ(rock->Velocity().Length(), 0.0f);
@@ -147,7 +147,7 @@ TEST(MapObjMotion, RestartMovesTheCollisionBeforeTheNextUpdate)
     ReleaseRock(rock);
     for (int step = 0; step < 10; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     const NS::Vector3 aboveHome{0.0f, 2.5f, 0.0f};
     float distance = 0.0f;
@@ -170,7 +170,7 @@ TEST(MapObjMotion, LandingNotificationEmitsDustWithoutRigidContacts)
     ReleaseRock(rock);
     for (int step = 0; step < 55; ++step)
     {
-        rock->UpdateMotion();
+        rock->Update();
     }
     const NS::EffectObj* effect = rock->GetEffect();
     ASSERT_NE(effect, nullptr);

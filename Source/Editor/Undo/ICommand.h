@@ -8,8 +8,6 @@ namespace NS
 {
     namespace Editor
     {
-        class IActorSnapshotApplier;
-
         //! スナップショットを適用・取消する編集コマンド。描画資源は保持しない
         //! 履歴のメモリ制限のため EstimatedBytes で推定バイト数を返す
         class ICommand : public NonCopyable
@@ -17,8 +15,8 @@ namespace NS
         public:
             virtual ~ICommand() = default;
 
-            virtual void Do(IActorSnapshotApplier& target) noexcept = 0;
-            virtual void Undo(IActorSnapshotApplier& target) noexcept = 0;
+            virtual void Do() noexcept = 0;
+            virtual void Undo() noexcept = 0;
 
             [[nodiscard]] virtual std::size_t EstimatedBytes() const noexcept = 0;
 

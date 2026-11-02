@@ -4,6 +4,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
+#include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -75,20 +76,6 @@ namespace NS
                 }
             }
             return nullptr;
-        }
-
-        [[nodiscard]] const nlohmann::json* FindTopKey(const nlohmann::json& actorFile, const char* key) noexcept
-        {
-            if (!actorFile.is_object())
-            {
-                return nullptr;
-            }
-            const nlohmann::json::const_iterator it = actorFile.find(key);
-            if (it == actorFile.end())
-            {
-                return nullptr;
-            }
-            return &*it;
         }
 
         void SetTopString(nlohmann::json& actorFile, const char* key, std::string_view value)
@@ -322,7 +309,7 @@ namespace NS
 
     std::string_view ActorFileClass(const nlohmann::json& actorFile) noexcept
     {
-        const nlohmann::json* cls = FindTopKey(actorFile, k_ClassKey);
+        const nlohmann::json* cls = FindFieldValue(actorFile, k_ClassKey);
         if (cls == nullptr || !cls->is_string())
         {
             return {};
@@ -337,7 +324,7 @@ namespace NS
 
     std::string_view ActorFileBase(const nlohmann::json& actorFile) noexcept
     {
-        const nlohmann::json* base = FindTopKey(actorFile, k_BaseKey);
+        const nlohmann::json* base = FindFieldValue(actorFile, k_BaseKey);
         if (base == nullptr || !base->is_string())
         {
             return {};
@@ -352,7 +339,7 @@ namespace NS
 
     const nlohmann::json* ActorFileHitReactions(const nlohmann::json& actorFile) noexcept
     {
-        return FindTopKey(actorFile, k_HitReactionsKey);
+        return FindFieldValue(actorFile, k_HitReactionsKey);
     }
 
     void SetActorFileHitReactions(nlohmann::json& actorFile, nlohmann::json list)
@@ -362,7 +349,7 @@ namespace NS
 
     const nlohmann::json* ActorFileHitSensors(const nlohmann::json& actorFile) noexcept
     {
-        return FindTopKey(actorFile, k_HitSensorsKey);
+        return FindFieldValue(actorFile, k_HitSensorsKey);
     }
 
     void SetActorFileHitSensors(nlohmann::json& actorFile, nlohmann::json sensors)
@@ -382,7 +369,7 @@ namespace NS
 
     const nlohmann::json* ActorFileActions(const nlohmann::json& actorFile) noexcept
     {
-        return FindTopKey(actorFile, k_ActionsKey);
+        return FindFieldValue(actorFile, k_ActionsKey);
     }
 
     void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list)

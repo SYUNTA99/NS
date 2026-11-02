@@ -602,39 +602,6 @@ bool PlayerActor::IsDead() const noexcept { return m_health.IsDead(); }
 
 int PlayerActor::Health() const noexcept { return m_health.Current(); }
 
-void PlayerActor::SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept
-{
-    m_input->SetDesiredMove(worldDir, speedScale01);
-}
-
-float PlayerActor::DesiredSpeedScale() const noexcept { return m_input->DesiredSpeedScale(); }
-
-NS::Vector3 PlayerActor::DesiredDirection() const noexcept { return m_input->DesiredDirection(); }
-
-void PlayerActor::SetClimbMove(float localRight, float localForward) noexcept
-{
-    m_input->SetClimbMove(localRight, localForward);
-}
-
-float PlayerActor::ClimbRight() const noexcept { return m_input->ClimbRight(); }
-
-float PlayerActor::ClimbForward() const noexcept { return m_input->ClimbForward(); }
-
-void PlayerActor::SetJumpPressed() noexcept
-{
-    m_input->SetJumpPressed();
-}
-
-void PlayerActor::SetReleaseLedgePressed() noexcept
-{
-    m_input->SetReleaseLedgePressed();
-}
-
-void PlayerActor::SetJumpHeld(bool held) noexcept
-{
-    m_input->SetJumpHeld(held);
-}
-
 float PlayerActor::MaxSpeed() const noexcept
 {
     const float capped = m_params->m_runSpeed * m_maxSpeedScale;

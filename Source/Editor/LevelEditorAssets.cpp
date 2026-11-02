@@ -63,17 +63,20 @@ namespace
         const std::string path = NS::OS::FileSystem::Combine(library.Directory(), name + ".actor");
         if (NS::OS::FileSystem::Exists(path))
         {
-            // 読めないファイルは ReadActorFileAt が ERROR を出している。残す動作が無いので今の文書で書き直す
-            if (const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path))
+            // 読めないファイルは ReadActorFileAt が ERROR を出している
+            // 上書きすると保存していない動作が入り、手で直せる中身も消えるので書かない
+            const std::optional<nlohmann::json> saved = NS::ReadActorFileAt(path);
+            if (!saved)
             {
-                const nlohmann::json* actions = NS::ActorFileActions(*saved);
-                nlohmann::json savedActions = nlohmann::json::array();
-                if (actions != nullptr)
-                {
-                    savedActions = *actions;
-                }
-                NS::SetActorFileActions(document, std::move(savedActions));
+                return false;
             }
+            const nlohmann::json* actions = NS::ActorFileActions(*saved);
+            nlohmann::json savedActions = nlohmann::json::array();
+            if (actions != nullptr)
+            {
+                savedActions = *actions;
+            }
+            NS::SetActorFileActions(document, std::move(savedActions));
         }
         return NS::WriteActorFileAt(path, document);
     }
@@ -203,7 +206,7 @@ namespace
         return parsed.ec == std::errc{} && parsed.ptr == last.data() + last.size() && index <= parent.size();
     }
 
-    // .actor の 1 欄の書き換え。アクターでないので IActorSnapshotApplier を使わず、シーンと前後の差分を自分で持つ
+    // .actor の 1 欄の書き換え。シーンと前後の差分を持つ
     // 戻す・やり直す時は、その時の文書に差分だけを当てる。動作の窓は取り消しの履歴を通さずに文書を書くので、
     // 文書の全部を戻すと窓の直しが消える
     class ActorFileCommand final : public NS::Editor::ICommand
@@ -217,8 +220,8 @@ namespace
             m_bytes = sizeof(*this) + m_name.size() + m_redo.dump().size() + m_undo.dump().size();
         }
 
-        void Do(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_redo); }
-        void Undo(NS::Editor::IActorSnapshotApplier&) noexcept override { Apply(m_undo); }
+        void Do() noexcept override { Apply(m_redo); }
+        void Undo() noexcept override { Apply(m_undo); }
         [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return m_bytes; }
 
     private:
@@ -468,7 +471,7 @@ void LevelEditorController::CommitActorFileEdits()
             continue;
         }
         // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after), m_applier);
+        m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after));
     }
 }
 
@@ -504,7 +507,7 @@ void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
         return;
     }
     // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after), m_applier);
+    m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after));
 }
 
 bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
@@ -531,7 +534,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
         return false;
     }
     std::optional<nlohmann::json> document = NewDerivedActorFile(actor->ActorFileName(), name);
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(actorId);
+    std::optional<nlohmann::json> before = NS::Editor::CaptureActor(m_scene.Actors(), actorId);
     if (!document.has_value() || !before.has_value())
     {
         return false;
@@ -562,8 +565,7 @@ bool LevelEditorController::DeriveActorFileFromActor(NS::uint32 actorId, std::st
     }
     NS::SetActorJsonFile(after, name);
     m_editor.Undo().Push(
-        std::make_unique<NS::Editor::ActorSnapshotCommand>(actorId, std::move(before), std::move(after)), m_applier);
-    RefreshGizmoSelectables();
+        std::make_unique<NS::Editor::ActorSnapshotCommand>(m_scene, actorId, std::move(before), std::move(after)));
     ResolveSelectionFromId();
     return true;
 }
@@ -625,16 +627,16 @@ bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
     }
 
     // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
-    std::optional<nlohmann::json> before = m_applier.CaptureActor(m_selectedActorId);
+    std::optional<nlohmann::json> before = NS::Editor::CaptureActor(m_scene.Actors(), m_selectedActorId);
 
     mesh->SetMaterialRef(*stored);
     FinishFieldWrite(go, NS::FieldType::Asset);
 
-    std::optional<nlohmann::json> after = m_applier.CaptureActor(m_selectedActorId);
+    std::optional<nlohmann::json> after = NS::Editor::CaptureActor(m_scene.Actors(), m_selectedActorId);
     if (before && after && *before != *after)
     {
         m_editor.Undo().Record(
-            std::make_unique<NS::Editor::ActorSnapshotCommand>(m_selectedActorId, std::move(before), std::move(after)));
+            std::make_unique<NS::Editor::ActorSnapshotCommand>(m_scene, m_selectedActorId, std::move(before), std::move(after)));
     }
     return true;
 }

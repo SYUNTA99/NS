@@ -3,7 +3,6 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/StageBuildTool.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/PropActor.h"
 #include "NSlib/App/Application.h"
@@ -117,12 +116,11 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     const NS::uint32 id = editor.SelectedActorId();
     ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
 
     // やり直すと同じ id・同じクラスで戻る
-    ASSERT_TRUE(editor.Editor().Undo().Redo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
     NS::SceneActor* again = scene.Actors().FindByActorId(id);
     ASSERT_NE(again, nullptr);
     EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");

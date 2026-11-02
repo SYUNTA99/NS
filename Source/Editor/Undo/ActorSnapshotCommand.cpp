@@ -1,7 +1,7 @@
 #include "Editor/Undo/ActorSnapshotCommand.h"
 #include "NSlib/Core/Types.h"
 
-#include "Editor/Undo/IActorSnapshotApplier.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace NS
@@ -35,10 +35,11 @@ namespace NS
             }
         } // namespace
 
-        ActorSnapshotCommand::ActorSnapshotCommand(uint32 id,
+        ActorSnapshotCommand::ActorSnapshotCommand(Scene& scene,
+                                                     uint32 id,
                                                      std::optional<nlohmann::json> before,
                                                      std::optional<nlohmann::json> after) noexcept
-            : m_id(id), m_before(std::move(before)), m_after(std::move(after))
+            : m_scene(scene), m_id(id), m_before(std::move(before)), m_after(std::move(after))
         {}
 
         ActorSnapshotCommand::~ActorSnapshotCommand()
@@ -60,32 +61,34 @@ namespace NS
             m_replaced.clear();
         }
 
-        void ActorSnapshotCommand::Do(IActorSnapshotApplier& target) noexcept
+        void ActorSnapshotCommand::Do() noexcept
         {
-            Apply(target, m_after);
+            Apply(m_after);
         }
 
-        void ActorSnapshotCommand::Undo(IActorSnapshotApplier& target) noexcept
+        void ActorSnapshotCommand::Undo() noexcept
         {
-            Apply(target, m_before);
+            Apply(m_before);
         }
 
-        void ActorSnapshotCommand::Apply(IActorSnapshotApplier& target,
-                                         const std::optional<nlohmann::json>& desired) noexcept
+        void ActorSnapshotCommand::Apply(const std::optional<nlohmann::json>& desired) noexcept
         {
             if (!desired)
             {
-                m_detached = target.DetachActor(m_id);
+                m_detached = m_scene.DetachActor(m_id);
                 return;
             }
             // 外したアクターは外した時の姿のまま持っているので、JSON から作り直さずにそのまま戻す
             if (m_detached.actor)
             {
-                target.ReattachActor(std::move(m_detached));
+                (void)m_scene.ReattachActor(std::move(m_detached));
                 m_detached = DetachedActor{};
                 return;
             }
-            std::unique_ptr<SceneActor> replaced = target.ApplyActorSnapshot(m_id, *desired);
+            nlohmann::json entry = *desired;
+            SetActorJsonId(entry, m_id);
+            std::unique_ptr<SceneActor> replaced;
+            (void)m_scene.ApplyFromJson(entry, &replaced);
             if (replaced)
             {
                 m_replaced.push_back(std::move(replaced));

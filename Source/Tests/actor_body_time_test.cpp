@@ -99,9 +99,9 @@ TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
     ReleaseRock(fastRock);
     for (int step = 0; step < 4; ++step)
     {
-        slowRock->UpdateMotion();
-        slowRock->UpdateMotion();
-        fastRock->UpdateMotion();
+        slowRock->Update();
+        slowRock->Update();
+        fastRock->Update();
         const NS::Vector3 slow = slowRock->Root().Position();
         const NS::Vector3 fastPosition = fastRock->Root().Position();
         EXPECT_NEAR(fastPosition.x, slow.x, 1.0e-3f) << step;

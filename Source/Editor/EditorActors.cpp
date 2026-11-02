@@ -39,6 +39,17 @@ namespace NS
             }
         } // namespace
 
+        std::optional<nlohmann::json> CaptureActor(ActorList& actors, uint32 id)
+        {
+            const SceneActor* actor = actors.FindByActorId(id);
+            if (actor == nullptr)
+            {
+                return std::nullopt;
+            }
+            // undo は編集値ごと戻すため、アクターが自分を全部品の値まで忠実に書き出す
+            return ActorToJson(actor);
+        }
+
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)
         {
             nlohmann::json& transform = ActorJsonClassObjs(actorJson)["Transform"];

@@ -297,7 +297,7 @@ NS::Vector3 PlayerActor::AimDirection() const noexcept
 {
     NS::Vector3 dir{};
     // 反発後の滑りなど残った速度が向きに勝つと狙いと食い違う方へ飛ぶ。入力が無ければ速度よりカメラの前を先に見る
-    if (NS::TryNormalizeHorizontal(DesiredDirection(), dir))
+    if (NS::TryNormalizeHorizontal(m_input->DesiredDirection(), dir))
     {
         return dir;
     }

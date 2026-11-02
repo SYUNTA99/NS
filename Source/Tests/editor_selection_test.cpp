@@ -7,7 +7,6 @@
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/QuitModal.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
@@ -249,8 +248,6 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     NS::Scene scene;
     scene.ResetFromJson(doc);
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(scene);
-    editor.Editor().SetApplier(&applier);
     editor.SelectActorById(1);
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
@@ -285,8 +282,6 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        NS::Editor::ActorSnapshotApplier applier(scene);
-        editor.Editor().SetApplier(&applier);
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -756,8 +751,6 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(scene);
-    editor.Editor().SetApplier(&applier);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
     const NS::uint32 id = editor.SelectedActorId();
     const NS::Vector3 beforePosition = editor.SelectedActor()->Root().Position();
@@ -1174,6 +1167,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         const NS::Editor::UndoStack& undo = editor.Editor().Undo();
 
         // ギズモの道具のキーは、答えを Tick で受けるギズモを直に回して見る
+        NS::ActorList actors;
         NS::Editor::GizmoEditor gizmo;
         gizmo.SetInput(&app.Input());
         gizmo.SetActive(true);
@@ -1214,7 +1208,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
             // 前のキー (R など) をギズモへ渡さないよう、E の直前から読む
             NS::OS::InputReader gizmoReader;
             keyboard.OnKeyDown(NS::OS::Key::E);
-            gizmo.Tick(NS::Matrix::Identity, view, true, blocked, gizmoReader.Read());
+            gizmo.Tick(NS::Matrix::Identity, view, true, blocked, gizmoReader.Read(), actors);
             keyboard.OnKeyUp(NS::OS::Key::E);
             NS::Editor::GizmoTool expectedTool = NS::Editor::GizmoTool::Rotate;
             if (blocked)

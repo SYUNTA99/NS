@@ -15,8 +15,8 @@ namespace NS
         public:
             explicit CompositeCommand(std::vector<std::unique_ptr<ICommand>> commands) noexcept;
 
-            void Do(IActorSnapshotApplier& target) noexcept override;
-            void Undo(IActorSnapshotApplier& target) noexcept override;
+            void Do() noexcept override;
+            void Undo() noexcept override;
 
             [[nodiscard]] std::size_t EstimatedBytes() const noexcept override;
             void ReleaseHeldActors() noexcept override;

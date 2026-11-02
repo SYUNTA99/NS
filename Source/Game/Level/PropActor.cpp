@@ -176,11 +176,6 @@ namespace GL
             m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
-        void PropActor::UpdateMotion()
-        {
-            Update();
-        }
-
         void PropActor::PrepareRender()
         {
             if (ChildActor() != nullptr && ChildActor()->IsAppeared())

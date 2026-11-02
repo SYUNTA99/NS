@@ -1,7 +1,7 @@
 #include "Editor/EditorMode.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/LevelFilePaths.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
+#include "Editor/EditorActors.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
 #include "Editor/Undo/UndoStack.h"
 #include "Game/Level/GameScene.h"
@@ -24,11 +24,11 @@
 namespace
 {
     // エディタで消す操作と同じく、今の姿を前に、居ない姿を後にしたコマンドを積む
-    void DeleteActor(NS::Editor::UndoStack& undo, NS::Editor::ActorSnapshotApplier& applier, NS::uint32 id)
+    void DeleteActor(NS::Editor::UndoStack& undo, NS::Scene& scene, NS::uint32 id)
     {
-        std::optional<nlohmann::json> before = applier.CaptureActor(id);
+        std::optional<nlohmann::json> before = NS::Editor::CaptureActor(scene.Actors(), id);
         ASSERT_TRUE(before.has_value());
-        undo.Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(id, std::move(before), std::nullopt), applier);
+        undo.Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(scene, id, std::move(before), std::nullopt));
     }
 
     // 履歴が持つアクターを解放したかを見るための置物。JSON は PropActor として書くので、作り直すと PropActor になる
@@ -62,12 +62,11 @@ TEST(EditorUndoActor, UndoDeleteRestoresTheSameActor)
     const std::size_t index = scene.Actors().IndexOfActorId(id);
     const Registrations before = CountRegistrations(scene);
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::UndoStack undo;
-    DeleteActor(undo, applier, id);
+    DeleteActor(undo, scene, id);
     ASSERT_EQ(scene.Actors().FindByActorId(id), nullptr);
 
-    ASSERT_TRUE(undo.Undo(applier));
+    ASSERT_TRUE(undo.Undo());
     EXPECT_EQ(scene.Actors().FindByActorId(id), middle);
     EXPECT_EQ(scene.Actors().IndexOfActorId(id), index);
     EXPECT_EQ(CountRegistrations(scene), before);
@@ -86,12 +85,11 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
     const NS::uint32 light = scene.SpawnActor<NS::LightActor>("LightActor")->Id();
     const NS::uint32 camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor")->Id();
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::UndoStack undo;
-    DeleteActor(undo, applier, prop);
-    DeleteActor(undo, applier, player);
-    DeleteActor(undo, applier, light);
-    DeleteActor(undo, applier, camera);
+    DeleteActor(undo, scene, prop);
+    DeleteActor(undo, scene, player);
+    DeleteActor(undo, scene, light);
+    DeleteActor(undo, scene, camera);
     undo.Clear();
 
     EXPECT_EQ(CountRegistrations(scene), kept);
@@ -108,8 +106,7 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
     CountedProp::s_endPlays = 0;
     CountedProp::s_destroyed = 0;
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
-    DeleteActor(editor.Editor().Undo(), applier, id);
+    DeleteActor(editor.Editor().Undo(), scene, id);
     editor.EnterPlay();
     editor.EnterEdit();
 
@@ -117,7 +114,7 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
     ASSERT_EQ(CountedProp::s_destroyed, 1);
     EXPECT_EQ(CountedProp::s_endPlays, 1);
 
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     const NS::SceneActor* restored = scene.Actors().FindByActorId(id);
     ASSERT_NE(restored, nullptr);
     EXPECT_EQ(CountedProp::s_destroyed, 1);
@@ -132,10 +129,8 @@ TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
     CountedProp::s_endPlays = 0;
     CountedProp::s_destroyed = 0;
 
-    NS::Editor::ActorSnapshotApplier applier{scene};
     NS::Editor::EditorMode editor;
-    editor.SetApplier(&applier);
-    DeleteActor(editor.Undo(), applier, id);
+    DeleteActor(editor.Undo(), scene, id);
 
     int destroyedAtRebuild = -1;
     int endPlaysAtRebuild = -1;

@@ -8,18 +8,18 @@ namespace NS
             : m_commands(std::move(commands))
         {}
 
-        void CompositeCommand::Do(IActorSnapshotApplier& target) noexcept
+        void CompositeCommand::Do() noexcept
         {
             for (std::unique_ptr<ICommand>& command : m_commands)
             {
                 if (command)
                 {
-                    command->Do(target);
+                    command->Do();
                 }
             }
         }
 
-        void CompositeCommand::Undo(IActorSnapshotApplier& target) noexcept
+        void CompositeCommand::Undo() noexcept
         {
             // 後から効かせた分を先に戻さないと、依存のある編集が食い違う
             for (std::vector<std::unique_ptr<ICommand>>::reverse_iterator it = m_commands.rbegin();
@@ -28,7 +28,7 @@ namespace NS
             {
                 if (*it)
                 {
-                    (*it)->Undo(target);
+                    (*it)->Undo();
                 }
             }
         }

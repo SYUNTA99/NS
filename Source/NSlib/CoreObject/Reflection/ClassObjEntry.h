@@ -22,6 +22,9 @@ namespace NS
     //! ReadQuaternion が読む [x,y,z,w] を作る
     [[nodiscard]] nlohmann::json MakeQuaternionJson(const Quaternion& value);
 
+    //! entry の name の値を返す。entry が object でないか、name が無ければ nullptr
+    [[nodiscard]] const nlohmann::json* FindFieldValue(const nlohmann::json& entry, std::string_view name) noexcept;
+
     //! entry から値を型付きで読む。不在・型不一致は fallback
     [[nodiscard]] float FieldFloat(const nlohmann::json& entry, std::string_view name, float fallback) noexcept;
     [[nodiscard]] int FieldInt(const nlohmann::json& entry, std::string_view name, int fallback) noexcept;

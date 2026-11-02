@@ -350,18 +350,12 @@ namespace NS
             };
         } // namespace
 
-        void GizmoEditor::SetSelectableActors(std::span<SceneActor* const> objects,
-                                               std::span<const uint8> pickable) noexcept
-        {
-            m_objects = objects;
-            m_pickable = pickable;
-        }
-
         void GizmoEditor::Tick(const Matrix& viewProjection,
                                const ViewRect& view,
                                bool viewHovered,
                                bool editShortcutsBlocked,
-                               const OS::InputPresses& presses) noexcept
+                               const OS::InputPresses& presses,
+                               const ActorList& actors) noexcept
         {
             if (!m_active || m_input == nullptr)
             {
@@ -458,20 +452,24 @@ namespace NS
 
             // ハンドルに当たらなければアクターを拾う
             const Ray ray = Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
+            const std::vector<SceneActor*> candidates = PlacedActors(actors);
             std::vector<Matrix> worldMatrices;
             std::vector<AABB> localBounds;
-            worldMatrices.reserve(m_objects.size());
-            localBounds.reserve(m_objects.size());
+            std::vector<uint8> visible;
+            worldMatrices.reserve(candidates.size());
+            localBounds.reserve(candidates.size());
+            visible.reserve(candidates.size());
             // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
             // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
-            for (const SceneActor* obj : m_objects)
+            for (const SceneActor* obj : candidates)
             {
                 worldMatrices.push_back(obj->Root().WorldMatrix());
                 localBounds.push_back(PickLocalBounds(obj));
+                visible.push_back(static_cast<uint8>(obj->ModelClassObj() != nullptr));
             }
 
-            // 可視オブジェクトを優先して判定し、ヒットしなければ不可視オブジェクトも含めて再判定する
-            int hit = PickNearestOBB(ray, worldMatrices, localBounds, m_pickable);
+            // Model を持つアクターを優先して判定し、ヒットしなければ見えないカメラなども含めて再判定する
+            int hit = PickNearestOBB(ray, worldMatrices, localBounds, visible);
             if (hit < 0)
             {
                 hit = PickNearestOBB(ray, worldMatrices, localBounds);
@@ -479,7 +477,7 @@ namespace NS
 
             if (hit >= 0)
             {
-                m_selected = &m_objects[static_cast<std::size_t>(hit)]->Root();
+                m_selected = &candidates[static_cast<std::size_t>(hit)]->Root();
             }
             else
             {

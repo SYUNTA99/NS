@@ -18,9 +18,10 @@ namespace GL
             player->TickTimers(dt);
             const NS::Body& body = player->Body();
             const PlayerParams& params = player->Params();
-            const bool hasInput = PlayerJudgeMoveInput::Judge(player->DesiredSpeedScale(), params.StickDeadzone());
+            const bool hasInput =
+                PlayerJudgeMoveInput::Judge(player->Input().DesiredSpeedScale(), params.StickDeadzone());
             const bool brake = PlayerJudgeBrake::Judge(
-                hasInput, player->DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
+                hasInput, player->Input().DesiredDirection(), body.LateralVelocity(), params.BrakeThreshold());
             if (!brake && hasInput)
             {
                 player->AccelerateToInputDirection(dt);

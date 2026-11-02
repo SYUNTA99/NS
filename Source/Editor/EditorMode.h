@@ -22,6 +22,7 @@ namespace NS
 namespace NS
 {
     class ActorList;
+    class Scene;
     class SceneCamera;
 } // namespace NS
 namespace NS
@@ -35,8 +36,6 @@ namespace NS
 {
     namespace Editor
     {
-        class IActorSnapshotApplier;
-
         //! CreateLevel の答え。作れなかった時は理由を返し、作成の窓が理由ごとの文を出す
         enum class CreateLevelResult : uint8
         {
@@ -72,8 +71,8 @@ namespace NS
             //! 保存時に実体からシーンの JSON 文書を作る捕捉関数を差す。未設定なら保存できない
             void SetCaptureLevelFn(std::function<nlohmann::json()> fn) noexcept { m_captureLevel = std::move(fn); }
 
-            //! セル編集・取り消しを実体へ適用する処理を設定する。未設定ならセル編集は何もしない
-            void SetApplier(IActorSnapshotApplier* applier) noexcept { m_applier = applier; }
+            //! 編集するシーンを設定する。未設定ならアクターを作らず、セル編集は何もしない
+            void SetScene(Scene* scene) noexcept { m_scene = scene; }
 
             //! 読込済みシーンデータを実体側へ取り込む関数を差す。読込の完了時に呼ぶ
             void SetLoadLevelFn(std::function<void(nlohmann::json&&)> fn) noexcept { m_loadLevel = std::move(fn); }
@@ -81,8 +80,6 @@ namespace NS
             //! セルの照会とカーソルの光線判定で読むアクターの一覧を設定する。未設定の間はどのセルも空として扱う
             void SetActors(const ActorList* actors) noexcept { m_actors = actors; }
 
-            //! 新規アクターへ永続 id を 1 個振る関数を差す
-            void SetAllocateIdFn(std::function<uint32()> fn) noexcept { m_allocateId = std::move(fn); }
             void SetInput(OS::Input* input) noexcept { m_input = input; }
             void SetSceneCamera(SceneCamera* camera) noexcept { m_camera = camera; }
 
@@ -122,7 +119,7 @@ namespace NS
             //! 新しいアクターを 1 回の履歴で作る。作る道 (置く・複製・筆で空いた升へ置く) は全部ここを通す
             //! 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
             //! 作った物を選ぶかは呼び手が決める
-            //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、適用処理か採番が無い時は作らずに空を返す
+            //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、シーンが無い時は作らずに空を返す
             [[nodiscard]] std::vector<uint32> CreateActors(std::vector<nlohmann::json> objects);
 
             //! テストや自動処理向けに、入力を介さずに指定座標へ直接編集操作を実行する
@@ -179,10 +176,9 @@ namespace NS
 
         private:
             std::function<nlohmann::json()> m_captureLevel;
-            IActorSnapshotApplier* m_applier = nullptr;
+            Scene* m_scene = nullptr;
             std::function<void(nlohmann::json&&)> m_loadLevel;
             const ActorList* m_actors = nullptr;
-            std::function<uint32()> m_allocateId;
             OS::Input* m_input = nullptr;
             SceneCamera* m_camera = nullptr;
 
