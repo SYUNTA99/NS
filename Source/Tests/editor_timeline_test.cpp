@@ -880,6 +880,33 @@ TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSave
     EXPECT_EQ(sets->size(), 1u);
 }
 
+// ファイルが読めない .actor は戻す先の動作が無いので、未保存のまま残す。元も派生もライブラリから落とさない
+TEST(EditorActionTimelinePanel, RevertKeepsEditsWhenTheActorFileCannotBeRead)
+{
+    const ScopedActorFileDirectory directory("EditorActionTimelineUnreadable");
+    nlohmann::json derived = ClassOnlyActorFile("PlayerActor");
+    NS::SetActorFileBase(derived, "PlayerActor");
+    WriteActorFile(directory.Path(), "DerivedPlayer", derived.dump());
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
+    const std::size_t before = FirstActionEventCount();
+    AddEventThroughThePanel(editor, timeline);
+    ASSERT_EQ(FirstActionEventCount(), before + 1);
+    WriteActorFile(directory.Path(), "PlayerActor", "読めない中身");
+
+    {
+        const TestLogCapture log;
+        PressPanelButton(editor, timeline, "元に戻す");
+    }
+
+    EXPECT_EQ(FirstActionEventCount(), before + 1);
+    EXPECT_TRUE(timeline.HasUnsavedChanges());
+    EXPECT_NE(NS::ActorFileLibrary::Get().Find("DerivedPlayer"), nullptr);
+}
+
 // 書けずに再試行を待つ .actor の編集は、「元に戻す」で捨てない。捨てると終了時の再試行が古い中身を書いて成功と答える
 TEST(EditorActionTimelinePanel, RevertKeepsActorFileEditsThatCouldNotBeWritten)
 {

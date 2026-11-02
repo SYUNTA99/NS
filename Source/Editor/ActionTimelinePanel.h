@@ -56,6 +56,8 @@ namespace NS
             void RenderSelectedSensor(const SceneActor* selected, ActionSensorEvent& sensor, bool& changed) noexcept;
             void RenderPlayback() noexcept;
 
+            //! 未保存の .actor ごとに、動作だけをファイルの中身へ戻す。ファイルが読めない .actor は未保存のまま残す
+            void RevertDirtyActions(LevelEditorController& editor);
             void LoadWorking(std::string_view name, std::string_view action);
             void ApplyWorking(LevelEditorController& editor);
             [[nodiscard]] ActorAction* WorkingAction() noexcept;
