@@ -6,6 +6,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
@@ -501,6 +502,63 @@ namespace NS
             }
         }
 
+        void ActionTimelinePanel::RevertDirtyActions(LevelEditorController& editor)
+        {
+            ActorFileLibrary& library = ActorFileLibrary::Get();
+            std::string failed;
+            const std::set<std::string, std::less<>> names = m_dirty;
+            for (const std::string& name : names)
+            {
+                // 動作だけをファイルの中身へ戻す。書けずに再試行を待つ欄の編集は文書に残す
+                // 読めないファイルは ReadActorFileAt が ERROR を出している。戻す先が無いので未保存のまま残す
+                const std::optional<nlohmann::json> saved =
+                    ReadActorFileAt(OS::FileSystem::Combine(library.Directory(), name + ".actor"));
+                const nlohmann::json* current = library.Find(name);
+                if (!saved.has_value() || current == nullptr)
+                {
+                    failed += std::format(" {}.actor", name);
+                    continue;
+                }
+                nlohmann::json document = *current;
+                nlohmann::json actions = nlohmann::json::array();
+                if (const nlohmann::json* savedActions = ActorFileActions(*saved))
+                {
+                    actions = *savedActions;
+                }
+                SetActorFileActions(document, std::move(actions));
+                if (!library.Set(name, std::move(document)))
+                {
+                    failed += std::format(" {}.actor", name);
+                    continue;
+                }
+                m_dirty.erase(name);
+                for (SceneActor* actor : editor.Actors())
+                {
+                    // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
+                    if (ActorFileToWrite(actor, FieldDestination::ActorFile) == name &&
+                        actor->ActionTimelineClassObj() != nullptr)
+                    {
+                        actor->ActionTimelineClassObj()->ReloadActions(actor);
+                    }
+                }
+            }
+            std::string actionName;
+            if (const ActorAction* action = EditingAction())
+            {
+                actionName = action->name;
+            }
+            LoadWorking(m_actorFile, actionName);
+            m_needsRun = true;
+            if (failed.empty())
+            {
+                m_status = "動作を最後に保存した中身へ戻した";
+            }
+            else
+            {
+                m_status = std::format("戻せなかった:{}", failed);
+            }
+        }
+
         void ActionTimelinePanel::RenderFileButtons(LevelEditorController& editor) noexcept
         {
             if (ImGui::Button("保存"))
@@ -510,26 +568,7 @@ namespace NS
             ImGui::SameLine();
             if (ImGui::Button("元に戻す"))
             {
-                // 置き場ごと読み直すので、ほかの .actor の保存していない変更も戻る
-                ActorFileLibrary::Get().Reload();
-                for (SceneActor* actor : editor.Actors())
-                {
-                    // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
-                    if (m_dirty.contains(ActorFileToWrite(actor, FieldDestination::ActorFile)) &&
-                        actor->ActionTimelineClassObj() != nullptr)
-                    {
-                        actor->ActionTimelineClassObj()->ReloadActions(actor);
-                    }
-                }
-                std::string actionName;
-                if (const ActorAction* action = EditingAction())
-                {
-                    actionName = action->name;
-                }
-                LoadWorking(m_actorFile, actionName);
-                m_dirty.clear();
-                m_needsRun = true;
-                m_status = "最後に保存した中身へ戻した (全部の .actor)";
+                RevertDirtyActions(editor);
             }
             if (!m_dirty.empty())
             {
