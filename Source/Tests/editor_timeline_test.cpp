@@ -874,8 +874,10 @@ TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSave
     PressPanelButton(editor, timeline, "元に戻す");
 
     EXPECT_EQ(FirstActionEventCount(), before);
-    // インスペクターで直した値は保存済みなので、読み直しても残る
-    const nlohmann::json* sets = NS::ActorFileHitReactions(*NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    // 戻すのは動作だけなので、インスペクターで直した値は残る
+    const nlohmann::json* document = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(document, nullptr);
+    const nlohmann::json* sets = NS::ActorFileHitReactions(*document);
     ASSERT_NE(sets, nullptr);
     EXPECT_EQ(sets->size(), 1u);
 }
@@ -936,7 +938,16 @@ TEST(EditorActionTimelinePanel, RevertKeepsActorFileEditsThatCouldNotBeWritten)
 
     // 動作は保存した中身へ戻り、書けなかった編集は残る
     EXPECT_EQ(FirstActionEventCount(), before);
-    const nlohmann::json* kept = NS::ActorFileHitReactions(*NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    EXPECT_FALSE(timeline.HasUnsavedChanges());
+    const nlohmann::json* document = NS::ActorFileLibrary::Get().Find("PlayerActor");
+    ASSERT_NE(document, nullptr);
+    const std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", *document);
+    ASSERT_FALSE(actions.empty());
+    const NS::ActorAction* placed =
+        scene.Actors().FindByActorId(1)->ActionTimelineClassObj()->FindAction(actions.front().name);
+    ASSERT_NE(placed, nullptr);
+    EXPECT_EQ(placed->events.size(), before);
+    const nlohmann::json* kept = NS::ActorFileHitReactions(*document);
     ASSERT_NE(kept, nullptr);
     EXPECT_EQ(kept->size(), 1u);
     EXPECT_TRUE(editor.HasUnsavedAssetWrites());
