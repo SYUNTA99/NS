@@ -97,12 +97,12 @@ namespace NS
 
         bool EditorMode::HasActorAtCell(int16 x, int16 y, int16 z) const noexcept
         {
-            return m_findCellActor && m_findCellActor(x, y, z) != k_NoActorId;
+            return m_actors != nullptr && FindActorIdAtCell(*m_actors, x, y, z) != k_NoActorId;
         }
 
         bool EditorMode::IsCellOccupied(int16 x, int16 y, int16 z) const noexcept
         {
-            return m_cellOccupied && m_cellOccupied(x, y, z);
+            return m_actors != nullptr && HasPlacedActorAtCell(*m_actors, x, y, z);
         }
 
         bool EditorMode::IsSceneEditable() const noexcept { return !m_sceneEditable || m_sceneEditable(); }
@@ -541,7 +541,7 @@ namespace NS
 
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
+            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
             {
                 return;
             }
@@ -557,7 +557,7 @@ namespace NS
                                   Vector3{static_cast<float>(x), static_cast<float>(y), static_cast<float>(z)});
             Editor::SetCellRotationStep(placed, rotation);
 
-            const uint32 id = m_findCellActor(x, y, z);
+            const uint32 id = FindActorIdAtCell(*m_actors, x, y, z);
             if (id == k_NoActorId)
             {
                 // 地形の部品でない物は筆で置き換えない
@@ -582,12 +582,12 @@ namespace NS
 
         void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
+            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
             {
                 return;
             }
 
-            const uint32 id = m_findCellActor(x, y, z);
+            const uint32 id = FindActorIdAtCell(*m_actors, x, y, z);
             if (id == k_NoActorId)
             {
                 return;
@@ -604,12 +604,12 @@ namespace NS
 
         void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_findCellActor)
+            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
             {
                 return;
             }
 
-            const uint32 id = m_findCellActor(x, y, z);
+            const uint32 id = FindActorIdAtCell(*m_actors, x, y, z);
             if (id == k_NoActorId)
             {
                 return;
@@ -669,13 +669,18 @@ namespace NS
             CellCoord normal{0, 1, 0};
             Vector3 hitPoint{};
 
-            std::vector<CellCoord> cells;
-            if (m_collectCells)
+            std::vector<SceneActor*> placed;
+            if (m_actors != nullptr)
             {
-                cells = m_collectCells();
+                placed = PlacedActors(*m_actors);
             }
-            for (const CellCoord& cell : cells)
+            for (const SceneActor* object : placed)
             {
+                if (!IsCellBrushActor(object))
+                {
+                    continue;
+                }
+                const CellCoord cell{ActorCellX(object), ActorCellY(object), ActorCellZ(object)};
                 const Vector3 center{
                     static_cast<float>(cell.x), static_cast<float>(cell.y), static_cast<float>(cell.z)};
                 const AABB box(center, {k_CellHalfExtent, k_CellHalfExtent, k_CellHalfExtent});

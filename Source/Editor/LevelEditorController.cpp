@@ -363,27 +363,7 @@ void LevelEditorController::Setup(std::string_view startLevelName)
 
     // 保存は実体から作り、読込は取込関数がデータを実体へ写して用済みにする
     m_editor.SetCaptureLevelFn([this]() { return m_scene->ToJson(); });
-    // セルの照会は実体で行う
-    m_editor.SetFindCellActorFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
-        return NS::Editor::FindActorIdAtCell(m_scene->Actors(), x, y, z);
-    });
-    m_editor.SetCellOccupiedFn([this](NS::int16 x, NS::int16 y, NS::int16 z) {
-        return NS::Editor::HasPlacedActorAtCell(m_scene->Actors(), x, y, z);
-    });
-    m_editor.SetCollectCellsFn([this]() {
-        std::vector<NS::Editor::EditorMode::CellCoord> cells;
-        cells.reserve(m_scene->Actors().ActorCount());
-        for (const NS::SceneActor* object : NS::Editor::PlacedActors(m_scene->Actors()))
-        {
-            if (!NS::Editor::IsCellBrushActor(object))
-            {
-                continue;
-            }
-            cells.push_back(NS::Editor::EditorMode::CellCoord{
-                NS::Editor::ActorCellX(object), NS::Editor::ActorCellY(object), NS::Editor::ActorCellZ(object)});
-        }
-        return cells;
-    });
+    m_editor.SetActors(&m_scene->Actors());
     m_editor.SetInput(&app->Input());
     m_editor.SetSceneCamera(MainCamera());
 
