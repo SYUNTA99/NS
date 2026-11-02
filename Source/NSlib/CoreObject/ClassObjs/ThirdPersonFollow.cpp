@@ -25,9 +25,6 @@ namespace
         return curr + (target - curr) * a;
     }
 
-    // 遮りの上限が追う距離にこれより近づいたら外す (m)。ピクセルの 1/100 未満
-    constexpr float k_OcclusionReleaseGap = 0.0001f;
-
     // 臨界減衰のバネを dt 進める。止まった所から一定の目標へは、τ 秒で差の 1 − (1 + ωτ) e^(−ωτ) が詰まる
     void CriticalSpringStep(float& value, float& velocity, float target, float omega, float dt) noexcept
     {
@@ -264,11 +261,11 @@ namespace NS
                                        std::max(m_reboundPullMax, 0.0f));
             }
         }
-        // 臨界減衰のバネが止まった所から差の半分まで詰めるのは ωτ ≈ 1.678 の時。半分の秒から角速度を出す
+        // 差の半分まで詰める秒から角速度を出す
         float omega = 0.0f;
         if (m_reboundPartnerHalfSeconds > 0.0f)
         {
-            omega = 1.678f / m_reboundPartnerHalfSeconds;
+            omega = k_CriticalSpringHalfOmegaTau / m_reboundPartnerHalfSeconds;
         }
         CriticalSpringStep(m_partnerLean, m_partnerLeanVelocity, leanTarget, omega, dt);
         CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
@@ -435,7 +432,7 @@ namespace NS
         // 外れた後は距離バネと同じ速さで追う距離へ戻し、着いたら上限を外す。外さないと、
         // 追う距離が伸びる時に上限のバネが遅れて重なる
         m_occludedDistance = SpringApproach(m_occludedDistance, m_distance, m_springOmega, dt);
-        if (m_distance - m_occludedDistance < k_OcclusionReleaseGap)
+        if (m_distance - m_occludedDistance < k_Epsilon)
         {
             m_hasOccludedDistance = false;
         }
