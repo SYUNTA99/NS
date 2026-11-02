@@ -121,11 +121,6 @@ namespace NS
         //! @return 足した場合 true、量か形が壊れていて何も変えなかった場合は false
         bool AddTrauma(const CameraTraumaDesc& desc, const IGetCamera* requester = nullptr);
 
-        //! このフレームのトラウマを少なくとも level に保つ。トラウマの揺れが積まれていなければ積む
-        //! 溜めのように続く揺れが毎フレーム呼ぶ。呼ばなかったフレームから減り始める
-        //! @return 保った場合 true、量か形が壊れていて何も変えなかった場合は false
-        bool HoldTrauma(float level, const CameraTraumaShape& shape);
-
         //! 今のトラウマ。トラウマの揺れが無い時は 0
         [[nodiscard]] float Trauma() const noexcept;
 

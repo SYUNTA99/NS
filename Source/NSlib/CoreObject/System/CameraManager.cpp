@@ -207,16 +207,6 @@ namespace NS
         return true;
     }
 
-    bool CameraManager::HoldTrauma(float level, const CameraTraumaShape& shape)
-    {
-        if (!IsNonNegativeFinite(level) || !IsValidTraumaShape(shape))
-        {
-            return false;
-        }
-        TraumaModifier()->HoldTrauma(level, shape);
-        return true;
-    }
-
     float CameraManager::Trauma() const noexcept
     {
         if (const CameraTraumaModifier* trauma = FindModifier<CameraTraumaModifier>())

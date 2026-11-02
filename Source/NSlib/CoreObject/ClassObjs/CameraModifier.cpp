@@ -205,18 +205,6 @@ namespace NS
         }
     }
 
-    void CameraTraumaModifier::HoldTrauma(float level, const CameraTraumaShape& shape) noexcept
-    {
-        const float clamped = Clamp(level, 0.0f, 1.0f);
-        // 弱い保ちは強い揺れの形を奪わない。外れの揺れの途中に溜め始めても、外れの揺れのまま減る
-        if (clamped >= m_trauma)
-        {
-            m_shape = shape;
-        }
-        m_trauma = std::max(m_trauma, clamped);
-        m_held = std::max(m_held, clamped);
-    }
-
     float CameraTraumaModifier::ShakeAmount() const noexcept { return std::pow(m_trauma, m_shape.exponent); }
 
     Vector3 CameraTraumaModifier::Angles() const noexcept
@@ -263,15 +251,12 @@ namespace NS
 
     bool CameraTraumaModifier::IsFinished() const noexcept
     {
-        return m_trauma <= 0.0f && m_held <= 0.0f && m_kickFrame == 0;
+        return m_trauma <= 0.0f && m_kickFrame == 0;
     }
 
     void CameraTraumaModifier::Advance() noexcept
     {
         m_trauma = std::max(m_trauma - m_shape.decayPerSecond * OS::FrameTimer::FixedDelta(), 0.0f);
-        // 保たれたフレームは減らさない。頼みは 1 フレームだけ効く
-        m_trauma = std::max(m_trauma, m_held);
-        m_held = 0.0f;
         if (m_kickFrame > 0)
         {
             ++m_kickFrame;
