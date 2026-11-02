@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -148,12 +149,7 @@ TEST(FollowDashRebound, TerrainBetweenShortensTheDistance)
     const NS::Vector3 back = open.position - open.target;
     NS::Vector3 backward = back;
     backward.Normalize();
-    NS::OBB wall;
-    wall.center = open.target + backward * 2.5f;
-    wall.halfExtentX = 10.0f;
-    wall.halfExtentY = 10.0f;
-    wall.halfExtentZ = 0.5f;
-    const JPH::BodyID body = dash.scene.Physics().AddBox(wall, NS::Phys::ObjectLayers::Terrain);
+    const JPH::BodyID body = AddTerrainBox(dash.scene, open.target + backward * 2.5f, 10.0f, 10.0f, 0.5f);
     dash.Step(1);
     const float blocked = DistanceOf(dash.Pose());
     EXPECT_LT(blocked, 2.0f);
@@ -173,12 +169,7 @@ TEST(FollowDashRebound, LookInsideTheWallDoesNotCollapseTheDistance)
     ASSERT_GT(distance, 3.0f);
 
     // 追う相手の 0.6 m 奥に、カメラへ面を向けた壁を置く
-    NS::OBB wall;
-    wall.center = NS::Vector3{0.0f, 0.0f, 1.6f};
-    wall.halfExtentX = 10.0f;
-    wall.halfExtentY = 20.0f;
-    wall.halfExtentZ = 1.0f;
-    (void)dash.scene.Physics().AddBox(wall, NS::Phys::ObjectLayers::Terrain);
+    (void)AddTerrainBox(dash.scene, NS::Vector3{0.0f, 0.0f, 1.6f}, 10.0f, 20.0f, 1.0f);
 
     dash.target->rebound.rebounding = true;
     dash.target->rebound.holdLook = false;
@@ -209,12 +200,7 @@ TEST(FollowDashRebound, HeadInsideTheCeilingDoesNotCollapseTheDistance)
 
     // 頭の高さを中に含む薄い天井。自機の真上から前へ広がり、カメラの側へは 0.3 m だけ出る
     const float headY = open.target.y;
-    NS::OBB ceiling;
-    ceiling.center = NS::Vector3{0.0f, headY + 0.1f, 0.0f} - back * 0.6f;
-    ceiling.halfExtentX = 3.0f;
-    ceiling.halfExtentY = 0.5f;
-    ceiling.halfExtentZ = 0.9f;
-    (void)dash.scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    (void)AddTerrainBox(dash.scene, NS::Vector3{0.0f, headY + 0.1f, 0.0f} - back * 0.6f, 3.0f, 0.5f, 0.9f);
 
     float shortest = distance;
     for (int frame = 0; frame < 10; ++frame)
@@ -240,12 +226,11 @@ TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
 
     // 根が 4.5 m まで上がった時の頭の 0.2 m 上に下の面がある天井。自機の真上からカメラの側へ 1.5 m 張り出す
     const float topRoot = 4.5f;
-    NS::OBB ceiling;
-    ceiling.center = NS::Vector3{0.0f, topRoot + headAboveRoot + 0.2f + 0.5f, 0.0f} - back * 1.5f;
-    ceiling.halfExtentX = 3.0f;
-    ceiling.halfExtentY = 0.5f;
-    ceiling.halfExtentZ = 3.0f;
-    (void)dash.scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    (void)AddTerrainBox(dash.scene,
+                        NS::Vector3{0.0f, topRoot + headAboveRoot + 0.2f + 0.5f, 0.0f} - back * 1.5f,
+                        3.0f,
+                        0.5f,
+                        3.0f);
 
     dash.target->rebound.rebounding = true;
     dash.target->rebound.holdLook = false;

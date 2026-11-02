@@ -35,6 +35,9 @@
 #include "Tests/TestCheckLayer.h"
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestHeadlessImGui.h"
+#include "Tests/TestHiddenApp.h"
+#include "Tests/TestSceneSetup.h"
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
@@ -58,15 +61,7 @@ namespace
     public:
         TimelineGui()
         {
-            m_context = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.DisplaySize = ImVec2{1000.0f, 800.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            NS::uint8* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_context = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f});
         }
         ~TimelineGui() { ImGui::DestroyContext(m_context); }
 
@@ -205,7 +200,7 @@ TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
     preview.Reset(
         [&device] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetDevice(&device);
+            scene->GetSceneRenderer()->SetDevice(&device);
             scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
         },
@@ -300,7 +295,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
     preview.Reset(
         [&device, pose] {
             std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SetDevice(&device);
+            scene->GetSceneRenderer()->SetDevice(&device);
             scene->MainCamera()->ApplyPose(pose);
             scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
             return scene;
@@ -338,11 +333,7 @@ TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDispla
 
 TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "Game のカーソル復帰の試し";
-    desc.window.size = {640, 400};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("Game のカーソル復帰の試し", {640, 400}));
     ASSERT_TRUE(app.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
@@ -386,11 +377,7 @@ TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)
 
 TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "Game タブのカーソル復帰の試し";
-    desc.window.size = {640, 400};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("Game タブのカーソル復帰の試し", {640, 400}));
     ASSERT_TRUE(app.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
@@ -496,34 +483,16 @@ TEST(EditorActionTimelinePanel, PlaybackAndEditsReachThePreviewThroughThePanel)
 {
     // 窓は読んである .actor の文書を直すので、終わったら元の文書へ戻す
     const ScopedActorFileEdit restore("PlayerActor", [](nlohmann::json&) {});
-    NS::ApplicationDesc desc;
-    desc.window.title = "タイムラインの接続の試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("タイムラインの接続の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         TimelineGui gui;
         NS::Scene scene;
-        scene.SetDevice(&app.Device());
+        scene.GetSceneRenderer()->SetDevice(&app.Device());
         nlohmann::json snapshot = NS::MakeSceneJson();
-        nlohmann::json floor = NS::MakeActorJson();
-        NS::SetActorJsonFile(floor, "MapPartsActor");
-        NS::SetActorJsonId(floor, 100);
-        NS::Editor::SetActorJsonPosition(floor, {0.0f, -0.5f, 0.0f});
-        NS::Editor::SetActorJsonScale(floor, {60.0f, 1.0f, 60.0f});
-        NS::SceneJsonActors(snapshot).push_back(std::move(floor));
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, {0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(snapshot).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, {0.0f, 1.5f, 7.0f});
-        NS::Editor::SetActorJsonScale(rock, {3.0f, 3.0f, 3.0f});
-        NS::SceneJsonActors(snapshot).push_back(std::move(rock));
+        AddActorJson(snapshot, "MapPartsActor", 100, {0.0f, -0.5f, 0.0f}, {60.0f, 1.0f, 60.0f});
+        AddActorJson(snapshot, "PlayerActor", 1, {0.0f, 1.0f, 0.0f});
+        AddActorJson(snapshot, "PropActor", 2, {0.0f, 1.5f, 7.0f}, {3.0f, 3.0f, 3.0f});
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(scene);
@@ -749,15 +718,8 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     TimelineGui gui;
     NS::Scene scene;
     nlohmann::json snapshot = NS::MakeSceneJson();
-    nlohmann::json player = NS::MakeActorJson();
-    NS::SetActorJsonFile(player, "PlayerActor");
-    NS::SetActorJsonId(player, 1);
-    NS::SceneJsonActors(snapshot).push_back(std::move(player));
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 2);
-    NS::Editor::SetActorJsonPosition(rock, {0.0f, 1.5f, 7.0f});
-    NS::SceneJsonActors(snapshot).push_back(std::move(rock));
+    AddActorJson(snapshot, "PlayerActor", 1);
+    AddActorJson(snapshot, "PropActor", 2, {0.0f, 1.5f, 7.0f});
     scene.ResetFromJson(std::move(snapshot));
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
@@ -809,10 +771,7 @@ namespace
         NS::ActorFileLibrary::Get().Reload();
         ASSERT_NE(NS::ActorFileLibrary::Get().Find(actorFile), nullptr);
         nlohmann::json snapshot = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, actorFile);
-        NS::SetActorJsonId(player, 1);
-        NS::SceneJsonActors(snapshot).push_back(std::move(player));
+        AddActorJson(snapshot, actorFile, 1);
         scene.ResetFromJson(std::move(snapshot));
         scene.SetSimulationEnabled(false);
         editor.SelectActorById(1);

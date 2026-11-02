@@ -78,9 +78,9 @@ namespace NS
             {
                 return false;
             }
-            m_scene->SetSceneViews({view});
+            m_scene->GetSceneRenderer()->SetSceneViews({view});
             m_scene->OnRender();
-            m_scene->SetSceneViews({});
+            m_scene->GetSceneRenderer()->SetSceneViews({});
             return true;
         }
     } // namespace Editor

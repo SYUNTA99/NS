@@ -112,8 +112,22 @@ public:
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
-    [[nodiscard]] GL::Level::TackleGhost& Ghost() noexcept { return m_tackleGhost; }
-    [[nodiscard]] const GL::Level::TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept
+    {
+        if (ChildActor() == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_ghost;
+    }
+    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept
+    {
+        if (ChildActor() == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_ghost;
+    }
 
     // =========================================================================
     // 更新・アニメーション・移動入力・ジャンプ状態
@@ -124,6 +138,7 @@ public:
     //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     void UpdateAnimation();
     void OnEndPlay() override;
+    void PrepareRender() override;
 
     //! 世界座標系の目標移動方向と速度スケール (0..1 に丸める) を渡す
     void SetDesiredMove(const NS::Vector3& worldDir, float speedScale01) noexcept;
@@ -459,9 +474,6 @@ private:
     std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
-    GL::Level::TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
-    // 残像の進み。当たりの状態に入ったフレームの見た目の段を 1 フレーム目に数え、止めの後も状態に依らず進める
-    GL::Level::TackleGhostRun m_ghostRun;
     bool m_slowedWorld = false;
     struct BeforeContactEntry
     {
@@ -473,6 +485,7 @@ private:
     BeforeContactEntry m_beforeContact;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
+    GL::Level::TackleGhost m_ghost;
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================

@@ -1,52 +1,14 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 
-#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/D3DDevice.h"
 
 #include <algorithm>
-#include <limits>
-#include <utility>
 
 namespace NS
 {
-    namespace
-    {
-        // 震えの線の画素の欄は描画先の高さがこの値のときの大きさで書く
-        constexpr float k_ReferenceHeight = 720.0f;
-        // 線の暗い縁が白い線からはみ出す片側の幅。描画先の高さ 720 のときの画素。明るい床の上でも白い線を読ませる
-        constexpr float k_LineOutlineWidth = 1.5f;
-    } // namespace
-
-    std::array<HitShakeLineRect, 6> ShakeLineRects(const HitShakeLinesDesc& desc,
-                                                   int frame,
-                                                   const HitShakeLineSpan& span,
-                                                   float pixelScale) noexcept
-    {
-        // 輪郭の外へ縦の線を並べる。外の線ほど短くし、輪郭から離れる向きを読ませる
-        const int flip = std::max(desc.flipFrames, 1);
-        const bool outward = (std::max(frame, 0) / flip) % 2 == 1;
-        const float gap = desc.gapPixels * pixelScale;
-        const float width = desc.widthPixels * pixelScale;
-        float shift = 0.0f;
-        if (outward)
-        {
-            shift = gap * 0.5f;
-        }
-        std::array<HitShakeLineRect, 6> rects{};
-        for (int i = 0; i < 3; ++i)
-        {
-            const float fromOutline = gap + shift + static_cast<float>(i) * (width + gap * 0.6f);
-            const float length = desc.lengthPixels * pixelScale * (1.0f - 0.25f * static_cast<float>(i));
-            const float top = span.centerY - length * 0.5f;
-            rects[static_cast<std::size_t>(i)] = HitShakeLineRect{span.left - fromOutline - width, top, width, length};
-            rects[static_cast<std::size_t>(i + 3)] = HitShakeLineRect{span.right + fromOutline, top, width, length};
-        }
-        return rects;
-    }
-
     HitScreenDirector::HitScreenDirector(Scene& scene) : m_scene(scene)
     {
         InitOverlay(&m_scene, this);
@@ -67,30 +29,12 @@ namespace NS
         m_flashJustStarted = true;
     }
 
-    void HitScreenDirector::StartShakeLines(const SceneActor* requester, const HitShakeLinesDesc& desc) noexcept
-    {
-        NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::StartShakeLines: 頼んだ物が null");
-        if (!IsPositive(desc.radius) || desc.frames <= 0)
-        {
-            EndLines();
-            return;
-        }
-        m_linesRequester = requester;
-        m_lines = desc;
-        m_linesRemaining = desc.frames;
-        m_linesJustStarted = true;
-    }
-
     void HitScreenDirector::Stop(const SceneActor* requester) noexcept
     {
         NS_ASSERT(Scene, requester != nullptr, "HitScreenDirector::Stop: 頼んだ物が null");
         if (m_flashRequester == requester)
         {
             EndFlash();
-        }
-        if (m_linesRequester == requester)
-        {
-            EndLines();
         }
     }
 
@@ -99,13 +43,6 @@ namespace NS
         m_flashRemaining = 0;
         m_flashJustStarted = false;
         m_flashRequester = nullptr;
-    }
-
-    void HitScreenDirector::EndLines() noexcept
-    {
-        m_linesRemaining = 0;
-        m_linesJustStarted = false;
-        m_linesRequester = nullptr;
     }
 
     void HitScreenDirector::Scale(const SceneActor* requester, float scale) noexcept
@@ -155,10 +92,10 @@ namespace NS
     void HitScreenDirector::WriteDistortionRing() noexcept
     {
         const float frame = static_cast<float>(m_ringElapsed);
-        m_scene.SetDistortionRing(Gfx::DistortionRing{.center = m_ring.center,
-                                                          .radius = m_ring.radius.Evaluate(frame),
-                                                          .push = m_ring.push.Evaluate(frame),
-                                                          .halfWidth = m_ring.halfWidth});
+        m_scene.GetSceneRenderer()->SetDistortionRing(Gfx::DistortionRing{.center = m_ring.center,
+                                                                          .radius = m_ring.radius.Evaluate(frame),
+                                                                          .push = m_ring.push.Evaluate(frame),
+                                                                          .halfWidth = m_ring.halfWidth});
     }
 
     void HitScreenDirector::EndDistortionRing() noexcept
@@ -171,7 +108,7 @@ namespace NS
         m_ringActive = false;
         m_ringJustStarted = false;
         m_ringRequester = nullptr;
-        m_scene.SetDistortionRing(Gfx::DistortionRing{});
+        m_scene.GetSceneRenderer()->SetDistortionRing(Gfx::DistortionRing{});
     }
 
     void HitScreenDirector::StartGroundWave(const SceneActor* requester, const HitGroundWaveDesc& desc) noexcept
@@ -202,7 +139,6 @@ namespace NS
     void HitScreenDirector::Clear() noexcept
     {
         EndFlash();
-        EndLines();
         EndDistortionRing();
         EndGroundWave();
     }
@@ -210,10 +146,10 @@ namespace NS
     void HitScreenDirector::WriteGroundWave() noexcept
     {
         const float frame = static_cast<float>(m_waveElapsed);
-        m_scene.SetGroundWave(Gfx::GroundWave{.centerX = m_wave.center.x,
-                                              .centerZ = m_wave.center.z,
-                                              .radius = m_wave.radius.Evaluate(frame),
-                                              .strength = m_wave.strength.Evaluate(frame)});
+        m_scene.GetSceneRenderer()->SetGroundWave(Gfx::GroundWave{.centerX = m_wave.center.x,
+                                                                  .centerZ = m_wave.center.z,
+                                                                  .radius = m_wave.radius.Evaluate(frame),
+                                                                  .strength = m_wave.strength.Evaluate(frame)});
     }
 
     void HitScreenDirector::EndGroundWave() noexcept
@@ -226,7 +162,7 @@ namespace NS
         m_waveActive = false;
         m_waveJustStarted = false;
         m_waveRequester = nullptr;
-        m_scene.SetGroundWave(Gfx::GroundWave{});
+        m_scene.GetSceneRenderer()->SetGroundWave(Gfx::GroundWave{});
     }
 
     float HitScreenDirector::FlashAlpha() const noexcept
@@ -248,14 +184,6 @@ namespace NS
         else if (m_flashRemaining > 0)
         {
             --m_flashRemaining;
-        }
-        if (m_linesJustStarted)
-        {
-            m_linesJustStarted = false;
-        }
-        else if (m_linesRemaining > 0)
-        {
-            --m_linesRemaining;
         }
         if (m_ringJustStarted)
         {
@@ -301,71 +229,6 @@ namespace NS
         if (alpha > 0.0f)
         {
             context.overlay->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, alpha});
-        }
-        RenderShakeLines(context);
-    }
-
-    void HitScreenDirector::RenderShakeLines(const Gfx::RenderContext& context) const noexcept
-    {
-        if (m_linesRemaining <= 0)
-        {
-            return;
-        }
-        const Size2D size = context.device->Size();
-        if (size.width <= 0 || size.height <= 0)
-        {
-            return;
-        }
-        const float width = static_cast<float>(size.width);
-        const float height = static_cast<float>(size.height);
-        // 真後ろのカメラでは自機が相手に重なるので、2 つを囲む幅の外へ出す。縦は 2 つの上端と下端の真ん中
-        float left = std::numeric_limits<float>::max();
-        float right = std::numeric_limits<float>::lowest();
-        float top = std::numeric_limits<float>::max();
-        float bottom = std::numeric_limits<float>::lowest();
-        struct ProjectedBody
-        {
-            Vector3 center{};
-            float radius = 0.0f;
-        };
-        const std::array<ProjectedBody, 2> bodies{ProjectedBody{m_lines.center, m_lines.radius},
-                                                  ProjectedBody{m_lines.otherCenter, m_lines.otherRadius}};
-        for (const ProjectedBody& body : bodies)
-        {
-            if (!IsPositive(body.radius))
-            {
-                continue;
-            }
-            Vector2 centerPixel{};
-            float centerW = 0.0f;
-            if (!Gfx::TryProjectToPixels(context.viewProjection, body.center, width, height, centerPixel, centerW))
-            {
-                return;
-            }
-            const float radiusPixels =
-                Gfx::ProjectedLengthPixels(context.viewProjection, body.radius, centerW, height);
-            left = std::min(left, centerPixel.x - radiusPixels);
-            right = std::max(right, centerPixel.x + radiusPixels);
-            top = std::min(top, centerPixel.y - radiusPixels);
-            bottom = std::max(bottom, centerPixel.y + radiusPixels);
-        }
-        const float pixelScale = height / k_ReferenceHeight;
-        const HitShakeLineSpan span{.left = left, .right = right, .centerY = (top + bottom) * 0.5f};
-        const std::array<HitShakeLineRect, 6> rects =
-            ShakeLineRects(m_lines, m_lines.frames - m_linesRemaining, span, pixelScale);
-        const float outline = k_LineOutlineWidth * pixelScale;
-        for (const HitShakeLineRect& rect : rects)
-        {
-            context.overlay->DrawScreenRect(rect.x - outline,
-                                            rect.y - outline,
-                                            rect.width + outline * 2.0f,
-                                            rect.height + outline * 2.0f,
-                                            Color{0.0f, 0.0f, 0.0f, 0.6f});
-        }
-        for (const HitShakeLineRect& rect : rects)
-        {
-            context.overlay->DrawScreenRect(
-                rect.x, rect.y, rect.width, rect.height, Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
     }
 } // namespace NS

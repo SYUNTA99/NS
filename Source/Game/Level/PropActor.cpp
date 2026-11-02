@@ -1,4 +1,5 @@
 #include "Game/Level/PropActor.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 
 #include "Game/Level/ImpactOutcome.h"
@@ -110,8 +111,9 @@ namespace GL
             CreateClassObj(m_effect);
             CreateClassObj(m_hitReaction);
             CreateClassObj(m_effects);
-            // 残像は本体の Model を元に描く
-            NS::InitDraw(this, &m_tackleGhost, &Root(), m_model.get());
+            NS::ChildActorObj* child = CreateChildActor<NS::ChildActorObj>();
+            child->UseParentModel();
+            child->SetModelSortPriority(-1);
             CreateClassObj(m_marks);
             NS::InitDraw(this, m_marks.get(), &Root());
             (void)BuildStateMachine<PropActor, RestingState, FreezeState, LaunchedState>(this, m_states);
@@ -134,7 +136,6 @@ namespace GL
             NS::SceneActor::OnAppear();
             if (IsAppeared())
             {
-                NS::ShowModel(this, &m_tackleGhost);
                 NS::ShowModel(this, m_marks.get());
             }
         }
@@ -142,7 +143,6 @@ namespace GL
         void PropActor::OnDisappear() noexcept
         {
             NS::SceneActor::OnDisappear();
-            NS::HideModel(this, &m_tackleGhost);
             NS::HideModel(this, m_marks.get());
         }
 
@@ -169,17 +169,25 @@ namespace GL
 
         void PropActor::VisualStep()
         {
+            m_ghost.Advance(this);
             // clang-format off
             m_effects->Update(this, Flight());
             // clang-format on
-            // 明けの写しは止めの後も残り、写し取る姿は揺れを書いた後の姿なので、Model が揺れを進めた後で進める
-            m_ghost.Advance(&m_tackleGhost, ModelClassObj(), Root().WorldMatrix());
             m_marks->Step(NS::OS::FrameTimer::FixedDelta());
         }
 
         void PropActor::UpdateMotion()
         {
             Update();
+        }
+
+        void PropActor::PrepareRender()
+        {
+            if (ChildActor() != nullptr && ChildActor()->IsAppeared())
+            {
+                ChildActor()->Root().CopyFrom(Root());
+            }
+            NS::SceneActor::PrepareRender();
         }
 
         void PropActor::BeginFreeze(const TackleFreezeDesc& desc)
@@ -260,9 +268,9 @@ namespace GL
             }
             BeginFreeze(freeze);
             // 残像の離れは食い込んだ所の奥行きで出す
-            if (ghost.has_value())
+            if (ghost.has_value() && Ghost() != nullptr)
             {
-                m_ghost.Start(*ghost, this);
+                Ghost()->Start(*ghost, this);
             }
         }
 
@@ -543,7 +551,10 @@ namespace GL
                 EndFreeze();
             }
             ModelClassObj()->StopDrawShake();
-            m_ghost.Stop(&m_tackleGhost);
+            if (Ghost() != nullptr)
+            {
+                Ghost()->Stop(this);
+            }
             ModelClassObj()->StopDrawTremor();
             // 止めの途中のやり直しでも、置いた所で動ける姿へ戻す。受けた当たりの明けの束は出さない
             OverrideHitStop(0);
@@ -565,13 +576,13 @@ namespace GL
 
         void PropActor::OnEndPlay()
         {
+            m_ghost.Stop(this);
             if (IsFrozen())
             {
                 EndFreeze();
             }
             m_motion.Finish();
             NS::SceneActor::OnEndPlay();
-            NS::EndDraw(this, &m_tackleGhost);
             NS::EndDraw(this, m_marks.get());
         }
 

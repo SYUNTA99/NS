@@ -22,6 +22,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestHiddenApp.h"
 #include <optional>
 #include <string_view>
 
@@ -264,11 +265,7 @@ TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 
 TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
 {
-    NS::ApplicationDesc desc;
-    desc.window.title = "ステージ作成の入力の試し";
-    desc.window.size = {320, 200};
-    desc.window.visible = false;
-    NS::Application app(desc);
+    NS::Application app(HiddenAppDesc("ステージ作成の入力の試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;

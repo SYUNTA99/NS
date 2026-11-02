@@ -54,7 +54,7 @@ namespace NS
             std::unique_ptr<Scene> MakeScene(const nlohmann::json& scene, const HitPreviewWorld& world)
             {
                 std::unique_ptr<Scene> made = std::make_unique<GL::Level::GameScene>();
-                made->SetDevice(world.device);
+                made->GetSceneRenderer()->SetDevice(world.device);
                 made->ResetFromJson(scene);
                 // 音の装置を渡さないので、StartPlay は曲を鳴らさない
                 made->StartPlay();
@@ -197,7 +197,6 @@ namespace NS
                     if (const CameraManager* cameras = scene->GetCameraManager())
                     {
                         frame.trauma = cameras->Trauma();
-                        frame.shakeOffset = cameras->ShakeOffset();
                         if (const CameraSinkModifier* sink = cameras->FindModifier<CameraSinkModifier>())
                         {
                             frame.sinkPixels = sink->Pixels();

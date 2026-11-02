@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -261,9 +262,12 @@ namespace NS
     {
         NS_ASSERT(Scene, obj != nullptr, "Scene::StartSpawned: 開始するアクターが無い");
         // 素材は作る関数の Init が読み終えている
-        obj->OnStart();
+        obj->Start();
         // 後から入る物は他のアクターが既に揃っている
-        obj->InitAfterPlacement();
+        for (SceneActor* actor = obj; actor != nullptr; actor = actor->ChildActor())
+        {
+            actor->InitAfterPlacement();
+        }
     }
 
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)
@@ -455,7 +459,7 @@ namespace NS
         m_actors.RebuildFromJson(
             scene, *this, [this](const nlohmann::json& entry) { return BuildOrKeepUnresolved(entry); });
         // 当たりはアクターの開始で入っている。まとめて入れた後の broadphase だけを張り直す
-        m_physics.Physics().OptimizeBroadPhase();
+        m_physics.OptimizeBroadPhase();
     }
 
     void Scene::OnUpdate()
@@ -525,7 +529,7 @@ namespace NS
     {
         m_actors.UpdateActors();
         // Jolt の broadphase の木は、アクターが全部動いた後で組み直す
-        m_physics.OnTick();
+        m_physics.Update(OS::FrameTimer::FixedDelta());
         m_hitSensors.OnTick();
         // ゲームの流れは当たりの判定の後で、同じ歩に届いた知らせを読む
         StepGame();
@@ -559,7 +563,7 @@ namespace NS
     void Scene::StepRealTime()
     {
         m_ui.OnTick();
-        m_fade.OnTick();
+        m_fade.Advance(OS::FrameTimer::FixedDelta());
     }
 
     void Scene::OnShutdown()
@@ -581,7 +585,7 @@ namespace NS
         {
             m_cameraManager.Evaluate(alpha);
         }
-        m_sceneRenderer.Render(m_mainCamera, m_ui, m_fade.Fade(), m_environment.skybox, alpha);
+        m_sceneRenderer.Render(m_mainCamera, m_ui, m_fade, m_environment.skybox, alpha);
     }
 
     SceneRenderer* Scene::GetSceneRenderer() const noexcept
@@ -597,7 +601,7 @@ namespace NS
     Phys::PhysicsScene* Scene::GetPhysicsScene() const noexcept
     {
         // 地形を問う関数のほか、Collision も持ち主の Scene の body を出し入れする時にここから引く
-        return const_cast<Phys::PhysicsScene*>(&m_physics.Physics());
+        return const_cast<Phys::PhysicsScene*>(&m_physics);
     }
 
     Gfx::EffectScene* Scene::GetEffectScene() const noexcept { return m_sceneRenderer.Effects(); }

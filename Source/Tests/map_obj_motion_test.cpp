@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Core/Windows/Clock.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -17,11 +18,7 @@ namespace
     GL::Level::PropActor* PlaceMovingRock(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 1);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PropActor", 1, NS::Vector3{0.0f, 0.5f, 0.0f});
         scene.ResetFromJson(doc);
         return static_cast<GL::Level::PropActor*>(scene.Actors().FindByActorId(1));
     }
@@ -60,12 +57,7 @@ TEST(MapObjMotion, LandingRollsThenReturnsToRest)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::OBB floor;
-    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-    floor.halfExtentX = 100.0f;
-    floor.halfExtentY = 0.5f;
-    floor.halfExtentZ = 100.0f;
-    scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+    AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
     ReleaseRock(rock);
     for (int step = 0; step < 300; ++step)
     {
@@ -87,12 +79,7 @@ TEST(MapObjMotion, WallReflectsFlightBeforeItCanTunnel)
     NS::Scene scene;
     GL::Level::PropActor* rock = PlaceMovingRock(scene);
     ASSERT_NE(rock, nullptr);
-    NS::OBB wall;
-    wall.center = NS::Vector3{2.0f, 2.0f, 0.0f};
-    wall.halfExtentX = 0.1f;
-    wall.halfExtentY = 4.0f;
-    wall.halfExtentZ = 4.0f;
-    scene.Physics().AddBox(wall, NS::Phys::ObjectLayers::Terrain);
+    AddTerrainBox(scene, NS::Vector3{2.0f, 2.0f, 0.0f}, 0.1f, 4.0f, 4.0f);
     ReleaseRock(rock);
     float previous = rock->Root().Position().x;
     bool reflected = false;

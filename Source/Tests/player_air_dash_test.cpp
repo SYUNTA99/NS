@@ -15,6 +15,7 @@
 #include "NSlib/Phys/PhysicsScene.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestLogCapture.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -59,10 +60,7 @@ namespace
     PlayerActor* PlaceFloatingPlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1);
         scene.ResetFromJson(doc);
         if (PlaceViewCamera(scene, NS::Vector3{0.0f, 5.0f, -5.0f}, NS::Vector3{0.0f, 5.0f, 0.0f}) == nullptr)
         {
@@ -78,12 +76,7 @@ namespace
 
     void AddBox(NS::Scene& scene, const NS::Vector3& center, const NS::Vector3& half)
     {
-        NS::OBB box;
-        box.center = center;
-        box.halfExtentX = half.x;
-        box.halfExtentY = half.y;
-        box.halfExtentZ = half.z;
-        scene.Physics().AddBox(box, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, center, half.x, half.y, half.z);
     }
 
     // 自機の前 (+Z) の、面が z = 3 の大きな壁

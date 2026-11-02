@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
@@ -64,7 +65,7 @@ namespace NS
             // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
             constexpr float k_QuarterSpeed = 0.25f;
 
-            constexpr int k_PreviewGraphCount = 5;
+            constexpr int k_PreviewGraphCount = 4;
             constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
             constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
             constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
@@ -682,9 +683,7 @@ namespace NS
             const float totalWidth = layout.totalWidth;
             const float rowHeight = layout.rowHeight;
             const std::vector<HitPreviewFrame>& frames = m_result.frames;
-            // 揺れの角度とずれは一番大きい所で縦を合わせる。0 しか無ければ 1 で割る
             float largestAngle = 0.0f;
-            float largestOffset = 0.0f;
             float largestSink = 0.0f;
             for (const HitPreviewFrame& frame : frames)
             {
@@ -692,8 +691,6 @@ namespace NS
                                          std::fabs(frame.shakeAngles.x),
                                          std::fabs(frame.shakeAngles.y),
                                          std::fabs(frame.shakeAngles.z)});
-                largestOffset =
-                    std::max({largestOffset, std::fabs(frame.shakeOffset.x), std::fabs(frame.shakeOffset.y)});
                 largestSink = std::max(largestSink, std::fabs(frame.sinkPixels));
             }
             if (largestSink <= 0.0f)
@@ -703,10 +700,6 @@ namespace NS
             if (largestAngle <= 0.0f)
             {
                 largestAngle = 1.0f;
-            }
-            if (largestOffset <= 0.0f)
-            {
-                largestOffset = 1.0f;
             }
             const float graphHeight = rowHeight * 2.0f;
             const int origin = PlaybackOrigin();
@@ -760,16 +753,6 @@ namespace NS
                          });
                          drawLine(at, k_GraphZColor, true, [largestAngle](const HitPreviewFrame& frame) {
                              return frame.shakeAngles.z / largestAngle;
-                         });
-                     });
-            graphRow("揺れのずれ",
-                     "平行移動の揺れのずれ。赤が右、緑が上。真ん中が 0 で、一番大きい所で縦を合わせる",
-                     [&](const ImVec2& at) {
-                         drawLine(at, k_GraphXColor, true, [largestOffset](const HitPreviewFrame& frame) {
-                             return frame.shakeOffset.x / largestOffset;
-                         });
-                         drawLine(at, k_GraphYColor, true, [largestOffset](const HitPreviewFrame& frame) {
-                             return frame.shakeOffset.y / largestOffset;
                          });
                      });
             graphRow("沈む揺れ",

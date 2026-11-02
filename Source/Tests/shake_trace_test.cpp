@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/FileSystem.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -24,7 +25,7 @@
 #include <string>
 #include <vector>
 
-// 同じ当たりと同じ溜めで、カメラの揺れのずれと角度をフレームごとに書き出す
+// 同じ当たりと同じ溜めで、カメラの揺れの角度と沈みをフレームごとに書き出す
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
 // 書き出し先は build/ShakeTrace/trace.json。演出は自機と置物の .actor の束を読む
 
@@ -39,38 +40,23 @@ namespace
     PlayerActor* PlaceShakeScene(NS::Scene& scene, float rockX)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{rockX, 0.5f, 0.6f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, "PropActor", 2, NS::Vector3{rockX, 0.5f, 0.6f});
         scene.ResetFromJson(doc);
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
-    // 当たりの揺れ。平行移動の揺れのずれ (x が右、y が上、m)・トラウマの揺れの角度 (横・縦・傾き、度)・
+    // 当たりの揺れ。トラウマの揺れの角度 (横・縦・傾き、度)・
     // 沈む揺れの縦のずれ (y、高さ 1080 の画面の画素、下が負)
     struct HitShakeTrace
     {
         HitTier tier = HitTier::Center;
-        std::vector<NS::Vector3> offsets;
         std::vector<NS::Vector3> angles;
         std::vector<NS::Vector3> sinks;
     };
 
-    // 突進を頼んで場面を回し、検知のフレームから k_HitFrames フレームぶんの揺れのずれを並べる。当たらなければ空
     HitShakeTrace RecordHitShake(float rockX)
     {
         HitShakeTrace trace;
@@ -81,25 +67,19 @@ namespace
             return trace;
         }
         player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-        for (int frame = 0; frame < 60 + k_HitFrames && static_cast<int>(trace.offsets.size()) < k_HitFrames; ++frame)
+        for (int frame = 0; frame < 60 + k_HitFrames && static_cast<int>(trace.angles.size()) < k_HitFrames; ++frame)
         {
             scene.OnUpdate();
-            if (trace.offsets.empty() && player->Resolver().Answer().lastImpact.sequence == 0)
+            if (trace.angles.empty() && player->Resolver().Answer().lastImpact.sequence == 0)
             {
                 continue;
             }
             trace.tier = player->Resolver().Answer().lastImpact.tier;
-            NS::Vector3 offset{};
             NS::Vector3 angles{};
             NS::Vector3 sink{};
             const NS::CameraManager* cameras = player->GetCameraManager();
             if (cameras != nullptr)
             {
-                const NS::CameraShakeModifier* shake = cameras->FindModifier<NS::CameraShakeModifier>();
-                if (shake != nullptr)
-                {
-                    offset = NS::Vector3{shake->Offset().x, shake->Offset().y, 0.0f};
-                }
                 const NS::CameraTraumaModifier* trauma = cameras->FindModifier<NS::CameraTraumaModifier>();
                 if (trauma != nullptr)
                 {
@@ -111,7 +91,6 @@ namespace
                     sink = NS::Vector3{0.0f, sinking->Pixels(), 0.0f};
                 }
             }
-            trace.offsets.push_back(offset);
             trace.angles.push_back(angles);
             trace.sinks.push_back(sink);
         }
@@ -191,14 +170,8 @@ namespace
         return step / largest;
     }
 
-    // 当たりの揺れの差の比。平行移動の揺れ・沈む揺れ・トラウマの揺れの角度の順に、出ている物の比
     float HitStepRatio(const HitShakeTrace& trace)
     {
-        const float offsetRatio = MaxStepRatio(trace.offsets);
-        if (offsetRatio > 0.0f)
-        {
-            return offsetRatio;
-        }
         const float sinkRatio = MaxStepRatio(trace.sinks);
         if (sinkRatio > 0.0f)
         {
@@ -223,8 +196,8 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     const HitShakeTrace center = RecordHitShake(0.0f);
     const HitShakeTrace miss = RecordHitShake(0.75f);
     const std::vector<NS::Vector3> charge = RecordChargeShake();
-    ASSERT_EQ(center.offsets.size(), static_cast<std::size_t>(k_HitFrames));
-    ASSERT_EQ(miss.offsets.size(), static_cast<std::size_t>(k_HitFrames));
+    ASSERT_EQ(center.angles.size(), static_cast<std::size_t>(k_HitFrames));
+    ASSERT_EQ(miss.angles.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(charge.size(), static_cast<std::size_t>(k_ChargeFrames));
     EXPECT_EQ(center.tier, HitTier::Center);
     EXPECT_EQ(miss.tier, HitTier::Wide);
@@ -247,11 +220,9 @@ TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
     root["missMaxStepRatio"] = missRatio;
     root["chargeMaxStepRatio"] = chargeRatio;
     // 平行移動のずれは m、角度は度
-    root["center"] = SeriesJson(center.offsets);
     root["centerAngles"] = SeriesJson(center.angles);
     // 沈む揺れの縦のずれは高さ 1080 の画面の画素
     root["centerSink"] = SeriesJson(center.sinks);
-    root["miss"] = SeriesJson(miss.offsets);
     root["missAngles"] = SeriesJson(miss.angles);
     root["chargeAngles"] = SeriesJson(charge);
     const std::string text = root.dump(1);

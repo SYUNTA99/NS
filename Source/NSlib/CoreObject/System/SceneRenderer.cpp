@@ -86,16 +86,16 @@ namespace NS
         {
             return;
         }
-        const RenderSource source{.root = drawn->root->InterpolatedWorldMatrix(context.alpha), .model = drawn->model};
+        const RenderSource source{.root = drawn->root->InterpolatedWorldMatrix(context.alpha)};
         drawn->renderable->Collect(context, source, out);
     }
 
     RenderSource SceneRenderer::CurrentSource(const RenderEntry& entry) noexcept
     {
-        return RenderSource{.root = entry.root->WorldMatrix(), .model = entry.model};
+        return RenderSource{.root = entry.root->WorldMatrix()};
     }
 
-    void SceneRenderer::RegisterRenderable(IRenderable* renderable, const Transform* root, const Model* model)
+    void SceneRenderer::RegisterRenderable(IRenderable* renderable, const Transform* root)
     {
         NS_ASSERT(Graphics, renderable != nullptr, "SceneRenderer::RegisterRenderable: 描く物が null");
         NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterRenderable: 持ち主の根が null");
@@ -107,7 +107,6 @@ namespace NS
         std::unique_ptr<RenderEntry> entry = std::make_unique<RenderEntry>();
         entry->renderable = renderable;
         entry->root = root;
-        entry->model = model;
         const RenderSource source = CurrentSource(*entry);
         Gfx::RenderProxyDesc desc{};
         desc.bounds = renderable->WorldBounds(source);

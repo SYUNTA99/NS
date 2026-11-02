@@ -1,6 +1,7 @@
 #include "Editor/DockController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/Core/Windows/Filesystem.h"
+#include "Tests/TestHeadlessImGui.h"
 
 #include <filesystem>
 #include <functional>
@@ -15,16 +16,8 @@ namespace
     protected:
         void SetUp() override
         {
-            m_context = ImGui::CreateContext();
-            ImGuiIO& io = ImGui::GetIO();
-            io.IniFilename = nullptr;
-            io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-            io.DisplaySize = ImVec2{1280.0f, 800.0f};
-            io.DeltaTime = 1.0f / 60.0f;
-            unsigned char* pixels = nullptr;
-            int width = 0;
-            int height = 0;
-            io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+            m_context = CreateHeadlessImGui(ImVec2{1280.0f, 800.0f});
+            ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
         }
 
         void TearDown() override

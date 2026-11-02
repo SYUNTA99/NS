@@ -40,6 +40,7 @@ namespace GL
             //! 1 固定ステップを本番と同じ順で進める。テストが Scene::OnUpdate を通さずに置物を動かす
             void UpdateMotion();
             void OnEndPlay() override;
+            void PrepareRender() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFrozen() const noexcept;
             //! 押し飛ばされて曲線か転がりの最中かを返す
@@ -60,7 +61,22 @@ namespace GL
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
             [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
             [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
-            [[nodiscard]] const TackleGhost& Ghost() const noexcept { return m_tackleGhost; }
+            [[nodiscard]] TackleGhost* Ghost() noexcept
+            {
+                if (ChildActor() == nullptr)
+                {
+                    return nullptr;
+                }
+                return &m_ghost;
+            }
+            [[nodiscard]] const TackleGhost* Ghost() const noexcept
+            {
+                if (ChildActor() == nullptr)
+                {
+                    return nullptr;
+                }
+                return &m_ghost;
+            }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -68,7 +84,6 @@ namespace GL
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
             void OnInit() override;
-            //! 残像は Model と同じく、出ている間だけ描く物へ入れる
             void OnAppear() override;
             void OnDisappear() noexcept override;
             //! 発光の層・残像・当たりの跡を進める
@@ -80,6 +95,8 @@ namespace GL
             class LaunchedState;
             class ArcState;
             class RollingState;
+
+            TackleGhost m_ghost;
 
             // 受けた状態の頭の形と動き
             struct TackleFreezeDesc
@@ -137,15 +154,12 @@ namespace GL
                 bool active = false;
             };
             ReceivedHit m_received;
-            // 残像。知らせを受けたフレームの見た目の 1 歩を 1 フレーム目に数える。離れは食い込んだ後の根の奥行きで出す
-            TackleGhostRun m_ghost;
             struct CoursePose
             {
                 NS::Vector3 position;
                 NS::Quaternion rotation;
             };
             std::optional<CoursePose> m_coursePose; // MsgCourseStart の時の姿。やり直しで戻る先
-            TackleGhost m_tackleGhost; // 体当たりの残像。描く時に Model を渡されて描く
             NS::Vector3 m_freezeHome{};
             bool m_freezePlaced = true;
             LaunchArc m_arc;

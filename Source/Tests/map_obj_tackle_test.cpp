@@ -18,6 +18,7 @@
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestLogCapture.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -33,11 +34,7 @@ namespace
     NS::SceneActor* PlaceRock(NS::Scene& scene, const NS::Vector3& position)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::SetActorJsonId(rock, 1);
-        NS::Editor::SetActorJsonPosition(rock, position);
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PropActor", 1, position);
         scene.ResetFromJson(doc);
         return scene.Actors().FindByActorId(1);
     }
@@ -46,16 +43,8 @@ namespace
     GL::Level::PropActor* PlaceRockBeforePlayer(NS::Scene& scene, std::string_view actorFile = "PropActor")
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::MakeActorJson();
-        NS::SetActorJsonFile(player, "PlayerActor");
-        NS::SetActorJsonId(player, 1);
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(player));
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, actorFile);
-        NS::SetActorJsonId(rock, 2);
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 4.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+        AddActorJson(doc, actorFile, 2, NS::Vector3{0.0f, 0.5f, 4.0f});
         scene.ResetFromJson(doc);
         PlaceViewCamera(scene, NS::Vector3{0.0f, 3.0f, -6.0f}, NS::Vector3{0.0f, 0.5f, 4.0f});
         return NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
@@ -181,7 +170,7 @@ TEST(MapObjTackle, TheRockShakesAndSpreadsGhostsFromItsOwnSet)
     {
         SCOPED_TRACE(frame);
         rock->UpdateMotion();
-        const GL::Level::TackleGhost& ghost = rock->Ghost();
+        const GL::Level::TackleGhost& ghost = *rock->Ghost();
         const NS::Vector3 offset = rock->ModelClassObj()->GetDrawOffset();
         if (frame < 12)
         {

@@ -111,13 +111,13 @@ namespace
         {
             NS::Scene scene;
             const NS::AssetManagerScope useAssets{m_assets};
-            scene.SetDevice(&m_device);
+            scene.GetSceneRenderer()->SetDevice(&m_device);
             BoxActor* maskedBox = scene.SpawnActor<BoxActor>("BoxActor", masked);
             if (other.has_value())
             {
                 (void)scene.SpawnActor<BoxActor>("BoxActor", *other);
             }
-            scene.SetBodyMask({maskedBox->Body()});
+            scene.GetSceneRenderer()->SetBodyMask({maskedBox->Body()});
             // 有効な間は前の固定ステップとの補間で描くので、無効にして今の位置で描く
             scene.SetSimulationEnabled(false);
 
@@ -125,10 +125,10 @@ namespace
             pose.position = NS::Vector3{0.0f, 1.0f, -6.0f};
             pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
             m_device.BeginFrame();
-            scene.SetSceneViews({NS::SceneView{m_target.get(), pose}});
+            scene.GetSceneRenderer()->SetSceneViews({NS::SceneView{m_target.get(), pose}});
             scene.OnRender();
-            scene.SetSceneViews({});
-            const NS::Gfx::D3DTexture* mask = scene.BodyMaskShown(0);
+            scene.GetSceneRenderer()->SetSceneViews({});
+            const NS::Gfx::D3DTexture* mask = scene.GetSceneRenderer()->BodyMaskShown(0);
             if (mask == nullptr)
             {
                 return {};

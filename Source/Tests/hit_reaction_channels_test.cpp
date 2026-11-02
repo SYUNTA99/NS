@@ -7,6 +7,7 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
@@ -17,11 +18,7 @@ namespace
     PlayerActor* PlacePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
@@ -148,8 +145,8 @@ TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
     ASSERT_NE(reaction, nullptr);
     NS::HitScreenDirector* screen = &scene.HitScreen();
     ASSERT_NE(screen, nullptr);
-    EXPECT_TRUE(reaction->StartShake(player, NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 4}));
+    EXPECT_TRUE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4}));
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
     EXPECT_TRUE(reaction->StartZoomRoll(player, NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
-    EXPECT_FALSE(reaction->StartShake(player, NS::CameraShakeDesc{.upAmplitude = 0.1f, .frames = 61}));
+    EXPECT_FALSE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 61}));
 }

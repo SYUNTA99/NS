@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
@@ -61,12 +62,15 @@ namespace NS
             MarkIndexDirty();
             for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
-                objPtr->OnStart();
+                objPtr->Start();
             }
             // 全てのアクターが開始してから、揃っている前提の用意をさせる
             for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
-                objPtr->InitAfterPlacement();
+                for (SceneActor* actor = objPtr.get(); actor != nullptr; actor = actor->ChildActor())
+                {
+                    actor->InitAfterPlacement();
+                }
             }
         }
     }
@@ -177,6 +181,10 @@ namespace NS
                          "ActorList::RemoveDestroyed: 1 歩の更新の最中に呼ばれたので Destroy した個体の解放を断った");
             return;
         }
+        for (const std::unique_ptr<SceneActor>& actor : m_actors)
+        {
+            actor->RemoveDestroyedChildren();
+        }
         const std::size_t removed = std::erase_if(m_actors, [](const std::unique_ptr<SceneActor>& obj) {
             if (!obj->IsPendingDestroy())
             {
@@ -239,7 +247,10 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->ResolveActorRefs();
+            for (SceneActor* current = actor.get(); current != nullptr; current = current->ChildActor())
+            {
+                current->ResolveActorRefs();
+            }
         }
     }
 
@@ -249,10 +260,13 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            Collision* collision = actor->CollisionClassObj();
-            if (collision != nullptr && actor->IsAppeared())
+            for (SceneActor* current = actor.get(); current != nullptr; current = current->ChildActor())
             {
-                collision->SyncToPhysics(actor->Root().WorldMatrix(), actor.get());
+                Collision* collision = current->CollisionClassObj();
+                if (collision != nullptr && current->IsAppeared())
+                {
+                    collision->SyncToPhysics(current->Root().WorldMatrix(), current);
+                }
             }
         }
     }

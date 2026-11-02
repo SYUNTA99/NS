@@ -32,6 +32,7 @@
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestTackleScene.h"
 #include "Tests/TestViewCamera.h"
 
@@ -65,10 +66,7 @@ namespace
     PlayerActor* PlaceSequencePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json entry = NS::MakeActorJson();
-        NS::SetActorJsonFile(entry, "PlayerActor");
-        NS::SetActorJsonId(entry, 1);
-        NS::SceneJsonActors(doc).push_back(std::move(entry));
+        AddActorJson(doc, "PlayerActor", 1);
         scene.ResetFromJson(doc);
         return static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     }
@@ -82,12 +80,7 @@ namespace
         {
             return nullptr;
         }
-        NS::OBB floor{};
-        floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-        floor.halfExtentX = 100.0f;
-        floor.halfExtentY = 0.5f;
-        floor.halfExtentZ = 100.0f;
-        scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         player->Root().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
         player->Body().SetGrounded(false);
         player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -208,12 +201,7 @@ namespace
         {
             return nullptr;
         }
-        NS::OBB ledge{};
-        ledge.center = NS::Vector3{0.0f, -1.0f, 2.0f};
-        ledge.halfExtentX = 2.0f;
-        ledge.halfExtentY = 1.0f;
-        ledge.halfExtentZ = 1.0f;
-        scene.Physics().AddBox(ledge, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, -1.0f, 2.0f}, 2.0f, 1.0f, 1.0f);
         const NS::Collider& collider = player->Collider();
         player->Root().SetPosition(NS::Vector3{0.0f, 0.2f - collider.CapsuleHalfHeight(), 0.3f});
         player->Body().SetGrounded(false);
@@ -227,12 +215,7 @@ namespace
     {
         NS_ASSERT(Game, collider != nullptr, "BlockAboveLedgeTop: 渡したアクターか部品が無い");
         const float bottom = collider->StandingHalfHeight() + 0.5f * collider->CapsuleRadius();
-        NS::OBB blocker{};
-        blocker.center = NS::Vector3{0.0f, bottom + 1.0f, 2.0f};
-        blocker.halfExtentX = 2.0f;
-        blocker.halfExtentY = 1.0f;
-        blocker.halfExtentZ = 1.0f;
-        scene.Physics().AddBox(blocker, NS::Phys::ObjectLayers::Terrain);
+        AddTerrainBox(scene, NS::Vector3{0.0f, bottom + 1.0f, 2.0f}, 2.0f, 1.0f, 1.0f);
     }
 
     bool FallUntilHanging(PlayerActor* player)
@@ -284,12 +267,11 @@ TEST(PlayerStateSequence, LedgeIsRefusedUnderACeilingAboveTheClimbEnd)
     ASSERT_NE(player, nullptr);
     const NS::Collider& collider = player->Collider();
     const float standCenter = collider.StandingHalfHeight() + collider.CapsuleRadius();
-    NS::OBB ceiling{};
-    ceiling.center = NS::Vector3{0.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f};
-    ceiling.halfExtentX = 2.0f;
-    ceiling.halfExtentY = 1.0f;
-    ceiling.halfExtentZ = 1.0f;
-    scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    AddTerrainBox(scene,
+                  NS::Vector3{0.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f},
+                  2.0f,
+                  1.0f,
+                  1.0f);
     EXPECT_FALSE(FallUntilHanging(player));
 }
 
@@ -302,12 +284,11 @@ TEST(PlayerStateSequence, LedgeIsRefusedUnderACeilingThatClipsTheSideOfTheClimbE
     const NS::Collider& collider = player->Collider();
     const float radius = collider.CapsuleRadius();
     const float standCenter = collider.StandingHalfHeight() + radius;
-    NS::OBB ceiling{};
-    ceiling.center = NS::Vector3{0.5f * radius + 2.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f};
-    ceiling.halfExtentX = 2.0f;
-    ceiling.halfExtentY = 1.0f;
-    ceiling.halfExtentZ = 1.0f;
-    scene.Physics().AddBox(ceiling, NS::Phys::ObjectLayers::Terrain);
+    AddTerrainBox(scene,
+                  NS::Vector3{0.5f * radius + 2.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f},
+                  2.0f,
+                  1.0f,
+                  1.0f);
     EXPECT_FALSE(FallUntilHanging(player));
 }
 
@@ -507,24 +488,11 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
 TEST(PlayerStateSequence, FrozenMovementDoesNotFreezeEffects)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SetActorJsonId(rock, 2);
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{0.0f, 0.5f, 0.6f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
+    AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 0.6f});
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::OBB floor{};
-    floor.center = NS::Vector3{0.0f, -0.5f, 0.0f};
-    floor.halfExtentX = 100.0f;
-    floor.halfExtentY = 0.5f;
-    floor.halfExtentZ = 100.0f;
-    scene.Physics().AddBox(floor, NS::Phys::ObjectLayers::Terrain);
+    AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});

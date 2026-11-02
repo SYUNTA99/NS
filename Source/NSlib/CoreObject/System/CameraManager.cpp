@@ -159,26 +159,6 @@ namespace NS
         m_modifiers.clear();
     }
 
-    bool CameraManager::StartShake(const CameraShakeDesc& desc, const IGetCamera* requester)
-    {
-        std::unique_ptr<CameraShakeModifier> shake =
-            CameraShakeModifier::Create(desc, SideSignOf(desc.firstSideDirection));
-        if (shake != nullptr)
-        {
-            shake->SetRequester(requester);
-        }
-        return AddModifier(std::move(shake));
-    }
-
-    Vector2 CameraManager::ShakeOffset() const noexcept
-    {
-        if (const CameraShakeModifier* shake = FindModifier<CameraShakeModifier>())
-        {
-            return shake->Offset();
-        }
-        return Vector2{0.0f, 0.0f};
-    }
-
     bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc, const IGetCamera* requester)
     {
         std::unique_ptr<CameraZoomRollModifier> zoomRoll =

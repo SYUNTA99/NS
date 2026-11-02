@@ -31,6 +31,16 @@ namespace NS
         m_previousScale = m_scale;
     }
 
+    void Transform::CopyFrom(const Transform& source) noexcept
+    {
+        m_position = source.m_position;
+        m_rotation = source.m_rotation;
+        m_scale = source.m_scale;
+        m_previousPosition = source.m_previousPosition;
+        m_previousRotation = source.m_previousRotation;
+        m_previousScale = source.m_previousScale;
+    }
+
     Matrix Transform::WorldMatrix() const noexcept
     {
         const Matrix scale = Matrix::CreateScale(m_scale);

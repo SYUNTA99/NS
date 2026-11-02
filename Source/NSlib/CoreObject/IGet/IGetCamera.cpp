@@ -17,13 +17,6 @@ namespace NS
         return cameras->AddModifier(std::move(modifier));
     }
 
-    bool StartCameraShake(const IGetCamera* user, const CameraShakeDesc& desc)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->StartShake(desc, user);
-    }
-
     bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

@@ -19,6 +19,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -33,10 +34,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    AddActorJson(doc, "PlayerActor", 1);
     scene.ResetFromJson(doc);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
@@ -319,11 +317,7 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
 {
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json entry = NS::MakeActorJson();
-    NS::SetActorJsonFile(entry, "PlayerActor");
-    NS::SetActorJsonId(entry, 1);
-    NS::Editor::SetActorJsonPosition(entry, NS::Vector3{0.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(entry));
+    AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
     nlohmann::json rock = NS::MakeActorJson();
     NS::SetActorJsonFile(rock, "PropActor");
     NS::SetActorJsonId(rock, 2);

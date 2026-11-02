@@ -620,7 +620,7 @@ nlohmann::json LevelEditorController::SceneSnapshot() const
 
 void LevelEditorController::SetSceneViews(std::vector<NS::SceneView> views)
 {
-    m_scene.SetSceneViews(std::move(views));
+    m_scene.GetSceneRenderer()->SetSceneViews(std::move(views));
 }
 
 void LevelEditorController::Tick()

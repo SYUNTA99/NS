@@ -5,7 +5,6 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <cmath>
@@ -81,56 +80,6 @@ namespace GL
             const float left = 1.0f - static_cast<float>(release) / static_cast<float>(releaseFrames);
             (void)ghost->SetAfterimageOpacity(releaseOpacity * left);
             return true;
-        }
-
-        void TackleGhostRun::Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner)
-        {
-            NS_ASSERT(Game, owner != nullptr, "残像を出すアクターが渡されていない");
-            if (run.length <= 0)
-            {
-                return;
-            }
-            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(owner);
-            if (!pose.has_value())
-            {
-                return;
-            }
-            const NS::HitOwnerItem& item = run.item;
-            const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(owner);
-            desc = TackleGhostDesc{
-                .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
-                .spread =
-                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
-                .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
-                .stopLength = run.length,
-                .releaseFrames = HitOwnerFrames(item, "明けの残像のフレーム数", 0),
-                .releaseOpacity = HitOwnerValue(item, "明けの残像の不透明度", 0.0f)};
-            frame = 0;
-            active = true;
-        }
-
-        void TackleGhostRun::Advance(TackleGhost* ghost, const NS::Model* model, const NS::Matrix& root) noexcept
-        {
-            if (!active)
-            {
-                return;
-            }
-            ++frame;
-            active = desc.WriteTo(ghost, frame, model, root);
-        }
-
-        void TackleGhostRun::Stop(TackleGhost* ghost) noexcept
-        {
-            NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
-            active = false;
-            (void)ghost->SetSpread(NS::Vector3{0.0f, 0.0f, 0.0f});
-            (void)ghost->SetAfterimageOpacity(0.0f);
-        }
-
-        void TackleGhostRun::ScaleOpacity(float scale) noexcept
-        {
-            desc.sideOpacity *= scale;
-            desc.releaseOpacity *= scale;
         }
 
         float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)

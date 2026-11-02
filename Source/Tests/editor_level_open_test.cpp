@@ -15,6 +15,7 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "Tests/TestHeadlessImGui.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -182,15 +183,8 @@ TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
     const std::string saved = m_folder + "/saved";
     const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
-        ImGui::CreateContext(), &ImGui::DestroyContext);
+        CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}, HeadlessImGuiInput::Instant), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = {1200.0f, 900.0f};
-    io.ConfigInputTrickleEventQueue = false;
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     NS::Editor::EditorMode editor;
     editor.SetSessionPath(session);
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
@@ -366,14 +360,8 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
     editor.SetGizmoToolActive(false);
     NS::Editor::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
-        ImGui::CreateContext(), &ImGui::DestroyContext);
+        CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr;
-    io.DisplaySize = {1200.0f, 900.0f};
-    unsigned char* pixels = nullptr;
-    int width = 0;
-    int height = 0;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
     ImVec2 click{};
     ImVec2 folderClick{};
     std::string assetToClick = "clicked.scene";
