@@ -570,6 +570,7 @@ namespace GL
             Appear();
             m_bodyHitSensor->Validate();
             m_effects->CancelTrail(this);
+            m_marks->Clear();
             // 次の歩を待たず、同じ歩の後の問いに置き直した当たりを見せる
             Sphere().SyncToPhysics(Root().WorldMatrix(), this);
         }

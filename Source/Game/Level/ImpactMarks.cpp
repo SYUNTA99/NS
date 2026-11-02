@@ -36,6 +36,13 @@ namespace GL
             m_next = (m_next + 1) % capacity;
         }
 
+        void ImpactMarks::Clear() noexcept
+        {
+            m_marks.clear();
+            m_next = 0;
+            m_newest = 0;
+        }
+
         void ImpactMarks::Step(float dt) noexcept
         {
             for (Mark& mark : m_marks)

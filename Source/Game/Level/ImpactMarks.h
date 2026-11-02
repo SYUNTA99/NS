@@ -26,6 +26,8 @@ namespace GL
             void Spawn(const NS::Vector3& position);
             //! 出ている跡を dt 秒進めて縮め、寿命を過ぎた跡を消す。持ち主の見た目の段が呼ぶ
             void Step(float dt) noexcept;
+            //! 出ている跡を全部消す。やり直しで呼ぶ
+            void Clear() noexcept;
 
             //! 出ている跡の数
             [[nodiscard]] std::size_t LiveCount() const noexcept;

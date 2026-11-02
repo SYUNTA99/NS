@@ -28,6 +28,8 @@ namespace GL
             //! 仮想カメラは入れたまま、出ている間だけ選べる
             void OnAppear() override;
             void OnDisappear() noexcept override;
+            //! MsgCourseStart で仮想カメラを今の初期の向きへ戻す。組み直さずに始めるプレイも同じ向きから始まる
+            bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
         private:
             std::unique_ptr<NS::ThirdPersonFollow> m_vcam;
