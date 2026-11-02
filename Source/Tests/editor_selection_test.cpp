@@ -51,6 +51,8 @@
 #include <system_error>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     // インスペクタの部品の一覧の行と同じ道で、actor の姿勢の項目 fieldName に value を書く

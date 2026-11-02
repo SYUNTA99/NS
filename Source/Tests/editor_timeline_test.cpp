@@ -55,6 +55,8 @@
 #include <system_error>
 #include <vector>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     class TimelineGui
@@ -1081,7 +1083,7 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
     NS::Editor::QuitModal quit;
     NS::Editor::LevelFileBrowser files;
 
-    // Editor の描画と同じ順で 1 フレーム描き、Editor.cpp が問いへ入れる値で答えを返す
+    // EditorLayer の描画と同じ順で 1 フレーム描き、EditorLayer.cpp が問いへ入れる値で答えを返す
     const auto frame = [&](const char* activate) {
         ImGui::NewFrame();
         if (activate != nullptr)

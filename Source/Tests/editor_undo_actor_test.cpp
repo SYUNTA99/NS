@@ -21,6 +21,8 @@
 #include <memory>
 #include <optional>
 
+using NS::Editor::LevelEditorController;
+
 namespace
 {
     // エディタで消す操作と同じく、今の姿を前に、居ない姿を後にしたコマンドを積む

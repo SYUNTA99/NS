@@ -25,6 +25,8 @@
 #include <optional>
 #include <string_view>
 
+using NS::Editor::LevelEditorController;
+
 // エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、SceneActor のクラスごと置くことを縛る
 
 TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
