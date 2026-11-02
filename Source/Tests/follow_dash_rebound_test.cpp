@@ -261,6 +261,36 @@ TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
     EXPECT_GT(shortest, distance * 0.8f);
 }
 
+// 天井の端を出た頭のすぐ横に天井の側面があっても、自機の体からカメラが見えていれば縮めない
+TEST(FollowDashRebound, TerrainBesideTheHeadDoesNotCollapseWhenTheBodySeesTheCamera)
+{
+    DashScene dash;
+    dash.Step(120);
+    const NS::CameraPose open = dash.Pose();
+    const float distance = DistanceOf(open);
+    NS::Vector3 back = open.position - open.target;
+    back.y = 0.0f;
+    back.Normalize();
+    ASSERT_GT(std::fabs(back.z), 0.99f);
+    ASSERT_GT(open.position.y, open.target.y);
+
+    // 頭の高さを中に含み、頭のカメラ側 0.05 m から 0.5 m の幅で左右へ伸びる細い地形。頭からカメラへの線だけを遮る
+    NS::OBB beam;
+    beam.center = open.target + back * 0.3f;
+    beam.halfExtentX = 3.0f;
+    beam.halfExtentY = 0.3f;
+    beam.halfExtentZ = 0.25f;
+    (void)dash.scene.Physics().AddBox(beam, NS::Phys::ObjectLayers::Terrain);
+
+    float shortest = distance;
+    for (int frame = 0; frame < 10; ++frame)
+    {
+        dash.Step(1);
+        shortest = std::min(shortest, DistanceOf(dash.Pose()));
+    }
+    EXPECT_GT(shortest, distance * 0.8f);
+}
+
 // 縦の向きが壊れた反動は受けない
 TEST(FollowDashRebound, RejectsABrokenVerticalLean)
 {
