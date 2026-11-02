@@ -130,12 +130,11 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
     // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
     state.heightOffset = m_collider->StandingHalfHeight() - m_collider->CapsuleHalfHeight();
-    // 体当たりから止めの明けまで、カメラは距離と溜めの締めを保つ。当たる瞬間に画面が引かない
+    // 体当たりから止めの明けまで、カメラは距離を保つ。当たる瞬間に画面が引かない
     state.framingHeld = IsBodySlamming() || IsHeldByTackleHit();
     state.hasRebound = true;
     state.rebound = NS::FollowReboundDesc{
         .rebounding = IsRebounding(),
-        .forcedSlamming = IsBodySlamming() && m_slam.m_forced,
         .slamDirection = BodySlamDirection(),
         .widenView = IsAirDashing() || IsDashRebounding(),
     };
@@ -165,22 +164,6 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
             state.rebound.partnerPosition = partner->Root().Position();
         }
     }
-    // 溜め量は放した後も放した時の値を返し続けるので、押していないフレームは 0 を渡す。溜めすぎで出た後は押していても
-    // 溜めの締めと揺れを解く
-    const GL::Level::ImpactInputJudge& judge = ChargeJudge();
-    state.hasCharge = true;
-    state.charge.held = judge.IsHoldingCharge();
-    if (state.charge.held)
-    {
-        state.charge.charge01 = judge.Charge01();
-    }
-    GL::Level::SlamLineTarget aim{};
-    state.charge.hasAimTarget = TryGetAimTarget(aim);
-    if (state.charge.hasAimTarget)
-    {
-        state.charge.aimTargetCenter = NS::Vector3{aim.bounds.Center.x, aim.bounds.Center.y, aim.bounds.Center.z};
-        state.charge.aimTargetRadius = NS::MaxAbsComponent(NS::Vector3{aim.bounds.Extents});
-    }
     return state;
 }
 
@@ -198,10 +181,6 @@ void PlayerActor::WriteFollowState(NS::ThirdPersonFollow* vcam) const
                     state.rebound.slamDirection.x,
                     state.rebound.slamDirection.y,
                     state.rebound.slamDirection.z);
-    }
-    if (state.hasCharge && !vcam->SetFollowCharge(state.charge))
-    {
-        NS_LOG_WARN(Game, "溜めの状態が壊れていて、追従カメラへ渡さなかった: 溜め量 {}", state.charge.charge01);
     }
 }
 

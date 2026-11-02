@@ -5,7 +5,6 @@
 #include "NSlib/CoreObject/IGet/IGetCameraTarget.h"
 #include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Gamepad.h"
 #include "NSlib/Core/Windows/Input.h"
@@ -26,10 +25,6 @@ namespace
         return curr + (target - curr) * a;
     }
 
-    // 構図の視野の縦横比。ThirdPersonFollow は窓の縦横比を知らないので 16 : 9 と決める
-    constexpr float k_ChargeFrameAspect = 16.0f / 9.0f;
-    // これより小さい構図のずらしは 0 にする (m)。画素の 1/100 未満
-    constexpr float k_ChargeFrameSnap = 0.0001f;
     // 遮りの上限が追う距離にこれより近づいたら外す (m)。ピクセルの 1/100 未満
     constexpr float k_OcclusionReleaseGap = 0.0001f;
 
@@ -47,16 +42,6 @@ namespace
         const float push = (velocity + omega * gap) * dt;
         velocity = (velocity - omega * push) * decay;
         value = target + (gap + push) * decay;
-    }
-
-    void CriticalSpringStep(NS::Vector2& value,
-                            NS::Vector2& velocity,
-                            const NS::Vector2& target,
-                            float omega,
-                            float dt) noexcept
-    {
-        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
-        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
     }
 
     void CriticalSpringStep(NS::Vector3& value,
@@ -98,53 +83,6 @@ namespace
                         .right = NS::Vector3{cy, 0.0f, -sy},
                         .up = NS::Vector3{-sp * sy, cp, -sp * cy}};
     }
-
-    // カメラから見た 1 点の、右と上の向きの位置と、枠の半分の幅
-    struct FramePoint
-    {
-        bool usable = false; // カメラの前にあるか。後ろの点は枠の決まりから外す
-        float right = 0.0f;
-        float up = 0.0f;
-        float halfWidth = 0.0f;
-        float halfHeight = 0.0f;
-    };
-
-    [[nodiscard]] FramePoint ToFramePoint(const NS::Vector3& point,
-                                          const NS::Vector3& cameraPosition,
-                                          const ViewAxes& axes,
-                                          float frameTanHalf) noexcept
-    {
-        const NS::Vector3 offset = point - cameraPosition;
-        const float depth = NS::Dot(offset, axes.forward);
-        FramePoint framePoint{};
-        if (depth <= 0.0f)
-        {
-            return framePoint;
-        }
-        framePoint.usable = true;
-        framePoint.right = NS::Dot(offset, axes.right);
-        framePoint.up = NS::Dot(offset, axes.up);
-        framePoint.halfHeight = depth * frameTanHalf;
-        framePoint.halfWidth = framePoint.halfHeight * k_ChargeFrameAspect;
-        return framePoint;
-    }
-
-    // 1 つの軸で、自機と相手を枠の内に入れるずらし
-    // 相手を入れる範囲のうち 0 に一番近い値を、自機を入れる範囲へ丸める。両方は入らない時は自機を枠に残す
-    [[nodiscard]] float FrameAxisShift(
-        bool selfUsable, float self, float selfHalf, bool targetUsable, float target, float targetHalf) noexcept
-    {
-        float shift = 0.0f;
-        if (targetUsable)
-        {
-            shift = NS::Clamp(0.0f, target - targetHalf, target + targetHalf);
-        }
-        if (selfUsable)
-        {
-            shift = NS::Clamp(shift, self - selfHalf, self + selfHalf);
-        }
-        return shift;
-    }
 } // namespace
 
 namespace NS
@@ -183,38 +121,6 @@ namespace NS
 
     void ThirdPersonFollow::SetTargetHeightOffset(float offset) noexcept { m_targetHeightOffset = offset; }
 
-    bool ThirdPersonFollow::SetFollowCharge(const FollowChargeDesc& desc) noexcept
-    {
-        if (!std::isfinite(desc.charge01) || desc.charge01 < 0.0f || desc.charge01 > 1.0f)
-        {
-            return false;
-        }
-        if (desc.hasAimTarget && !IsFinite(desc.aimTargetCenter))
-        {
-            return false;
-        }
-        if (desc.hasAimTarget && !IsNonNegativeFinite(desc.aimTargetRadius))
-        {
-            return false;
-        }
-        m_charge = desc;
-        return true;
-    }
-
-    void ThirdPersonFollow::ClearCharge() noexcept
-    {
-        m_charge = FollowChargeDesc{};
-        m_chargeHoldNarrowDegrees = 0.0f;
-        m_chargeNarrowDegrees = 0.0f;
-        m_chargeReturnWaiting = false;
-        m_chargeReturnFromDegrees = 0.0f;
-        m_chargeReturnFrame = 0;
-        m_chargeFrameOffset = Vector2{0.0f, 0.0f};
-        m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
-        m_chargeCenterTilt = 0.0f;
-        m_chargeCenterTiltVelocity = 0.0f;
-    }
-
     bool ThirdPersonFollow::SetFollowRebound(const FollowReboundDesc& desc) noexcept
     {
         // 非数の向きを持つと、回す角度が非数になって向きごと壊れる
@@ -235,7 +141,6 @@ namespace NS
     {
         m_rebound = FollowReboundDesc{};
         m_wasRebounding = false;
-        m_wasForcedSlamming = false;
         m_reboundLagCap = 0.0f;
         m_reboundLookHeld = false;
         m_reboundTurnAngle = 0.0f;
@@ -295,41 +200,27 @@ namespace NS
         }
     }
 
-    void ThirdPersonFollow::UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept
+    void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const Vector3& head) noexcept
     {
-        const auto anchorAtLastLook = [this, &head]() {
+        // 反動の状態になったフレームに、前のフレームに見ていた所から留める
+        // 空中で続けて当てた時も留め直す
+        if (began)
+        {
+            m_reboundPhase = ReboundPhase::Following;
             m_reboundAnchor = head;
             if (m_hasLook)
             {
                 m_reboundAnchor = m_look;
             }
             m_reboundAnchorVelocity = Vector3{0.0f, 0.0f, 0.0f};
-        };
-
-        // 反動の状態になったフレームに、前のフレームに見ていた所から留める
-        // 空中で続けて当てた時も留め直す。勝手に出た突進の途中で当たった時も、遅れた注視点から続けるので跳ばない
-        if (input.reboundBegan)
-        {
-            m_reboundPhase = ReboundPhase::Following;
-            anchorAtLastLook();
-            // 勝手に出た突進の遅れは反動の上限より大きいことがある。入った時の遅れを上限の初めにして、切って跳ばさない
+            // 入った時の遅れが反動の上限より大きくても、それを上限の初めにして、切って跳ばさない
             m_reboundLagCap = std::max(m_reboundMaxLag, HorizontalLength(m_reboundAnchor - head));
             return;
         }
 
-        // 勝手に出た突進になったフレームに、前のフレームに見ていた所へ取り残す。バネは止まった所から動き出すので、
-        // 出た最初の数フレームは注視点がほぼ動かない
-        if (input.launchBegan)
-        {
-            m_reboundPhase = ReboundPhase::Launching;
-            anchorAtLastLook();
-            return;
-        }
-
-        // 反動の状態か勝手に出た突進が外れたフレームから寄せ戻す
-        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる。突進は当たらずに止まった時に外れる
-        if ((m_reboundPhase == ReboundPhase::Following && !input.rebounding) ||
-            (m_reboundPhase == ReboundPhase::Launching && !input.launching))
+        // 反動の状態が外れたフレームから寄せ戻す
+        // 着地のほか、空中の 1 発と縁を掴んだ時も外れる
+        if (m_reboundPhase == ReboundPhase::Following && !rebounding)
         {
             if (m_reboundReturnFrames > 0 && m_hasLook)
             {
@@ -411,22 +302,6 @@ namespace NS
             return m_look;
         }
 
-        if (m_reboundPhase == ReboundPhase::Launching)
-        {
-            // 表示する遅れだけをなめらかに制限し、バネの速度が急変しないよう状態は切らない。
-            CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_forcedLaunchFollowOmega, dt);
-            const Vector3 lag = HorizontalPart(m_reboundAnchor - head);
-            const float lagLength = lag.Length();
-            const float maxLag = std::max(m_forcedLaunchMaxLag, 0.0f);
-            m_look = head;
-            if (lagLength > 0.0f && maxLag > 0.0f)
-            {
-                const float shown = maxLag * std::tanh(lagLength / maxLag);
-                m_look = head + lag * (shown / lagLength);
-            }
-            return m_look;
-        }
-
         // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
         // 高さは留めたまま
         CriticalSpringStepHorizontal(m_reboundAnchor, m_reboundAnchorVelocity, head, m_reboundFollowOmega, dt);
@@ -481,136 +356,6 @@ namespace NS
         return m_look;
     }
 
-    void ThirdPersonFollow::UpdateCharge(CameraManager* cameras,
-                                         const FollowChargeDesc& charge,
-                                         bool framingHeld,
-                                         const Transform* target,
-                                         const Vector3& look,
-                                         float dt) noexcept
-    {
-        NS_ASSERT(Scene, target != nullptr, "UpdateCharge: 渡したアクターか部品が無い");
-        // 溜め量は放した後も残るので、押していないフレームは 0 として読む
-        float holdCharge = 0.0f;
-        if (charge.held)
-        {
-            holdCharge = charge.charge01;
-        }
-        // 寄り (締めと真ん中への下向き) は溜めの量の指数乗で効かせる。溜めの終わりにかけて速まり、もうすぐ弾ける事を
-        // 見せる。溜めの揺れのトラウマも 2 乗で効くので、揺れと寄りが一緒に高まる。指数が正でなければ比例にする
-        float approachExponent = 1.0f;
-        if (IsPositiveFinite(m_chargeApproachExponent))
-        {
-            approachExponent = m_chargeApproachExponent;
-        }
-        const float approach = std::pow(holdCharge, approachExponent);
-        const float holdNarrow = m_chargeNarrowMaxDegrees * approach;
-
-        // 押している間の締めが下がったフレームを戻しの始まりにする。放したフレームがこれに当たる
-        // 体当たりから止めの明けまでは戻しの 0 フレーム目に留め、明けたフレームを 1 フレーム目にする
-        if (holdNarrow < m_chargeHoldNarrowDegrees)
-        {
-            m_chargeReturnFromDegrees = m_chargeNarrowDegrees;
-            m_chargeReturnFrame = 1;
-            m_chargeReturnWaiting = framingHeld;
-        }
-        else if (m_chargeReturnWaiting)
-        {
-            m_chargeReturnWaiting = framingHeld;
-        }
-        else if (m_chargeReturnFrame > 0)
-        {
-            ++m_chargeReturnFrame;
-        }
-        m_chargeHoldNarrowDegrees = holdNarrow;
-
-        float returning = 0.0f;
-        if (m_chargeReturnWaiting)
-        {
-            returning = m_chargeReturnFromDegrees;
-        }
-        else if (m_chargeReturnFrame > 0)
-        {
-            if (m_chargeReturnFrame >= m_chargeNarrowReturnFrames)
-            {
-                m_chargeReturnFrame = 0;
-            }
-            else
-            {
-                const float t =
-                    static_cast<float>(m_chargeReturnFrame) / static_cast<float>(m_chargeNarrowReturnFrames);
-                returning = m_chargeReturnFromDegrees * (1.0f - SmoothStep(t));
-            }
-        }
-        m_chargeNarrowDegrees = std::max(holdNarrow, returning);
-
-        // 溜めの揺れはカメラの管理役のトラウマに保たせる。揺れの持ち主を当たりの揺れと 1 つにする
-        // 締めと同じ溜め量から作り、変わり始めのフレームを締めと揃える。トラウマの 2 乗で、溜めきりに近いほど強まる
-        if (holdCharge > 0.0f)
-        {
-            CameraTraumaShape shape;
-            shape.yawDegrees = m_chargeShakeYawDegrees;
-            shape.pitchDegrees = m_chargeShakePitchDegrees;
-            shape.frequency = m_chargeShakeFrequency;
-            shape.decayPerSecond = m_chargeShakeDecayPerSecond;
-            (void)cameras->HoldTrauma(holdCharge, shape);
-        }
-
-        // 構図は押したフレームから動かし、溜めに入った時には相手を枠へ入れておく
-        Vector2 wanted{0.0f, 0.0f};
-        float wantedTilt = 0.0f;
-        const float frameFov = ViewFovRadians();
-        const bool framing = charge.held && charge.hasAimTarget && m_chargeFrameRatio > 0.0f && frameFov > 0.0f;
-        if (framing)
-        {
-            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
-            const Vector3 root = target->Position();
-            const Vector3 camPos = look - axes.forward * ShownDistance();
-            const float frameTanHalf = m_chargeFrameRatio * std::tan(frameFov * 0.5f);
-
-            const FramePoint self = ToFramePoint(root, camPos, axes, frameTanHalf);
-            const FramePoint aim = ToFramePoint(charge.aimTargetCenter, camPos, axes, frameTanHalf);
-            // 相手は中心でなく中心 ± 半径を枠に入れる
-            // 締めた視野では玉が大きく写り、中心だけ入れると縁が画面の端で切れる
-            const float aimHalfWidth = std::max(aim.halfWidth - charge.aimTargetRadius, 0.0f);
-            const float aimHalfHeight = std::max(aim.halfHeight - charge.aimTargetRadius, 0.0f);
-            wanted.x = FrameAxisShift(self.usable, self.right, self.halfWidth, aim.usable, aim.right, aimHalfWidth);
-            wanted.y = FrameAxisShift(self.usable, self.up, self.halfHeight, aim.usable, aim.up, aimHalfHeight);
-            // 二人を中央へ寄せても奥の相手が重ならないよう、カメラの位置は下げず注視点だけを下げる。
-            if (self.usable && aim.usable)
-            {
-                const Vector3 middle = (root + charge.aimTargetCenter) * 0.5f;
-                const Vector3 toMiddle = middle - (camPos + axes.up * wanted.y);
-                const float depth = Dot(toMiddle, axes.forward);
-                if (depth > 0.0f)
-                {
-                    // 注視点を上の向きに s 下げると、視線は s ÷ 距離 の傾きだけ下を向く。真ん中の傾きと等しくする
-                    const float centerRatio = Clamp(m_chargeCenterRatio, 0.0f, 1.0f);
-                    wantedTilt = Dot(toMiddle, axes.up) / depth * m_distance * centerRatio * approach;
-                }
-            }
-        }
-
-        // 体当たりから止めの明けまでは構図のずらしも動かさない。当たる瞬間に二人が画面の上で滑らない
-        if (framingHeld && !charge.held)
-        {
-            m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
-            return;
-        }
-        CriticalSpringStep(m_chargeFrameOffset, m_chargeFrameVelocity, wanted, m_chargeFrameOmega, dt);
-        CriticalSpringStep(m_chargeCenterTilt, m_chargeCenterTiltVelocity, wantedTilt, m_chargeFrameOmega, dt);
-        // 0 へは限りなく近づくだけなので、k_ChargeFrameSnap を切ったら 0 にして溜めを受けていない時の式へ戻す
-        if (!framing && m_chargeFrameOffset.Length() < k_ChargeFrameSnap)
-        {
-            m_chargeFrameOffset = Vector2{0.0f, 0.0f};
-            m_chargeFrameVelocity = Vector2{0.0f, 0.0f};
-        }
-        if (!framing && std::abs(m_chargeCenterTilt) < k_ChargeFrameSnap)
-        {
-            m_chargeCenterTilt = 0.0f;
-            m_chargeCenterTiltVelocity = 0.0f;
-        }
-    }
-
     void ThirdPersonFollow::ResetPose() noexcept
     {
         // プレイ開始 / rebuild ごとに初期姿勢へ戻す。editor で置いた向きからプレイを始め、手動回転はここから積む
@@ -619,13 +364,12 @@ namespace NS
         m_distance = m_idleDistance;
         m_widenNow = 0.0f;
         m_hasOccludedDistance = false;
-        ClearCharge();
         ClearRebound();
     }
 
     float ThirdPersonFollow::ViewFovRadians() const noexcept
     {
-        return FovY().value - DegreesToRadians(m_chargeNarrowDegrees) + DegreesToRadians(m_widenNow);
+        return FovY().value + DegreesToRadians(m_widenNow);
     }
 
     float ThirdPersonFollow::ShownDistance() const noexcept
@@ -735,16 +479,13 @@ namespace NS
         m_distance = distance;
     }
 
-    void ThirdPersonFollow::Advance(CameraManager* cameras, const IGetCollision* collision)
+    void ThirdPersonFollow::Advance(const IGetCollision* collision)
     {
-        NS_ASSERT(Scene, cameras != nullptr, "ThirdPersonFollow::Advance: カメラの管理役が null");
         NS_ASSERT(Scene, collision != nullptr, "ThirdPersonFollow::Advance: 地形を探すシーンが null");
         // clang-format off
         if (m_targetState != nullptr) { m_targetState->WriteFollowState(this); }
         // clang-format on
-        // 受けた溜めと反動の状態はこのフレームだけ使う。渡されなかったフレームは押していない・反動でないのと同じ
-        const FollowChargeDesc charge = m_charge;
-        m_charge = FollowChargeDesc{};
+        // 受けた反動の状態はこのフレームだけ使う。渡されなかったフレームは反動でないのと同じ
         const FollowReboundDesc rebound = m_rebound;
         m_rebound = FollowReboundDesc{};
         const bool framingHeld = m_framingHeld;
@@ -764,8 +505,6 @@ namespace NS
         // 空中で続けて当てた時も、間に反動でないフレームを挟むのでここを通る
         const bool reboundBegan = rebound.rebounding && !m_wasRebounding;
         m_wasRebounding = rebound.rebounding;
-        const bool launchBegan = rebound.forcedSlamming && !m_wasForcedSlamming;
-        m_wasForcedSlamming = rebound.forcedSlamming;
         UpdateReboundTurn(reboundBegan, rebound);
 
         // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
@@ -796,8 +535,7 @@ namespace NS
 
         const Vector3 root = target->Position();
         const Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
-        UpdateReboundPhase(ReboundPhaseInput{reboundBegan, rebound.rebounding, launchBegan, rebound.forcedSlamming},
-                           head);
+        UpdateReboundPhase(reboundBegan, rebound.rebounding, head);
         // 反動になったフレームは前の反動の寄せと引きを持ち越さない
         if (reboundBegan)
         {
@@ -851,7 +589,6 @@ namespace NS
 
         const Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
         UpdateOcclusion(collision, root, head, look, dt);
-        UpdateCharge(cameras, charge, framingHeld, target, look, dt);
     }
 
     CameraPose ThirdPersonFollow::EvaluatePose(float alpha) const noexcept
@@ -874,24 +611,10 @@ namespace NS
         {
             headPos = m_previousLook * (1.0f - alpha) + m_look * alpha;
         }
-        Vector3 camPos = headPos - axes.forward * ShownDistance();
-
-        // 構図のずらしは位置と注視点を同じだけ動かし、視線の向きを変えない。0 なら足さない
-        const float upShift = m_chargeFrameOffset.y;
-        if (m_chargeFrameOffset.x != 0.0f || upShift != 0.0f)
-        {
-            const Vector3 shift = axes.right * m_chargeFrameOffset.x + axes.up * upShift;
-            camPos += shift;
-            headPos += shift;
-        }
-        // 真ん中への寄せは注視点だけを下げ、カメラの位置は変えずに下を向かせる
-        if (m_chargeCenterTilt != 0.0f)
-        {
-            headPos += axes.up * m_chargeCenterTilt;
-        }
+        const Vector3 camPos = headPos - axes.forward * ShownDistance();
 
         CameraPose pose = MakePose(camPos, headPos, Vector3{0.0f, 1.0f, 0.0f});
-        if (m_chargeNarrowDegrees != 0.0f || m_widenNow != 0.0f)
+        if (m_widenNow != 0.0f)
         {
             pose.fovY = Radians{ViewFovRadians()};
         }

@@ -42,7 +42,6 @@ namespace GL
         void FollowCameraActor::OnDisappear() noexcept
         {
             m_vcam->SetTargetHeightOffset(0.0f);
-            m_vcam->ClearCharge();
             m_vcam->ClearRebound();
             NS::DisableVirtualCamera(this, m_vcam.get());
             NS::SceneActor::OnDisappear();
