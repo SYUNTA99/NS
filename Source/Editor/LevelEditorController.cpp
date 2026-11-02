@@ -15,6 +15,7 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/SlamAim.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
@@ -35,7 +36,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/ActorJson.h"
@@ -858,7 +858,7 @@ bool LevelEditorController::SelectedIsPlayerActor() const noexcept
     return player != nullptr && m_selectedActorId != NS::k_NoActorId && m_selectedActorId == player->Id();
 }
 
-NS::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
+GL::Level::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept
 {
     if (GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(SelectedActor()))
     {
@@ -879,7 +879,7 @@ void LevelEditorController::SyncFollowCameraPoses()
         {
             continue;
         }
-        NS::ThirdPersonFollow* follow = &camera->Vcam();
+        GL::Level::ThirdPersonFollow* follow = &camera->Vcam();
         if (m_gizmo.IsDragging() && object->Id() == m_selectedActorId)
         {
             continue;
@@ -896,7 +896,7 @@ void LevelEditorController::ApplyFollowCameraGizmoDrag()
     {
         return;
     }
-    NS::ThirdPersonFollow* follow = SelectedFollowCamera();
+    GL::Level::ThirdPersonFollow* follow = SelectedFollowCamera();
     if (follow == nullptr)
     {
         return;

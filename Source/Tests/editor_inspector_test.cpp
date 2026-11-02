@@ -3,6 +3,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -10,7 +11,6 @@
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -50,7 +50,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f}, HeadlessImGuiInput::Instant);
     ImGuiIO& io = ImGui::GetIO();
 
-    NS::ThirdPersonFollow follow;
+    GL::Level::ThirdPersonFollow follow;
     const std::vector<NS::Editor::ActorRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;
@@ -266,7 +266,7 @@ TEST(EditorInspector, Vector2SavesBothComponentsAndRejectsBrokenValues)
 // ファークリップの欄は setter を直に呼ぶ。非有限と近い面以下の値は投影行列を壊すので、捨てて元の値を残す
 TEST(EditorInspector, FarPlaneFieldRejectsValuesThatBreakTheProjection)
 {
-    NS::ThirdPersonFollow follow;
+    GL::Level::ThirdPersonFollow follow;
     const float kept = follow.FarPlane();
     const float broken[] = {0.0f,
                             -1.0f,

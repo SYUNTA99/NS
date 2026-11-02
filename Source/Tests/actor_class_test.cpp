@@ -7,6 +7,7 @@
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/SensorKinds.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
@@ -20,7 +21,6 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
 #include <gtest/gtest.h>

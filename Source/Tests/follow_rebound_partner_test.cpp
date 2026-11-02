@@ -2,8 +2,8 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -28,11 +28,11 @@ namespace
     {
     public:
         // 空中と反動の状態を仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow* vcam) const
+        void Feed(GL::Level::ThirdPersonFollow* vcam) const
         {
             NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
             vcam->SetFollowMotion(false, NS::Vector3{});
-            NS::FollowReboundDesc rebound{};
+            GL::Level::FollowReboundDesc rebound{};
             rebound.rebounding = true;
             rebound.slamDirection = NS::Vector3{0.0f, 0.0f, 1.0f};
             rebound.partnerPosition = partner;

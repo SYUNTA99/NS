@@ -1,5 +1,5 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -19,14 +19,14 @@ namespace
     class DashTargetProbeActor final : public NS::SceneActor
     {
     public:
-        void Feed(NS::ThirdPersonFollow* vcam) const
+        void Feed(GL::Level::ThirdPersonFollow* vcam) const
         {
             NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
             vcam->SetFollowMotion(false, NS::Vector3{});
             (void)vcam->SetFollowRebound(rebound);
         }
 
-        NS::FollowReboundDesc rebound{};
+        GL::Level::FollowReboundDesc rebound{};
     };
 
     struct DashScene
@@ -278,8 +278,8 @@ TEST(FollowDashRebound, TerrainBesideTheHeadDoesNotCollapseWhenTheBodySeesTheCam
 // 縦の向きが壊れた反動は受けない
 TEST(FollowDashRebound, RejectsABrokenVerticalLean)
 {
-    NS::ThirdPersonFollow follow;
-    NS::FollowReboundDesc desc{};
+    GL::Level::ThirdPersonFollow follow;
+    GL::Level::FollowReboundDesc desc{};
     desc.verticalLean = std::nanf("");
     EXPECT_FALSE(follow.SetFollowRebound(desc));
     desc.verticalLean = 1.5f;

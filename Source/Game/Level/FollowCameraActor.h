@@ -1,6 +1,6 @@
 #pragma once
 
-#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "Game/Level/ThirdPersonFollow.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 namespace GL
@@ -15,8 +15,8 @@ namespace GL
             NS_REFLECT_BEGIN(FollowCameraActor, NS::SceneActor)
             NS_CLASSOBJ(m_vcam, "Vcam")
             NS_REFLECT_END()
-            [[nodiscard]] NS::ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
-            [[nodiscard]] const NS::ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
+            [[nodiscard]] ThirdPersonFollow& Vcam() noexcept { return *m_vcam; }
+            [[nodiscard]] const ThirdPersonFollow& Vcam() const noexcept { return *m_vcam; }
             void OnEndPlay() override;
             //! 「追従対象」の指す相手を取得し直し、相手が状態を渡す口と一緒に仮想カメラへ渡す
             void ResolveActorRefs() override;
@@ -32,7 +32,7 @@ namespace GL
             bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override;
 
         private:
-            std::unique_ptr<NS::ThirdPersonFollow> m_vcam;
+            std::unique_ptr<ThirdPersonFollow> m_vcam;
         };
     } // namespace Level
 } // namespace GL
