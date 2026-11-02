@@ -149,7 +149,7 @@ namespace GL
             float m_reboundElapsed = 0.0f;
             float m_steeredRadians = 0.0f; // 補正の段で曲げた角度の累計
             bool m_steerStarted = false;   // 補正の段に入ってダッシュを戻したか
-            NS::Vector3 m_prevStick{};     // 直前の歩の左スティック (向き × 倒した量)。動いたかを動いた量で見る
+            NS::Vector3 m_prevStick{};     // 直前の歩の左スティックの、カメラで回す前の位置。動いたかを動いた量で見る
             bool m_stickMoving = false;    // この歩に左スティックが動いているか。止めの延長とエアダッシュの向きが読む
             NS::Vector3 m_steadyDirection{}; // 最後に止まっていた歩の左スティックの水平の向き。デッドゾーンの中なら 0
             int m_reboundStopFrames = 0;   // 今の反動で止めたフレーム数。当たったフレームを入れて数える
