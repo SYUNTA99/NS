@@ -119,10 +119,15 @@ void PlayerActor::TickTimers(float dt) noexcept
     }
 }
 
+bool PlayerActor::TryStickDirection(NS::Vector3& outDirection) const noexcept
+{
+    return GL::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) &&
+           NS::TryNormalizeHorizontal(DesiredDirection(), outDirection);
+}
+
 bool PlayerActor::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept
 {
-    if (!GL::Player::PlayerJudgeMoveInput::Judge(DesiredSpeedScale(), m_params->StickDeadzone()) ||
-        !NS::TryNormalizeHorizontal(DesiredDirection(), outDirection))
+    if (!TryStickDirection(outDirection))
     {
         return false;
     }

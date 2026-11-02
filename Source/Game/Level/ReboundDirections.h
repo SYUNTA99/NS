@@ -78,6 +78,14 @@ namespace GL
             float matchVisibleLength = 0.0f; //!< 割り当てた向きを画面の右と上へ映した長さがこれより短いと、入力と合ったとみなさない
         };
 
+        //! 入力補正が割り当てた向きから曲げられる先か。表の傾きと水平の番号をそれぞれ 1 つまで動かした隣で、面から離れ、
+        //! カメラの水平の前の向きの成分が、当たる前の向きの成分に余裕の角度の分を足した物以下の向き。
+        //! ChooseReboundDirection が曲げる先はこの中から選ぶ。矢印もこの向きを描く
+        [[nodiscard]] bool CanShiftReboundTo(const NS::Vector3& direction,
+                                             const ReboundHit& hit,
+                                             const ScreenAxes& screen,
+                                             const ReboundChoiceLimits& limits) noexcept;
+
         //! @brief 入力が割り当てた向きと画面で合えばそのまま、合わなければ入力の側へ表の 1 目盛りだけ曲げる
         //! @details 候補は、面から離れる表の向き。カメラの水平の前の向きの成分が、当たる前の向きの成分に余裕の角度の分を
         //! 足した物より大きい向きは外す。割り当てた向きは候補の検査にかけずに画面の上の角度を計り、画面へ映した長さが

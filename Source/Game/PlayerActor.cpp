@@ -5,6 +5,7 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
+#include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
@@ -59,6 +60,7 @@ NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_resolver, "ImpactResolver")
 NS_CLASSOBJ(m_targetMarker, "TargetMarker")
 NS_CLASSOBJ(m_slamArrow, "SlamArrow")
+NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
@@ -94,6 +96,8 @@ void PlayerActor::OnInit()
     NS::InitOverlay(this, m_targetMarker.get());
     CreateClassObj(m_slamArrow);
     NS::InitOverlay(this, m_slamArrow.get());
+    CreateClassObj(m_reboundPreview);
+    NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
     CreateClassObj(m_impactEffects);
     CreateClassObj(m_sound);
@@ -253,7 +257,8 @@ void PlayerActor::DecideStep()
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
-    UpdateIntendedDirection(NS::GetFrameDelta(this));
+    ObserveStick();
+    ExtendReboundStop();
     ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 
@@ -367,6 +372,9 @@ void PlayerActor::VisualStep()
     m_targetMarker->Update(m_charge);
     m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
     // clang-format on
+#if !defined(NS_SHIPPING)
+    UpdateReboundPreview();
+#endif
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
@@ -473,6 +481,7 @@ void PlayerActor::OnEndPlay()
     NS::SceneActor::OnEndPlay();
     NS::EndOverlay(this, m_targetMarker.get());
     NS::EndOverlay(this, m_slamArrow.get());
+    NS::EndOverlay(this, m_reboundPreview.get());
 }
 
 void PlayerActor::OnAppear()
@@ -482,6 +491,7 @@ void PlayerActor::OnAppear()
     {
         NS::ShowOverlay(this, m_targetMarker.get());
         NS::ShowOverlay(this, m_slamArrow.get());
+        NS::ShowOverlay(this, m_reboundPreview.get());
     }
 }
 
@@ -490,6 +500,7 @@ void PlayerActor::OnDisappear() noexcept
     NS::SceneActor::OnDisappear();
     NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_slamArrow.get());
+    NS::HideOverlay(this, m_reboundPreview.get());
 }
 
 // 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
@@ -879,6 +890,7 @@ void PlayerActor::ResetState() noexcept
     m_skid = GL::Player::SkidStatus{};
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
+    m_reboundPreview->Hide();
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);

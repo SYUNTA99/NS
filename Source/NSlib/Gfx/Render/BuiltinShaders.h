@@ -13,6 +13,8 @@ namespace NS
             D3DShader* fadePs = nullptr;
             D3DShader* screenRectVs = nullptr;
             D3DShader* screenRectPs = nullptr;
+            D3DShader* screenLineVs = nullptr;
+            D3DShader* screenLinePs = nullptr;
             D3DShader* skyboxVs = nullptr;
             D3DShader* skyboxPs = nullptr;
             D3DShader* debugLineVs = nullptr;

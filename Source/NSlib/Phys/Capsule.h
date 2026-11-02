@@ -16,6 +16,14 @@ namespace NS
             float radius = 0.4f;                  // 半径
         };
 
+        //! カプセルを投げて最初に当たった面
+        struct CapsuleCastHit
+        {
+            float distance = 0.0f;            // 投げた向きに進んだ距離 (m)。カプセルの中心が動いた量
+            Vector3 point{0.0f, 0.0f, 0.0f};  // 当たった点。世界座標
+            Vector3 normal{0.0f, 0.0f, 0.0f}; // 当たった面の外向きの単位法線
+        };
+
         //! 上の向きに伸びるカプセルに、回転と拡大を掛ける
         //! 横の拡大が x と z で違っても半径は 1 つで、絶対値の大きい方に合わせる
         [[nodiscard]] inline Capsule MakeScaledCapsule(const Vector3& center,

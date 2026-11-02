@@ -1,6 +1,7 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/ReboundDirections.h"
+#include "Game/Level/ReboundPreview.h"
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
@@ -24,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string_view>
 #include <vector>
 
@@ -55,7 +57,12 @@ namespace
 
 bool PlayerActor::CanStartAirDash() const noexcept
 {
-    if (!m_airDash.m_pressed || m_airDash.m_remaining <= 0)
+    return m_airDash.m_pressed && AcceptsAirDash();
+}
+
+bool PlayerActor::AcceptsAirDash() const noexcept
+{
+    if (m_airDash.m_remaining <= 0)
     {
         return false;
     }
@@ -81,15 +88,7 @@ bool PlayerActor::BeginAirDash() noexcept
                     AirDashActionName());
         return false;
     }
-    // 押す直前に倒し直した向きより、倒し続けていた向きを優先する
-    NS::Vector3 direction = m_airDash.m_intendedDirection;
-    const bool stick = direction.LengthSquared() > 0.0f ||
-                       (DesiredSpeedScale() >= m_params->StickDeadzone() &&
-                        NS::TryNormalizeHorizontal(DesiredDirection(), direction));
-    if (!stick && !NS::TryNormalizeHorizontal(m_facingDir, direction))
-    {
-        direction = NS::CalcCameraForwardHorizontal(this);
-    }
+    const NS::Vector3 direction = AirDashStartDirection();
     m_airDash.m_direction = direction;
     m_airDash.m_remaining = m_airDash.m_remaining - 1;
     m_facingDir = direction;
@@ -109,32 +108,117 @@ bool PlayerActor::BeginAirDash() noexcept
     return true;
 }
 
-void PlayerActor::UpdateIntendedDirection(float dt) noexcept
+NS::Vector3 PlayerActor::AirDashStartDirection() const noexcept
 {
-    NS::Vector3 tilt{};
-    if (DesiredSpeedScale() < m_params->StickDeadzone() || !NS::TryNormalizeHorizontal(DesiredDirection(), tilt))
+    // 反動のためにスティックを回している最中に押した時は、回し始める前の向きへ出す。
+    // 止めてから押した時は、押したフレームに入力している向きへ出す
+    NS::Vector3 direction{};
+    if (m_airDash.m_stickMoving && NS::TryNormalizeHorizontal(m_airDash.m_steadyDirection, direction))
     {
-        m_airDash.m_intendedDirection = NS::Vector3{};
-        m_airDash.m_tiltDirection = NS::Vector3{};
-        m_airDash.m_tiltSeconds = 0.0f;
+        return direction;
+    }
+    if (!TryStickDirection(direction) && !NS::TryNormalizeHorizontal(m_facingDir, direction))
+    {
+        direction = NS::CalcCameraForwardHorizontal(this);
+    }
+    return direction;
+}
+
+#if !defined(NS_SHIPPING)
+void PlayerActor::UpdateReboundPreview()
+{
+    m_reboundPreview->Hide();
+    const std::vector<NS::Vector3> table = ReboundTable();
+    // 曲げられる先は、止めが明けた時に ChooseReboundDirection が選べる向きと同じ検査で選ぶ
+    const auto showArrows = [this, &table](const NS::Vector3& origin, const GL::Level::ReboundHit& rebound) {
+        const GL::Level::ScreenAxes screen = ReboundScreenAxes();
+        const GL::Level::ReboundChoiceLimits limits = ReboundLimits();
+        GL::Level::ReboundPreviewArrows arrows{.origin = origin, .assigned = rebound.assigned};
+        for (const NS::Vector3& candidate : table)
+        {
+            if (GL::Level::CanShiftReboundTo(candidate, rebound, screen, limits))
+            {
+                arrows.choices.push_back(candidate);
+            }
+        }
+        m_reboundPreview->Show(arrows);
+    };
+
+    // 当たった後の止めの間は、スティックで向きを選ぶ時なので、当たった面の矢印を明けで選ぶまで出し続ける
+    if (IsDashRebounding() && !m_airDash.m_reboundChosen)
+    {
+        const GL::Player::TerrainReboundRecord& last = m_airDash.m_last;
+        showArrows(last.point - last.normal * m_collider->CapsuleRadius(),
+                   GL::Level::ReboundHit{.assigned = last.assigned, .normal = last.normal, .incoming = last.incoming});
         return;
     }
-    const float retilt = NS::ToRadians(NS::Degrees{m_params->m_retiltDegrees}).value;
-    if (m_airDash.m_tiltDirection.LengthSquared() > 0.0f && NS::AngleBetweenUnit(tilt, m_airDash.m_tiltDirection) <= retilt)
+
+    NS::Vector3 direction{};
+    float reach = m_params->m_airDashDistance;
+    if (IsAirDashing())
     {
-        m_airDash.m_tiltSeconds += dt;
+        // 壁に沿って滑る間は出た向きと速度の向きが違うので、実際に進んでいる速度の向きの先を調べる
+        direction = m_body->Velocity();
+        const float speed = direction.Length();
+        if (!NS::HasPositiveMagnitude(speed))
+        {
+            return;
+        }
+        direction /= speed;
+        // ダッシュが終わった後に触れた壁は反動にならないので、残りの歩で進む距離までだけ調べる
+        const NS::ActionTimeline* timeline = ActionTimelineClassObj();
+        const NS::ActorAction* action{nullptr};
+        if (timeline != nullptr)
+        {
+            action = timeline->FindAction(AirDashActionName());
+        }
+        // 移る予約の間の歩の数は uint32 の最大 (IsStateEnd と同じ見分け方)
+        const NS::IStateMachine* machine = GetStateMachine();
+        NS::uint32 steps = std::numeric_limits<NS::uint32>::max();
+        if (machine != nullptr)
+        {
+            steps = machine->StepCount();
+        }
+        if (action != nullptr && steps != std::numeric_limits<NS::uint32>::max())
+        {
+            const int left = std::max(action->length - static_cast<int>(steps), 0);
+            reach = m_airDash.m_dashSpeed * NS::OS::FrameTimer::FixedDelta() * static_cast<float>(left);
+        }
+    }
+    else if (AcceptsAirDash())
+    {
+        direction = AirDashStartDirection();
     }
     else
     {
-        m_airDash.m_tiltSeconds = 0.0f;
+        return;
     }
-    // ゆっくり回した時は、数え直さずに今の向きへ付いていく
-    m_airDash.m_tiltDirection = tilt;
-    if (m_airDash.m_tiltSeconds >= m_params->m_intendedHoldSeconds)
+
+    // 押したフレームに玉になる形 (BeginAirDash) で調べる。宙では立ち姿の中心、床の上では下端を揃えた所が玉の中心
+    NS::Phys::Capsule ball = m_collider->WorldCapsule();
+    if (!IsCurled())
     {
-        m_airDash.m_intendedDirection = tilt;
+        if (m_body->IsGrounded())
+        {
+            ball.center.y -= m_collider->CapsuleHalfHeight();
+        }
+        ball.halfHeight = 0.0f;
     }
+    // 反動になる面だけを数える。当て方が欄「反動に数える当て方の下限」より浅い面は、当たっても反動にならない
+    NS::Phys::CapsuleCastHit hit{};
+    if (!NS::CastCapsuleCollision(
+            m_collider.get(), ball, direction, reach, m_params->m_reboundMinFacing, hit))
+    {
+        return;
+    }
+    NS::Vector3 assigned{};
+    if (!GL::Level::AssignReboundDirection(table, direction, hit.normal, assigned))
+    {
+        return;
+    }
+    showArrows(hit.point, GL::Level::ReboundHit{.assigned = assigned, .normal = hit.normal, .incoming = direction});
 }
+#endif
 
 float PlayerActor::AirDashSpeed() const noexcept
 {
@@ -182,12 +266,16 @@ void PlayerActor::KeepAirDashExitSpeed() noexcept
 
 void PlayerActor::UpdateDashRebound(float dt) noexcept
 {
+    // 止めの間は状態機械が回らないので、反動の最初の歩が止めの明けたフレームになる
+    if (!m_airDash.m_reboundChosen)
+    {
+        ChooseReboundAtRelease();
+    }
     m_airDash.m_reboundElapsed += dt;
     const float lock = m_params->m_reboundLockSeconds;
     // 操作なしの段は、床の上で返っても段の秒まで続ける。返った勢いを見せる長さを当てた所で変えない
     if (m_airDash.m_reboundElapsed <= lock)
     {
-        ApplyReboundShift();
         return;
     }
     if (GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity()))
@@ -306,20 +394,76 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     m_airDash.m_reboundElapsed = 0.0f;
     m_airDash.m_steeredRadians = 0.0f;
     m_airDash.m_steerStarted = false;
-    m_airDash.m_shiftApplied = false;
+    m_airDash.m_reboundChosen = false;
+    m_airDash.m_reboundStopFrames = 1;
     StartAirControlReturn();
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
-    // 当たる前から入れていた入力は、当たったフレームに選ぶ。合っていたら強い束で始める
-    const GL::Level::ReboundChoice choice = ChooseReboundInput();
+    // 入力が合ったかは明けまで分からないので、当たったフレームの束は当て方だけで選ぶ
+    m_playerSounds->PlayRebound(this);
     StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(),
-                                facing,
-                                choice.result == GL::Level::ReboundInputResult::Matched);
+                                facing >= m_params->m_reboundFullFacing);
+    // 止めの間にスティックを入れる猶予。向きは明けのフレームに ChooseReboundAtRelease が選ぶ
+    RequestHitStop(m_params->m_reboundStopMinFrames);
+}
+
+void PlayerActor::ObserveStick() noexcept
+{
+    const NS::Vector3 stick = DesiredDirection() * DesiredSpeedScale();
+    m_airDash.m_stickMoving = (stick - m_airDash.m_prevStick).Length() > m_params->m_reboundStopStickChange;
+    m_airDash.m_prevStick = stick;
+    if (m_airDash.m_stickMoving)
+    {
+        return;
+    }
+    // 真ん中から入力し始めた時は止まっていた向きが無いので、押せば入力した向きへ出る
+    NS::Vector3 direction{};
+    if (!TryStickDirection(direction))
+    {
+        direction = NS::Vector3{};
+    }
+    m_airDash.m_steadyDirection = direction;
+}
+
+void PlayerActor::ExtendReboundStop() noexcept
+{
+    // 延ばすのは、地形に当たってから向きを選ぶまでの間だけ。ほかの当たりの止めと、向きを選んだ後の止めは延ばさない
+    if (!IsDashRebounding() || m_airDash.m_reboundChosen)
+    {
+        return;
+    }
+    if (IsHitStopping())
+    {
+        m_airDash.m_reboundStopFrames = m_airDash.m_reboundStopFrames + 1;
+    }
+    // 1 フレーム足すのは、止めの最後のフレームか、止めが明けて向きを選ぶはずのフレームだけ。
+    // 明けるフレームで足すとそのフレームから止まるので、最短が 1 以下でも延ばせる。止めの残りを数えるのは基盤の止めだけにする
+    if (!m_airDash.m_stickMoving || HitStopFramesRemaining() > 1 ||
+        m_airDash.m_reboundStopFrames >= m_params->m_reboundStopMaxFrames)
+    {
+        return;
+    }
+    if (!IsHitStopping())
+    {
+        m_airDash.m_reboundStopFrames = m_airDash.m_reboundStopFrames + 1;
+    }
+    RequestHitStop(HitStopFramesRemaining() + 1);
+}
+
+void PlayerActor::ChooseReboundAtRelease() noexcept
+{
+    m_airDash.m_reboundChosen = true;
+    const GL::Level::ReboundChoice choice = ChooseReboundInput();
+    const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    // 当たったフレームが弱い束だった時に入力が合ったら、選んだこのフレームに強い束へ替える
+    if (choice.result == GL::Level::ReboundInputResult::Matched && hit.facing < m_params->m_reboundFullFacing)
+    {
+        StartTerrainReboundReaction(hit.point - hit.normal * m_collider->CapsuleRadius(), true);
+    }
     ApplyReboundChoice(choice);
 }
 
-void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float facing, bool matched) noexcept
+void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, bool full) noexcept
 {
-    m_playerSounds->PlayRebound(this);
     NS::HitReaction* reaction = HitReactionClassObj();
     NS::HitSensor* self = m_bodyHitSensor;
     if (reaction == nullptr || self == nullptr)
@@ -327,7 +471,7 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, float 
         return;
     }
     std::string_view name = "地形の反動[弱い]";
-    if (matched || facing >= m_params->m_reboundFullFacing)
+    if (full)
     {
         name = "地形の反動[全部]";
     }
@@ -385,15 +529,6 @@ std::vector<NS::Vector3> PlayerActor::ReboundTable() const
     return GL::Level::MakeReboundDirections(m_params->m_reboundTableDivisions, shape);
 }
 
-void PlayerActor::ApplyReboundShift() noexcept
-{
-    if (m_airDash.m_shiftApplied)
-    {
-        return;
-    }
-    ApplyReboundChoice(ChooseReboundInput());
-}
-
 GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
 {
     const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
@@ -403,18 +538,22 @@ GL::Level::ReboundChoice PlayerActor::ChooseReboundInput() const noexcept
     }
     const GL::Level::ScreenAxes screen = ReboundScreenAxes();
     const NS::Vector3 desired = DesiredDirection();
-    const GL::Level::ReboundChoiceLimits limits{
-        .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
-        .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
-        .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions),
-        .matchVisibleLength = m_params->m_reboundMatchVisibleLength};
     return GL::Level::ChooseReboundDirection(
         ReboundTable(),
         GL::Level::ReboundHit{.assigned = hit.assigned, .normal = hit.normal, .incoming = hit.incoming},
         screen,
         NS::Dot(desired, screen.right),
         NS::Dot(desired, screen.flatForward),
-        limits);
+        ReboundLimits());
+}
+
+GL::Level::ReboundChoiceLimits PlayerActor::ReboundLimits() const noexcept
+{
+    return GL::Level::ReboundChoiceLimits{
+        .screenTieRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundScreenTieDegrees}).value,
+        .depthSlackRadians = NS::ToRadians(NS::Degrees{m_params->m_reboundDepthSlackDegrees}).value,
+        .stepRadians = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions),
+        .matchVisibleLength = m_params->m_reboundMatchVisibleLength};
 }
 
 void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noexcept
@@ -425,7 +564,6 @@ void PlayerActor::ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noe
     }
     GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
     hit.input = choice.result;
-    m_airDash.m_shiftApplied = true;
     if (choice.result == GL::Level::ReboundInputResult::Matched)
     {
         // 続けて当たる時は今の速さで返るので、合うたびに倍率が積もらないよう、エアダッシュで当てた速さの倍率までにする。

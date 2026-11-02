@@ -48,6 +48,15 @@ namespace NS
     //! capsule が地形の本当の形に重なっていれば true。シーンに居ない時は false
     [[nodiscard]] bool OverlapsCapsuleCollision(const IGetCollision* user, const Phys::Capsule& capsule);
 
+    //! capsule を direction へ maxDistance まで動かし、進む向きに minFacing 以上向かい合う最初の地形の面を返す
+    //! (Phys::PhysicsScene::CastCapsule)。シーンに居ない時と当たりが無い時は false で outHit を変えない
+    [[nodiscard]] bool CastCapsuleCollision(const IGetCollision* user,
+                                            const Phys::Capsule& capsule,
+                                            const Vector3& direction,
+                                            float maxDistance,
+                                            float minFacing,
+                                            Phys::CapsuleCastHit& outHit);
+
     //! 当たりの body を 1 回だけ作り、物理シーンの外に置く。出る時に EnableCollision が入れる
     //! 形が何も入れない形状なら作らない。user がシーンに居なければ何もしない
     //! @param[in] world 持ち主の root の世界行列
