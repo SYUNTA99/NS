@@ -211,6 +211,18 @@ TEST_F(SoundClipTest, AdpcmBlockOverXAudio2LimitIsInvalidWithError)
     EXPECT_EQ(log.ErrorCount(), 1);
 }
 
+// 32〜512 標本の中でも、XAudio2 が受け付けない標本の数は読む時に断る
+TEST_F(SoundClipTest, AdpcmBlockThatXAudio2RejectsIsInvalidWithError)
+{
+    const std::string path = WriteFile("rejected_block.wav", MakeAdpcmWav(500));
+    const TestLogCapture log;
+
+    const NS::Audio::SoundClip clip(&m_device, path);
+
+    EXPECT_FALSE(clip.IsValid());
+    EXPECT_EQ(log.ErrorCount(), 1);
+}
+
 // 1 ブロックがちょうど 512 標本の MS-ADPCM は XAudio2 が受け付けるので、断らない
 TEST_F(SoundClipTest, AdpcmBlockAtXAudio2LimitIsReadWithoutError)
 {
