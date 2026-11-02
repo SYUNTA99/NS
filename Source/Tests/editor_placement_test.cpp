@@ -116,7 +116,7 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
     const NS::uint32 id = editor.SelectedActorId();
     ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
 
-    NS::Editor::ActorSnapshotApplier applier{&scene};
+    NS::Editor::ActorSnapshotApplier applier{scene};
     ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
 

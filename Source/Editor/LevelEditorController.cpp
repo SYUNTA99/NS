@@ -100,7 +100,7 @@ namespace
     }
 } // namespace
 
-LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scene(scene), m_applier(&scene)
+LevelEditorController::LevelEditorController(NS::Scene& scene) noexcept : m_scene(scene), m_applier(scene)
 {
     // 作る道と取り消しは Setup の前から使えるよう、適用処理と採番はここで差す
     m_editor.SetApplier(&m_applier);

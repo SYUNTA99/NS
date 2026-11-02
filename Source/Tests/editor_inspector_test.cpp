@@ -918,7 +918,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
@@ -977,7 +977,7 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(&scene);
+    NS::Editor::ActorSnapshotApplier applier(scene);
     editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
