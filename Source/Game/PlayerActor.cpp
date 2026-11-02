@@ -242,16 +242,8 @@ void PlayerActor::DecideStep()
     {
         m_input->Update(this);
     }
-    // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
-    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
-    if (m_input->RespawnPressed() && !IsHitStopping() && !IsInTackleHit())
-    {
-        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
-        {
-            game->RequestRespawnActors();
-        }
-    }
+    // 明けのフレームは、この後で当たりの状態を抜けるので、ここで読んでおく
+    const bool hitAtStepStart = IsHitStopping() || IsInTackleHit();
     // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
@@ -272,6 +264,17 @@ void PlayerActor::DecideStep()
     }
     ApplyImpactOrders(m_resolver->Answer());
     DecideBeforeContact(m_resolver->Answer());
+    // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす。
+    // 当たりを検知した歩も断るので、検知の後で読む。
+    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
+    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
+    if (m_input->RespawnPressed() && !hitAtStepStart && !IsHeldByTackleHit())
+    {
+        if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
+        {
+            game->RequestRespawnActors();
+        }
+    }
     m_stateStepPrepared = PrepareOrSkipStateStep();
 }
 
