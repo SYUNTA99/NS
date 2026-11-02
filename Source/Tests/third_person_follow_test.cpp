@@ -1,5 +1,5 @@
 #include "Editor/LevelEditorController.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
+#include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
@@ -207,11 +207,11 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
     ASSERT_NE(world.camera, nullptr);
     EXPECT_NEAR(world.LookAfterUpdate().x, 0.0f, 1.0e-4f);
 
-    NS::Editor::ActorSnapshotApplier applier{world.scene};
-    std::optional<nlohmann::json> snapshot = applier.CaptureActor(world.camera->Id());
+    std::optional<nlohmann::json> snapshot = NS::Editor::CaptureActor(world.scene.Actors(), world.camera->Id());
     ASSERT_TRUE(snapshot.has_value());
     NS::ActorJsonClassObjs(*snapshot)["Vcam"]["追従対象"] = nlohmann::json{{"ref", world.second->Id()}};
-    const std::unique_ptr<NS::SceneActor> replaced = applier.ApplyActorSnapshot(world.camera->Id(), *snapshot);
+    std::unique_ptr<NS::SceneActor> replaced;
+    (void)world.scene.ApplyFromJson(*snapshot, &replaced);
     EXPECT_EQ(replaced, nullptr);
     EXPECT_NEAR(world.LookAfterUpdate().x, 10.0f, 1.0e-4f);
 }

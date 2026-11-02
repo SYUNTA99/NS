@@ -3,7 +3,6 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -866,8 +865,6 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(scene);
-    editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -906,7 +903,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     EXPECT_EQ(saved.size(), before.size());
 
     // 戻すとファイルとアクターの束が前の長さへ戻る
-    ASSERT_TRUE(editor.Editor().Undo().Undo(applier));
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
     const std::vector<NS::HitReactionSet> undoneSets = SavedPropSets(scope.Path());
     const NS::HitReactionSet* undone = FindSetIn(undoneSets, first.name);
     ASSERT_NE(undone, nullptr);
@@ -925,8 +922,6 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActorSnapshotApplier applier(scene);
-    editor.Editor().SetApplier(&applier);
     const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);

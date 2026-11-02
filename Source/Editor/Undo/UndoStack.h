@@ -11,8 +11,6 @@ namespace NS
 {
     namespace Editor
     {
-        class IActorSnapshotApplier;
-
         //! Undo・Redo の履歴。k_MaxOps または k_MaxBytes を超えた分は古い履歴から捨てる
         class UndoStack : public NonCopyable
         {
@@ -24,13 +22,13 @@ namespace NS
             ~UndoStack() = default;
 
             //! コマンドを実行して Undo 履歴へ積む。Redo 履歴は捨てる
-            void Push(std::unique_ptr<ICommand> cmd, IActorSnapshotApplier& target) noexcept;
+            void Push(std::unique_ptr<ICommand> cmd) noexcept;
 
             //! 既に適用済みの編集を Do を呼ばずに履歴へ積む。ドラッグ確定など実体を先に動かした編集用
             void Record(std::unique_ptr<ICommand> cmd) noexcept;
 
-            bool Undo(IActorSnapshotApplier& target) noexcept;
-            bool Redo(IActorSnapshotApplier& target) noexcept;
+            bool Undo() noexcept;
+            bool Redo() noexcept;
             void Clear() noexcept;
 
             //! 全部のコマンドが持つアクターを解放し、コマンドは前後の JSON だけで残す

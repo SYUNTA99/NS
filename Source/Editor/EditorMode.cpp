@@ -6,11 +6,11 @@
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/Undo/CompositeCommand.h"
-#include "Editor/Undo/IActorSnapshotApplier.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
@@ -506,7 +506,7 @@ namespace NS
         {
             // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
             std::vector<uint32> created;
-            if (!IsSceneEditable() || m_applier == nullptr || !m_allocateId || objects.empty())
+            if (!IsSceneEditable() || m_scene == nullptr || objects.empty())
             {
                 return created;
             }
@@ -517,7 +517,7 @@ namespace NS
             for (nlohmann::json& object : objects)
             {
                 const uint32 sourceId = ActorJsonId(object);
-                const uint32 id = m_allocateId();
+                const uint32 id = m_scene->Actors().AllocateActorId();
                 if (sourceId != k_NoActorId)
                 {
                     idMap.emplace(sourceId, id);
@@ -532,16 +532,16 @@ namespace NS
             {
                 RemapActorRefs(objects[i], idMap);
                 commands.push_back(
-                    std::make_unique<ActorSnapshotCommand>(created[i], std::nullopt, std::move(objects[i])));
+                    std::make_unique<ActorSnapshotCommand>(*m_scene, created[i], std::nullopt, std::move(objects[i])));
             }
-            m_undo.Push(MakeUndoUnit(std::move(commands)), *m_applier);
+            m_undo.Push(MakeUndoUnit(std::move(commands)));
             m_levelDirty = true;
             return created;
         }
 
         void EditorMode::PlaceUnderCursorProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
+            if (!IsSceneEditable() || m_scene == nullptr || m_actors == nullptr)
             {
                 return;
             }
@@ -573,16 +573,15 @@ namespace NS
             }
 
             // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateActors を通さない
-            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
+            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
             SetActorJsonId(placed, id);
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(before), std::move(placed)),
-                        *m_applier);
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(before), std::move(placed)));
             m_levelDirty = true;
         }
 
         void EditorMode::DeleteAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
+            if (!IsSceneEditable() || m_scene == nullptr || m_actors == nullptr)
             {
                 return;
             }
@@ -592,19 +591,18 @@ namespace NS
             {
                 return;
             }
-            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
+            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
             if (!before)
             {
                 return;
             }
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(before), std::nullopt),
-                        *m_applier);
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(before), std::nullopt));
             m_levelDirty = true;
         }
 
         void EditorMode::RotateAtProgrammatic(int16 x, int16 y, int16 z) noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || m_actors == nullptr)
+            if (!IsSceneEditable() || m_scene == nullptr || m_actors == nullptr)
             {
                 return;
             }
@@ -614,15 +612,14 @@ namespace NS
             {
                 return;
             }
-            std::optional<nlohmann::json> before = m_applier->CaptureActor(id);
+            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
             if (!before)
             {
                 return;
             }
             nlohmann::json after = *before;
             Editor::AddCellQuarterTurn(after);
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(id, std::move(*before), std::move(after)),
-                        *m_applier);
+            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(*before), std::move(after)));
             m_levelDirty = true;
         }
 
@@ -813,7 +810,7 @@ namespace NS
 
         void EditorMode::HandleUndoRedoInput(const OS::InputPresses& presses) noexcept
         {
-            if (m_input == nullptr || m_applier == nullptr)
+            if (m_input == nullptr)
             {
                 return;
             }
@@ -845,7 +842,7 @@ namespace NS
         bool EditorMode::PerformUndo() noexcept
         {
             // 履歴は編集の姿を指す。プレイ中の実体へ当てると、プレイの姿に編集の姿が混ざる
-            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Undo(*m_applier))
+            if (!IsSceneEditable() || !m_undo.Undo())
             {
                 return false;
             }
@@ -855,7 +852,7 @@ namespace NS
 
         bool EditorMode::PerformRedo() noexcept
         {
-            if (!IsSceneEditable() || m_applier == nullptr || !m_undo.Redo(*m_applier))
+            if (!IsSceneEditable() || !m_undo.Redo())
             {
                 return false;
             }

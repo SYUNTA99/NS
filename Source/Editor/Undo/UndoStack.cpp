@@ -4,14 +4,14 @@ namespace NS
 {
     namespace Editor
     {
-        void UndoStack::Push(std::unique_ptr<ICommand> cmd, IActorSnapshotApplier& target) noexcept
+        void UndoStack::Push(std::unique_ptr<ICommand> cmd) noexcept
         {
             if (!cmd)
             {
                 return;
             }
 
-            cmd->Do(target);
+            cmd->Do();
             PushRecorded(std::move(cmd));
         }
 
@@ -40,7 +40,7 @@ namespace NS
             TrimOldest();
         }
 
-        bool UndoStack::Undo(IActorSnapshotApplier& target) noexcept
+        bool UndoStack::Undo() noexcept
         {
             if (m_undo.empty())
             {
@@ -48,7 +48,7 @@ namespace NS
             }
             ++m_version;
             std::unique_ptr<ICommand>& back = m_undo.back();
-            back->Undo(target);
+            back->Undo();
             const std::size_t bytes = back->EstimatedBytes();
             m_undoBytes -= bytes;
             m_redoBytes += bytes;
@@ -57,7 +57,7 @@ namespace NS
             return true;
         }
 
-        bool UndoStack::Redo(IActorSnapshotApplier& target) noexcept
+        bool UndoStack::Redo() noexcept
         {
             if (m_redo.empty())
             {
@@ -65,7 +65,7 @@ namespace NS
             }
             ++m_version;
             std::unique_ptr<ICommand>& back = m_redo.back();
-            back->Do(target);
+            back->Do();
             const std::size_t bytes = back->EstimatedBytes();
             m_redoBytes -= bytes;
             m_undoBytes += bytes;

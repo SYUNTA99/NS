@@ -7,7 +7,6 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
 #include "Editor/StageBuildTool.h"
-#include "Editor/Undo/ActorSnapshotApplier.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
@@ -368,7 +367,6 @@ private:
     [[nodiscard]] NS::SceneCamera* MainCamera() const noexcept;
 
     NS::Scene& m_scene;                          // 編集対象のシーン。回す/止める/コマ送りもこのシーンのスイッチ
-    NS::Editor::ActorSnapshotApplier m_applier; // 履歴の操作を実体へ適用する
 
     // 前面のパネルの表示矩形。未設定時は CurrentViewRect が全画面の予備矩形を返す
     NS::Editor::ViewRect m_gameViewRect{};
