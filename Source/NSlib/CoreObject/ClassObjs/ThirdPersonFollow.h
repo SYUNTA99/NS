@@ -8,30 +8,16 @@
 
 namespace NS
 {
-    class CameraManager;
     class IGetCameraTarget;
     class IGetCollision;
     class SceneActor;
     class Transform;
-
-    //! 追従カメラが 1 フレームぶん受ける溜めの状態
-    //! 溜め量は押している間だけ意味を持つ。押していない値は放したのと同じに扱う
-    struct FollowChargeDesc
-    {
-        float charge01 = 0.0f;         // 押している間の溜め量 (0〜1)
-        bool held = false;             // 押しているか
-        bool hasAimTarget = false;     // 狙う相手がいるか
-        Vector3 aimTargetCenter{}; // 狙う相手の中心。世界座標
-        float aimTargetRadius = 0.0f;  // 狙う相手の半径 (m)。構図は中心でなく中心 ± 半径を枠に入れる
-    };
 
     //! 追従カメラが 1 フレームぶん受ける反動の状態
     //! 突進の向きは反動になったフレームにだけ読む
     struct FollowReboundDesc
     {
         bool rebounding = false; // 追う相手が反動の状態か
-        // 追う相手が溜めすぎで勝手に出た突進の最中か。真の間は注視点の横と前後が遅れて付いていく
-        bool forcedSlamming = false;
         // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
         // 水平の長さが 0 なら回さない
         Vector3 slamDirection{};
@@ -47,7 +33,7 @@ namespace NS
         bool widenView = false;
     };
 
-    //! 溜めと反動に応じて構図を調整する三人称の追従カメラ
+    //! 反動に応じて構図を調整する三人称の追従カメラ
     //! 実カメラは変更せず、CameraManager が採用する姿勢を返す
     class ThirdPersonFollow : public VirtualCamera
     {
@@ -80,26 +66,9 @@ namespace NS
         //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
         void SetTargetHeightOffset(float offset) noexcept;
 
-        //! このフレームの溜めの状態を受け取る
-        //! 受けた値は次の Update だけで使う。渡されなかったフレームは押していないのと同じに扱う
-        //! 非数・0 未満・1 を超える溜め量と、狙う相手がいる時の非数の中心・非数か負の半径は壊れた値
-        //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
-        bool SetFollowCharge(const FollowChargeDesc& desc) noexcept;
-
-        //! 距離・溜めの締め・構図を次の更新で固定する
+        //! 距離を次の更新で固定する
         //! ヒットストップ中に画面が引くのを防ぐ。更新ごとに渡し、未指定なら固定しない
         void SetFollowFramingHeld(bool held) noexcept { m_framingHeld = held; }
-
-        //! 溜めで締めている視野角を返す
-        //! @return 基準の視野角から引いている角度 (度)。締めていない時は 0
-        [[nodiscard]] float ChargeNarrowDegrees() const noexcept { return m_chargeNarrowDegrees; }
-
-        //! 溜めの構図のずらしを返す
-        //! @return x がカメラの右、y がカメラの上の向きのずれ (m)。ずらしていない時は 0
-        [[nodiscard]] Vector2 ChargeFrameOffset() const noexcept { return m_chargeFrameOffset; }
-
-        //! 溜めの締め・揺れ・構図のずらしをその場で 0 にし、受けた溜めの状態を捨てる
-        void ClearCharge() noexcept;
 
         //! 次の更新で使う反動の状態を受け取る
         //! 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
@@ -133,9 +102,8 @@ namespace NS
 
         //! 追う相手の状態を受けてから、固定ステップで向きと距離を更新する
         //! EvaluatePose が補間した姿勢を返し、描画のガタつきを避ける
-        //! @param[in] cameras 溜めの揺れを保たせるカメラの管理役
         //! @param[in] collision 注視点とカメラの間の地形を探すシーン
-        void Advance(CameraManager* cameras, const IGetCollision* collision) override;
+        void Advance(const IGetCollision* collision) override;
 
         //! alpha で補間した target を追う最終姿勢を返す。CameraManager が選択時に実カメラへ書く
         [[nodiscard]] CameraPose EvaluatePose(float alpha) const noexcept override;
@@ -158,16 +126,6 @@ namespace NS
         NS_FIELD(m_invertY, "反転 Y")
         NS_FIELD(m_pitchMin, "ピッチ下限")
         NS_FIELD(m_pitchMax, "ピッチ上限")
-        NS_FIELD(m_chargeNarrowMaxDegrees, "溜めで締める視野角")
-        NS_FIELD(m_chargeNarrowReturnFrames, "締めを戻すフレーム数")
-        NS_FIELD(m_chargeApproachExponent, "溜めの寄りの効き方の指数")
-        NS_FIELD(m_chargeShakePitchDegrees, "溜めの揺れの縦")
-        NS_FIELD(m_chargeShakeYawDegrees, "溜めの揺れの横")
-        NS_FIELD(m_chargeShakeFrequency, "溜めの揺れの細かさ")
-        NS_FIELD(m_chargeShakeDecayPerSecond, "溜めの揺れの消える速さ")
-        NS_FIELD(m_chargeFrameRatio, "溜めの構図の枠")
-        NS_FIELD(m_chargeCenterRatio, "溜めで二人を縦の中心へ寄せる割合")
-        NS_FIELD(m_chargeFrameOmega, "溜めの構図のバネ角速度")
         NS_FIELD(m_reboundFollowOmega, "反動の間の横と前後のバネ角速度")
         NS_FIELD(m_reboundMaxLag, "反動の間の横と前後の遅れの上限")
         NS_FIELD(m_reboundTowardCameraMaxLag, "カメラへ向かう遅れの上限")
@@ -185,33 +143,13 @@ namespace NS
         NS_FIELD(m_reboundPullPerMeter, "二人の距離 1 m あたりに引く距離")
         NS_FIELD(m_reboundPullMax, "相手を収める引きの上限")
         NS_FIELD(m_reboundPartnerHalfSeconds, "相手を収めるばねの半分の秒")
-        NS_FIELD(m_forcedLaunchFollowOmega, "強制発射の追う速さ")
-        NS_FIELD(m_forcedLaunchMaxLag, "強制発射の遅れの上限")
         NS_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
         NS_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
         NS_REFLECT_END()
 
     private:
-        // 受けた溜めの状態から締め・揺れ・構図のずらしを 1 フレーム進める
-        // look はこのフレームの注視点。framingHeld が真の間は、放した後の締めの戻しと構図のずらしを止める
-        void UpdateCharge(CameraManager* cameras,
-                          const FollowChargeDesc& charge,
-                          bool framingHeld,
-                          const Transform* target,
-                          const Vector3& look,
-                          float dt) noexcept;
-
-        // 反動と強制突進のフェーズ遷移の入力
-        struct ReboundPhaseInput
-        {
-            bool reboundBegan = false;
-            bool rebounding = false;
-            bool launchBegan = false;
-            bool launching = false;
-        };
-
-        // 距離と注視点を決める前に、反動と強制突進の状態を更新する
-        void UpdateReboundPhase(const ReboundPhaseInput& input, const Vector3& head) noexcept;
+        // 距離と注視点を決める前に、反動の状態を更新する
+        void UpdateReboundPhase(bool began, bool rebounding, const Vector3& head) noexcept;
 
         // 手動入力を適用する前に、反動の回転と入力制限を更新する
         void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
@@ -233,7 +171,7 @@ namespace NS
                              const Vector3& look,
                              float dt);
 
-        // 描く視野角。溜めの締めを引き、速い間の広げを足す。帯・構図・描く時が同じ値を読む
+        // 描く視野角。速い間の広げを足す。帯と描く時が同じ値を読む
         [[nodiscard]] float ViewFovRadians() const noexcept;
         // 描く距離。追う距離を、遮りで縮めた上限で切る
         [[nodiscard]] float ShownDistance() const noexcept;
@@ -242,7 +180,6 @@ namespace NS
         enum class ReboundPhase
         {
             None,      // 普通の追い方
-            Launching, // 勝手に出た突進の間
             Following, // 反動の状態の間
             Returning, // 反動の状態が外れてから普通の追い方へ寄せ戻している
         };
@@ -255,7 +192,7 @@ namespace NS
         bool m_followGrounded = false;
         float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
         bool m_hasFollowMotion = false;
-        bool m_framingHeld = false;        // このフレームに距離と溜めの締めを保つか。Update が読んで偽へ戻す
+        bool m_framingHeld = false;        // このフレームに距離を保つか。Update が読んで偽へ戻す
         float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
 
         float m_yaw = 0.0f;       // 水平回転角
@@ -285,19 +222,6 @@ namespace NS
         float m_pitchMin = -1.396f;  // 仰俯角の下限
         float m_pitchMax = -0.0873f; // 仰俯角の上限
 
-        float m_chargeNarrowMaxDegrees = 15.0f; // 溜めきりで締める視野角 (度)
-        int m_chargeNarrowReturnFrames = 6;     // 放してから締めを 0 へ戻すフレーム数
-        // 溜め量の指数乗で寄りを強める。揺れと同じ 2 乗を既定にして、終盤に一緒に高める
-        float m_chargeApproachExponent = 2.0f;
-        float m_chargeShakePitchDegrees = 0.3f;   // 溜めきりの溜めの揺れの縦の首振りの最大 (度)
-        float m_chargeShakeYawDegrees = 0.15f;    // 溜めきりの溜めの揺れの横の首振りの最大 (度)
-        float m_chargeShakeFrequency = 10.0f;     // 溜めの揺れのノイズの格子を 1 秒に進める数
-        float m_chargeShakeDecayPerSecond = 4.0f; // 放した後に溜めの揺れのトラウマが 1 秒に減る量
-        float m_chargeFrameRatio = 0.7f;          // 構図の枠。視野の半分に対する割合
-        // 溜めきりで自機と相手の真ん中を画面の縦の中心へ寄せる割合。0 は枠に入れるだけ。途中の溜めは寄りの量を掛ける
-        float m_chargeCenterRatio = 1.0f;
-        float m_chargeFrameOmega = 26.0f; // 構図のずらしのバネ角速度 (1/秒)
-
         float m_reboundFollowOmega = 4.0f; // 反動の間に注視点の横と前後が寄るバネ角速度 (1/秒)
         float m_reboundMaxLag = 1.5f;      // 反動の間に注視点が横と前後へ遅れてよい上限 (m)
         // 反動でカメラへ向かう間に、注視点が自機より奥へ遅れてよい上限 (m)。遅れの分だけカメラが自機へ寄り、自機が画面を塞ぐ
@@ -321,25 +245,9 @@ namespace NS
         float m_reboundPullMax = 4.0f;
         // 寄せと引きのばねが差の半分まで追いつく秒
         float m_reboundPartnerHalfSeconds = 0.15f;
-        // 勝手に出た突進の間に注視点の横と前後が寄るバネ角速度 (1/秒)。反動と同じ 4 から始める
-        float m_forcedLaunchFollowOmega = 4.0f;
-        // 勝手に出た突進の間に見せる遅れの上限 (m)。反動の 1.5 m だと約 5 フレームで届き、普通の突進と見分けにくい
-        float m_forcedLaunchMaxLag = 3.0f;
-
-        FollowChargeDesc m_charge{};             // 次の Update で使う溜めの状態
-        float m_chargeHoldNarrowDegrees = 0.0f;  // 前のフレームの押している間の締め (度)
-        float m_chargeNarrowDegrees = 0.0f;      // 今の締め (度)
-        float m_chargeReturnFromDegrees = 0.0f;  // 戻し始めた時の締め (度)
-        int m_chargeReturnFrame = 0;             // 戻しの何フレーム目か。0 は戻していない
-        bool m_chargeReturnWaiting = false;      // 放した後、止めの明けまで戻しを始めずに待っているか
-        Vector2 m_chargeFrameOffset{};       // 今の構図のずらし (m、カメラの右と上)
-        Vector2 m_chargeFrameVelocity{};     // 構図のずらしの速さ (m/秒)
-        float m_chargeCenterTilt = 0.0f;         // 二人を縦の中心へ寄せる、注視点だけの上の向きのずれ (m)
-        float m_chargeCenterTiltVelocity = 0.0f; // 寄せの速さ (m/秒)
 
         FollowReboundDesc m_rebound{};    // 次の Update で使う反動の状態
         bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
-        bool m_wasForcedSlamming = false; // 前のフレームに勝手に出た突進の最中だったか
         bool m_reboundLookHeld = false;   // 反動になってから接地するまで、回す入力を受けないか
         float m_reboundTurnAngle = 0.0f;  // 反動になったフレームに決めた、回す角度 (ラジアン)
         int m_reboundTurnFrame = 0;       // 回しの何フレーム目か。欄のフレーム数で回し終える

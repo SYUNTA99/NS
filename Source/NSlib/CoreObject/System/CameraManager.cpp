@@ -309,7 +309,7 @@ namespace NS
             {
                 if (entry.enabled)
                 {
-                    entry.vcam->Advance(this, m_collision);
+                    entry.vcam->Advance(m_collision);
                 }
             }
         }

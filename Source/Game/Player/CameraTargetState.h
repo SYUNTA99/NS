@@ -15,9 +15,7 @@ namespace GL
             float heightOffset = 0.0f;              // 根から見る所までの高さのずれ (m)
             bool hasRebound = false;
             NS::FollowReboundDesc rebound{};
-            bool hasCharge = false;
-            NS::FollowChargeDesc charge{};
-            //! 体当たりから止めの明けまでか。真の間、カメラは距離と溜めの締めをその時のまま保つ
+            //! 体当たりから止めの明けまでか。真の間、カメラは距離をその時のまま保つ
             bool framingHeld = false;
         };
     } // namespace Player

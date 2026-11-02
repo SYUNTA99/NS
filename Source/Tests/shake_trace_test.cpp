@@ -1,12 +1,10 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitTier.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/FileSystem.h"
@@ -24,7 +22,7 @@
 #include <string>
 #include <vector>
 
-// 同じ当たりと同じ溜めで、カメラの揺れの角度と沈みをフレームごとに書き出す
+// 同じ当たりで、カメラの揺れの角度と沈みをフレームごとに書き出す
 // 揺れを作り直す前と後で同じ場面を書き出し、隣り合うフレームのずれの差の最大を並べる
 // 書き出し先は build/ShakeTrace/trace.json。演出は自機と置物の .actor の束を読む
 
@@ -32,8 +30,7 @@ namespace
 {
     using GL::Level::HitTier;
 
-    constexpr int k_HitFrames = 30;    // 検知のフレームから書き出すフレーム数
-    constexpr int k_ChargeFrames = 60; // 溜めの揺れを書き出すフレーム数
+    constexpr int k_HitFrames = 30; // 検知のフレームから書き出すフレーム数
 
     // 自機 (id 1) と、その前の置物 (id 2)。rockX を横へずらすと外れになる
     PlayerActor* PlaceShakeScene(NS::Scene& scene, float rockX)
@@ -96,58 +93,6 @@ namespace
         return trace;
     }
 
-    // 溜めの量が 1 秒で 1 まで上がり、そのまま押し続ける相手
-    class ChargingTargetActor final : public NS::SceneActor
-    {
-    public:
-        // 接地と溜めを仮想カメラの口へ渡す
-        void Feed(NS::ThirdPersonFollow* vcam) const
-        {
-            NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
-            vcam->SetFollowMotion(true, NS::Vector3{});
-            NS::FollowChargeDesc charge{};
-            charge.held = true;
-            charge.charge01 = std::min(static_cast<float>(frame) / 60.0f, 1.0f);
-            (void)vcam->SetFollowCharge(charge);
-        }
-        int frame = 0;
-    };
-
-    // 溜めの揺れの角度 (横・縦・傾き、度) を k_ChargeFrames フレームぶん並べる
-    std::vector<NS::Vector3> RecordChargeShake()
-    {
-        std::vector<NS::Vector3> offsets;
-        NS::Scene scene;
-        ChargingTargetActor* target = scene.SpawnActor<ChargingTargetActor>("target");
-        GL::Level::FollowCameraActor* actor = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
-        if (target == nullptr || actor == nullptr)
-        {
-            return offsets;
-        }
-        NS::ThirdPersonFollow& vcam = actor->Vcam();
-        NS::ApplyJsonFields(&vcam, nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
-        // 欄を書いた後に、エディタと同じく相手を取得し直す
-        actor->ResolveActorRefs();
-        for (int frame = 0; frame < k_ChargeFrames; ++frame)
-        {
-            target->frame = frame;
-            target->Feed(&vcam);
-            scene.OnUpdate();
-            NS::Vector3 angles{};
-            const NS::CameraManager* cameras = scene.GetCameraManager();
-            if (cameras != nullptr)
-            {
-                const NS::CameraTraumaModifier* trauma = cameras->FindModifier<NS::CameraTraumaModifier>();
-                if (trauma != nullptr)
-                {
-                    angles = trauma->Angles();
-                }
-            }
-            offsets.push_back(angles);
-        }
-        return offsets;
-    }
-
     // 隣り合うフレームのずれの差の最大 ÷ ずれの大きさの最大。揺れが無ければ 0
     // 揺れが始まるフレーム (前のフレームのずれが 0) の差は数えない。始まりは一撃で、跳ばないのは揺れの途中の話
     float MaxStepRatio(const std::vector<NS::Vector3>& offsets)
@@ -190,40 +135,32 @@ namespace
     }
 } // namespace
 
-TEST(ShakeTrace, WritesTheShakeOfTheSameHitsAndCharge)
+TEST(ShakeTrace, WritesTheShakeOfTheSameHits)
 {
     const HitShakeTrace center = RecordHitShake(0.0f);
     const HitShakeTrace miss = RecordHitShake(0.75f);
-    const std::vector<NS::Vector3> charge = RecordChargeShake();
     ASSERT_EQ(center.angles.size(), static_cast<std::size_t>(k_HitFrames));
     ASSERT_EQ(miss.angles.size(), static_cast<std::size_t>(k_HitFrames));
-    ASSERT_EQ(charge.size(), static_cast<std::size_t>(k_ChargeFrames));
     EXPECT_EQ(center.tier, HitTier::Center);
     EXPECT_EQ(miss.tier, HitTier::Wide);
 
     const float centerRatio = HitStepRatio(center);
     const float missRatio = HitStepRatio(miss);
-    const float chargeRatio = MaxStepRatio(charge);
     // 揺れが書き出されていなければ基準にならない
     EXPECT_GT(centerRatio, 0.0f);
     EXPECT_GT(missRatio, 0.0f);
-    EXPECT_GT(chargeRatio, 0.0f);
-    // 外れと溜めはトラウマの揺れ。方形の波 (直す前 外れ 1.71・溜め 1.98) のように振れ幅の倍近くを
-    // 1 フレームで跳ばない
+    // 外れはトラウマの揺れ。方形の波 (直す前 1.71) のように振れ幅の倍近くを 1 フレームで跳ばない
     EXPECT_LT(missRatio, 0.6f);
-    EXPECT_LT(chargeRatio, 0.6f);
 
     nlohmann::ordered_json root;
     root["frameSeconds"] = 1.0f / 60.0f;
     root["centerMaxStepRatio"] = centerRatio;
     root["missMaxStepRatio"] = missRatio;
-    root["chargeMaxStepRatio"] = chargeRatio;
     // 平行移動のずれは m、角度は度
     root["centerAngles"] = SeriesJson(center.angles);
     // 沈む揺れの縦のずれは高さ 1080 の画面の画素
     root["centerSink"] = SeriesJson(center.sinks);
     root["missAngles"] = SeriesJson(miss.angles);
-    root["chargeAngles"] = SeriesJson(charge);
     const std::string text = root.dump(1);
     using NS::OS::FileSystem;
     const std::string directory =
