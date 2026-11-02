@@ -204,6 +204,8 @@ namespace NS
         //! 非有限値は拒否し、0〜1 に収める。プレイ開始時に 1 へ戻す
         void SetWorldSpeed(float speed) noexcept;
         [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
+        //! 前の世界の歩から今の世界の歩までの実時間の秒。遅い世界でも伸び縮みしない間隔を、世界の歩で数える時に足す
+        [[nodiscard]] float WorldStepSeconds() const noexcept;
 
         //! fromSpeed 0〜1 から通常速度へ、実時間 realSeconds 秒で戻す。0 秒以下なら即時
         //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
@@ -223,6 +225,8 @@ namespace NS
         [[nodiscard]] bool IsSceneStopped() const noexcept { return m_stopSceneSteps > 0; }
         //! シーンが止まっていて、actor が今の止めを始めたアクターなら true。nullptr は false
         [[nodiscard]] bool IsStopSceneMover(const SceneActor* actor) const noexcept;
+        //! actor が頼んだ止めが、次の歩の始めに効くのを待っているなら true。nullptr は false
+        [[nodiscard]] bool IsStopSceneRequester(const SceneActor* actor) const noexcept;
 
         //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
@@ -368,6 +372,8 @@ namespace NS
         int32 m_simulationStepFrames = 0;      // コマ送り残り固定ステップ数。止めたままこの数だけ進める
         float m_worldSpeed = 1.0f;             // 世界の速さ (0〜1)
         float m_worldCarry = 0.0f;             // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
+        int m_stepsSinceWorldStep = 0;         // 前に世界を進めてから回した固定フレーム数
+        int m_stepsOfWorldStep = 1;            // 今の世界の歩までに回した固定フレーム数
         bool m_rampActive = false;             // 世界の速さを戻している間か
         float m_rampFrom = 1.0f;               // 戻りの始まりの速さ
         float m_rampSeconds = 0.0f;            // 戻りの実時間の長さ (秒)

@@ -24,6 +24,13 @@ namespace
     // 三角形 12960 枚ぶんの頂点 (約 1 MB)。エディタの面は相手 1 体で 100 枚に満たず、相手の数で溢れない
     constexpr std::size_t k_MaxFaceVertices = 38880;
 
+    // 出荷では描く処理と消す処理が無いので、図形を貯めない
+#if defined(NS_SHIPPING)
+    constexpr bool k_KeepShapes = false;
+#else
+    constexpr bool k_KeepShapes = true;
+#endif
+
     NS::Gfx::DebugShapes& EditableStepShapes() noexcept
     {
         static NS::Gfx::DebugShapes g_stepShapes;
@@ -37,12 +44,15 @@ namespace NS
     {
         void DebugShapes::Line(const Vector3& a, const Vector3& b, const Color& color)
         {
-            if (m_lines.size() + 2 > k_MaxVertices)
+            if constexpr (k_KeepShapes)
             {
-                m_lines.erase(m_lines.begin(), m_lines.begin() + 2);
+                if (m_lines.size() + 2 > k_MaxVertices)
+                {
+                    m_lines.erase(m_lines.begin(), m_lines.begin() + 2);
+                }
+                m_lines.push_back({a, color});
+                m_lines.push_back({b, color});
             }
-            m_lines.push_back({a, color});
-            m_lines.push_back({b, color});
         }
 
         void DebugShapes::AABB(const NS::AABB& box, const Color& color)
@@ -163,13 +173,16 @@ namespace NS
                                    const Vector3& c,
                                    const Color& color)
         {
-            if (m_faces.size() + 3 > k_MaxFaceVertices)
+            if constexpr (k_KeepShapes)
             {
-                m_faces.erase(m_faces.begin(), m_faces.begin() + 3);
+                if (m_faces.size() + 3 > k_MaxFaceVertices)
+                {
+                    m_faces.erase(m_faces.begin(), m_faces.begin() + 3);
+                }
+                m_faces.push_back({a, color});
+                m_faces.push_back({b, color});
+                m_faces.push_back({c, color});
             }
-            m_faces.push_back({a, color});
-            m_faces.push_back({b, color});
-            m_faces.push_back({c, color});
         }
 
         DebugShapePass::DebugShapePass(const BuiltinShaders& shaders) noexcept

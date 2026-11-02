@@ -1,5 +1,6 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
@@ -13,6 +14,8 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/ThirdPersonFollow.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -294,6 +297,62 @@ TEST(GameScene, RespawnKeepsAHoldStartedByThePlayer)
 
     scene.RespawnActors();
     EXPECT_TRUE(scene.IsSceneStopped());
+}
+
+// 同じ歩に自機が頼んで、まだ効いていない止めも、リスポーンで解かない
+TEST(GameScene, RespawnKeepsAHoldThePlayerRequestedInTheSameStep)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    scene.StartPlay();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    scene.RequestStopScene(player, 30);
+    ASSERT_FALSE(scene.IsSceneStopped());
+
+    scene.RespawnActors();
+    scene.OnUpdate();
+
+    EXPECT_TRUE(scene.IsSceneStopped());
+}
+
+// 出し直すアクターが頼んだ止めは、効く前でも解く
+TEST(GameScene, RespawnDropsAHoldAnotherActorRequestedInTheSameStep)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    scene.StartPlay();
+    const NS::SceneActor* other = nullptr;
+    for (const NS::SceneActor* actor : scene.Actors())
+    {
+        if (std::string_view{actor->ClassName()} != "PlayerActor")
+        {
+            other = actor;
+        }
+    }
+    ASSERT_NE(other, nullptr);
+    scene.RequestStopScene(other, 30);
+
+    scene.RespawnActors();
+    scene.OnUpdate();
+
+    EXPECT_FALSE(scene.IsSceneStopped());
+}
+
+// 組み直さずに始めるエディタのプレイでも、仮想カメラは今の初期の向きから始まる
+TEST(GameScene, StartPlayPutsTheFollowCameraAtTheCurrentInitialPose)
+{
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(CourseWithPlayer());
+    GL::Level::FollowCameraActor* follow = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+    ASSERT_NE(follow, nullptr);
+    ASSERT_EQ(NS::ApplyJsonFields(&follow->Vcam(), nlohmann::json{{"初期ヨー", 1.0f}}), 0u);
+    ASSERT_FLOAT_EQ(follow->Vcam().InitialYaw(), 1.0f);
+    ASSERT_NE(follow->Vcam().Yaw(), 1.0f);
+
+    scene.StartPlay();
+
+    EXPECT_FLOAT_EQ(follow->Vcam().Yaw(), 1.0f);
 }
 
 TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)

@@ -143,9 +143,9 @@ namespace GL
         void GameScene::SendRestart(const NS::SceneActor* skip)
         {
             // 止め始めたのが出し直すアクターなら、止めを残すと出し直したアクターが止まったまま待つ。
-            // 出し直さないアクター (リスポーンの自機) が始めた止めは、そのアクターが続けているので残す。
-            // skip が nullptr (全員を出し直す) の時は、IsStopSceneMover が false を返す
-            if (!IsStopSceneMover(skip))
+            // 出し直さないアクター (リスポーンの自機) が始めた止めと、同じ歩に頼んだ止めは、そのアクターが続けるので残す。
+            // skip が nullptr (全員を出し直す) の時は、どちらの関数も false を返す
+            if (!IsStopSceneMover(skip) && !IsStopSceneRequester(skip))
             {
                 CancelStopScene();
             }

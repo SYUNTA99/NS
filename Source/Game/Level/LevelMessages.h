@@ -62,7 +62,8 @@ namespace GL
         };
         bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds);
         //! コースが始まった知らせ。GameScene がやり直しの前に全てのアクターへ 1 回送る
-        //! 受け手は今の姿をやり直しの戻り先として控える。配置のデータは読み直さない
+        //! 受け手は今の姿をやり直しの戻り先として控える。配置のデータは読み直さない。
+        //! 追従カメラは今の初期の向きへ戻る
         class MsgCourseStart final : public NS::Message
         {
             NS_MESSAGE(MsgCourseStart)

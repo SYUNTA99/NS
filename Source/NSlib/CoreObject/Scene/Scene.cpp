@@ -39,7 +39,16 @@ namespace NS
         m_cameraManager.SetCollision(this);
     }
 
-    Scene::~Scene() = default;
+    Scene::~Scene()
+    {
+        // 下見のシーンは OnShutdown を呼ばずに壊す。メンバーが残っているうちにアクターの OnEndPlay を回し、図形も消す
+        OnShutdown();
+    }
+
+    float Scene::WorldStepSeconds() const noexcept
+    {
+        return static_cast<float>(m_stepsOfWorldStep) * OS::FrameTimer::FixedDelta();
+    }
 
     void Scene::StartPlay()
     {
@@ -175,6 +184,13 @@ namespace NS
         return m_stopSceneSteps > 0 && actor == m_stopSceneMover && actor->Id() == m_stopSceneMoverId;
     }
 
+    bool Scene::IsStopSceneRequester(const SceneActor* actor) const noexcept
+    {
+        // 番地と id の両方を比べる理由は IsStopSceneMover と同じ。頼みを控えている間の m_stopSceneRequester は nullptr でない
+        return m_stopSceneRequested && m_requestedStopSceneSteps > 0 && actor == m_stopSceneRequester &&
+               actor->Id() == m_stopSceneRequesterId;
+    }
+
     void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
     {
         if (!std::isfinite(fromSpeed) || !std::isfinite(realSeconds))
@@ -234,12 +250,15 @@ namespace NS
     bool Scene::AdvanceWorldClock() noexcept
     {
         m_worldCarry += m_worldSpeed;
+        m_stepsSinceWorldStep += 1;
         // 0.2 を 5 回足しても 1 にわずかに届かない事がある
         if (m_worldCarry < 1.0f - k_WorldCarryTolerance)
         {
             return false;
         }
         m_worldCarry = std::max(m_worldCarry - 1.0f, 0.0f);
+        m_stepsOfWorldStep = m_stepsSinceWorldStep;
+        m_stepsSinceWorldStep = 0;
         return true;
     }
 
@@ -514,6 +533,8 @@ namespace NS
         if (!worldStep)
         {
             StepRealTime();
+            // 振動の曲線は世界の歩で進むが、書かないフレームは Gamepad::Update が 0 にするので書き直す
+            m_padRumble.Rewrite();
         }
         else if (IsSceneStopped())
         {
