@@ -175,30 +175,9 @@ namespace NS
                 {
                     input.boost = true;
                 }
-                if (ImGui::IsKeyDown(ImGuiKey_W))
-                {
-                    input.forwardAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_S))
-                {
-                    input.forwardAxis -= 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_D))
-                {
-                    input.strafeAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_A))
-                {
-                    input.strafeAxis -= 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_E))
-                {
-                    input.verticalAxis += 1.0f;
-                }
-                if (ImGui::IsKeyDown(ImGuiKey_Q))
-                {
-                    input.verticalAxis -= 1.0f;
-                }
+                input.forwardAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_W), ImGui::IsKeyDown(ImGuiKey_S));
+                input.strafeAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_D), ImGui::IsKeyDown(ImGuiKey_A));
+                input.verticalAxis = KeyAxis(ImGui::IsKeyDown(ImGuiKey_E), ImGui::IsKeyDown(ImGuiKey_Q));
             }
 
             m_freeFlying = flying;
