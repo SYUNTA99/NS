@@ -510,8 +510,8 @@ namespace NS
             ImGui::SameLine();
             if (ImGui::Button("元に戻す"))
             {
-                // 置き場ごと読み直すので、ほかの .actor の保存していない変更も戻る
-                ActorFileLibrary::Get().Reload();
+                // 置き場ごと読み直すので、ほかの .actor の保存していない動作も戻る
+                editor.ReloadActorFilesKeepingUnwritten();
                 for (SceneActor* actor : editor.Actors())
                 {
                     // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる

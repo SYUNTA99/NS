@@ -37,6 +37,7 @@
 #include "NSlib/Core/Types.h"
 #include "Tests/TestHeadlessImGui.h"
 #include "Tests/TestHiddenApp.h"
+#include "Tests/TestLogCapture.h"
 #include "Tests/TestSceneSetup.h"
 #include <algorithm>
 #include <chrono>
@@ -877,6 +878,51 @@ TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSave
     const nlohmann::json* sets = NS::ActorFileHitReactions(*NS::ActorFileLibrary::Get().Find("PlayerActor"));
     ASSERT_NE(sets, nullptr);
     EXPECT_EQ(sets->size(), 1u);
+}
+
+// 書けずに再試行を待つ .actor の編集は、「元に戻す」で捨てない。捨てると終了時の再試行が古い中身を書いて成功と答える
+TEST(EditorActionTimelinePanel, RevertKeepsActorFileEditsThatCouldNotBeWritten)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory directory("EditorActionTimelinePendingWrite");
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
+    const std::size_t before = FirstActionEventCount();
+    AddEventThroughThePanel(editor, timeline);
+    ASSERT_EQ(FirstActionEventCount(), before + 1);
+
+    // 書く途中の失敗を、一時のファイルの置き場をディレクトリで塞いで作る
+    const std::string blocker = FileSystem::Combine(directory.Path(), "PlayerActor.actor.tmp");
+    ASSERT_TRUE(FileSystem::CreateDirectories(blocker));
+    NS::HitReactionSet set;
+    set.name = "Hit";
+    {
+        const TestLogCapture log;
+        editor.WriteActorFileHitReactions("PlayerActor", {set});
+    }
+    ASSERT_TRUE(editor.HasUnsavedAssetWrites());
+
+    PressPanelButton(editor, timeline, "元に戻す");
+
+    // 動作は保存した中身へ戻り、書けなかった編集は残る
+    EXPECT_EQ(FirstActionEventCount(), before);
+    const nlohmann::json* kept = NS::ActorFileHitReactions(*NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_NE(kept, nullptr);
+    EXPECT_EQ(kept->size(), 1u);
+    EXPECT_TRUE(editor.HasUnsavedAssetWrites());
+
+    std::error_code error;
+    std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(blocker)}, error);
+    ASSERT_TRUE(editor.SavePendingAssets());
+    const std::optional<nlohmann::json> saved =
+        NS::ReadActorFileAt(FileSystem::Combine(directory.Path(), "PlayerActor.actor"));
+    ASSERT_TRUE(saved.has_value());
+    const nlohmann::json* written = NS::ActorFileHitReactions(*saved);
+    ASSERT_NE(written, nullptr);
+    EXPECT_EQ(written->size(), 1u);
 }
 
 // シーンを変えずに動作のタイムラインだけを変えても、終了の確認は未保存と答える

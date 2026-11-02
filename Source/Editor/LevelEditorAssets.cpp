@@ -28,6 +28,7 @@
 #include "NSlib/Gfx/D3DTexture.h"
 
 #include <charconv>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -797,6 +798,35 @@ bool LevelEditorController::SavePendingAssets()
         }
     }
     return !HasUnsavedAssetWrites();
+}
+
+void LevelEditorController::ReloadActorFilesKeepingUnwritten()
+{
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    std::map<std::string, nlohmann::json> unwritten;
+    for (const std::string& name : m_unsavedActorFiles)
+    {
+        if (const nlohmann::json* current = library.Find(name))
+        {
+            unwritten.emplace(name, *current);
+        }
+    }
+    library.Reload();
+    for (std::pair<const std::string, nlohmann::json>& entry : unwritten)
+    {
+        // ファイルが読めなければ戻す先の動作が無いので、控えの動作のまま残す
+        if (const nlohmann::json* reloaded = library.Find(entry.first))
+        {
+            nlohmann::json actions = nlohmann::json::array();
+            if (const nlohmann::json* saved = NS::ActorFileActions(*reloaded))
+            {
+                actions = *saved;
+            }
+            NS::SetActorFileActions(entry.second, std::move(actions));
+        }
+        // 入らない文書は Set が ERROR を出す。名前は未保存に残る
+        (void)library.Set(entry.first, std::move(entry.second));
+    }
 }
 
 namespace NS

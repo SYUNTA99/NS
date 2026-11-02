@@ -275,6 +275,8 @@ public:
     }
     //! 失敗した書き込みを再試行する。全部保存できた時だけ真
     [[nodiscard]] bool SavePendingAssets();
+    //! 全部の .actor を読み直す。書けずに再試行を待つ .actor は、動作だけをファイルの中身へ戻し、ほかの編集を残す
+    void ReloadActorFilesKeepingUnwritten();
     //! Inspector で選んだ .actor の 1 体の欄の値が変わったフレームに呼ぶ。row はその 1 体のクラスの表の行
     //! NS_GLOBAL_FIELD の欄も .actor の値を直す。参照の欄は .actor が持たないので覚えない
     void NoteActorFileFieldEdit(const NS::ClassObjInfo& row, std::string_view fieldName);
