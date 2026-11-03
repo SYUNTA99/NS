@@ -205,10 +205,7 @@ namespace NS
             collision->triangles = MakeTriangles(geom);
             return collision;
         }
-    } // namespace
 
-    namespace
-    {
         template <class Result>
         [[nodiscard]] Result LoadGltfFile(std::string_view path, Result (*parse)(const GltfFileDesc&))
         {
@@ -384,13 +381,7 @@ namespace NS
         SkinnedMeshData data = LoadGltfSkinnedMesh(*path);
         if (!data.IsValid())
         {
-            NS_LOG_ERROR(Graphics, "AssetManager: skinned glTF 読込失敗: {}", key);
-            return std::make_unique<SkinnedModel>(key);
-        }
-
-        if (data.vertices.empty())
-        {
-            NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh に頂点が無い: {}", key);
+            NS_LOG_ERROR(Scene, "骨付きのモデル {} から骨付きの形を取り出せないので、何も描かない", key);
             return std::make_unique<SkinnedModel>(key);
         }
 
@@ -426,7 +417,7 @@ namespace NS
         AnimSource source = LoadGltfAnimationSource(key);
         if (!source.IsValid())
         {
-            NS_LOG_WARN(Graphics, "AssetManager: アニメーション glTF の読込失敗 / 空: {}", key);
+            NS_LOG_ERROR(Scene, "アニメーション {} から動きを取り出せないので、中身の空のクリップになる", key);
             // 壊れた path を負キャッシュし、毎回ディスクを読むのを防ぐ。再試行は Clear() から
             m_animationSources.emplace(key, nullptr);
             return nullptr;
@@ -456,7 +447,7 @@ namespace NS
         const std::optional<std::string> path = ResolveContentPath(std::string{file});
         if (!path)
         {
-            NS_LOG_WARN(Scene, "クリップ {} は ContentRoot の外を指すので読まない", name);
+            NS_LOG_ERROR(Scene, "クリップ {} は ContentRoot の外を指すので読まない", name);
             return std::make_unique<AnimClip>(std::string{name}, nullptr);
         }
         const AnimSource* source = GetOrLoadAnimationSource(*path);
@@ -478,7 +469,7 @@ namespace NS
                 return std::make_unique<AnimClip>(std::string{name}, std::make_unique<Anim::AnimClip>(clip));
             }
         }
-        NS_LOG_WARN(Scene, "クリップ {} の動き {} がファイルに無い", name, clipName);
+        NS_LOG_ERROR(Scene, "クリップ {} の動き {} がファイルに無い", name, clipName);
         return std::make_unique<AnimClip>(std::string{name}, nullptr);
     }
 
