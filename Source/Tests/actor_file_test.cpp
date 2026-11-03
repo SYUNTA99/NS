@@ -1662,6 +1662,27 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     EXPECT_EQ(log.WarningCount(), 4);
 }
 
+// base の打ち間違いで全部の値を作れない .actor はライブラリに入らない。同じ名前で派生を作っても、手で直せるファイルを上書きしない
+TEST(ActorFile, CreatingADerivedActorFileKeepsAFileTheLibraryDidNotLoad)
+{
+    const ScopedActorFileDirectory scope("CreateDerivedKeepsFile");
+    NS::Scene scene;
+    ASSERT_NO_FATAL_FAILURE(ResetPropAndHeavyRock(scene));
+    LevelEditorController editor(scene);
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    const std::string path = NS::OS::FileSystem::Combine(scope.Path(), "MistypedRock.actor");
+    const std::string text = DerivedActorFileWith("NoSuchActor", "Params", MassEntry(4.0f)).dump();
+    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{text.data(), text.size()})));
+
+    const TestLogCapture log;
+    library.Reload();
+    ASSERT_EQ(library.Find("MistypedRock"), nullptr);
+
+    EXPECT_FALSE(editor.CreateDerivedActorFile("PropActor", "MistypedRock"));
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), text);
+    EXPECT_EQ(library.Find("MistypedRock"), nullptr);
+}
+
 // シーンで詰めたアクターから派生を作ると、上書きを派生の .actor へ移し、アクターをその派生に切り替える。
 // 値と位置は変わらず、保存は上書きを書かない。取り消すと元の .actor と上書きへ戻る
 TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)

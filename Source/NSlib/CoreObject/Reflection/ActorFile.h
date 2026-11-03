@@ -95,7 +95,7 @@ namespace NS
         //! name の .actor の文書を消し、Directory() のファイルも消す。ファイルを消せなければ false
         [[nodiscard]] bool Delete(std::string_view name);
 
-        //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けなければ false
+        //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けないか、今のファイルが読めなければ false
         [[nodiscard]] bool Save(std::string_view name);
 
 

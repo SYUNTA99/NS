@@ -694,7 +694,13 @@ namespace NS
         {
             return false;
         }
-        return WriteActorFileAt(OS::FileSystem::Combine(Directory(), std::string{name} + ".actor"), *actorFile);
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
+        // 読めないファイルは ReadActorFileAt が ERROR を出している。上書きすると手で直せる中身が消えるので書かない
+        if (OS::FileSystem::Exists(path) && !ReadActorFileAt(path).has_value())
+        {
+            return false;
+        }
+        return WriteActorFileAt(path, *actorFile);
     }
 
     void ApplyActorFile(SceneActor* actor)
