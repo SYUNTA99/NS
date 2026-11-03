@@ -16,6 +16,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"

@@ -1,5 +1,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/Gfx/D3DMaterial.h"
