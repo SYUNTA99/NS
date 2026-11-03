@@ -1,5 +1,6 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/ThirdPersonFollow.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -200,6 +201,28 @@ TEST(FollowDashRebound, KeepsTheGoalWhenNoFloorIsBelow)
     fall.scene.Physics().RemoveBody(fall.floor);
     fall.Step(60);
     EXPECT_NEAR(fall.AddedDegrees(), before, 0.5f);
+}
+
+// ピッチの上限で上へ入力すると、ピッチが変わらなくても足した角度を戻す
+TEST(FollowDashRebound, PitchInputAtTheLimitReturnsTheAddedAngle)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, -1.0f, 0.0f};
+    fall.Step(60);
+    ASSERT_GT(fall.AddedDegrees(), 1.0f);
+
+    const float pitch = fall.camera->Vcam().Pitch();
+    NS::ApplyJsonFields(&fall.camera->Vcam(), nlohmann::json{{"ピッチ上限", pitch}, {"反転 Y", false}});
+
+    NS::OS::Mouse& mouse = NS::OS::Input::Get().Mouse();
+    mouse.SetRelativeMode(true);
+    mouse.OnRawMove(0, 10);
+    fall.Step(1);
+    mouse.SetRelativeMode(false);
+    ASSERT_EQ(fall.camera->Vcam().Pitch(), pitch);
+
+    fall.Step(90);
+    EXPECT_LT(fall.AddedDegrees(), 0.1f);
 }
 
 // 上へ返る反動は、追う相手を画面の下寄りに留める。注視点が早く上がり、上に空きができる

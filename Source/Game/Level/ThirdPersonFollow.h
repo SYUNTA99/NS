@@ -302,7 +302,7 @@ namespace GL
             NS::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
             bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
             bool m_floorViewActive = false;        // 反動になってから接地するまでか
-            bool m_floorViewStickUsed = false;     // その間に本人がカメラを縦に動かしたか。真なら接地まで角度を足さない
+            bool m_floorViewStickUsed = false;     // その間に本人がカメラを縦に入力したか。真なら接地まで角度を足さない
             float m_floorOrbit = 0.0f;             // カメラの位置を回している角度 (ラジアン)
             float m_floorTilt = 0.0f;              // 描く向きだけをさらに下げている角度 (ラジアン)
             float m_floorOrbitVelocity = 0.0f;     // m_floorOrbit の速さ (ラジアン/秒)

@@ -613,6 +613,8 @@ namespace GL
                 m_pitch += rstick.y * m_stickSensY * dt * mySign;
             }
 
+            // 上限や下限へ入力した時はクランプでピッチが変わらないので、クランプの前に見る
+            const bool pitchInput = m_pitch != pitchBeforeInput;
             m_pitch = NS::Clamp(m_pitch, m_pitchMin, m_pitchMax);
 
             const NS::Vector3 root = target->Position();
@@ -670,7 +672,7 @@ namespace GL
             m_widenNow = SpringApproach(m_widenNow, widenGoal, m_widenOmega, dt);
 
             const NS::Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
-            UpdateFloorView(collision, root, look, reboundBegan, rebound.rebounding, m_pitch != pitchBeforeInput, dt);
+            UpdateFloorView(collision, root, look, reboundBegan, rebound.rebounding, pitchInput, dt);
             UpdateOcclusion(collision, root, head, look, dt);
         }
 
