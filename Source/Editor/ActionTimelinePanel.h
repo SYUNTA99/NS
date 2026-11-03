@@ -42,6 +42,8 @@ namespace NS
             //! 未保存の変更がある .actor をすべて保存する。すべて書けた時だけ未保存記録を空にして true を返す
             [[nodiscard]] bool SaveAll() noexcept;
             [[nodiscard]] bool HasUnsavedChanges() const noexcept { return !m_dirty.empty(); }
+            //! 最後の操作の結果としてパネルに出す文
+            [[nodiscard]] const std::string& Status() const noexcept { return m_status; }
 
         private:
             void FollowSelection(LevelEditorController& editor);

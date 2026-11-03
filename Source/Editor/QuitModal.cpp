@@ -123,7 +123,7 @@ namespace NS
                 }
                 if (m_saveFailed)
                 {
-                    ImGui::TextColored(k_MsgErrorColor, "保存に失敗しました");
+                    ImGui::TextColored(k_MsgErrorColor, "保存に失敗しました。外で変更された .actor は書きません。理由はログにあります");
                 }
                 if (!m_open)
                 {

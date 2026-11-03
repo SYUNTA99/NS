@@ -53,38 +53,6 @@ namespace NS
                 return *it;
             }
 
-            // name の .actor をファイルへ書く。動作はファイルの中身のまま残す
-            // タイムラインの保存していない動作もライブラリにあるので、丸ごと書くとパネルの「元に戻す」で戻らなくなる
-            [[nodiscard]] bool SaveActorFileExceptActions(const std::string& name)
-            {
-                ActorFileLibrary& library = ActorFileLibrary::Get();
-                const nlohmann::json* current = library.Find(name);
-                if (current == nullptr)
-                {
-                    return false;
-                }
-                nlohmann::json document = *current;
-                const std::string path = OS::FileSystem::Combine(library.Directory(), name + ".actor");
-                if (OS::FileSystem::Exists(path))
-                {
-                    // 読めないファイルは ReadActorFileAt が ERROR を出している
-                    // 上書きすると保存していない動作が入り、手で直せる中身も消えるので書かない
-                    const std::optional<nlohmann::json> saved = ReadActorFileAt(path);
-                    if (!saved)
-                    {
-                        return false;
-                    }
-                    const nlohmann::json* actions = ActorFileActions(*saved);
-                    nlohmann::json savedActions = nlohmann::json::array();
-                    if (actions != nullptr)
-                    {
-                        savedActions = *actions;
-                    }
-                    SetActorFileActions(document, std::move(savedActions));
-                }
-                return WriteActorFileAt(path, document);
-            }
-
             // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name
             // の派生を指すアクターの全部へ、 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
             // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
@@ -98,10 +66,17 @@ namespace NS
                 {
                     return;
                 }
-                if (!SaveActorFileExceptActions(name))
+                if (!library.SaveExceptActions(name))
                 {
                     unsaved.insert(name);
-                    NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。終了時に再試行する", name);
+                    if (library.HasFileChangedOutside(name))
+                    {
+                        NS_LOG_WARN(App, ".actor {} は外で変更されたので書かない。編集は未保存のまま残す", name);
+                    }
+                    else
+                    {
+                        NS_LOG_WARN(App, ".actor {} をファイルへ書けなかった。終了時に再試行する", name);
+                    }
                 }
                 else
                 {
@@ -157,16 +132,11 @@ namespace NS
                 return derived;
             }
 
-            // name の .actor を document で足してファイルへ書く。ファイルが既にあるか、読めない文書か書けなければ足さずに false
+            // name の .actor を document で足してファイルへ書く。読めない文書か書けなければ足さずに false
+            // ライブラリが読まなかった同じ名前のファイルがあれば、Save が断るので足さない
             bool AddActorFile(std::string_view name, const nlohmann::json& document)
             {
                 ActorFileLibrary& library = ActorFileLibrary::Get();
-                // ライブラリに無くても、全部の値を作れなかったファイルがある。上書きすると手で直せる中身が消える
-                if (OS::FileSystem::Exists(OS::FileSystem::Combine(library.Directory(), std::string{name} + ".actor")))
-                {
-                    NS_LOG_WARN(App, ".actor {} のファイルが既にあるので足さない", name);
-                    return false;
-                }
                 // 読めない訳は Set が ERROR で出している
                 if (!library.Set(name, document))
                 {
@@ -796,7 +766,7 @@ namespace NS
             const std::set<std::string> actorFiles = m_unsavedActorFiles;
             for (const std::string& name : actorFiles)
             {
-                if (SaveActorFileExceptActions(name))
+                if (ActorFileLibrary::Get().SaveExceptActions(name))
                 {
                     m_unsavedActorFiles.erase(name);
                 }

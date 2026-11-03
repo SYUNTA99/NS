@@ -1096,6 +1096,36 @@ TEST(EditorActionTimelinePanel, SaveKeepsAFileThatBecameUnreadableAndStaysUnsave
     EXPECT_EQ(log.ErrorCount(), 1);
 }
 
+// 開いている間に手で変えた読める .actor も上書きせず、断った理由を書けなかった時と分けて出す
+TEST(EditorActionTimelinePanel, SaveKeepsAFileChangedOutsideAndStaysUnsaved)
+{
+    const ScopedActorFileDirectory directory("EditorTimelineChangedOutside");
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
+    const std::string path = NS::OS::FileSystem::Combine(directory.Path(), "PlayerActor.actor");
+    const std::optional<std::string> saved = NS::OS::FileSystem::ReadAllText(path);
+    ASSERT_TRUE(saved.has_value());
+    const std::size_t before = FirstActionEventCount();
+    AddEventThroughThePanel(editor, timeline);
+
+    const std::string handEdit = *saved + "\n";
+    WriteActorFile(directory.Path(), "PlayerActor", handEdit);
+
+    const TestLogCapture log;
+    EXPECT_FALSE(timeline.SaveAll());
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
+    EXPECT_TRUE(timeline.HasUnsavedChanges());
+    EXPECT_NE(timeline.Status().find("外で変更された"), std::string::npos);
+
+    // 「元に戻す」も外の動作を混ぜず、未保存のまま残す
+    PressPanelButton(editor, timeline, "元に戻す");
+    EXPECT_TRUE(timeline.HasUnsavedChanges());
+    EXPECT_EQ(FirstActionEventCount(), before + 1);
+}
+
 // 終了の確認と Save Level を開いている間は、編集のショートカットを止める答えが真になる。
 // 答えはモーダルを ImGui の窓の積み重ねで問うので、2 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
 TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
