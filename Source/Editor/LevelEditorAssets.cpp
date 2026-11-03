@@ -157,10 +157,16 @@ namespace NS
                 return derived;
             }
 
-            // name の .actor を document で足してファイルへ書く。読めない文書か書けなければ足さずに false
+            // name の .actor を document で足してファイルへ書く。ファイルが既にあるか、読めない文書か書けなければ足さずに false
             bool AddActorFile(std::string_view name, const nlohmann::json& document)
             {
                 ActorFileLibrary& library = ActorFileLibrary::Get();
+                // ライブラリに無くても、全部の値を作れなかったファイルがある。上書きすると手で直せる中身が消える
+                if (OS::FileSystem::Exists(OS::FileSystem::Combine(library.Directory(), std::string{name} + ".actor")))
+                {
+                    NS_LOG_WARN(App, ".actor {} のファイルが既にあるので足さない", name);
+                    return false;
+                }
                 // 読めない訳は Set が ERROR で出している
                 if (!library.Set(name, document))
                 {

@@ -1072,6 +1072,30 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     EXPECT_EQ(FirstActionEventCount(), before + 1);
 }
 
+// 開いている間に読めなくなった .actor は、手で直せる中身を残すために上書きせず、未保存のまま残す
+TEST(EditorActionTimelinePanel, SaveKeepsAFileThatBecameUnreadableAndStaysUnsaved)
+{
+    const ScopedActorFileDirectory directory("EditorTimelineUnreadable");
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    PlaceEditedPlayer(directory, scene, editor);
+    NS::Editor::ActionTimelinePanel timeline;
+    const std::size_t before = FirstActionEventCount();
+    AddEventThroughThePanel(editor, timeline);
+
+    const std::string broken = "{ broken";
+    WriteActorFile(directory.Path(), "PlayerActor", broken);
+
+    const TestLogCapture log;
+    EXPECT_FALSE(timeline.SaveAll());
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory.Path(), "PlayerActor.actor")),
+              broken);
+    EXPECT_TRUE(timeline.HasUnsavedChanges());
+    EXPECT_EQ(FirstActionEventCount(), before + 1);
+    EXPECT_EQ(log.ErrorCount(), 1);
+}
+
 // 終了の確認と Save Level を開いている間は、編集のショートカットを止める答えが真になる。
 // 答えはモーダルを ImGui の窓の積み重ねで問うので、2 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
 TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
