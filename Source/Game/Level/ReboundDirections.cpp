@@ -186,10 +186,20 @@ namespace GL
                 return angle;
             }
 
+            // 2 つの向きが、割り当てた向きから見て画面の同じ側 (両方とも右か、両方とも左) へずれているか
+            bool IsOnSameScreenSide(const NS::Vector3& a,
+                                    const NS::Vector3& b,
+                                    const NS::Vector3& assigned,
+                                    const ScreenAxes& screen) noexcept
+            {
+                return NS::HasPositiveMagnitude(NS::Dot(a - assigned, screen.right) * NS::Dot(b - assigned, screen.right));
+            }
+
             // 割り当てた向きの隣の候補から、入力を世界の向きにした物に一番近い物を選ぶ。一番近い物から同じに見なす差の中の
             // 物は同じだけ近いとし、その中で割り当てた向きから離れる角度が一番小さい物にする。差が少しでも近い方を選ぶと、
             // 真後ろから 3° 回ったカメラで前を入力した時、真上の隣と斜め上の隣のわずかな差で左右へ曲がった。
-            // 曲げる先が無いか、離れる角度も同じ 2 つが残って 1 つに決まらなければ nullptr
+            // 離れる角度も同じ 2 つが画面の同じ側なら、入力に近い方にする。曲げないと、45° の坂でずらす角度を増やす途中で
+            // 真上へ戻った。曲げる先が無いか、離れる角度も同じ 2 つが画面の左右に分かれて 1 つに決まらなければ nullptr
             const NS::Vector3* OneStepTowardInput(std::span<const NS::Vector3> table,
                                                   const ReboundHit& hit,
                                                   const ScreenAxes& screen,
@@ -220,6 +230,7 @@ namespace GL
 
                 const NS::Vector3* chosen{nullptr};
                 float chosenTurn{0.0f};
+                float chosenAngle{0.0f};
                 bool tied{false};
                 for (const NS::Vector3& direction : table)
                 {
@@ -231,13 +242,22 @@ namespace GL
                     const float turn{NS::AngleBetweenUnit(direction, hit.assigned)};
                     if (chosen != nullptr && std::abs(turn - chosenTurn) <= NS::k_Epsilon)
                     {
-                        tied = true;
+                        if (!IsOnSameScreenSide(*chosen, direction, hit.assigned, screen))
+                        {
+                            tied = true;
+                        }
+                        else if (*angle < chosenAngle)
+                        {
+                            chosen = &direction;
+                            chosenAngle = *angle;
+                        }
                         continue;
                     }
                     if (chosen == nullptr || turn < chosenTurn)
                     {
                         chosen = &direction;
                         chosenTurn = turn;
+                        chosenAngle = *angle;
                         tied = false;
                     }
                 }

@@ -63,7 +63,7 @@ void PlayerActor::MoveBody(float dt) noexcept
 
     const NS::Vector3 before = Root().Position();
     m_airDash.m_intended = m_body->Velocity();
-    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight, m_params->MaxSlopeRadians());
+    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight, MoveMaxSlopeRadians());
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();

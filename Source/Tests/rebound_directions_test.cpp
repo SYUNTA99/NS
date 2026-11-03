@@ -277,6 +277,30 @@ TEST(ReboundDirectionsTest, StraightUpWithUpInputStaysStraightUpFromEveryView)
     }
 }
 
+TEST(ReboundDirectionsTest, WideningDashOnASlopeChangesTheReboundOnlyForward)
+{
+    // +Z へ上る 45° の坂へ右へずらして当て、入力はダッシュの向きのまま。ずらす角度を増やすと、真上・右奥の上・右の上の順に
+    // 1 回ずつ変わり、前の向きへ戻らない。前は 21.8° から 22.5° の間だけ曲げずに真上へ戻った
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 normal{0.0f, k_Diagonal, -k_Diagonal};
+    std::vector<NS::Vector3> seen{};
+    for (int tenths = 180; tenths <= 400; ++tenths)
+    {
+        const float yaw = NS::k_Pi * static_cast<float>(tenths) / 1800.0f;
+        const ReboundHit hit = HitOn(table, NS::Vector3{std::sin(yaw), 0.0f, std::cos(yaw)}, normal);
+        const ReboundChoice choice =
+            ChooseReboundDirection(table, hit, BehindCamera(), std::sin(yaw), std::cos(yaw), Limits());
+        if (seen.empty() || !NS::IsNearlyParallel(seen.back(), choice.direction))
+        {
+            seen.push_back(choice.direction);
+        }
+    }
+    ASSERT_EQ(seen.size(), 3u);
+    ExpectNear(seen[0], NS::Vector3{0.0f, 1.0f, 0.0f});
+    ExpectNear(seen[1], NS::Vector3{0.5f, k_Diagonal, 0.5f});
+    ExpectNear(seen[2], NS::Vector3{k_Diagonal, k_Diagonal, 0.0f});
+}
+
 TEST(ReboundDirectionsTest, TwoSameLookingStepsOnBothSidesKeepTheAssignedDirection)
 {
     // 奥の下へ進んで正面の壁に当たり、手前の下へ返る所に、後ろから見て上を入力する。真後ろは当たる前より手前へ動くので
