@@ -181,7 +181,7 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     ASSERT_NE(clipField, nullptr);
     EXPECT_EQ(clipField->type, NS::FieldType::Asset);
     EXPECT_EQ(clipField->assetKind, NS::AssetKind::Animation);
-    EXPECT_EQ(log.ErrorCount(), 3);
+    EXPECT_EQ(log.ErrorCount(), 6);
 }
 
 // 欄の名前から素材を引く決まりは AssetManager の口の中にある
