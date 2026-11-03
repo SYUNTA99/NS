@@ -52,6 +52,7 @@ namespace NS
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
     //! ディレクトリトラバーサル (..) で ContentRoot 外へ出る不正なパスは弾き nullopt を返す
+    //! 断った時の文と戻り値は呼び出し元ごとに違うので、この関数はログを出さない
     [[nodiscard]] std::optional<std::string> ResolveContentPath(const std::string& relative);
 
     //! 道の glTF を読んで形にする。外部のバッファも同じ読み方で、本体と同じフォルダから読む
