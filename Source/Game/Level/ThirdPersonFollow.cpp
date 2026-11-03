@@ -115,6 +115,14 @@ namespace GL
             {
                 m_followHorizontalSpeed = 0.0f;
             }
+            if (std::isfinite(velocity.y))
+            {
+                m_followVerticalSpeed = velocity.y;
+            }
+            else
+            {
+                m_followVerticalSpeed = 0.0f;
+            }
             m_hasFollowMotion = true;
         }
 
@@ -155,6 +163,14 @@ namespace GL
             m_partnerLeanVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
             m_partnerPull = 0.0f;
             m_partnerPullVelocity = 0.0f;
+            m_floorViewActive = false;
+            m_floorViewStickUsed = false;
+            m_floorOrbit = 0.0f;
+            m_floorTilt = 0.0f;
+            m_floorOrbitVelocity = 0.0f;
+            m_floorTiltVelocity = 0.0f;
+            m_floorOrbitGoal = 0.0f;
+            m_floorTiltGoal = 0.0f;
         }
 
         void ThirdPersonFollow::UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept
@@ -333,7 +349,7 @@ namespace GL
             const float viewFov = ViewFovRadians();
             if (m_reboundScreenBand > 0.0f && viewFov > 0.0f)
             {
-                const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+                const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, FollowPositionPitch());
                 const NS::Vector3 toBall = ball - (m_look - axes.forward * ShownDistance());
                 const float depth = NS::Dot(toBall, axes.forward);
                 if (depth > 0.0f)
@@ -364,6 +380,72 @@ namespace GL
             m_widenNow = 0.0f;
             m_hasOccludedDistance = false;
             ClearRebound();
+        }
+
+        float ThirdPersonFollow::FollowPositionPitch() const noexcept
+        {
+            return std::max(m_pitch - m_floorOrbit, m_pitchMin);
+        }
+
+        void ThirdPersonFollow::UpdateFloorView(const NS::IGetCollision* collision,
+                                                const NS::Vector3& root,
+                                                const NS::Vector3& look,
+                                                bool began,
+                                                bool rebounding,
+                                                bool pitchMoved,
+                                                float dt)
+        {
+            NS_ASSERT(Game, collision != nullptr, "UpdateFloorView: 渡したアクターか部品が無い");
+            if (began)
+            {
+                m_floorViewActive = true;
+                m_floorViewStickUsed = false;
+            }
+            else if (m_followGrounded && !rebounding)
+            {
+                m_floorViewActive = false;
+            }
+            if (m_floorViewActive && pitchMoved && !m_floorViewStickUsed)
+            {
+                m_floorViewStickUsed = true;
+                // バネの勢いで、入力の後にも角度が増えるのを止める
+                m_floorOrbitVelocity = 0.0f;
+                m_floorTiltVelocity = 0.0f;
+            }
+
+            float omega = m_floorViewOmega;
+            if (!m_floorViewActive || m_floorViewStickUsed || m_followVerticalSpeed >= m_floorViewStartSpeed)
+            {
+                m_floorOrbitGoal = 0.0f;
+                m_floorTiltGoal = 0.0f;
+                omega = m_floorViewReturnOmega;
+            }
+            else
+            {
+                float floorDistance = 0.0f;
+                // 床が見つからない間は前の目標を保つ。足場の端を越えた瞬間にカメラが跳ねない
+                if (NS::RaycastCollision(collision, root, NS::Vector3{0.0f, -1.0f, 0.0f}, m_floorViewProbe, floorDistance))
+                {
+                    const NS::Vector3 floorPoint{root.x, root.y - floorDistance, root.z};
+                    const float limit = std::atan(m_floorViewBottom * std::tan(ViewFovRadians() * 0.5f));
+                    // その向きのカメラから見た床の点を、許す角度の内へ入れるのに下げる角度
+                    const auto angleNeeded = [&](float pitch)
+                    {
+                        const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, pitch);
+                        const NS::Vector3 toFloor = floorPoint - (look - axes.forward * ShownDistance());
+                        return std::atan2(-NS::Dot(toFloor, axes.up), NS::Dot(toFloor, axes.forward)) - limit;
+                    };
+                    const float orbitMax = std::min(NS::DegreesToRadians(m_floorViewOrbitMax), m_pitch - m_pitchMin);
+                    // 床が近づくと要る角度は減るが、目標を小さくしない。落下の途中で回転の向きが逆になるのを避ける
+                    m_floorOrbitGoal = std::max(m_floorOrbitGoal, NS::Clamp(angleNeeded(m_pitch), 0.0f, std::max(orbitMax, 0.0f)));
+                    const float positionPitch = m_pitch - m_floorOrbitGoal;
+                    m_floorTiltGoal = std::max(m_floorTiltGoal,
+                                               NS::Clamp(angleNeeded(positionPitch), 0.0f, std::max(positionPitch - m_pitchMin, 0.0f)));
+                }
+            }
+            // 足し始めのフレームに目標が大きく跳ぶので、速さが 0 から上がるバネで寄せる
+            CriticalSpringStep(m_floorOrbit, m_floorOrbitVelocity, m_floorOrbitGoal, omega, dt);
+            CriticalSpringStep(m_floorTilt, m_floorTiltVelocity, m_floorTiltGoal, omega, dt);
         }
 
         float ThirdPersonFollow::ViewFovRadians() const noexcept
@@ -400,7 +482,7 @@ namespace GL
             }
             // 出発点から、注視点の後ろの置きたいカメラの位置へ撃つ。前の向きの逆へ撃つと、注視点が頭より
             // 下へずれた時に線がカメラより上を通り、カメラと自機の間に無い天井で縮む
-            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, FollowPositionPitch());
             const NS::Vector3 cameraGoal = look - axes.forward * m_distance;
             const auto hitsTerrain = [&](const NS::Vector3& from, float& outDistance)
             {
@@ -506,6 +588,7 @@ namespace GL
             m_wasRebounding = rebound.rebounding;
             UpdateReboundTurn(reboundBegan, rebound);
 
+            const float pitchBeforeInput = m_pitch;
             // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
             if (!m_reboundLookHeld)
             {
@@ -587,6 +670,7 @@ namespace GL
             m_widenNow = SpringApproach(m_widenNow, widenGoal, m_widenOmega, dt);
 
             const NS::Vector3 look = UpdateReboundLook(head, root, rebound.verticalLean, dt);
+            UpdateFloorView(collision, root, look, reboundBegan, rebound.rebounding, m_pitch != pitchBeforeInput, dt);
             UpdateOcclusion(collision, root, head, look, dt);
         }
 
@@ -599,7 +683,8 @@ namespace GL
                     NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
             }
 
-            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, m_pitch);
+            const float positionPitch = FollowPositionPitch();
+            const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, positionPitch);
 
             // PlayerActor Mesh の補間と整合させ、相対位置のガタつきを防ぐ
             const NS::Vector3 tgtPos = target->InterpolatedWorldMatrix(alpha).Translation();
@@ -612,7 +697,14 @@ namespace GL
             }
             const NS::Vector3 camPos = headPos - axes.forward * ShownDistance();
 
-            NS::CameraPose pose = MakePose(camPos, headPos, NS::Vector3{0.0f, 1.0f, 0.0f});
+            NS::Vector3 lookAt = headPos;
+            if (m_floorTilt != 0.0f)
+            {
+                const float drawnPitch = std::max(positionPitch - m_floorTilt, m_pitchMin);
+                lookAt = camPos + ViewAxesFromYawPitch(m_yaw, drawnPitch).forward * ShownDistance();
+            }
+
+            NS::CameraPose pose = MakePose(camPos, lookAt, NS::Vector3{0.0f, 1.0f, 0.0f});
             if (m_widenNow != 0.0f)
             {
                 pose.fovY = NS::Radians{ViewFovRadians()};

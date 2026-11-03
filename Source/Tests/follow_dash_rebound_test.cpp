@@ -22,11 +22,13 @@ namespace
         void Feed(GL::Level::ThirdPersonFollow* vcam) const
         {
             NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
-            vcam->SetFollowMotion(false, NS::Vector3{});
+            vcam->SetFollowMotion(grounded, velocity);
             (void)vcam->SetFollowRebound(rebound);
         }
 
         GL::Level::FollowReboundDesc rebound{};
+        bool grounded = false;
+        NS::Vector3 velocity{};
     };
 
     struct DashScene
@@ -76,7 +78,129 @@ namespace
     {
         return (pose.position - pose.target).Length();
     }
+
+    // 床の点が画面の中央から下へどれだけ離れて映るか。中央が 0、下端が 1
+    float BelowCenterOnScreen(const NS::CameraPose& pose, const NS::Vector3& point)
+    {
+        NS::Vector3 forward = pose.target - pose.position;
+        forward.Normalize();
+        NS::Vector3 right = NS::Cross(NS::Vector3{0.0f, 1.0f, 0.0f}, forward);
+        right.Normalize();
+        const NS::Vector3 up = NS::Cross(forward, right);
+        const NS::Vector3 toPoint = point - pose.position;
+        return -NS::Dot(toPoint, up) / NS::Dot(toPoint, forward) / std::tan(pose.fovY.value * 0.5f);
+    }
+
+    // 落下で足元を映す試し: 床の 8 m 上で反動を始める
+    struct FallScene : DashScene
+    {
+        FallScene()
+        {
+            floor = AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
+            Step(30);
+            target->Root().SetPosition(NS::Vector3{0.0f, 8.0f, 0.0f});
+            target->rebound.rebounding = true;
+            target->rebound.holdLook = false;
+            target->rebound.pullBack = false;
+        }
+
+        // 本人の入力の向きから下げた角度 (度)。回り込みと向きの下げの合計
+        [[nodiscard]] float AddedDegrees() const
+        {
+            const NS::CameraPose pose = Pose();
+            NS::Vector3 forward = pose.target - pose.position;
+            forward.Normalize();
+            return NS::RadiansToDegrees(camera->Vcam().Pitch() - std::asin(forward.y));
+        }
+
+        [[nodiscard]] float FloorBelowCenter() const
+        {
+            const NS::Vector3 root = target->Root().Position();
+            return BelowCenterOnScreen(Pose(), NS::Vector3{root.x, 0.0f, root.z});
+        }
+
+        [[nodiscard]] float StartSpeed() const
+        {
+            return NS::SerializeClassObjFields(&camera->Vcam()).at("足元を映し始める縦の速さ").get<float>();
+        }
+
+        JPH::BodyID floor{};
+    };
 } // namespace
+
+// 落ち始めると、真下の床が画面の下端の内側へ入る
+TEST(FollowDashRebound, FallingBringsTheFloorInsideTheBottomEdge)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, fall.StartSpeed() + 1.0f, 0.0f};
+    fall.Step(30);
+    ASSERT_GT(fall.FloorBelowCenter(), 1.0f);
+
+    fall.target->velocity = NS::Vector3{0.0f, -1.0f, 0.0f};
+    fall.Step(60);
+    EXPECT_LT(fall.FloorBelowCenter(), 1.0f);
+}
+
+// 縦の速さが足元を映し始める速さにある間は角度を足さず、下回ると上昇中でも足し始める
+TEST(FollowDashRebound, StartsAddingAngleBelowTheStartSpeed)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, fall.StartSpeed(), 0.0f};
+    fall.Step(60);
+    EXPECT_NEAR(fall.AddedDegrees(), 0.0f, 1.0e-3f);
+
+    fall.target->velocity = NS::Vector3{0.0f, fall.StartSpeed() - 0.1f, 0.0f};
+    ASSERT_GT(fall.target->velocity.y, 0.0f);
+    fall.Step(60);
+    EXPECT_GT(fall.AddedDegrees(), 1.0f);
+}
+
+// 接地すると足した角度を戻す
+TEST(FollowDashRebound, LandingReturnsTheAddedAngle)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, -1.0f, 0.0f};
+    fall.Step(60);
+    ASSERT_GT(fall.AddedDegrees(), 1.0f);
+
+    fall.target->Root().SetPosition(NS::Vector3{0.0f, 1.0f, 0.0f});
+    fall.target->rebound.rebounding = false;
+    fall.target->grounded = true;
+    fall.target->velocity = NS::Vector3{};
+    fall.Step(90);
+    EXPECT_LT(fall.AddedDegrees(), 0.1f);
+}
+
+// 床が近づいても、接地するまでは足した角度を戻さない。落下の途中で回転の向きが逆にならない
+TEST(FollowDashRebound, DoesNotReturnTheAddedAngleWhileFalling)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, -1.0f, 0.0f};
+    fall.Step(60);
+    const float before = fall.AddedDegrees();
+    ASSERT_GT(before, 1.0f);
+
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        fall.target->Root().SetPosition(NS::Vector3{0.0f, 8.0f - 0.1f * static_cast<float>(frame), 0.0f});
+        fall.Step(1);
+    }
+    EXPECT_GE(fall.AddedDegrees(), before - 0.01f);
+}
+
+// 真下に床が無くなっても、前のフレームの目標を保つ
+TEST(FollowDashRebound, KeepsTheGoalWhenNoFloorIsBelow)
+{
+    FallScene fall;
+    fall.target->velocity = NS::Vector3{0.0f, -1.0f, 0.0f};
+    fall.Step(180); // バネが目標へ寄りきってから比べる
+    const float before = fall.AddedDegrees();
+    ASSERT_GT(before, 1.0f);
+
+    fall.scene.Physics().RemoveBody(fall.floor);
+    fall.Step(60);
+    EXPECT_NEAR(fall.AddedDegrees(), before, 0.5f);
+}
 
 // 上へ返る反動は、追う相手を画面の下寄りに留める。注視点が早く上がり、上に空きができる
 TEST(FollowDashRebound, UpwardReboundKeepsTheTargetLowOnTheScreen)
