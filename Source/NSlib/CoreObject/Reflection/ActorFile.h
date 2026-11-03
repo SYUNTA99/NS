@@ -49,7 +49,8 @@ namespace NS
     //! path の .actor を読み、参照の欄を落とした文書を返す
     //! 開けない・大きすぎる・JSON でない・知らない頭の鍵・class が無いか登録されていない物は ERROR で std::nullopt
     [[nodiscard]] std::optional<nlohmann::json> ReadActorFileAt(const std::string& path);
-    //! path へ .actor の文書を辞書順の鍵で書く。書けなければ ERROR で false で、前のファイルは残る
+    //! path へ .actor の文書を辞書順の鍵で書く。上限を超えるか書けなければ ERROR で false で、前のファイルは残る
+    //! ActorFileLibrary が読んだ後のファイルへ書くと外の変更と見なされ、以後の Save が断る
     [[nodiscard]] bool WriteActorFileAt(const std::string& path, const nlohmann::json& actorFile);
 
     //! 名前ごとの既定値を Directory()/<名前>.actor から読む。作るクラスはファイルの中の class
@@ -95,9 +96,16 @@ namespace NS
         //! name の .actor の文書を消し、Directory() のファイルも消す。ファイルを消せなければ false
         [[nodiscard]] bool Delete(std::string_view name);
 
-        //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けないか、今のファイルが読めなければ false
+        //! name の .actor の文書を丸ごと Directory() へ書く。無いか書けないか、ファイルが外で変更されていれば false
         [[nodiscard]] bool Save(std::string_view name);
 
+        //! name の .actor の文書を Directory() へ書く。動作はファイルの中身のまま残す。失敗は Save と同じ
+        //! タイムラインの保存していない動作も文書にあるので、丸ごと書くとパネルの「元に戻す」で戻らなくなる
+        [[nodiscard]] bool SaveExceptActions(std::string_view name);
+
+        //! name のファイルの中身が、読んだ時か自分が書いた時と違うか。改行の違いは見ない
+        //! 読んでいないファイルがあれば真、ファイルが無ければ偽 (上書きで消える中身が無いため)
+        [[nodiscard]] bool HasFileChangedOutside(std::string_view name);
 
     private:
         ActorFileLibrary();
@@ -107,10 +115,13 @@ namespace NS
         void RebuildValues();
         // name の文書から全部の値を作る。派生は m_mergedValues の元に重ねる。作れなければ ERROR を出して std::nullopt
         [[nodiscard]] std::optional<nlohmann::json> BuildValues(std::string_view name, const nlohmann::json& actorFile);
+        // name のファイルが外で変更されていなければ document を書き、書いた中身を m_fileTexts に持つ
+        [[nodiscard]] bool WriteIfNotChangedOutside(std::string_view name, const nlohmann::json& document);
 
         std::string m_directory;                                                     // 空なら既定のディレクトリ
         std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
         std::map<std::string, nlohmann::json, std::less<>> m_mergedValues;           // 名前から全部の値
+        std::map<std::string, std::string, std::less<>> m_fileTexts;                 // 名前から、読んだか書いた時のファイルの中身
         bool m_loaded = false;
     };
 

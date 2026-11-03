@@ -171,13 +171,31 @@ namespace NS
         bool ActionTimelinePanel::SaveAll() noexcept
         {
             ActorFileLibrary& library = ActorFileLibrary::Get();
+            std::string changedOutside;
             std::string failed;
             for (const std::string& name : m_dirty)
             {
-                if (!library.Save(name))
+                if (library.Save(name))
+                {
+                    continue;
+                }
+                if (library.HasFileChangedOutside(name))
+                {
+                    changedOutside += std::format(" {}.actor", name);
+                }
+                else
                 {
                     failed += std::format(" {}.actor", name);
                 }
+            }
+            if (!changedOutside.empty())
+            {
+                m_status = std::format("外で変更されたので書かなかった:{}", changedOutside);
+                if (!failed.empty())
+                {
+                    m_status += std::format(" / 書けなかった:{}", failed);
+                }
+                return false;
             }
             if (!failed.empty())
             {
@@ -514,7 +532,8 @@ namespace NS
                 const std::optional<nlohmann::json> saved =
                     ReadActorFileAt(OS::FileSystem::Combine(library.Directory(), name + ".actor"));
                 const nlohmann::json* current = library.Find(name);
-                if (!saved.has_value() || current == nullptr)
+                // 外で変更されたファイルの動作だけを文書へ混ぜない。外の変更は起動し直して読む
+                if (!saved.has_value() || current == nullptr || library.HasFileChangedOutside(name))
                 {
                     failed += std::format(" {}.actor", name);
                     continue;

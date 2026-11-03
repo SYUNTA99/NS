@@ -410,52 +410,89 @@ namespace NS
         }
     }
 
+    namespace
+    {
+        // path のファイルの中身。開けないか上限を超えれば ERROR を出して std::nullopt
+        [[nodiscard]] std::optional<std::string> ReadActorFileText(const std::string& path)
+        {
+            std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
+            if (!text.has_value())
+            {
+                NS_LOG_ERROR(Scene, ".actor {} のファイルを開けないので読まない", path);
+                return std::nullopt;
+            }
+            if (text->size() > k_MaxActorFileBytes)
+            {
+                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxActorFileBytes);
+                return std::nullopt;
+            }
+            return text;
+        }
+
+        // path から読んだ中身 text を文書にする。読めなければ ERROR を出して std::nullopt
+        [[nodiscard]] std::optional<nlohmann::json> ParseActorFileText(const std::string& path, const std::string& text)
+        {
+            const nlohmann::json root = nlohmann::json::parse(text, nullptr, false);
+            if (root.is_discarded())
+            {
+                NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
+                return std::nullopt;
+            }
+            const std::string problem = FindActorFileProblem(root);
+            if (!problem.empty())
+            {
+                NS_LOG_ERROR(Scene, ".actor {} を読まない。{}", path, problem);
+                return std::nullopt;
+            }
+            return Sanitize(root);
+        }
+
+        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
+        [[nodiscard]] std::string ActorFileText(const nlohmann::json& actorFile)
+        {
+            return actorFile.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
+        }
+
+        // text を path へ書く。上限を超えるか書けなければ ERROR を出して false で、前のファイルは残る
+        [[nodiscard]] bool WriteActorFileText(const std::string& path, const std::string& text)
+        {
+            // 上限を超えたファイルは次の起動で読めず、それを指すアクターが全部組めなくなる
+            if (text.size() > k_MaxActorFileBytes)
+            {
+                NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので書かない", path, k_MaxActorFileBytes);
+                return false;
+            }
+            const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
+            // 書く途中で失敗しても前のファイルを残す。壊れると、それを指すアクターが全部組めなくなる
+            if (!OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size())))
+            {
+                NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
+                return false;
+            }
+            return true;
+        }
+    } // namespace
+
     std::optional<nlohmann::json> ReadActorFileAt(const std::string& path)
     {
-        const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
+        const std::optional<std::string> text = ReadActorFileText(path);
         if (!text.has_value())
         {
-            NS_LOG_ERROR(Scene, ".actor {} のファイルを開けないので読まない", path);
             return std::nullopt;
         }
-        if (text->size() > k_MaxActorFileBytes)
-        {
-            NS_LOG_ERROR(Scene, ".actor {} が上限 ({} byte) を超えるので読まない", path, k_MaxActorFileBytes);
-            return std::nullopt;
-        }
-        const nlohmann::json root = nlohmann::json::parse(*text, nullptr, false);
-        if (root.is_discarded())
-        {
-            NS_LOG_ERROR(Scene, ".actor {} の JSON を読めない", path);
-            return std::nullopt;
-        }
-        const std::string problem = FindActorFileProblem(root);
-        if (!problem.empty())
-        {
-            NS_LOG_ERROR(Scene, ".actor {} を読まない。{}", path, problem);
-            return std::nullopt;
-        }
-        return Sanitize(root);
+        return ParseActorFileText(path, *text);
     }
 
     bool WriteActorFileAt(const std::string& path, const nlohmann::json& actorFile)
     {
-        // シーンのファイルと同じく辞書順のキーで書く。同じ中身の 2 回の保存はバイト一致になる
-        const std::string text = actorFile.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
-        const std::byte* raw = reinterpret_cast<const std::byte*>(text.data());
-        // 書く途中で失敗しても前のファイルを残す。壊れると、それを指すアクターが全部組めなくなる
-        if (!OS::FileSystem::ReplaceAllBytes(path, std::span<const std::byte>(raw, text.size())))
-        {
-            NS_LOG_ERROR(Scene, ".actor {} を書けない", path);
-            return false;
-        }
-        return true;
+        return WriteActorFileText(path, ActorFileText(actorFile));
     }
 
     void ActorFileLibrary::Reload()
     {
         m_actorFiles.clear();
         m_mergedValues.clear();
+        m_fileTexts.clear();
         m_loaded = true;
 
         const std::string& directory = Directory();
@@ -466,13 +503,20 @@ namespace NS
         }
         for (const std::string& path : OS::FileSystem::ListFiles(directory, ".actor"))
         {
-            std::optional<nlohmann::json> actorFile = ReadActorFileAt(path);
+            std::optional<std::string> text = ReadActorFileText(path);
+            if (!text.has_value())
+            {
+                continue;
+            }
+            std::optional<nlohmann::json> actorFile = ParseActorFileText(path, *text);
             if (!actorFile.has_value())
             {
                 continue;
             }
             // 名前はファイル名、クラスは中の class
-            m_actorFiles[OS::FileSystem::Stem(path)] = std::move(*actorFile);
+            std::string name = OS::FileSystem::Stem(path);
+            m_actorFiles[name] = std::move(*actorFile);
+            m_fileTexts[std::move(name)] = std::move(*text);
         }
         RebuildValues();
         // 全部の値を作れなかった文書は読まなかった物とする。Save で書き戻すと、次の起動でも読めない
@@ -484,6 +528,7 @@ namespace NS
                 ++it;
                 continue;
             }
+            m_fileTexts.erase(it->first);
             it = m_actorFiles.erase(it);
         }
     }
@@ -684,6 +729,7 @@ namespace NS
             NS_LOG_ERROR(Scene, ".actor {} のファイルを消せない", path);
             return false;
         }
+        m_fileTexts.erase(std::string{name});
         return true;
     }
 
@@ -694,13 +740,65 @@ namespace NS
         {
             return false;
         }
-        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
-        // 読めないファイルは ReadActorFileAt が ERROR を出している。上書きすると手で直せる中身が消えるので書かない
-        if (OS::FileSystem::Exists(path) && !ReadActorFileAt(path).has_value())
+        return WriteIfNotChangedOutside(name, *actorFile);
+    }
+
+    bool ActorFileLibrary::SaveExceptActions(std::string_view name)
+    {
+        const nlohmann::json* current = Find(name);
+        if (current == nullptr)
         {
             return false;
         }
-        return WriteActorFileAt(path, *actorFile);
+        nlohmann::json document = *current;
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
+        if (OS::FileSystem::Exists(path))
+        {
+            // 読めないファイルは ReadActorFileAt が ERROR を出している。戻す動作が無いので書かない
+            const std::optional<nlohmann::json> saved = ReadActorFileAt(path);
+            if (!saved.has_value())
+            {
+                return false;
+            }
+            nlohmann::json savedActions = nlohmann::json::array();
+            if (const nlohmann::json* actions = ActorFileActions(*saved))
+            {
+                savedActions = *actions;
+            }
+            SetActorFileActions(document, std::move(savedActions));
+        }
+        return WriteIfNotChangedOutside(name, document);
+    }
+
+    bool ActorFileLibrary::HasFileChangedOutside(std::string_view name)
+    {
+        EnsureLoaded();
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
+        if (!OS::FileSystem::Exists(path))
+        {
+            return false;
+        }
+        const std::optional<std::string> text = OS::FileSystem::ReadAllText(path);
+        const std::map<std::string, std::string, std::less<>>::const_iterator known = m_fileTexts.find(name);
+        return !text.has_value() || known == m_fileTexts.end() || known->second != *text;
+    }
+
+    bool ActorFileLibrary::WriteIfNotChangedOutside(std::string_view name, const nlohmann::json& document)
+    {
+        const std::string path = OS::FileSystem::Combine(Directory(), std::string{name} + ".actor");
+        // 上書きすると手で直した中身が消える
+        if (HasFileChangedOutside(name))
+        {
+            NS_LOG_ERROR(Scene, ".actor {} は読んだ時と中身が違うか読まなかったファイルなので書かない", path);
+            return false;
+        }
+        std::string text = ActorFileText(document);
+        if (!WriteActorFileText(path, text))
+        {
+            return false;
+        }
+        m_fileTexts.insert_or_assign(std::string{name}, std::move(text));
+        return true;
     }
 
     void ApplyActorFile(SceneActor* actor)

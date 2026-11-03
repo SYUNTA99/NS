@@ -811,6 +811,48 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     EXPECT_EQ(NS::ActorJsonClassObjs(*written)["LaunchEffects"]["飛び出しの尾の資産"], core->Id());
 }
 
+// インスペクターの欄の編集は編集するたびに書く。外で変わったファイルには書かず、未保存のまま残す
+TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
+{
+    const ScopedActorFileDirectory directory("FieldEditChangedOutside");
+    const ScopedActorFile actorDefinition{"ChangedEffectRock", CodeValuesActorFile("PropActor")};
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Save("ChangedEffectRock"));
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "ChangedEffectRock", 1);
+    scene.ResetFromJson(doc);
+    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
+    ASSERT_NE(rock, nullptr);
+    const NS::ClassObjInfo* row = nullptr;
+    NS::ForEachReflectedClassObj(rock, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
+        if (part == &rock->Effects())
+        {
+            row = &candidate;
+        }
+    });
+    ASSERT_NE(row, nullptr);
+    const std::string path = NS::OS::FileSystem::Combine(directory.Path(), "ChangedEffectRock.actor");
+    const std::optional<std::string> saved = NS::OS::FileSystem::ReadAllText(path);
+    ASSERT_TRUE(saved.has_value());
+    const std::string handEdit = *saved + "\n";
+    WriteActorFile(directory.Path(), "ChangedEffectRock", handEdit);
+
+    LevelEditorController editor(scene);
+    editor.SelectActorById(1);
+    editor.BeginClassObjEdit();
+    ASSERT_EQ(NS::ApplyJsonFields(&rock->Effects(), {{"飛び出しの尾の資産", "6e4f2fccb9df5a339885b53d42fafd45"}}), 0u);
+    editor.NoteFieldEdit(rock, *row, "飛び出しの尾の資産");
+    editor.CommitClassObjEdit();
+    editor.Editor().Undo().Clear();
+
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
+    NS::Editor::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
+    EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
+    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+}
+
 TEST(SceneActor, FailedDirectEffectSaveStaysPendingAfterTheSceneHistoryIsCleared)
 {
     const ScopedActorFileDirectory directory("FailedDirectEffectSave");

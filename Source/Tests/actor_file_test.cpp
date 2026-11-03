@@ -1683,6 +1683,124 @@ TEST(ActorFile, CreatingADerivedActorFileKeepsAFileTheLibraryDidNotLoad)
     EXPECT_EQ(library.Find("MistypedRock"), nullptr);
 }
 
+// 読んだ後に外で変わった .actor は、読める中身でも上書きしない。手の編集を消さないため
+TEST(ActorFile, SaveKeepsAFileChangedOutsideAfterLoading)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("SaveKeepsChangedFile");
+    WriteActorFile(scope.Path(), "HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump());
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    ASSERT_NE(library.Find("HeavyRock"), nullptr);
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+
+    const std::string handEdit = ActorFileWith("PropActor", "Collision", SphereEntry(7.0f)).dump();
+    WriteActorFile(scope.Path(), "HeavyRock", handEdit);
+
+    const TestLogCapture log;
+    EXPECT_TRUE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_FALSE(library.Save("HeavyRock"));
+    EXPECT_FALSE(library.SaveExceptActions("HeavyRock"));
+    EXPECT_EQ(FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor")), handEdit);
+    EXPECT_EQ(log.ErrorCount(), 2);
+}
+
+// 開いている間に base を打ち間違えたファイルは JSON として読めるが、全部の値を作れない。これも上書きしない
+TEST(ActorFile, SaveKeepsAFileWhoseBaseWasMistypedOutside)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("SaveKeepsMistypedBase");
+    WriteActorFile(scope.Path(), "HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump());
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    ASSERT_NE(library.Find("HeavyRock"), nullptr);
+
+    const std::string mistyped = DerivedActorFileWith("NoSuchActor", "Params", MassEntry(4.0f)).dump();
+    WriteActorFile(scope.Path(), "HeavyRock", mistyped);
+
+    const TestLogCapture log;
+    EXPECT_FALSE(library.Save("HeavyRock"));
+    EXPECT_EQ(FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor")), mistyped);
+}
+
+// 自分が書いた中身は外の変更と見なさない。どちらの保存の後でも、続けて保存できる
+TEST(ActorFile, SaveAcceptsTheFileItWroteItself)
+{
+    const ScopedActorFileDirectory scope("SaveAcceptsOwnFile");
+    WriteActorFile(scope.Path(), "HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump());
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    ASSERT_TRUE(library.Set("HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(3.0f))));
+
+    EXPECT_TRUE(library.Save("HeavyRock"));
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_TRUE(library.SaveExceptActions("HeavyRock"));
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_TRUE(library.Save("HeavyRock"));
+}
+
+// 改行の違いだけでは外の変更と見なさない。git が改行を変えても保存を断らないため
+TEST(ActorFile, LineEndingsAloneAreNotAChangeOutside)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("LineEndingsNotChange");
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    ASSERT_TRUE(library.Set("HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f))));
+    ASSERT_TRUE(library.Save("HeavyRock"));
+    const std::string path = FileSystem::Combine(scope.Path(), "HeavyRock.actor");
+    const std::optional<std::string> text = FileSystem::ReadAllText(path);
+    ASSERT_TRUE(text.has_value());
+    std::string crlf;
+    for (const char c : *text)
+    {
+        if (c == '\n')
+        {
+            crlf += '\r';
+        }
+        crlf += c;
+    }
+    WriteActorFile(scope.Path(), "HeavyRock", crlf);
+
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_TRUE(library.Save("HeavyRock"));
+}
+
+// ファイルが消えた時は消える手の編集が無いので、今まで通り書く
+TEST(ActorFile, SaveWritesAFileRemovedOutside)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("SaveWritesRemovedFile");
+    WriteActorFile(scope.Path(), "HeavyRock", ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump());
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    const std::string path = FileSystem::Combine(scope.Path(), "HeavyRock.actor");
+    ASSERT_TRUE(FileSystem::RemoveFile(path));
+
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_TRUE(library.Save("HeavyRock"));
+    EXPECT_TRUE(FileSystem::Exists(path));
+}
+
+// 上限を超える文書は書かない。書くと次の起動で読めず、前のファイルも消える
+TEST(ActorFile, SaveRefusesADocumentOverTheSizeLimit)
+{
+    using NS::OS::FileSystem;
+    const ScopedActorFileDirectory scope("SaveRefusesOversize");
+    const std::string original = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f)).dump();
+    WriteActorFile(scope.Path(), "HeavyRock", original);
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+    nlohmann::json oversized = ActorFileWith("PropActor", "Collision", SphereEntry(2.0f));
+    NS::SetActorFileActions(oversized, nlohmann::json::array({std::string(1024u * 1024u, 'x')}));
+    ASSERT_TRUE(library.Set("HeavyRock", oversized));
+
+    const TestLogCapture log;
+    EXPECT_FALSE(library.Save("HeavyRock"));
+    EXPECT_EQ(FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor")), original);
+    EXPECT_FALSE(library.HasFileChangedOutside("HeavyRock"));
+    EXPECT_EQ(log.ErrorCount(), 1);
+}
+
 // シーンで詰めたアクターから派生を作ると、上書きを派生の .actor へ移し、アクターをその派生に切り替える。
 // 値と位置は変わらず、保存は上書きを書かない。取り消すと元の .actor と上書きへ戻る
 TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
