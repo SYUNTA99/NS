@@ -16,3 +16,6 @@
 
 # 音の素材。 text=auto が中身を文字と取り違えて改行を書き換えると、波形が壊れる。 !eol の理由は上と同じ
 *.wav binary !eol
+
+# 画像。 spdlog が同梱する .gitattributes の text=false は無効な値で、根の eol=crlf が効いて改行を書き換える。 !eol の理由は上と同じ
+*.png binary !eol
