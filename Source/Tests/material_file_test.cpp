@@ -189,6 +189,12 @@ TEST(MaterialFile, ValuesInTheFileReachTheReflectedShaderParams)
     EXPECT_EQ(valueOf(*stone, "textureScale"), std::vector<double>{0.16});
     EXPECT_EQ(valueOf(*stone, "alphaCutoff"), std::vector<double>{0.0});
 
+    // 葉の切り抜きと影の濃さは .mat の値で決める
+    const NS::Material* leaves = assets.LoadMaterial("Assets/Materials/apricot_ruins/nature/leaf_sprays.mat");
+    EXPECT_EQ(valueOf(*leaves, "alphaCutoff"), std::vector<double>{0.45});
+    const NS::Material* contact = assets.LoadMaterial("Assets/Materials/apricot_ruins/crafted/contact.mat");
+    EXPECT_EQ(valueOf(*contact, "strength"), std::vector<double>{0.32});
+
     // 値を書かない .mat はシェーダーの初期値で、UV で貼りアクターの色を使う
     const NS::Material* flag = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
     EXPECT_EQ(valueOf(*flag, "worldProjection"), std::vector<double>{0.0});
