@@ -149,6 +149,12 @@ namespace GL
             NS_FIELD(m_reboundPullPerMeter, "二人の距離 1 m あたりに引く距離")
             NS_FIELD(m_reboundPullMax, "相手を収める引きの上限")
             NS_FIELD(m_reboundPartnerHalfSeconds, "相手を収めるばねの半分の秒")
+            NS_FIELD(m_floorViewOrbitMax, "足元を映す回り込みの上限")
+            NS_FIELD(m_floorViewBottom, "足元を映す画面の位置")
+            NS_FIELD(m_floorViewOmega, "足元を映すバネ角速度")
+            NS_FIELD(m_floorViewProbe, "足元を探す距離")
+            NS_FIELD(m_floorViewStartSpeed, "足元を映し始める縦の速さ")
+            NS_FIELD(m_floorViewReturnOmega, "足元から戻すバネ角速度")
             NS_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
             NS_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
             NS_REFLECT_END()
@@ -177,6 +183,19 @@ namespace GL
                                  const NS::Vector3& look,
                                  float dt);
 
+            // 反動の後に落ちる間、真下の床を画面の下端の内側へ入れる角度を 1 フレーム進める。
+            // 反動になってから接地するまでの間で、本人がカメラを縦に動かしていない時だけ角度を足す
+            void UpdateFloorView(const NS::IGetCollision* collision,
+                                 const NS::Vector3& root,
+                                 const NS::Vector3& look,
+                                 bool began,
+                                 bool rebounding,
+                                 bool pitchMoved,
+                                 float dt);
+
+            // カメラの位置を作る向き。本人が決めた向きから回り込みの分を下げる。遮りと帯もこの向きで調べる
+            [[nodiscard]] float FollowPositionPitch() const noexcept;
+
             // 描く視野角。速い間の広げを足す。帯と描く時が同じ値を読む
             [[nodiscard]] float ViewFovRadians() const noexcept;
             // 描く距離。追う距離を、遮りで縮めた上限で切る
@@ -197,6 +216,7 @@ namespace GL
             // 値で受けた追従先の運動。届くまでは待機距離のまま
             bool m_followGrounded = false;
             float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
+            float m_followVerticalSpeed = 0.0f;   // 負なら落ちている
             bool m_hasFollowMotion = false;
             bool m_framingHeld = false;        // このフレームに距離を保つか。Advance が読んで偽へ戻す
             float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
@@ -251,6 +271,12 @@ namespace GL
             float m_reboundPullMax = 4.0f;
             // 寄せと引きのばねが差の半分まで追いつく秒
             float m_reboundPartnerHalfSeconds = 0.15f;
+            float m_floorViewOrbitMax = 10.0f; // 足元を映す時にカメラの位置を回す角度の上限 (度)
+            float m_floorViewBottom = 0.9f;    // 真下の床を入れる位置。画面の中央が 0、下端が 1
+            float m_floorViewOmega = 5.0f;     // 足す角度を増やす向きのバネ角速度 (1/秒)
+            float m_floorViewReturnOmega = 8.0f; // 足した角度を 0 へ戻す向きのバネ角速度 (1/秒)
+            float m_floorViewProbe = 60.0f;    // 真下の床を探す光線の長さ (m)
+            float m_floorViewStartSpeed = 8.0f; // 縦の速さがこれを下回ると足元を映し始める (m/秒)。上昇の勢いが弱まった所から回す
 
             FollowReboundDesc m_rebound{};    // 次の Update で使う反動の状態
             bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
@@ -275,6 +301,14 @@ namespace GL
             NS::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
             NS::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
             bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
+            bool m_floorViewActive = false;        // 反動になってから接地するまでか
+            bool m_floorViewStickUsed = false;     // その間に本人がカメラを縦に入力したか。真なら接地まで角度を足さない
+            float m_floorOrbit = 0.0f;             // カメラの位置を回している角度 (ラジアン)
+            float m_floorTilt = 0.0f;              // 描く向きだけをさらに下げている角度 (ラジアン)
+            float m_floorOrbitVelocity = 0.0f;     // m_floorOrbit の速さ (ラジアン/秒)
+            float m_floorTiltVelocity = 0.0f;      // m_floorTilt の速さ (ラジアン/秒)
+            float m_floorOrbitGoal = 0.0f;         // m_floorOrbit の目標。床が見つからない間は前の値を保つ
+            float m_floorTiltGoal = 0.0f;          // m_floorTilt の目標。床が見つからない間は前の値を保つ
         };
 
     } // namespace Level

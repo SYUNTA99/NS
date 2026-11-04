@@ -1023,6 +1023,46 @@ TEST(PlayerAirDashTest, MatchingAtTheReleaseTurnsTheWeakReactionIntoTheFullOne)
     EXPECT_GT(ghostLength(player), weak);
 }
 
+// 登れない 45° の坂から離れる向きへ曲げた反動は、最初の移動で記録の向きと速さのまま飛ぶ。
+// 前は急な坂に触れている間の処理が水平に坂へ向かう分を消し、奥へ進まず遅くなった
+TEST(PlayerAirDashTest, ReboundLeavingASteepSlopeKeepsTheChosenVelocity)
+{
+    NS::Scene scene;
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "PlayerActor", 1);
+    scene.ResetFromJson(doc);
+    // 実機と同じく後ろから約 15° 見下ろす。水平に見ると、この当て方は入力が合ったとみなされて曲がらない
+    ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 6.34f, -5.0f}, NS::Vector3{0.0f, 5.0f, 0.0f}), nullptr);
+    PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
+    ASSERT_NE(player, nullptr);
+    player->Root().SetPosition(NS::Vector3{0.0f, 5.0f, 0.0f});
+    const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitX, -NS::k_Pi / 4.0f);
+    scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 5.0f, 4.5f}, tilt, NS::Vector3{20.0f, 0.5f, 20.0f}),
+                           NS::Phys::k_TerrainObjectLayer);
+
+    const float yaw = NS::k_Pi * 25.0f / 180.0f;
+    MoveStick(player, NS::Vector3{std::sin(yaw), 0.0f, std::cos(yaw)}, 1.0f);
+    player->Update(true);
+    for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(true);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    for (int frame = 0; frame < 60 && player->IsHitStopping(); ++frame)
+    {
+        player->Update(false);
+    }
+    player->Update(false);
+
+    const GL::Player::TerrainReboundRecord& hit = player->AirDash().LastRebound();
+    ASSERT_EQ(hit.input, GL::Level::ReboundInputResult::Shifted);
+    ASSERT_GT(hit.shifted.z, 0.1f);
+    const NS::Vector3 velocity = player->Body().Velocity();
+    EXPECT_NEAR(velocity.x, hit.shifted.x * hit.speed, 0.01f);
+    EXPECT_NEAR(velocity.y, hit.shifted.y * hit.speed, 0.01f);
+    EXPECT_NEAR(velocity.z, hit.shifted.z * hit.speed, 0.01f);
+}
+
 // 止めの間に動かして最後に倒した向きを、明けのフレームに選ぶ
 TEST(PlayerAirDashTest, TiltDuringTheStopShiftsTheReboundAtTheRelease)
 {

@@ -52,18 +52,8 @@ namespace NS
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
     //! ディレクトリトラバーサル (..) で ContentRoot 外へ出る不正なパスは弾き nullopt を返す
+    //! 断った時の文と戻り値は呼び出し元ごとに違うので、この関数はログを出さない
     [[nodiscard]] std::optional<std::string> ResolveContentPath(const std::string& relative);
-
-    //! JSON 文字列を MaterialFileDesc へ解析する。成功で true、失敗時は outError に理由を入れる
-    //! vs / ps は必須、他は欠落時に既定値。綴りの合わない混ぜ方は Opaque。GPU を使わないので装置無しで試せる
-    //! params の壊れた値は名前を WARN に出して 1 つずつ捨て、ほかの値は読む
-    [[nodiscard]] bool ParseMaterialJson(std::string_view jsonText, MaterialFileDesc& out, std::string& outError);
-
-    //! MaterialFileDesc を .mat の JSON 文字列にする。ParseMaterialJson で読み直すと同じ値になる
-    //! テクスチャが k_MaterialTextureSlots 枚より多い時、基本の色が数でない時、
-    //! ParseMaterialJson が読めない材質の値がある時は nullopt
-    //! 鍵の並びと書き方は今の .mat と同じで、値を変えずに書くと同じ文字列になる。params は空なら書かない
-    [[nodiscard]] std::optional<std::string> MakeMaterialJson(const MaterialFileDesc& file);
 
     //! 道の glTF を読んで形にする。外部のバッファも同じ読み方で、本体と同じフォルダから読む
     //! 本体か外部のバッファを読めない時と、中身が壊れている時はログを出して空を返す
@@ -115,7 +105,8 @@ namespace NS
         //! 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
         //! # が無ければファイルの中の先頭の 1 本。nullptr を返さない
         //! 空の名前・読めないファイル・無い動きの名前は、その名前を持つ中身の空のクリップを返す
-        //! 空の名前は「使わない」で警告しない。読めない名前は最初の 1 回だけ警告し、Clear まで同じクリップを返す
+        //! 空の名前は「使わない」で何も出さない。読めないファイルはファイルごとに、ほかの読めない名前は名前ごとに、最初の 1 回だけ ERROR を出す
+        //! Clear まで同じクリップを返す
         [[nodiscard]] AnimClip* LoadAnimClip(std::string_view name);
 
         //! @brief 音を作る装置を渡す。LoadSoundClip を呼ぶ前に呼ぶ

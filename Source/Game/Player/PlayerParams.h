@@ -55,6 +55,11 @@ namespace GL
             {
                 return NS::ToRadians(NS::Degrees{m_maxSlopeDegrees}).value;
             }
+            //! 欄「反動で面から離れる間の登れる坂の上限」をラジアンにした値。物理の Body::Move へ渡す
+            [[nodiscard]] float ReboundLeaveMaxSlopeRadians() const noexcept
+            {
+                return NS::ToRadians(NS::Degrees{m_reboundLeaveMaxSlopeDegrees}).value;
+            }
             //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
             //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
@@ -123,6 +128,7 @@ namespace GL
             NS_GROUP("段と縁")
             NS_FIELD(m_maxStepHeight, "登れる段の高さ")
             NS_FIELD(m_maxSlopeDegrees, "登れる坂の上限", NS::FieldRange{0.0f, 90.0f})
+            NS_FIELD(m_reboundLeaveMaxSlopeDegrees, "反動で面から離れる間の登れる坂の上限", NS::FieldRange{0.0f, 90.0f})
             NS_FIELD(m_ledgeGrabBelowHand, "掴める縁の下向き距離")
             NS_FIELD(m_ledgeReach, "縁へ手を伸ばす距離")
             NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
@@ -285,6 +291,7 @@ namespace GL
             float m_maxStepHeight = 0.25f;
             // これより急な面は、歩いても壁と同じく遮り、反動の続きで当たっても跳ね返る (度)
             float m_maxSlopeDegrees = 40.0f;
+            float m_reboundLeaveMaxSlopeDegrees = 85.0f; // 垂直の壁は登れる面に数えない
             float m_ledgeGrabBelowHand = 0.5f;
             float m_ledgeReach = 0.3f;
             // 掴まっている間に測り直す上面が、手より上に出てよい高さ (m)。撃った線の誤差で手を放さないための余白

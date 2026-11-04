@@ -1,7 +1,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 
 #include <gtest/gtest.h>

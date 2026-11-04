@@ -336,6 +336,18 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     m_body->SetVelocity(turned * speed);
 }
 
+float PlayerActor::MoveMaxSlopeRadians() const noexcept
+{
+    // 登れない坂に触れていると、離れる向きへ飛ぶ時でも水平に坂へ向かう分が消え、選んだ向きと速さで飛ばない
+    if (IsDashRebounding() && m_airDash.m_reboundChosen &&
+        m_airDash.m_reboundElapsed <= m_params->m_reboundLockSeconds &&
+        NS::HasPositiveMagnitude(NS::Dot(m_body->Velocity(), m_airDash.m_last.normal)))
+    {
+        return m_params->ReboundLeaveMaxSlopeRadians();
+    }
+    return m_params->MaxSlopeRadians();
+}
+
 void PlayerActor::TryBeginTerrainRebound() noexcept
 {
     const bool dashing = IsAirDashing();

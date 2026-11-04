@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
+#include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "TestLogCapture.h"

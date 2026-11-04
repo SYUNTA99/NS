@@ -392,6 +392,8 @@ private:
     void ExtendReboundStop() noexcept;
     //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
     void ChooseReboundAtRelease() noexcept;
+    //! 体を動かす時の登れる坂の上限。向きを選んだ後の操作なしの段で、当たった面から離れて飛ぶ間は欄の広い上限を返す
+    [[nodiscard]] float MoveMaxSlopeRadians() const noexcept;
     //! 今の入力で、最後の反動の返る向きを表から選ぶ。入力が無ければ割り当てた向きのまま
     [[nodiscard]] GL::Level::ReboundChoice ChooseReboundInput() const noexcept;
     //! 入力補正で選べる幅。欄の角度と表の分割数から作る。向きを選ぶ所と矢印が同じ幅を使う

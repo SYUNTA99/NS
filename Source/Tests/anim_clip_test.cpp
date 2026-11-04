@@ -56,7 +56,7 @@ TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
         EXPECT_EQ(clip->Clip(), nullptr) << name;
         EXPECT_EQ(clip, assets.LoadAnimClip(name)) << name;
     }
-    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(log.ErrorCount(), 4);
 }
 
 TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
