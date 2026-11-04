@@ -522,11 +522,15 @@ namespace NS
 #define NS_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                                      \
     NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Shared, __VA_ARGS__)
 
+//! NS_ACCESSOR に、派生の .actor でも値を変えてよい項目として登録する。引数は NS_ACCESSOR と同じ
+#define NS_PROTECTED_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                            \
+    NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Protected, __VA_ARGS__)
+
 //! NS_ACCESSOR に、シーンに置いたアクターでも値を変えてよい項目として登録する。引数は NS_ACCESSOR と同じ
 #define NS_GLOBAL_ACCESSOR(ValueType, name, getterCall, setterCall, ...)                                               \
     NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, NS::FieldScope::Global, __VA_ARGS__)
 
-// NS_ACCESSOR・NS_GLOBAL_ACCESSOR の中身。直には書かない
+// NS_ACCESSOR・NS_PROTECTED_ACCESSOR・NS_GLOBAL_ACCESSOR の中身。直には書かない
 #define NS_ACCESSOR_ENTRY(ValueType, name, getterCall, setterCall, fieldScope, ...)                                    \
     NS::ReflectEntry{NS::FieldDesc{name,                                                                               \
                                    NS::FieldTypeOf<ValueType>(),                                                       \

@@ -178,7 +178,7 @@ namespace GL
             NS_FIELD(m_dashReboundDeceleration, "地形の反動の減速度")
             NS_FIELD(m_reboundSteerLimitRatio, "曲げの上限の段の割合")
             NS_FIELD(m_reboundSteerMaxDegreesPerSecond, "曲げの最大の角速度")
-            NS_FIELD(m_drawReboundLines, "反動の線を描く")
+            NS_PROTECTED_FIELD(m_drawReboundLines, "反動の線を描く")
             NS_FIELD(m_reboundLineLength, "反動の線の長さ")
             NS_GROUP("反動")
             NS_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")

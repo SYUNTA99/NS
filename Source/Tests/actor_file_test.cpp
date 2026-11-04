@@ -1246,6 +1246,28 @@ TEST(ActorFile, ShippedActorFilesLoad)
     EXPECT_NE(rock.ShadowClassObj(), nullptr);
 }
 
+// 遺跡の自機とカメラは元の .actor との差だけを持つ。元の項目と束と動作は、差を重ねた形で遺跡のアクターに届く
+TEST(ActorFile, RuinActorFilesOverlayTheirDifferencesOnTheBase)
+{
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    library.Reload();
+
+    for (const std::string_view name : {"ApricotPlayer", "ApricotCamera"})
+    {
+        const nlohmann::json* written = library.Find(name);
+        ASSERT_NE(written, nullptr) << name;
+        const nlohmann::json* values = library.Values(name);
+        const nlohmann::json* baseValues = library.Values(NS::ActorFileBase(*written));
+        ASSERT_NE(values, nullptr) << name;
+        ASSERT_NE(baseValues, nullptr) << name;
+
+        nlohmann::json expected = *baseValues;
+        expected.merge_patch(*written);
+        expected.erase("base"); // 重ねた後の値は元の値として持つので、base の行を持たない
+        EXPECT_EQ(*values, expected) << name;
+    }
+}
+
 // 出荷の .actor は Save の形で書いてある。読んで書き直すとバイトまで同じで、前の置き場は残っていない
 TEST(ActorFile, ShippedActorFilesRoundTripByteForByte)
 {
