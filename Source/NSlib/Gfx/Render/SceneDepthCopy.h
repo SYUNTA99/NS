@@ -14,7 +14,7 @@ namespace NS
         class D3DTexture;
 
         //! 今の描画先の深度をシェーダーから読めるテクスチャへ写す
-        //! ビューごとに大きさが違うので、大きさごとに 2 枚まで持ち回す
+        //! ビューごとに大きさが違うので、全体で 2 枚を持ち回す。3 つ目の大きさが来ると一番古い物を作り直す
         class SceneDepthCopy : public NonCopyable
         {
         public:

@@ -184,15 +184,19 @@ namespace NS
         //! 空の後の段で描く。画面の深度と空のキューブマップを読むシェーダーの物が呼ぶ
         void SetDrawsAfterSky() noexcept { m_drawsAfterSky = true; }
 
-        //! SetDrawsAfterSky の後は AfterSky。他は D3DMaterial の BlendMode から bucket を返し、
+        //! 視錐台で間引かない。頂点シェーダーがメッシュの範囲の外へ動かす物が呼ぶ
+        void SetNeverCulled() noexcept { m_neverCulled = true; }
+
+        //! SetDrawsAfterSky の後は AfterSky。他は D3DMaterial の BlendMode から段を返し、
         //! Opaque 以外は Transparent。D3DMaterial 不在は Opaque
-        [[nodiscard]] RenderBucket Bucket() const noexcept override;
+        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override;
         //! 根の世界行列の平行移動成分で半透明ソート用の中心
         [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
         //! D3DMaterial の renderPriority で距離同値時のタイブレークに使う
         [[nodiscard]] int SortPriority() const noexcept override;
 
-        //! 上書き境界を優先し、メッシュの境界を根の世界行列で包む
+        //! SetNeverCulled の後は根もメッシュも見ず、原点を中心に全域を覆う箱を返す
+        //! 他は上書き境界を優先し、メッシュの境界を根の世界行列で包む
         //! 描画倍率は前後の大きい方で包み、描画用のずれを加える。描くメッシュがなければ原点の半幅 1
         [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
 
@@ -220,6 +224,7 @@ namespace NS
         Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
         std::optional<Color> m_colorOverride;
         bool m_drawsAfterSky = false; // 保存しない。決めるのはアクターのクラス
+        bool m_neverCulled = false;   // 保存しない。決めるのはアクターのクラス
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
         const Gfx::D3DBuffer* m_perObjectVsCb = nullptr;

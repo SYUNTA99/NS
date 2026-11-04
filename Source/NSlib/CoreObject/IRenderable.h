@@ -18,15 +18,6 @@ namespace NS
 
 namespace NS
 {
-    //! 描画バケット。Opaque と AfterSky は登録順、Transparent はカメラから遠い順にソートされる
-    //! AfterSky は空の後、Transparent の前に描き、画面の深度と空のキューブマップを読める
-    enum class RenderBucket : uint8
-    {
-        Opaque,
-        AfterSky,
-        Transparent
-    };
-
     //! 描く物の管理クラスが、登録の組から描く物へ渡す持ち主の姿
     //! root は持ち主の根の世界行列。Collect には固定更新の間を補間した行列、
     //! WorldBounds と SortCenter には今の固定フレームの行列が入る。
@@ -52,7 +43,7 @@ namespace NS
         //! 全描画物が必ず境界を返す。常に描きたいものは全域を覆う AABB を返して自ら申告する
         [[nodiscard]] virtual AABB WorldBounds(const RenderSource& source) const noexcept = 0;
 
-        [[nodiscard]] virtual RenderBucket Bucket() const noexcept { return RenderBucket::Opaque; }
+        [[nodiscard]] virtual Gfx::RenderPass Bucket() const noexcept { return Gfx::RenderPass::Opaque; }
 
         [[nodiscard]] virtual Vector3 SortCenter(const RenderSource& source) const noexcept
         {

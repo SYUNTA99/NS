@@ -31,7 +31,7 @@ namespace NS
         void Collect(const Gfx::RenderContext& context,
                      const RenderSource& source,
                      std::vector<Gfx::DrawItem>& out) override;
-        [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
+        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override { return Gfx::RenderPass::Transparent; }
         //! 半透明の並べ替えに使う中心として、根の世界座標の位置を返す
         [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
 

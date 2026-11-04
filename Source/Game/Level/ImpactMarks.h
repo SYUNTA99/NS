@@ -41,7 +41,10 @@ namespace GL
                          std::vector<NS::Gfx::DrawItem>& out) override;
             //! 出ている跡を全部包む箱。跡が無ければ持ち主の根の位置の大きさ 0 の箱
             [[nodiscard]] NS::AABB WorldBounds(const NS::RenderSource& source) const noexcept override;
-            [[nodiscard]] NS::RenderBucket Bucket() const noexcept override { return NS::RenderBucket::Transparent; }
+            [[nodiscard]] NS::Gfx::RenderPass Bucket() const noexcept override
+            {
+                return NS::Gfx::RenderPass::Transparent;
+            }
             //! 一番新しい跡の位置。跡が無ければ持ち主の根の位置
             [[nodiscard]] NS::Vector3 SortCenter(const NS::RenderSource& source) const noexcept override;
 

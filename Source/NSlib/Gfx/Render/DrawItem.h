@@ -17,6 +17,15 @@ namespace NS
         class D3DDevice;
         class D3DShader;
 
+        //! 世界を描く段。Opaque と AfterSky は登録順、Transparent はカメラから遠い順にソートされる
+        //! AfterSky は空の後、Transparent の前に描き、画面の深度と空のキューブマップを読める
+        enum class RenderPass : uint8
+        {
+            Opaque,
+            AfterSky,
+            Transparent
+        };
+
         // FrameCB の 16 バイト整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
 #pragma warning(push)
 #pragma warning(disable : 4324)
