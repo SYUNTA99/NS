@@ -1,0 +1,7 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/bark.png"],
+  "baseColor": [0.5, 0.35, 0.22],
+  "blend": "Opaque"
+}

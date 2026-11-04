@@ -398,6 +398,8 @@ namespace NS
         item.blend = item.material->Blend();
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
+        item.constants.cameraPosition = context.cameraPosition;
+        item.constants.sceneTimeSeconds = context.sceneTimeSeconds;
         item.constants.lightDir = settings.lightDir;
         item.constants.lightDir.Normalize();
         item.constants.baseColor = DrawColor().ToVector3();
@@ -419,6 +421,10 @@ namespace NS
 
     RenderBucket Model::Bucket() const noexcept
     {
+        if (m_drawsAfterSky)
+        {
+            return RenderBucket::AfterSky;
+        }
         const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {

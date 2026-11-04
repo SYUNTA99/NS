@@ -1,0 +1,9 @@
+Rock shape and ambient-occlusion map:
+Boulder 01, Rico Cilliers, Poly Haven.
+Source: https://polyhaven.com/a/boulder_01
+License: CC0 1.0 (public domain)
+License terms: https://polyhaven.com/license
+Metadata: https://api.polyhaven.com/files/boulder_01
+Adaptation: scan surface converted into radial relief; resampled to each island's grass rim.
+Output: fractured_cliffs.glb
+Texture: Assets/Textures/apricot_ruins/boulder_01_ao_1k.jpg

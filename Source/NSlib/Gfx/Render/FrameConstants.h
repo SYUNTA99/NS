@@ -40,12 +40,14 @@ namespace NS
             Vector3 groundColor = Gfx::RenderSettings{}.groundColor;
             float exposure = Gfx::RenderSettings{}.exposure;
             TremorCB tremor{};
-            float opacity = 1.0f; // 不透明度 0..1 (player.ps / unlit.ps で Alpha ブレンド時のみ有効)
+            float opacity = 1.0f; // 不透明度 0..1 (lit / unlit / soft_circle が読む。Alpha ブレンド時のみ有効)
             float pad0 = 0.0f;
             float pad1 = 0.0f;
             float pad2 = 0.0f;
+            Vector3 cameraPosition{};
+            float sceneTimeSeconds = 0.0f;
         };
-        static_assert(sizeof(FrameCB) == 288, "FrameCB size は standard.vs と完全一致 (288 byte)");
+        static_assert(sizeof(FrameCB) == 304, "FrameCB size は Common.hlsli と完全一致 (304 byte)");
         static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
     } // namespace Gfx
 } // namespace NS

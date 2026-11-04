@@ -17,7 +17,12 @@
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/ScreenPasses.h"
+#include "NSlib/Gfx/Render/SceneDepthCopy.h"
 #include "NSlib/Gfx/Render/Skybox.h"
+#include "NSlib/Gfx/D3DCommandList.h"
+#include "NSlib/Gfx/D3DCommonStates.h"
+#include "NSlib/Gfx/D3DShader.h"
+#include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
@@ -26,6 +31,23 @@
 
 namespace NS
 {
+    namespace
+    {
+        [[nodiscard]] Gfx::RenderPass PassOf(RenderBucket bucket) noexcept
+        {
+            switch (bucket)
+            {
+            case RenderBucket::AfterSky:
+                return Gfx::RenderPass::AfterSky;
+            case RenderBucket::Transparent:
+                return Gfx::RenderPass::Transparent;
+            case RenderBucket::Opaque:
+                break;
+            }
+            return Gfx::RenderPass::Opaque;
+        }
+    } // namespace
+
     SceneRenderer::SceneRenderer() = default;
 
     SceneRenderer::~SceneRenderer() = default;
@@ -40,6 +62,7 @@ namespace NS
             m_effects.reset();
             m_overlay.reset();
             m_skybox.reset();
+            m_afterSkyDepth.reset();
             m_debugShapes.reset();
             m_shaders = Gfx::BuiltinShaders{};
             return;
@@ -49,6 +72,7 @@ namespace NS
         m_shaders = AssetManager::Get().LoadBuiltinShaders();
         m_overlay = std::make_unique<Gfx::ScreenOverlay>(device, m_shaders);
         m_skybox = std::make_unique<Gfx::Skybox>(m_shaders);
+        m_afterSkyDepth = std::make_unique<Gfx::SceneDepthCopy>();
         // 資源は今の装置の物なので、装置を差す度に作り直す。出荷では線を描かないので作らない
 #if !defined(NS_SHIPPING)
         m_debugShapes = std::make_unique<Gfx::DebugShapePass>(m_shaders);
@@ -59,6 +83,7 @@ namespace NS
 
     void SceneRenderer::OnTick()
     {
+        m_sceneTimeSeconds += OS::FrameTimer::FixedDelta();
         if (m_effects == nullptr)
         {
             return;
@@ -112,7 +137,7 @@ namespace NS
         desc.bounds = renderable->WorldBounds(source);
         desc.sortCenter = renderable->SortCenter(source);
         desc.sortPriority = renderable->SortPriority();
-        desc.transparent = renderable->Bucket() == RenderBucket::Transparent;
+        desc.pass = PassOf(renderable->Bucket());
         desc.collect = &CollectEntry;
         desc.owner = entry.get();
         entry->handle = m_renderScene.Register(desc);
@@ -260,18 +285,45 @@ namespace NS
                                  r->WorldBounds(source),
                                  r->SortCenter(source),
                                  r->SortPriority(),
-                                 r->Bucket() == RenderBucket::Transparent);
+                                 PassOf(r->Bucket()));
         }
     }
 
     void SceneRenderer::DrawOpaque(const Gfx::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, false);
+        m_renderScene.DrawBucket(context, Gfx::RenderPass::Opaque);
+    }
+
+    void SceneRenderer::DrawAfterSky(const Gfx::RenderContext& context)
+    {
+        if (!m_renderScene.HasPass(Gfx::RenderPass::AfterSky))
+        {
+            return;
+        }
+        const Gfx::SceneDepthCopy::CaptureResult depth = m_afterSkyDepth->Capture();
+        // 描くたびに失敗するので、続いている間は 1 回だけ出す
+        if (!depth.failure.empty() && !m_afterSkyDepthFailureLogged)
+        {
+            NS_LOG_ERROR(Graphics, "SceneRenderer: {} ({}x{})。深度なしで描く", depth.failure, depth.width, depth.height);
+        }
+        m_afterSkyDepthFailureLogged = !depth.failure.empty();
+        Gfx::D3DCommandList& commands = m_device->Commands();
+        if (depth.texture != nullptr)
+        {
+            commands.PSSetShaderResource(*depth.texture, Gfx::k_SceneDepthSlot);
+        }
+        if (const Gfx::D3DTexture* sky = m_skybox->Cubemap())
+        {
+            commands.PSSetShaderResource(*sky, Gfx::k_SkyCubeSlot);
+        }
+        commands.PSSetSampler(m_device->States().LinearClamp(), Gfx::k_SkySamplerSlot);
+        m_renderScene.DrawBucket(context, Gfx::RenderPass::AfterSky);
+        commands.UnbindPixelShaderResources(Gfx::k_SceneDepthSlot, 2);
     }
 
     void SceneRenderer::DrawTransparent(const Gfx::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, true);
+        m_renderScene.DrawBucket(context, Gfx::RenderPass::Transparent);
     }
 
     void SceneRenderer::DrawOverlays(const Gfx::RenderContext& context,
@@ -458,6 +510,7 @@ namespace NS
         ctx.device = m_device;
         ctx.overlay = m_overlay.get();
         ctx.alpha = alpha;
+        ctx.sceneTimeSeconds = m_sceneTimeSeconds;
 
         // 上書き視点は実カメラを経由せず、その場で組む。実カメラの中身はゲーム視点のまま残す
         CameraData overrideCamera{};
@@ -486,11 +539,12 @@ namespace NS
         passes.bloom->BeginWorld(*m_device, m_device->ClearColor());
         DrawOpaque(ctx);
         m_skybox->Draw(*m_device, *viewCamera, skyboxPath);
+        DrawAfterSky(ctx);
         DrawTransparent(ctx);
         // ワールド空間の半透明物。半透明の後、デバッグ描画の前
         if (m_effects != nullptr)
         {
-            m_effects->Draw(*viewCamera);
+            m_effects->Draw(*viewCamera, m_sceneTimeSeconds);
         }
         // 重ね描きとデバッグの線はにじませも歪ませもしないので、この後に今の描画先へ描く
         passes.bloom->EndWorld(*m_device);

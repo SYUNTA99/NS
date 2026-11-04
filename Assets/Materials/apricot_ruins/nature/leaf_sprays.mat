@@ -1,0 +1,10 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/leaf_tones.png"],
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Opaque",
+  "params": {
+    "alphaCutoff": 0.45
+  }
+}

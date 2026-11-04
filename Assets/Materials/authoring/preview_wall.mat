@@ -1,0 +1,11 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/checker.png"],
+  "baseColor": [1.0, 0.48, 0.12],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 0.3333,
+    "worldProjection": true
+  }
+}

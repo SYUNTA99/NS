@@ -1,0 +1,7 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/limestone_tile.png"],
+  "baseColor": [0.87, 0.84, 0.78],
+  "blend": "Opaque"
+}

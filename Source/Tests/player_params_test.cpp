@@ -2,7 +2,6 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
-#include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -343,12 +342,11 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
 }
 
-TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyFiveFields)
+TEST(PlayerParams, MarkerDefaultsKeepAllFields)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const GL::Level::TargetMarkerDesc marker{};
-    const GL::Level::SlamArrowDesc arrow{};
     const nlohmann::json markerFields = {
         {"ロックオンの枠の色", {marker.color.x, marker.color.y, marker.color.z, marker.color.w}},
         {"ロックオンの枠の太さ", marker.lineThickness},
@@ -364,34 +362,9 @@ TEST(PlayerParams, IndicatorDefaultsKeepAllThirtyFiveFields)
         {"外れた時の枠の倍率", marker.lostScale},
         {"外れた時の枠のフレーム数", marker.lostFrames},
         {"枠の縁の色", {marker.outlineColor.x, marker.outlineColor.y, marker.outlineColor.z, marker.outlineColor.w}}};
-    const nlohmann::json arrowFields = {
-        {"矢印が伸びるフレーム数", arrow.growFrames},
-        {"矢印を浮かせる高さ", arrow.groundLift},
-        {"矢じりの幅", arrow.headWidth},
-        {"矢じりの奥行きの割合", arrow.headDepthRatio},
-        {"矢じりの奥行きの下限", arrow.headDepthMin},
-        {"矢じりの奥行きの上限", arrow.headDepthMax},
-        {"帯の始まりのぼかし", arrow.startFade},
-        {"色の境目のぼかし", arrow.frontSoftness},
-        {"後半の色へ変わる溜め量", arrow.lateStageFrom},
-        {"溜めの前半の色", {arrow.earlyColor.x, arrow.earlyColor.y, arrow.earlyColor.z, arrow.earlyColor.w}},
-        {"溜めの後半の色", {arrow.lateColor.x, arrow.lateColor.y, arrow.lateColor.z, arrow.lateColor.w}},
-        {"溜めきりの色", {arrow.fullColor.x, arrow.fullColor.y, arrow.fullColor.z, arrow.fullColor.w}},
-        {"色の付いていない部分の色", {arrow.plainColor.x, arrow.plainColor.y, arrow.plainColor.z, arrow.plainColor.w}},
-        {"矢印の暗い縁の色", {arrow.darkColor.x, arrow.darkColor.y, arrow.darkColor.z, arrow.darkColor.w}},
-        {"帯の明るい縁の不透明度", arrow.bandEdgeAlpha},
-        {"帯の塗りの不透明度", arrow.bandFillAlpha},
-        {"矢じりの明るい縁の不透明度", arrow.headEdgeAlpha},
-        {"矢じりの塗りの不透明度", arrow.headFillAlpha},
-        {"色の無い帯の明るい縁の不透明度", arrow.plainBandEdgeAlpha},
-        {"色の無い帯の塗りの不透明度", arrow.plainBandFillAlpha},
-        {"隠れた矢じりの不透明度", arrow.occludedHeadAlpha},
-        {"矢じりを見せる最小の角度", arrow.headMinViewDegrees}};
-    // 枠と矢印の見た目は描く部品が持ち、遊びの欄と並ばない
+    // 枠の見た目は描く部品が持ち、遊びの欄と並ばない
     ExpectClassObjFields(&player.TargetIndicator(), markerFields);
-    ExpectClassObjFields(&player.SlamIndicator(), arrowFields);
     ExpectNotInParams(&player, markerFields);
-    ExpectNotInParams(&player, arrowFields);
 }
 
 // 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも

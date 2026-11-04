@@ -1,7 +1,7 @@
 #ifndef NS_COMMON_HLSLI
 #define NS_COMMON_HLSLI
 
-// 全 mesh 描画が共有する毎フレーム定数。 C++ の FrameCB と 1 対 1 に対応する 288 byte
+// 全 mesh 描画が共有する毎フレーム定数。 C++ の FrameCB と 1 対 1 に対応する 304 byte
 // row-major LH に揃え mul(float4(pos,1), world) の行ベクトル流派で使う
 cbuffer FrameCB : register(b0)
 {
@@ -26,9 +26,11 @@ cbuffer FrameCB : register(b0)
     float  g_tremorFramesPerMeter;
     float  g_tremorRingFrames;
     float3 g_tremorPad;
-    // 描く 1 回ごとの不透明度。 player.ps と unlit.ps が出力 alpha に出す。 混ぜ方が Alpha の描画だけに効く
+    // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
     float  g_opacity;
     float3 g_opacityPad;
+    float3 g_cameraPosition;
+    float  g_sceneTimeSeconds;
 };
 
 // 物の震えで世界の位置へ足すずれ。 衝突点から遠い所ほど遅れて震え始め、 1 か所は g_tremorRingFrames で弱まって止まる

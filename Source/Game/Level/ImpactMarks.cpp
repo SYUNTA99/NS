@@ -121,8 +121,8 @@ namespace GL
                 item.blend = item.material->Blend();
                 item.constants.world = world;
                 item.constants.viewProj = context.viewProjection;
-                // x は shadow.ps が読む不透明度
-                item.constants.baseColor = NS::Vector3{NS::Clamp(m_opacity, 0.0f, 1.0f), 0.0f, 0.0f};
+                item.constants.baseColor = m_material->BaseColor().ToVector3();
+                item.constants.opacity = NS::Clamp(m_opacity, 0.0f, 1.0f);
                 out.push_back(item);
             }
         }

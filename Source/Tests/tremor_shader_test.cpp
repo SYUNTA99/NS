@@ -247,7 +247,7 @@ TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
     EXPECT_EQ(sizeof(NS::Gfx::TremorCB), 64u);
     EXPECT_EQ(offsetof(NS::Gfx::FrameCB, tremor), 208u);
     EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 272u);
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 288u);
+    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 304u);
     // 書いていない震えは振れ幅 0 で、どの物も震えない。書いていない不透明度は 1
     const NS::Gfx::FrameCB constants{};
     EXPECT_FLOAT_EQ(constants.tremor.amplitude, 0.0f);

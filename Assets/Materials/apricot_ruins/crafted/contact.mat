@@ -1,0 +1,9 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/soft_circle.ps.hlsl",
+  "baseColor": [0.18, 0.24, 0.31],
+  "blend": "Alpha",
+  "params": {
+    "strength": 0.32
+  }
+}

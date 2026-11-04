@@ -73,7 +73,8 @@ namespace NS
         item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
-        item.constants.baseColor = Vector3{alpha, 0.0f, 0.0f}; // x = 高さフェードアルファで shadow.ps が読む
+        item.constants.baseColor = m_material->BaseColor().ToVector3();
+        item.constants.opacity = alpha;
         out.push_back(item);
     }
 } // namespace NS

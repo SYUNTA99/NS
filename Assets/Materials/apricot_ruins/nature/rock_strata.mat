@@ -1,0 +1,11 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/cliff_world.png"],
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 0.1,
+    "worldProjection": true
+  }
+}

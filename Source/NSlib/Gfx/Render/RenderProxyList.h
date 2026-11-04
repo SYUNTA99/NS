@@ -23,12 +23,20 @@ namespace NS
             [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
         };
 
+        //! 世界を描く段。AfterSky は空の後、Transparent の前
+        enum class RenderPass : uint8
+        {
+            Opaque,
+            AfterSky,
+            Transparent
+        };
+
         struct RenderProxyDesc
         {
             AABB bounds{};        // 視錐台カリング用のワールド空間 AABB
             Vector3 sortCenter{}; // 深度ソート用のワールド座標
             int sortPriority = 0; // 半透明ソートで距離が等しい場合の優先度 (小さい順に先に描画)
-            bool transparent = false;
+            RenderPass pass = RenderPass::Opaque;
             void (*collect)(void* owner, const RenderContext& context, std::vector<DrawItem>& out) = nullptr;
             void* owner = nullptr;
         };
@@ -44,10 +52,13 @@ namespace NS
                         const AABB& bounds,
                         const Vector3& sortCenter,
                         int sortPriority,
-                        bool transparent) noexcept;
+                        RenderPass pass) noexcept;
 
-            //! 視錐台カリングを行い、transparent に一致するバケットを描画する
-            void DrawBucket(const RenderContext& context, bool transparent);
+            //! 視錐台カリングを行い、pass に一致する段を描画する。Transparent だけ遠い順に並べる
+            void DrawBucket(const RenderContext& context, RenderPass pass);
+
+            //! pass に一致する物が 1 つでも登録されているか
+            [[nodiscard]] bool HasPass(RenderPass pass) const noexcept;
 
             [[nodiscard]] std::size_t Count() const noexcept;
 

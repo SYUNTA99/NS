@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Gfx/Render/SceneDepthCopy.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
@@ -67,7 +68,8 @@ namespace NS
             void Update(float deltaSeconds) noexcept;
 
             //! 全エフェクトを描画する。D24_UNORM_S8_UINT の深度をコピーできない場合は深度なしで描画する
-            void Draw(const CameraData& camera) noexcept;
+            //! timeSeconds はシェーダーへ渡す経過秒
+            void Draw(const CameraData& camera, float timeSeconds = 0.0f) noexcept;
 
             //! 直前の Draw でエフェクトへ深度を渡せたか
             [[nodiscard]] bool PassesDepth() const noexcept;
@@ -75,16 +77,14 @@ namespace NS
             //! 直前の Draw で深度コピー不可により深度なし描画へフォールバックしたか
             [[nodiscard]] bool IsUsingDepthFallback() const noexcept { return m_depthFallback; }
 
-            [[nodiscard]] uint32 DepthCopiesCreated() const noexcept { return m_depthCopiesCreated; }
+            [[nodiscard]] uint32 DepthCopiesCreated() const noexcept { return m_depth.CopiesCreated(); }
 
         private:
-            struct DepthCopy
+            //! SceneDepthCopy のテクスチャを Effekseer へ渡す形にした物
+            struct DepthTextureRef
             {
-                std::unique_ptr<D3DTexture> texture;
+                uint32 textureId = 0;
                 Effekseer::Backend::TextureRef effekseerTexture;
-                uint32 width = 0;
-                uint32 height = 0;
-                uint32 lastUsed = 0;
             };
 
             bool PreloadFile(std::string_view id, const std::string& path, uint32 seed) noexcept;
@@ -92,7 +92,7 @@ namespace NS
             std::unordered_map<std::string, std::string> m_resourcePaths;
 
             void PassDepth(const CameraData& camera) noexcept;
-            [[nodiscard]] DepthCopy* DepthCopyFor(uint32 width, uint32 height) noexcept;
+            [[nodiscard]] Effekseer::Backend::TextureRef DepthTextureFor(const SceneDepthCopy::CaptureResult& capture) noexcept;
             void FallBackWithoutDepth(std::string_view reason, uint32 width, uint32 height) noexcept;
 
             Effekseer::ManagerRef m_manager;
@@ -100,11 +100,10 @@ namespace NS
             std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
             std::unordered_set<std::string> m_warnedMissing;
             std::unordered_map<std::string, uint32> m_playCounts;
-            float m_elapsedSeconds = 0.0f;
 
-            std::array<DepthCopy, 2> m_depthCopies{};
-            uint32 m_depthCopiesCreated = 0;
-            uint32 m_drawCount = 0;
+            SceneDepthCopy m_depth;
+            std::array<DepthTextureRef, 2> m_depthTextures{};
+            uint32 m_nextDepthTexture = 0;
             bool m_depthFallback = false;
             std::string m_failedDepthKey;
         };

@@ -54,7 +54,6 @@ namespace GL
     {
         class ImpactResolver;
         class TargetMarker;
-        class SlamArrow;
         class ReboundPreview;
         struct BodySlamMotion;
         struct ImpactAnswer;
@@ -111,7 +110,6 @@ public:
     [[nodiscard]] GL::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
-    [[nodiscard]] GL::Level::SlamArrow& SlamIndicator() noexcept { return *m_slamArrow; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept
@@ -473,7 +471,6 @@ private:
     std::unique_ptr<GL::Player::PlayerAppearance> m_appearance;
     std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
     std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
-    std::unique_ptr<GL::Level::SlamArrow> m_slamArrow;
     std::unique_ptr<GL::Level::ReboundPreview> m_reboundPreview;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;

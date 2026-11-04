@@ -118,6 +118,35 @@ TEST(ShaderConstants, StandardVertexShaderMatchesTheDrawConstants)
     EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));
 }
 
+TEST(ShaderConstants, WaterShadersMatchTheDrawConstantsAndExposeTheViewAndTime)
+{
+    const ReflectedShader vertex = Reflect(L"Shaders/water.vs.hlsl", "VSMain", "vs_5_0");
+    const ReflectedShader pixel = Reflect(L"Shaders/water.ps.hlsl", "PSMain", "ps_5_0");
+    ASSERT_NE(pixel.reflection, nullptr) << pixel.error;
+    D3D11_SHADER_INPUT_BIND_DESC depthBind{};
+    D3D11_SHADER_INPUT_BIND_DESC skyBind{};
+    D3D11_SHADER_INPUT_BIND_DESC samplerBind{};
+    ASSERT_TRUE(SUCCEEDED(pixel.reflection->GetResourceBindingDescByName("g_sceneDepth", &depthBind)));
+    ASSERT_TRUE(SUCCEEDED(pixel.reflection->GetResourceBindingDescByName("g_skyCube", &skyBind)));
+    ASSERT_TRUE(SUCCEEDED(pixel.reflection->GetResourceBindingDescByName("g_skySampler", &samplerBind)));
+    EXPECT_EQ(depthBind.BindPoint, NS::Gfx::k_SceneDepthSlot);
+    EXPECT_EQ(skyBind.BindPoint, NS::Gfx::k_SkyCubeSlot);
+    EXPECT_EQ(samplerBind.BindPoint, NS::Gfx::k_SkySamplerSlot);
+    ASSERT_NE(vertex.reflection, nullptr) << vertex.error;
+    ASSERT_NE(pixel.reflection, nullptr) << pixel.error;
+    EXPECT_TRUE(HasConstantBuffer(*vertex.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
+    EXPECT_TRUE(HasConstantBuffer(*pixel.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
+    EXPECT_TRUE(MaterialParamsAtItsSlot(*vertex.reflection.Get()));
+    EXPECT_TRUE(MaterialParamsAtItsSlot(*pixel.reflection.Get()));
+    ID3D11ShaderReflectionConstantBuffer* constants = pixel.reflection->GetConstantBufferByName("FrameCB");
+    D3D11_SHADER_VARIABLE_DESC camera{};
+    D3D11_SHADER_VARIABLE_DESC time{};
+    ASSERT_TRUE(SUCCEEDED(constants->GetVariableByName("g_cameraPosition")->GetDesc(&camera)));
+    ASSERT_TRUE(SUCCEEDED(constants->GetVariableByName("g_sceneTimeSeconds")->GetDesc(&time)));
+    EXPECT_EQ(camera.StartOffset, offsetof(NS::Gfx::FrameCB, cameraPosition));
+    EXPECT_EQ(time.StartOffset, offsetof(NS::Gfx::FrameCB, sceneTimeSeconds));
+}
+
 TEST(ShaderConstants, SkinnedVertexShaderMatchesTheDrawConstantsAndTheBones)
 {
     const ReflectedShader shader = Reflect(L"Shaders/skinned.vs.hlsl", "VSMain", "vs_5_0");

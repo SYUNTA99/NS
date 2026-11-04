@@ -1,0 +1,11 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/limestone_world.png"],
+  "baseColor": [0.76, 0.68, 0.53],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 0.2,
+    "worldProjection": true
+  }
+}

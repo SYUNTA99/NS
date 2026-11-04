@@ -18,10 +18,12 @@ namespace NS
 
 namespace NS
 {
-    //! 描画バケット。Opaque は登録順、Transparent はカメラから遠い順にソートされる
+    //! 描画バケット。Opaque と AfterSky は登録順、Transparent はカメラから遠い順にソートされる
+    //! AfterSky は空の後、Transparent の前に描き、画面の深度と空のキューブマップを読める
     enum class RenderBucket : uint8
     {
         Opaque,
+        AfterSky,
         Transparent
     };
 

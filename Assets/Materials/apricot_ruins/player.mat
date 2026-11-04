@@ -1,0 +1,7 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/white.png"],
+  "baseColor": [0.4, 0.25, 0.14],
+  "blend": "Opaque"
+}
