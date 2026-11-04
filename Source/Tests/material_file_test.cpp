@@ -50,7 +50,7 @@ TEST(MaterialFile, MaterialLoadedFromAPathHoldsTheValuesOfTheFile)
     const NS::Material* material = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(ReadStringField(*material, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
-    EXPECT_EQ(ReadStringField(*material, "ピクセルシェーダー"), "Shaders/player.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*material, "ピクセルシェーダー"), "Shaders/lit.ps.hlsl");
     EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Opaque");
     EXPECT_EQ(ReadStringField(*material, "テクスチャ 1"), "Assets/Textures/goal_flag.png");
     EXPECT_EQ(ReadStringField(*material, "テクスチャ 2"), "");
@@ -77,7 +77,7 @@ TEST(MaterialFile, MaterialPointsAtTheShaderOfItsPath)
     ASSERT_NE(stone, nullptr);
     ASSERT_NE(flag->VertexShader(), nullptr);
     EXPECT_EQ(flag->VertexShader()->Path(), ContentPath("Shaders/standard.vs.hlsl"));
-    EXPECT_EQ(flag->PixelShader()->Path(), ContentPath("Shaders/player.ps.hlsl"));
+    EXPECT_EQ(flag->PixelShader()->Path(), ContentPath("Shaders/lit.ps.hlsl"));
     EXPECT_EQ(flag->VertexShader(), stone->VertexShader());
 }
 
@@ -87,13 +87,13 @@ TEST(MaterialFile, PlayerAndShadowFilesHoldTheValuesTheyWereBuiltFrom)
     const NS::Material* shadow = assets.LoadMaterial("Assets/Materials/shadow.mat");
     ASSERT_FALSE(shadow->IsEmpty());
     EXPECT_EQ(ReadStringField(*shadow, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
-    EXPECT_EQ(ReadStringField(*shadow, "ピクセルシェーダー"), "Shaders/shadow.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*shadow, "ピクセルシェーダー"), "Shaders/soft_circle.ps.hlsl");
     EXPECT_EQ(ReadStringField(*shadow, "混ぜ方"), "Alpha");
     EXPECT_EQ(ReadStringField(*shadow, "テクスチャ 1"), "");
     const NS::Material* player = assets.LoadMaterial("Assets/Materials/player.mat");
     ASSERT_FALSE(player->IsEmpty());
     EXPECT_EQ(ReadStringField(*player, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
-    EXPECT_EQ(ReadStringField(*player, "ピクセルシェーダー"), "Shaders/player.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*player, "ピクセルシェーダー"), "Shaders/lit.ps.hlsl");
     EXPECT_EQ(ReadStringField(*player, "混ぜ方"), "Opaque");
     EXPECT_EQ(ReadStringField(*player, "テクスチャ 1"), "Assets/Textures/cube_test.png");
     EXPECT_EQ(ReadStringField(*player, "テクスチャ 2"), "");
@@ -147,8 +147,8 @@ TEST(MaterialFile, WritingWhatWasReadGivesTheSameFile)
 // シェーダーの材質の値は params に名前で書き、読み直すと同じ値に戻る。シェーダーに無い名前も消さない
 TEST(MaterialFile, ParamsRoundTripByName)
 {
-    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/floor.ps.hlsl"};
-    file.params["tileLength"] = NS::MaterialParamValue{.numbers = {3.125}};
+    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/lit.ps.hlsl"};
+    file.params["textureScale"] = NS::MaterialParamValue{.numbers = {0.16}};
     file.params["tint"] = NS::MaterialParamValue{.numbers = {0.2, 0.4, 0.6}};
     file.params["enabled"] = NS::MaterialParamValue{.isBool = true, .numbers = {1.0}};
     file.params["mode"] = NS::MaterialParamValue{.numbers = {2.0}};
@@ -161,13 +161,50 @@ TEST(MaterialFile, ParamsRoundTripByName)
     EXPECT_EQ(reread.params, file.params) << *written;
 }
 
+// .mat の値はシェーダーを反射した並びの項目に届く。読めないマテリアルのピンクと、床の貼り方はこの値で決まる
+TEST(MaterialFile, ValuesInTheFileReachTheReflectedShaderParams)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "マテリアルの値の試し", .size = {64, 64}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const auto valueOf = [](const NS::Material& material, std::string_view name)
+    {
+        for (const NS::Gfx::ShaderParam& param : material.ParamLayout().params)
+        {
+            if (param.name == name)
+            {
+                return material.ParamValue(param).numbers;
+            }
+        }
+        return std::vector<double>{};
+    };
+
+    const NS::Material* missing = assets.LoadMaterial("Assets/Materials/missing.mat");
+    EXPECT_EQ(valueOf(*missing, "useFixedColor"), std::vector<double>{1.0});
+    EXPECT_EQ(valueOf(*missing, "fixedColor"), (std::vector<double>{1.0, 0.0, 1.0}));
+
+    const NS::Material* stone = assets.LoadMaterial("Assets/Materials/stone.mat");
+    EXPECT_EQ(valueOf(*stone, "worldProjection"), std::vector<double>{1.0});
+    EXPECT_EQ(valueOf(*stone, "textureScale"), std::vector<double>{0.16});
+    EXPECT_EQ(valueOf(*stone, "alphaCutoff"), std::vector<double>{0.0});
+
+    // 値を書かない .mat はシェーダーの初期値で、UV で貼りアクターの色を使う
+    const NS::Material* flag = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
+    EXPECT_EQ(valueOf(*flag, "worldProjection"), std::vector<double>{0.0});
+    EXPECT_EQ(valueOf(*flag, "textureScale"), std::vector<double>{1.0});
+    const NS::Material* flat = assets.LoadMaterial("Assets/Materials/flat.mat");
+    EXPECT_EQ(valueOf(*flat, "useFixedColor"), std::vector<double>{0.0});
+    assets.Clear();
+}
+
 // 1 つの値が壊れていても、ほかの値と鍵は読む。壊れた値はその名前を出して捨てる
 // 範囲を超える数 (1e999) は nlohmann が JSON ごと断るので、ここには並べない
 TEST(MaterialFile, BadParamValuesAreDroppedOneByOne)
 {
     constexpr const char* k_Text = R"({
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/floor.ps.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
   "blend": "Additive",
   "params": {
     "good": 1.5,
@@ -194,32 +231,32 @@ TEST(MaterialFile, SetParamValueKeepsOnlyValuesThatFitTheParam)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
-    NS::Gfx::ShaderParam length;
-    length.name = "tileLength";
-    length.type = NS::Gfx::ShaderParamType::Float;
-    length.size = 4;
-    length.used = true;
+    NS::Gfx::ShaderParam scale;
+    scale.name = "textureScale";
+    scale.type = NS::Gfx::ShaderParamType::Float;
+    scale.size = 4;
+    scale.used = true;
 
-    EXPECT_TRUE(material->SetParamValue(length, NS::MaterialParamValue{.numbers = {3.125}}));
+    EXPECT_TRUE(material->SetParamValue(scale, NS::MaterialParamValue{.numbers = {0.16}}));
     {
         const TestLogCapture log;
-        EXPECT_FALSE(material->SetParamValue(length, NS::MaterialParamValue{.isBool = true, .numbers = {1.0}}));
+        EXPECT_FALSE(material->SetParamValue(scale, NS::MaterialParamValue{.isBool = true, .numbers = {1.0}}));
         EXPECT_EQ(log.WarningCount(), 1);
     }
-    EXPECT_EQ(material->ParamValue(length).numbers, std::vector<double>{3.125});
+    EXPECT_EQ(material->ParamValue(scale).numbers, std::vector<double>{0.16});
 
     const std::optional<std::string> written = assets.MakeMaterialFileJson(*material);
     ASSERT_TRUE(written.has_value());
     NS::MaterialFileDesc reread{};
     std::string error;
     ASSERT_TRUE(NS::ParseMaterialJson(*written, reread, error)) << error;
-    EXPECT_EQ(reread.params.at("tileLength").numbers, std::vector<double>{3.125});
+    EXPECT_EQ(reread.params.at("textureScale").numbers, std::vector<double>{0.16});
 }
 
 // Inspector の枠より多いテクスチャと、JSON に書けない色と、読む時に捨てる材質の値は書かない。書くと枠に出ない道や読めない .mat が残る
 TEST(MaterialFile, ValuesTheFieldsCannotHoldAreNotWritten)
 {
-    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/player.ps.hlsl"};
+    NS::MaterialFileDesc file{.vertexShader = "Shaders/standard.vs.hlsl", .pixelShader = "Shaders/lit.ps.hlsl"};
     file.textures.assign(4, "Assets/Textures/cube_test.png");
     EXPECT_TRUE(NS::MakeMaterialJson(file).has_value());
     file.textures.push_back("Assets/Textures/cube_test.png");
@@ -278,10 +315,10 @@ TEST(MaterialFile, RebuildDrawsTheNewValues)
     ASSERT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Alpha);
 
     WriteStringField(*material, "混ぜ方", "Additive");
-    WriteStringField(*material, "ピクセルシェーダー", "Shaders/player.ps.hlsl");
+    WriteStringField(*material, "ピクセルシェーダー", "Shaders/lit.ps.hlsl");
     EXPECT_TRUE(assets.RebuildMaterial(*material));
     EXPECT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Additive);
-    EXPECT_EQ(material->PixelShader()->Path(), ContentPath("Shaders/player.ps.hlsl"));
+    EXPECT_EQ(material->PixelShader()->Path(), ContentPath("Shaders/lit.ps.hlsl"));
     EXPECT_EQ(assets.LoadMaterial("Assets/Materials/shadow.mat"), material);
     assets.Clear();
 }

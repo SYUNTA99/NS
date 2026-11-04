@@ -1,6 +1,10 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/missing.ps.hlsl",
+  "ps": "Shaders/unlit.ps.hlsl",
   "baseColor": [1.0, 0.0, 1.0],
-  "blend": "Opaque"
+  "blend": "Opaque",
+  "params": {
+    "fixedColor": [1.0, 0.0, 1.0],
+    "useFixedColor": true
+  }
 }

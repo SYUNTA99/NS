@@ -1,6 +1,6 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/shadow.ps.hlsl",
-  "baseColor": [1.0, 1.0, 1.0],
+  "ps": "Shaders/soft_circle.ps.hlsl",
+  "baseColor": [0.0, 0.0, 0.0],
   "blend": "Alpha"
 }
