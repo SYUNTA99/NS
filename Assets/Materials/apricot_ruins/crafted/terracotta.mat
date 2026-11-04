@@ -1,0 +1,19 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ruin_painted.ps.hlsl",
+  "baseColor": [
+    0.9,
+    0.43,
+    0.4
+  ],
+  "blend": "Opaque",
+  "textures": [
+    "Assets/Textures/apricot_ruins/limestone_painted.png"
+  ],
+  "params": {
+    "worldProjection": 1,
+    "textureScale": 0.2,
+    "colorVariation": 0.15,
+    "textureWeight": 0.72
+  }
+}

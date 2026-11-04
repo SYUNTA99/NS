@@ -48,6 +48,9 @@ namespace NS
 
             [[nodiscard]] bool IsValid() const noexcept;
 
+            //! 読み込んだキューブマップ。空の無いシーンと読み込む前は nullptr
+            [[nodiscard]] const D3DTexture* Cubemap() const noexcept { return m_cubemap.get(); }
+
             //! キューブマップが未読み込み、または直近の読み込みに失敗してフォールバック中か
             [[nodiscard]] bool IsUsingFallback() const noexcept;
 

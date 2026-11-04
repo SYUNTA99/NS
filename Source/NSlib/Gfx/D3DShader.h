@@ -17,6 +17,11 @@ namespace NS
         // 定数バッファの場所はここだけに書く。HLSL の register(bN) は C++ から読めないので、
         // shader_constants_test がシェーダーを反射で読んで場所と大きさを照らす
 
+        //! 空の後の段で読む、画面の深度のコピーと空のキューブマップのテクスチャのスロット
+        inline constexpr uint k_SceneDepthSlot = 8;
+        inline constexpr uint k_SkyCubeSlot = 9;
+        //! 空のキューブマップを読むサンプラーのスロット
+        inline constexpr uint k_SkySamplerSlot = 1;
         //! 描く 1 回ごとの定数 (物の FrameCB、描く段の定数) のスロット
         inline constexpr uint k_DrawConstantsSlot = 0;
         //! 骨の行列の並び BonePalette のスロット

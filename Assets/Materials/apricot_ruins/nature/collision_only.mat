@@ -1,0 +1,10 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ruin_collision_only.ps.hlsl",
+  "baseColor": [
+    1,
+    1,
+    1
+  ],
+  "blend": "Opaque"
+}

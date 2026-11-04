@@ -1,0 +1,10 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ruin_color.ps.hlsl",
+  "baseColor": [
+    1,
+    0.94,
+    0.73
+  ],
+  "blend": "Opaque"
+}

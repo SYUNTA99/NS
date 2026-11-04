@@ -1,0 +1,10 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ruin_contact.ps.hlsl",
+  "baseColor": [
+    0.18,
+    0.24,
+    0.31
+  ],
+  "blend": "Alpha"
+}

@@ -1,0 +1,15 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/apricot_stone.ps.hlsl",
+  "baseColor": [
+    0.51,
+    0.39,
+    0.27
+  ],
+  "blend": "Opaque",
+  "params": {
+    "surfaceKind": 1.0,
+    "detailScale": 1.0,
+    "detailStrength": 0.16
+  }
+}

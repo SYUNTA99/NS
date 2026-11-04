@@ -1,0 +1,10 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/ruin_grass.ps.hlsl",
+  "baseColor": [
+    0.36,
+    0.48,
+    0.17
+  ],
+  "blend": "Opaque"
+}

@@ -37,6 +37,7 @@ namespace NS
             Matrix viewProjection{};
             Vector3 cameraPosition{};
             float alpha = 1.0f; // 固定ステップ更新と描画の補間係数 (0.0 〜 1.0)
+            float sceneTimeSeconds = 0.0f; // SceneRenderer が固定更新で進める経過秒。ゲームを止めている間は進まない
             RenderSettings resolvedSettings{};
             GroundWave groundWave{};
             DistortionRing distortionRing{};

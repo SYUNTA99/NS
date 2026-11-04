@@ -181,7 +181,11 @@ namespace NS
                      const RenderSource& source,
                      std::vector<Gfx::DrawItem>& out) override;
 
-        //! D3DMaterial の BlendMode から bucket を返し、Opaque 以外は Transparent。D3DMaterial 不在は Opaque
+        //! 空の後の段で描く。画面の深度と空のキューブマップを読むシェーダーの物が呼ぶ
+        void SetDrawsAfterSky() noexcept { m_drawsAfterSky = true; }
+
+        //! SetDrawsAfterSky の後は AfterSky。他は D3DMaterial の BlendMode から bucket を返し、
+        //! Opaque 以外は Transparent。D3DMaterial 不在は Opaque
         [[nodiscard]] RenderBucket Bucket() const noexcept override;
         //! 根の世界行列の平行移動成分で半透明ソート用の中心
         [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
@@ -215,6 +219,7 @@ namespace NS
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
         Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
         std::optional<Color> m_colorOverride;
+        bool m_drawsAfterSky = false; // 保存しない。決めるのはアクターのクラス
 
         // 追加 VS 定数。cpuData があれば描画ごとに転送する
         const Gfx::D3DBuffer* m_perObjectVsCb = nullptr;

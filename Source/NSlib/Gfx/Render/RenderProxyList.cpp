@@ -47,7 +47,7 @@ namespace NS
                                      const AABB& bounds,
                                      const Vector3& sortCenter,
                                      int sortPriority,
-                                     bool transparent) noexcept
+                                     RenderPass pass) noexcept
         {
             if (!IsLive(handle))
             {
@@ -57,10 +57,22 @@ namespace NS
             p.desc.bounds = bounds;
             p.desc.sortCenter = sortCenter;
             p.desc.sortPriority = sortPriority;
-            p.desc.transparent = transparent;
+            p.desc.pass = pass;
         }
 
-        void RenderProxyList::DrawBucket(const RenderContext& context, bool transparent)
+        bool RenderProxyList::HasPass(RenderPass pass) const noexcept
+        {
+            for (const Proxy& proxy : m_proxies)
+            {
+                if (proxy.alive && proxy.desc.pass == pass)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        void RenderProxyList::DrawBucket(const RenderContext& context, RenderPass pass)
         {
             const Frustum frustum = Frustum::FromViewProjection(context.viewProjection);
 
@@ -68,7 +80,7 @@ namespace NS
             for (uint32 slot = 0; slot < m_proxies.size(); ++slot)
             {
                 const Proxy& p = m_proxies[slot];
-                if (!p.alive || p.desc.transparent != transparent)
+                if (!p.alive || p.desc.pass != pass)
                 {
                     continue;
                 }
@@ -79,7 +91,7 @@ namespace NS
                 m_visibleScratch.push_back(slot);
             }
 
-            if (transparent)
+            if (pass == RenderPass::Transparent)
             {
                 const Vector3 camPos = context.cameraPosition;
                 // 距離も優先度も同じ物はスロット順のまま残すため stable_sort

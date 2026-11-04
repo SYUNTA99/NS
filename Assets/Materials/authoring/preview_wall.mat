@@ -1,0 +1,13 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/floor.ps.hlsl",
+  "baseColor": [
+    1.0,
+    0.48,
+    0.12
+  ],
+  "blend": "Opaque",
+  "params": {
+    "tileLength": 1.5
+  }
+}

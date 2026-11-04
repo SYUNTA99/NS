@@ -196,10 +196,7 @@ namespace NS
             {
                 m_renderer->SetDepth(nullptr, EffekseerRenderer::DepthReconstructionParameter{});
             }
-            for (DepthCopy& copy : m_depthCopies)
-            {
-                copy = DepthCopy{};
-            }
+            m_depthTextures = {};
             m_manager.Reset();
             m_renderer.Reset();
         }
@@ -385,12 +382,11 @@ namespace NS
             {
                 return;
             }
-            m_elapsedSeconds += deltaSeconds;
             // float の Update は UpdateInterval を 0 にするので、1/60 秒刻みに丸めずに進む
             m_manager->Update(deltaSeconds * k_EffekseerFramesPerSecond);
         }
 
-        void EffectScene::Draw(const CameraData& camera) noexcept
+        void EffectScene::Draw(const CameraData& camera, float timeSeconds) noexcept
         {
             if (!IsValid())
             {
@@ -402,7 +398,7 @@ namespace NS
             layer.ViewerPosition = Effekseer::Vector3D(eye.x, eye.y, eye.z);
             m_manager->SetLayerParameter(0, layer);
 
-            m_renderer->SetTime(m_elapsedSeconds);
+            m_renderer->SetTime(timeSeconds);
             m_renderer->SetProjectionMatrix(ToEffekseer(camera.Projection()));
             m_renderer->SetCameraMatrix(ToEffekseer(camera.View()));
             PassDepth(camera);
@@ -434,45 +430,25 @@ namespace NS
 
         void EffectScene::PassDepth(const CameraData& camera) noexcept
         {
-            ++m_drawCount;
-            ID3D11DeviceContext* context = Gpu().context;
-            ComPtr<ID3D11DepthStencilView> dsv;
-            if (context != nullptr)
-            {
-                context->OMGetRenderTargets(0, nullptr, dsv.GetAddressOf());
-            }
+            const SceneDepthCopy::CaptureResult capture = m_depth.Capture();
             // 奥行きを結ばない描画先は奥行き無しで描く。前の描画先の奥行きを残すと、別の絵の物で薄くなる
-            if (dsv == nullptr)
+            if (capture.texture == nullptr && capture.failure.empty())
             {
                 m_renderer->SetDepth(nullptr, EffekseerRenderer::DepthReconstructionParameter{});
                 m_depthFallback = false;
                 return;
             }
-            D3D11_TEXTURE2D_DESC desc{};
-            const ComPtr<ID3D11Texture2D> source = ViewTexture2D(dsv.Get(), &desc);
-            if (!source)
+            if (capture.texture == nullptr)
             {
-                FallBackWithoutDepth("奥行きが 2D のテクスチャでない", 0, 0);
+                FallBackWithoutDepth(capture.failure, capture.width, capture.height);
                 return;
             }
-            // 写し先は R24G8 の組で作るので、写せるのは同じ組で多重サンプルでない奥行きだけ
-            const bool copyable =
-                (desc.Format == DXGI_FORMAT_D24_UNORM_S8_UINT || desc.Format == DXGI_FORMAT_R24G8_TYPELESS) &&
-                desc.SampleDesc.Count == 1;
-            if (!copyable)
+            const Effekseer::Backend::TextureRef depthTexture = DepthTextureFor(capture);
+            if (depthTexture == nullptr)
             {
-                FallBackWithoutDepth("写せない奥行きの書式", desc.Width, desc.Height);
+                FallBackWithoutDepth("奥行きの写し先を作れなかった", capture.width, capture.height);
                 return;
             }
-            DepthCopy* copy = DepthCopyFor(desc.Width, desc.Height);
-            if (copy == nullptr)
-            {
-                FallBackWithoutDepth("奥行きの写し先を作れなかった", desc.Width, desc.Height);
-                return;
-            }
-            // 書き込み中の奥行きを読み込み元に重ねないため、描く直前に別のテクスチャへ写して読む
-            context->CopyResource(copy->texture->Native(), source.Get());
-            copy->lastUsed = m_drawCount;
 
             // 投影行列から奥行きを視点からの距離へ戻す値。NS は左手系の透視投影を転置せずに渡し、深度は 0 が手前で 1
             // が奥
@@ -484,57 +460,29 @@ namespace NS
             parameter.ProjectionMatrix43 = projection.Values[2][3];
             parameter.ProjectionMatrix34 = projection.Values[3][2];
             parameter.ProjectionMatrix44 = projection.Values[3][3];
-            m_renderer->SetDepth(copy->effekseerTexture, parameter);
+            m_renderer->SetDepth(depthTexture, parameter);
             m_depthFallback = false;
             m_failedDepthKey.clear();
         }
 
-        EffectScene::DepthCopy* EffectScene::DepthCopyFor(uint32 width, uint32 height) noexcept
+        Effekseer::Backend::TextureRef EffectScene::DepthTextureFor(const SceneDepthCopy::CaptureResult& capture) noexcept
         {
-            DepthCopy* oldest = &m_depthCopies[0];
-            for (DepthCopy& copy : m_depthCopies)
+            for (const DepthTextureRef& entry : m_depthTextures)
             {
-                if (copy.texture != nullptr && copy.width == width && copy.height == height)
+                if (entry.textureId == capture.textureId)
                 {
-                    return &copy;
-                }
-                if (copy.lastUsed < oldest->lastUsed)
-                {
-                    oldest = &copy;
+                    return entry.effekseerTexture;
                 }
             }
-            for (DepthCopy& copy : m_depthCopies)
-            {
-                if (copy.texture == nullptr)
-                {
-                    oldest = &copy;
-                    break;
-                }
-            }
-            *oldest = DepthCopy{};
-            D3DTextureDesc desc{};
-            desc.width = width;
-            desc.height = height;
-            desc.format = DXGI_FORMAT_R24G8_TYPELESS;
-            desc.viewFormat = DXGI_FORMAT_R24_UNORM_X8_TYPELESS;
-            desc.bindFlags = D3D11_BIND_SHADER_RESOURCE;
-            std::unique_ptr<D3DTexture> texture = D3DTexture::Create(desc);
-            if (texture == nullptr || texture->Srv() == nullptr)
+            const Effekseer::Backend::TextureRef created =
+                EffekseerRendererDX11::CreateTexture(m_renderer->GetGraphicsDevice(), capture.texture->Srv(), nullptr, nullptr);
+            if (created == nullptr)
             {
                 return nullptr;
             }
-            const Effekseer::Backend::TextureRef effekseerTexture =
-                EffekseerRendererDX11::CreateTexture(m_renderer->GetGraphicsDevice(), texture->Srv(), nullptr, nullptr);
-            if (effekseerTexture == nullptr)
-            {
-                return nullptr;
-            }
-            ++m_depthCopiesCreated;
-            oldest->texture = std::move(texture);
-            oldest->effekseerTexture = effekseerTexture;
-            oldest->width = width;
-            oldest->height = height;
-            return oldest;
+            m_depthTextures[m_nextDepthTexture] = DepthTextureRef{capture.textureId, created};
+            m_nextDepthTexture = (m_nextDepthTexture + 1u) % static_cast<uint32>(m_depthTextures.size());
+            return created;
         }
 
         void EffectScene::FallBackWithoutDepth(std::string_view reason, uint32 width, uint32 height) noexcept

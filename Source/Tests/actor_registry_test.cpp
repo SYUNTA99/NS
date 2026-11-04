@@ -30,7 +30,7 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
 {
     // 置ける SceneActor はどれも表示名を持つ
     const std::vector<std::string_view> expected{
-        "MapPartsActor", "PropActor", "GoalActor", "DeathZoneActor", "FollowCameraActor", "LightActor"};
+        "MapPartsActor", "PropActor", "GoalActor", "DeathZoneActor", "WaterActor", "FollowCameraActor", "LightActor"};
     for (const std::string_view className : expected)
     {
         const NS::TypeRegistry::Entry* entry = FindPlaceable(className);

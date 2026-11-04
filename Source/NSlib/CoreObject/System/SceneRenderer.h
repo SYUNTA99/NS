@@ -28,6 +28,7 @@ namespace NS
     namespace Gfx
     {
         class EffectScene;
+        class SceneDepthCopy;
     }
     namespace Gfx
     {
@@ -97,7 +98,7 @@ namespace NS
         //! 重ね描きと UI が全画面の色と画面の矩形を描く先。装置未設定の間は nullptr
         [[nodiscard]] Gfx::ScreenOverlay* Overlay() const noexcept { return m_overlay.get(); }
 
-        //! エフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ何もしない
+        //! 描画の時間とエフェクトの世界を固定ステップの刻み幅ぶん進める。EffectScene が無ければ時間だけ進める
         void OnTick();
 
         //! 1 フレームで描くビュー列を差す。空なら現描画先へ実カメラの視点で 1 回だけ描く
@@ -175,6 +176,8 @@ namespace NS
 
         //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
         void DrawOpaque(const Gfx::RenderContext& context);
+        //! AfterSky バケットを、画面の深度のコピーと空のキューブマップを結んだ間だけ描画する
+        void DrawAfterSky(const Gfx::RenderContext& context);
         //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
         //! 距離が同じなら SortPriority 昇順
         void DrawTransparent(const Gfx::RenderContext& context);
@@ -273,6 +276,9 @@ namespace NS
         Gfx::BuiltinShaders m_shaders{};
         std::unique_ptr<Gfx::ScreenOverlay> m_overlay; // 全画面の色と画面の矩形。装置未設定の間は空
         std::unique_ptr<Gfx::Skybox> m_skybox;         // 空。装置未設定の間は空
+        std::unique_ptr<Gfx::SceneDepthCopy> m_afterSkyDepth; // AfterSky の段が読む深度。装置未設定の間は空
+        bool m_afterSkyDepthFailureLogged = false;
+        float m_sceneTimeSeconds = 0.0f; // 固定更新の経過秒。ゲームを止めている間は進まない
 
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;
