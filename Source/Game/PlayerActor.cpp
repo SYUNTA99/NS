@@ -7,7 +7,6 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Level/SlamArrow.h"
 #include "Game/Level/TargetMarker.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -58,7 +57,6 @@ NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_resolver, "ImpactResolver")
 NS_CLASSOBJ(m_targetMarker, "TargetMarker")
-NS_CLASSOBJ(m_slamArrow, "SlamArrow")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
@@ -93,8 +91,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_actionTimeline);
     CreateClassObj(m_targetMarker);
     NS::InitOverlay(this, m_targetMarker.get());
-    CreateClassObj(m_slamArrow);
-    NS::InitOverlay(this, m_slamArrow.get());
     CreateClassObj(m_reboundPreview);
     NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
@@ -349,10 +345,7 @@ void PlayerActor::VisualStep()
 {
     m_ghost.Advance(this);
     UpdateAnimation();
-    // clang-format off
     m_targetMarker->Update(m_charge);
-    m_slamArrow->Update(m_charge, m_params.get(), m_collider.get());
-    // clang-format on
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
 #endif
@@ -461,7 +454,6 @@ void PlayerActor::OnEndPlay()
     ResetState();
     NS::SceneActor::OnEndPlay();
     NS::EndOverlay(this, m_targetMarker.get());
-    NS::EndOverlay(this, m_slamArrow.get());
     NS::EndOverlay(this, m_reboundPreview.get());
 }
 
@@ -471,7 +463,6 @@ void PlayerActor::OnAppear()
     if (IsAppeared())
     {
         NS::ShowOverlay(this, m_targetMarker.get());
-        NS::ShowOverlay(this, m_slamArrow.get());
         NS::ShowOverlay(this, m_reboundPreview.get());
     }
 }
@@ -480,7 +471,6 @@ void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
     NS::HideOverlay(this, m_targetMarker.get());
-    NS::HideOverlay(this, m_slamArrow.get());
     NS::HideOverlay(this, m_reboundPreview.get());
 }
 

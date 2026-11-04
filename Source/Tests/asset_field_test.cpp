@@ -1,4 +1,3 @@
-#include "Game/Level/SlamArrow.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerClips.h"
 #include "Game/PlayerActor.h"
@@ -350,14 +349,8 @@ TEST(AssetField, EmptyModelLeavesNoSkeleton)
     EXPECT_EQ(animation->Skeleton(), nullptr);
 }
 
-TEST(AssetField, SlamArrowAndPlayerLooksHoldTheirAssetsInAssetFields)
+TEST(AssetField, PlayerLooksHoldTheirAssetsInAssetFields)
 {
-    for (const char* key : {"板の資産", "帯の材質の資産", "矢じりの材質の資産"})
-    {
-        const NS::FieldDesc* field = NS::FindField(GL::Level::SlamArrow::StaticReflection(), key);
-        ASSERT_NE(field, nullptr) << key;
-        EXPECT_EQ(field->type, NS::FieldType::Asset) << key;
-    }
     for (const char* key : {"立ち姿のメッシュ", "玉のメッシュ"})
     {
         const NS::FieldDesc* field = NS::FindField(GL::Player::PlayerAppearance::StaticReflection(), key);

@@ -21,7 +21,6 @@ namespace GL
     namespace Level
     {
         class ImpactResolver;
-        class SlamArrow;
         struct ImpactTuning;
         struct LaunchArc;
         ImpactTuning MakeImpactTuning(const GL::Player::PlayerParams* params) noexcept;
@@ -217,7 +216,6 @@ namespace GL
             float m_launchAngleGuardDegrees = 89.0f;
             int m_launchMaxFrames = 600;
             friend class GL::Level::ImpactResolver;
-            friend class GL::Level::SlamArrow;
             friend GL::Level::ImpactTuning GL::Level::MakeImpactTuning(const PlayerParams* params) noexcept;
             float m_reboundApexHeight = 1.15f;
             float m_reboundDistance = 0.575f;

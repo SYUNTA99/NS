@@ -47,12 +47,12 @@ namespace
 TEST(MaterialFile, MaterialLoadedFromAPathHoldsTheValuesOfTheFile)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const NS::Material* material = assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat");
+    const NS::Material* material = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
     ASSERT_NE(material, nullptr);
     EXPECT_EQ(ReadStringField(*material, "頂点シェーダー"), "Shaders/standard.vs.hlsl");
-    EXPECT_EQ(ReadStringField(*material, "ピクセルシェーダー"), "Shaders/ground_arrow.ps.hlsl");
-    EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Alpha");
-    EXPECT_EQ(ReadStringField(*material, "テクスチャ 1"), "Assets/Textures/ground_arrow_band.png");
+    EXPECT_EQ(ReadStringField(*material, "ピクセルシェーダー"), "Shaders/player.ps.hlsl");
+    EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Opaque");
+    EXPECT_EQ(ReadStringField(*material, "テクスチャ 1"), "Assets/Textures/goal_flag.png");
     EXPECT_EQ(ReadStringField(*material, "テクスチャ 2"), "");
 
     const NS::Material* stone = assets.LoadMaterial("Assets/Materials/stone.mat");
@@ -71,14 +71,14 @@ TEST(MaterialFile, MaterialLoadedFromAPathHoldsTheValuesOfTheFile)
 TEST(MaterialFile, MaterialPointsAtTheShaderOfItsPath)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const NS::Material* band = assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat");
+    const NS::Material* flag = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
     const NS::Material* stone = assets.LoadMaterial("Assets/Materials/stone.mat");
-    ASSERT_NE(band, nullptr);
+    ASSERT_NE(flag, nullptr);
     ASSERT_NE(stone, nullptr);
-    ASSERT_NE(band->VertexShader(), nullptr);
-    EXPECT_EQ(band->VertexShader()->Path(), ContentPath("Shaders/standard.vs.hlsl"));
-    EXPECT_EQ(band->PixelShader()->Path(), ContentPath("Shaders/ground_arrow.ps.hlsl"));
-    EXPECT_EQ(band->VertexShader(), stone->VertexShader());
+    ASSERT_NE(flag->VertexShader(), nullptr);
+    EXPECT_EQ(flag->VertexShader()->Path(), ContentPath("Shaders/standard.vs.hlsl"));
+    EXPECT_EQ(flag->PixelShader()->Path(), ContentPath("Shaders/player.ps.hlsl"));
+    EXPECT_EQ(flag->VertexShader(), stone->VertexShader());
 }
 
 TEST(MaterialFile, PlayerAndShadowFilesHoldTheValuesTheyWereBuiltFrom)
@@ -102,7 +102,7 @@ TEST(MaterialFile, PlayerAndShadowFilesHoldTheValuesTheyWereBuiltFrom)
 TEST(MaterialFile, BlendFieldKeepsItsValueForAnUnknownSpelling)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    NS::Material* material = assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat");
+    NS::Material* material = assets.LoadMaterial("Assets/Materials/shadow.mat");
     ASSERT_NE(material, nullptr);
     WriteStringField(*material, "混ぜ方", "alpha");
     EXPECT_EQ(ReadStringField(*material, "混ぜ方"), "Alpha");
@@ -273,7 +273,7 @@ TEST(MaterialFile, RebuildDrawsTheNewValues)
     NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
     ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    NS::Material* material = assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat");
+    NS::Material* material = assets.LoadMaterial("Assets/Materials/shadow.mat");
     ASSERT_TRUE(material->D3D()->IsValid());
     ASSERT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Alpha);
 
@@ -282,6 +282,6 @@ TEST(MaterialFile, RebuildDrawsTheNewValues)
     EXPECT_TRUE(assets.RebuildMaterial(*material));
     EXPECT_EQ(material->D3D()->Blend(), NS::Gfx::BlendMode::Additive);
     EXPECT_EQ(material->PixelShader()->Path(), ContentPath("Shaders/player.ps.hlsl"));
-    EXPECT_EQ(assets.LoadMaterial("Assets/Materials/ground_arrow_band.mat"), material);
+    EXPECT_EQ(assets.LoadMaterial("Assets/Materials/shadow.mat"), material);
     assets.Clear();
 }
