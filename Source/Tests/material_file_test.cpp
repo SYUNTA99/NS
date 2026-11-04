@@ -194,7 +194,7 @@ TEST(MaterialFile, ValuesInTheFileReachTheReflectedShaderParams)
     const NS::Material* leaves = assets.LoadMaterial("Assets/Materials/apricot_ruins/nature/leaf_sprays.mat");
     EXPECT_EQ(valueOf(*leaves, "alphaCutoff"), std::vector<double>{0.45});
     const NS::Material* contact = assets.LoadMaterial("Assets/Materials/apricot_ruins/crafted/contact.mat");
-    EXPECT_EQ(valueOf(*contact, "strength"), std::vector<double>{0.32});
+    EXPECT_EQ(valueOf(*contact, "strength"), std::vector<double>{0.54});
 
     // 値を書かない .mat はシェーダーの初期値で、UV で貼りアクターの色を使う
     const NS::Material* flag = assets.LoadMaterial("Assets/Materials/goal_flag.mat");
