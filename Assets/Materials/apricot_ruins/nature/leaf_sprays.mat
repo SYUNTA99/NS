@@ -1,13 +1,10 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/ruin_leaf_spray.ps.hlsl",
-  "baseColor": [
-    1,
-    1,
-    1
-  ],
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/leaf_tones.png"],
+  "baseColor": [1.0, 1.0, 1.0],
   "blend": "Opaque",
-  "textures": [
-    "Assets/Textures/apricot_ruins/leaf_spray_v3.png"
-  ]
+  "params": {
+    "alphaCutoff": 0.45
+  }
 }

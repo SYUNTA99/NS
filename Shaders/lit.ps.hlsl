@@ -34,6 +34,12 @@ float2 TilePlane(float3 worldPos, float3 worldNormal)
     return float2(dot(worldPos, across), dot(worldPos, along));
 }
 
+// 遠くの面が寄るかすみの色と、始まりと終わりの距離 (m)、一番遠い所で色へ寄る割合
+static const float3 k_HazeColor = float3(0.66, 0.79, 0.81);
+static const float  k_HazeStart = 100.0;
+static const float  k_HazeEnd = 320.0;
+static const float  k_HazeMax = 0.32;
+
 float4 PSMain(SurfaceInterp input) : SV_TARGET
 {
     float2 uv = input.uv;
@@ -50,5 +56,6 @@ float4 PSMain(SurfaceInterp input) : SV_TARGET
     float3 normal = GroundWaveNormal(input.worldPos, input.worldNormal);
     float3 lit = texel.rgb * baseColor * DirectionalLight(normal) +
                  GroundWaveGlow(input.worldPos, input.worldNormal) * g_lightColor;
-    return float4(ToDisplay(lit), saturate(g_opacity));
+    float haze = smoothstep(k_HazeStart, k_HazeEnd, distance(input.worldPos, g_cameraPosition)) * k_HazeMax;
+    return float4(lerp(ToDisplay(lit), k_HazeColor, haze), saturate(g_opacity));
 }

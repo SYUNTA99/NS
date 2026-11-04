@@ -1,14 +1,11 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/ruin_strata.ps.hlsl",
-  "baseColor": [
-    0.72,
-    0.76,
-    0.82
-  ],
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/cliff_world.png"],
+  "baseColor": [1.0, 1.0, 1.0],
   "blend": "Opaque",
-  "textures": [
-    "Assets/Textures/apricot_ruins/cliff_painted_v3.png",
-    "Assets/Textures/apricot_ruins/boulder_01_ao_1k.jpg"
-  ]
+  "params": {
+    "textureScale": 0.1,
+    "worldProjection": true
+  }
 }

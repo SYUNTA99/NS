@@ -1,13 +1,9 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/ruin_leaf_shadow.ps.hlsl",
-  "baseColor": [
-    1,
-    1,
-    1
-  ],
+  "ps": "Shaders/soft_circle.ps.hlsl",
+  "baseColor": [0.23, 0.28, 0.34],
   "blend": "Alpha",
-  "textures": [
-    "Assets/Textures/apricot_ruins/leaf_spray_v3.png"
-  ]
+  "params": {
+    "strength": 0.115
+  }
 }

@@ -48,6 +48,14 @@ namespace
     };
     static_assert(sizeof(UnlitParams) == 16);
 
+    // soft_circle.ps.hlsl の MaterialParams と同じ並び
+    struct SoftCircleParams
+    {
+        float strength = 1.0f;
+        std::array<float, 3> pad{};
+    };
+    static_assert(sizeof(SoftCircleParams) == 16);
+
     struct SurfaceInput
     {
         float u = 0.0f;
@@ -427,6 +435,27 @@ TEST_F(SurfaceShaderTest, LitDiscardsTexelsThinnerThanAlphaCutoff)
     EXPECT_FALSE(IsCleared(Draw(shader.Get(), thin, frame, ParamBytes(noCutout), texture.Get())));
 }
 
+// カメラから 100 m より手前は変わらず、遠くの面はかすみの色へ寄る
+TEST_F(SurfaceShaderTest, LitFadesTowardTheHazeColorFarFromTheCamera)
+{
+    const ComPtr<ID3D11PixelShader> shader = CompilePixelShader(L"Shaders/lit.ps.hlsl");
+    ASSERT_NE(shader, nullptr);
+    const ComPtr<ID3D11ShaderResourceView> texture = MakeTexture(k_CheckerTexels);
+    const LitParams params{};
+    NS::Gfx::FrameCB frame = WhiteLightFrame();
+    frame.cameraPosition = NS::Vector3{500.0f, 0.0f, 0.0f};
+    const SurfaceInput near0{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 0.0f}};
+    const SurfaceInput near99{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 99.0f}};
+    const SurfaceInput far400{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 400.0f}};
+
+    const Pixel atCamera = Draw(shader.Get(), near0, frame, ParamBytes(params), texture.Get());
+    ExpectSameColor(Draw(shader.Get(), near99, frame, ParamBytes(params), texture.Get()), atCamera);
+    // 暗いテクセルは、かすみの明るい色へ持ち上がる
+    const Pixel farPixel = Draw(shader.Get(), far400, frame, ParamBytes(params), texture.Get());
+    EXPECT_GT(farPixel.r, atCamera.r + 0.05f);
+    EXPECT_GT(farPixel.b, atCamera.b + 0.05f);
+}
+
 // シーンの光の色と環境光は lit の出力に届く
 TEST_F(SurfaceShaderTest, LitFollowsTheLightAndAmbientColors)
 {
@@ -508,7 +537,7 @@ TEST_F(SurfaceShaderTest, MissingMaterialStaysPinkWhateverTheActorColorIs)
     EXPECT_NEAR(pixel.r, pixel.b, 1.0e-3f);
 }
 
-// soft_circle は中心で濃さ g_opacity、外へ二乗で薄くなり、半径 0.5 で 0 になる。色は baseColor
+// soft_circle は中心で濃さ g_opacity × strength、外へ二乗で薄くなり、半径 0.5 で 0 になる。色は baseColor
 TEST_F(SurfaceShaderTest, SoftCircleFadesFromOpacityAtTheCenter)
 {
     const ComPtr<ID3D11PixelShader> shader = CompilePixelShader(L"Shaders/soft_circle.ps.hlsl");
@@ -517,18 +546,24 @@ TEST_F(SurfaceShaderTest, SoftCircleFadesFromOpacityAtTheCenter)
     frame.baseColor = NS::Vector3{0.0f, 0.0f, 0.0f};
     frame.opacity = 0.4f;
 
-    const std::span<const std::byte> noParams{};
-    const Pixel center = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, noParams, nullptr);
+    const SoftCircleParams params{};
+    const std::span<const std::byte> strengthOne = ParamBytes(params);
+    const Pixel center = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(center.a, 0.4f, 1.0e-3f);
     EXPECT_NEAR(center.r, 0.0f, 1.0e-3f);
-    const Pixel halfway = Draw(shader.Get(), SurfaceInput{.u = 0.75f, .v = 0.5f}, frame, noParams, nullptr);
+    const Pixel halfway = Draw(shader.Get(), SurfaceInput{.u = 0.75f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(halfway.a, 0.1f, 1.0e-3f);
-    const Pixel outside = Draw(shader.Get(), SurfaceInput{.u = 1.0f, .v = 0.5f}, frame, noParams, nullptr);
+    const Pixel outside = Draw(shader.Get(), SurfaceInput{.u = 1.0f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(outside.a, 0.0f, 1.0e-3f);
 
     frame.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
     frame.opacity = 1.0f;
-    const Pixel white = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, noParams, nullptr);
+    const Pixel white = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(white.a, 1.0f, 1.0e-3f);
     EXPECT_GT(white.r, 0.5f);
+
+    // 物ごとの濃さでなく .mat で決める濃さは strength で掛ける
+    const SoftCircleParams weak{.strength = 0.25f};
+    const Pixel faint = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, ParamBytes(weak), nullptr);
+    EXPECT_NEAR(faint.a, 0.25f, 1.0e-3f);
 }

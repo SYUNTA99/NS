@@ -1,13 +1,11 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/ruin_foliage.ps.hlsl",
-  "textures": [
-    "Assets/Textures/apricot_ruins/foliage_painted.png"
-  ],
-  "baseColor": [
-    0.9,
-    0.92,
-    1.12
-  ],
-  "blend": "Opaque"
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/apricot_ruins/foliage_world.png"],
+  "baseColor": [0.9, 0.92, 1.12],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 0.16,
+    "worldProjection": true
+  }
 }

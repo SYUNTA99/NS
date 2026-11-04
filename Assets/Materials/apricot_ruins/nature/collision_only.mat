@@ -1,10 +1,10 @@
 {
   "vs": "Shaders/standard.vs.hlsl",
-  "ps": "Shaders/ruin_collision_only.ps.hlsl",
-  "baseColor": [
-    1,
-    1,
-    1
-  ],
-  "blend": "Opaque"
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": ["Assets/Textures/white.png"],
+  "baseColor": [1.0, 1.0, 1.0],
+  "blend": "Opaque",
+  "params": {
+    "alphaCutoff": 2.0
+  }
 }

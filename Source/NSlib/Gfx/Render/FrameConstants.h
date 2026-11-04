@@ -40,7 +40,7 @@ namespace NS
             Vector3 groundColor = Gfx::RenderSettings{}.groundColor;
             float exposure = Gfx::RenderSettings{}.exposure;
             TremorCB tremor{};
-            float opacity = 1.0f; // 不透明度 0..1 (player.ps / unlit.ps で Alpha ブレンド時のみ有効)
+            float opacity = 1.0f; // 不透明度 0..1 (lit / unlit / soft_circle が読む。Alpha ブレンド時のみ有効)
             float pad0 = 0.0f;
             float pad1 = 0.0f;
             float pad2 = 0.0f;

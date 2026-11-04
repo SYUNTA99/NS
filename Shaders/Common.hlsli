@@ -26,7 +26,7 @@ cbuffer FrameCB : register(b0)
     float  g_tremorFramesPerMeter;
     float  g_tremorRingFrames;
     float3 g_tremorPad;
-    // 描く 1 回ごとの不透明度。 player.ps と unlit.ps が出力 alpha に出す。 混ぜ方が Alpha の描画だけに効く
+    // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
     float  g_opacity;
     float3 g_opacityPad;
     float3 g_cameraPosition;
