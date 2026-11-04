@@ -42,15 +42,21 @@ struct WaterInterp
 static const float k_WaterTwoPi = 6.2831853;
 static const float k_WaterGravity = 9.8;
 
-// 波長ごとの速さは水の波の式 (深い水) で決め、長い波ほど速く進む
-void AddSwell(float2 p, float time, float angle, float wavelength, float amplitude,
-              inout float2 offset, inout float height, inout float2 slope)
+// swellDirection を angle だけ回した単位の向き。swellDirection が 0 の時は 0 を返し、非数にしない
+float2 SwellDirection(float angle)
 {
     float s = sin(angle);
     float c = cos(angle);
     float2 direction = float2(swellDirection.x * c - swellDirection.y * s,
                               swellDirection.x * s + swellDirection.y * c);
-    direction /= max(length(direction), 0.0001);
+    return direction / max(length(direction), 0.0001);
+}
+
+// 波長ごとの速さは水の波の式 (深い水) で決め、長い波ほど速く進む
+void AddSwell(float2 p, float time, float angle, float wavelength, float amplitude,
+              inout float2 offset, inout float height, inout float2 slope)
+{
+    float2 direction = SwellDirection(angle);
     float k = k_WaterTwoPi / wavelength;
     float omega = sqrt(k_WaterGravity * k) * swellSpeed;
     float phase = dot(p, direction) * k - time * omega;

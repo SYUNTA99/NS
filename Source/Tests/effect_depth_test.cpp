@@ -89,7 +89,7 @@ namespace
         gpu.context->RSSetViewports(1, &viewport);
         NS::CameraData camera = MakeCamera();
         camera.SetPosition({0.0f, 3.0f, -5.0f});
-        effects.Draw(camera);
+        effects.Draw(camera, 0.0f);
         gpu.context->OMSetRenderTargets(0, nullptr, nullptr);
         desc.BindFlags = 0;
         desc.Usage = D3D11_USAGE_STAGING;
@@ -906,10 +906,10 @@ TEST(EffectDepth, PassesTheBoundDepthAndKeepsOneCopyPerSize)
     for (int frame = 0; frame < 3; ++frame)
     {
         BindDepth(gpu, *game);
-        effects.Draw(camera);
+        effects.Draw(camera, 0.0f);
         EXPECT_TRUE(effects.PassesDepth());
         BindDepth(gpu, *editor);
-        effects.Draw(camera);
+        effects.Draw(camera, 0.0f);
         EXPECT_TRUE(effects.PassesDepth());
     }
     EXPECT_EQ(effects.DepthCopiesCreated(), 2u);
@@ -932,17 +932,17 @@ TEST(EffectDepth, UnreadableDepthFallsBackToDrawingWithoutIt)
     const NS::CameraData camera = MakeCamera();
 
     BindDepth(gpu, *good);
-    effects.Draw(camera);
+    effects.Draw(camera, 0.0f);
     ASSERT_TRUE(effects.PassesDepth());
     BindDepth(gpu, *other);
     const TestLogCapture log;
-    effects.Draw(camera);
+    effects.Draw(camera, 0.0f);
     EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_FALSE(effects.PassesDepth());
     EXPECT_TRUE(effects.IsUsingDepthFallback());
     // 戻せる奥行きなら戻る
     BindDepth(gpu, *good);
-    effects.Draw(camera);
+    effects.Draw(camera, 0.0f);
     EXPECT_TRUE(effects.PassesDepth());
     EXPECT_FALSE(effects.IsUsingDepthFallback());
 }

@@ -69,7 +69,7 @@ namespace NS
 
             //! 全エフェクトを描画する。D24_UNORM_S8_UINT の深度をコピーできない場合は深度なしで描画する
             //! timeSeconds はシェーダーへ渡す経過秒
-            void Draw(const CameraData& camera, float timeSeconds = 0.0f) noexcept;
+            void Draw(const CameraData& camera, float timeSeconds) noexcept;
 
             //! 直前の Draw でエフェクトへ深度を渡せたか
             [[nodiscard]] bool PassesDepth() const noexcept;

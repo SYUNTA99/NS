@@ -12,6 +12,7 @@ namespace GL
             CreateClassObj(m_model);
             InitDraw(this, m_model.get(), &Root());
             m_model->SetDrawsAfterSky();
+            m_model->SetNeverCulled();
         }
 
         NS_PLACEABLE(WaterActor, "水面")

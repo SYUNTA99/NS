@@ -17,6 +17,9 @@ namespace
     // 描く時だけの倍率の既定。この値の間は描く行列にも境界にも何も掛けない
     const NS::Vector3 k_NoDrawScale{1.0f, 1.0f, 1.0f};
 
+    // SetNeverCulled の後に返す境界の半分の長さ。どのコースよりも十分に広い
+    constexpr float k_NeverCulledExtent = 1000000.0f;
+
     // 0 以下と非数・無限大の成分を弾き、全部が有限の正の時だけ真を返す
     [[nodiscard]] bool IsPositiveFiniteScale(const NS::Vector3& scale) noexcept
     {
@@ -419,19 +422,19 @@ namespace NS
         return item;
     }
 
-    RenderBucket Model::Bucket() const noexcept
+    Gfx::RenderPass Model::Bucket() const noexcept
     {
         if (m_drawsAfterSky)
         {
-            return RenderBucket::AfterSky;
+            return Gfx::RenderPass::AfterSky;
         }
         const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
-            return RenderBucket::Opaque;
+            return Gfx::RenderPass::Opaque;
         }
 
-        return RenderBucket::Transparent;
+        return Gfx::RenderPass::Transparent;
     }
 
     Vector3 Model::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
@@ -447,6 +450,12 @@ namespace NS
 
     AABB Model::WorldBounds(const RenderSource& source) const noexcept
     {
+        if (m_neverCulled)
+        {
+            AABB everywhere{};
+            everywhere.Extents = {k_NeverCulledExtent, k_NeverCulledExtent, k_NeverCulledExtent};
+            return everywhere;
+        }
         if (GetMesh()->D3D() == nullptr)
         {
             return {}; // 描くものが無い。間引かれても Collect が何も積まず結果は変わらない

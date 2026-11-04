@@ -28,7 +28,7 @@ namespace NS
                      const RenderSource& source,
                      std::vector<Gfx::DrawItem>& out) override;
         [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
-        [[nodiscard]] RenderBucket Bucket() const noexcept override { return RenderBucket::Transparent; }
+        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override { return Gfx::RenderPass::Transparent; }
         [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
         [[nodiscard]] int SortPriority() const noexcept override { return m_modelSortPriority; }
         void OnEndPlay() override;

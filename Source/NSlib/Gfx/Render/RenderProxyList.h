@@ -23,14 +23,6 @@ namespace NS
             [[nodiscard]] bool IsValid() const noexcept { return slot != k_InvalidSlot; }
         };
 
-        //! 世界を描く段。AfterSky は空の後、Transparent の前
-        enum class RenderPass : uint8
-        {
-            Opaque,
-            AfterSky,
-            Transparent
-        };
-
         struct RenderProxyDesc
         {
             AABB bounds{};        // 視錐台カリング用のワールド空間 AABB

@@ -31,23 +31,6 @@
 
 namespace NS
 {
-    namespace
-    {
-        [[nodiscard]] Gfx::RenderPass PassOf(RenderBucket bucket) noexcept
-        {
-            switch (bucket)
-            {
-            case RenderBucket::AfterSky:
-                return Gfx::RenderPass::AfterSky;
-            case RenderBucket::Transparent:
-                return Gfx::RenderPass::Transparent;
-            case RenderBucket::Opaque:
-                break;
-            }
-            return Gfx::RenderPass::Opaque;
-        }
-    } // namespace
-
     SceneRenderer::SceneRenderer() = default;
 
     SceneRenderer::~SceneRenderer() = default;
@@ -137,7 +120,7 @@ namespace NS
         desc.bounds = renderable->WorldBounds(source);
         desc.sortCenter = renderable->SortCenter(source);
         desc.sortPriority = renderable->SortPriority();
-        desc.pass = PassOf(renderable->Bucket());
+        desc.pass = renderable->Bucket();
         desc.collect = &CollectEntry;
         desc.owner = entry.get();
         entry->handle = m_renderScene.Register(desc);
@@ -285,7 +268,7 @@ namespace NS
                                  r->WorldBounds(source),
                                  r->SortCenter(source),
                                  r->SortPriority(),
-                                 PassOf(r->Bucket()));
+                                 r->Bucket());
         }
     }
 

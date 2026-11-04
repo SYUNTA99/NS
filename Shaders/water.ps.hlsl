@@ -59,6 +59,10 @@ float ShoreDistance(float4 screenPos, float3 worldPos, float3 viewDirection, flo
         return k_NoShoreDistance;
     }
     float depth = g_sceneDepth.Load(int3(screenPos.xy, 0));
+    if (depth >= 1.0)
+    {
+        return k_NoShoreDistance;
+    }
     float4 cameraClip = mul(float4(g_cameraPosition, 1.0), viewProj);
     float4 rayClip = mul(float4(viewDirection, 0.0), viewProj);
     float denominator = depth * rayClip.w - rayClip.z;
@@ -87,10 +91,7 @@ float3 SkyColor(float3 direction, float3 fallback)
 // 波の進む向きに並ぶ波頭の列。山は細く、谷は広くして、波の列として読めるようにする
 float WaveRidge(float2 p, float time, float angle, float wavelength, inout float2 slope)
 {
-    float s = sin(angle);
-    float c = cos(angle);
-    float2 direction = normalize(float2(swellDirection.x * c - swellDirection.y * s,
-                                        swellDirection.x * s + swellDirection.y * c));
+    float2 direction = SwellDirection(angle);
     float k = k_WaterTwoPi / wavelength;
     float phase = dot(p, direction) * k - time * sqrt(k_WaterGravity * k) * swellSpeed;
     slope += direction * cos(phase) * 0.12;
@@ -113,12 +114,12 @@ float4 PSMain(WaterInterp input) : SV_TARGET
     float3 view = toCamera / max(distanceToWater, 0.001);
 
     // 波の進む向きへ流しながら、座標を fBm で歪ませて色面の形を崩す
-    float2 flow = swellDirection * time * swellSpeed * 1.5;
+    float2 flow = SwellDirection(0.0) * time * swellSpeed * 1.5;
     float2 warpInput = (p - flow) * bandScale;
     float2 warp = float2(Fbm(warpInput), Fbm(warpInput + float2(5.2, 1.3)));
     float2 warped = p - flow + warp * warpStrength;
     // 色面は波の進む向きに短く、波頭の向きに長く伸ばして、丸い塊に見せない
-    float2 waveAxis = normalize(swellDirection);
+    float2 waveAxis = SwellDirection(0.0);
     float2 stretched = float2(dot(warped, waveAxis), dot(warped, float2(-waveAxis.y, waveAxis.x)) * 0.3);
 
     // 波頭の列。歪ませた座標で測り、直線の縞に見せない
