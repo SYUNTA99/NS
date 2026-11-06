@@ -216,7 +216,7 @@ TEST(HitReactionSet, BrokenSetsAreRejectedWithAReason)
 // .actor の束の並びは、壊れた束と名前の重なった束を ERROR で知らせて読まず、残りを読む
 TEST(HitReactionSet, ActorFileSkipsBrokenAndDuplicateSets)
 {
-    nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileHitReactions(actorFile, nlohmann::json::parse(R"([
         {"name": "Hit", "stopFrames": 12, "items": []},
         {"name": "Broken", "stopFrames": -1, "items": []},
@@ -224,7 +224,7 @@ TEST(HitReactionSet, ActorFileSkipsBrokenAndDuplicateSets)
         {"name": "Release", "stopFrames": 0, "items": []}
     ])"));
     const TestLogCapture log;
-    const std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PropActor", actorFile);
+    const std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PlayerActor", actorFile);
     ASSERT_EQ(sets.size(), 2u);
     EXPECT_EQ(sets[0].name, "Hit");
     EXPECT_EQ(sets[0].stopFrames, 12);
@@ -241,10 +241,10 @@ TEST(HitReactionSet, WritingBackKeepsTheSetsThatWereNotRead)
         {"name": "Hit", "stopFrames": 4, "items": []},
         {"name": "Release", "stopFrames": 0, "items": []}
     ])");
-    nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileHitReactions(actorFile, original);
     const TestLogCapture log;
-    std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PropActor", actorFile);
+    std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PlayerActor", actorFile);
     ASSERT_EQ(sets.size(), 2u);
     sets[1].stopFrames = 3;
     NS::WriteHitReactionSets(actorFile, sets);
@@ -285,7 +285,7 @@ TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
 {
     using NS::OS::FileSystem;
     // 読み込みは部品の欄 classObjs を必ず持たせるので、初めから持つ形で書く
-    nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+    nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     (void)NS::ActorJsonClassObjs(actorFile);
     NS::WriteHitReactionSets(actorFile, {MakeEveryKindSet()});
     NS::ActorAction action;

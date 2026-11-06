@@ -1,8 +1,9 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -71,14 +72,14 @@ namespace
 
 } // namespace
 
-// 置物は模型の本体と残像・影・跡の 4 つを描く物に、体のセンサー 1 つをセンサーに入れる
+// ゴールは模型の 1 つを描く物に、体のセンサー 1 つをセンサーに入れる
 TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Scene scene;
     const std::size_t renderables = scene.GetSceneRenderer()->RenderableCount();
-    (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
-    EXPECT_EQ(scene.GetSceneRenderer()->RenderableCount(), renderables + 4);
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables + 4);
+    (void)scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    EXPECT_EQ(scene.GetSceneRenderer()->RenderableCount(), renderables + 1);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables + 1);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
     EXPECT_EQ(EnabledSensorCount(scene), 1u);
 }
@@ -122,18 +123,23 @@ TEST(ActorLifecycle, PhysicsAndSensorsStopWhileDisappeared)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
+    // 当たりは地形の部品が、センサーはゴールが持つ
+    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     scene.OnUpdate();
     const std::size_t sensors = EnabledSensorCount(scene);
     ASSERT_GT(sensors, 0u);
     float distance = 0.0f;
     const NS::Vector3 from{0.0f, 2.0f, 0.0f};
     ASSERT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
-    actor->Disappear();
+    parts->Disappear();
+    goal->Disappear();
     EXPECT_EQ(EnabledSensorCount(scene), 0u);
     EXPECT_FALSE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
-    actor->Appear();
-    actor->Appear();
+    parts->Appear();
+    parts->Appear();
+    goal->Appear();
+    goal->Appear();
     EXPECT_EQ(EnabledSensorCount(scene), sensors);
     EXPECT_TRUE(scene.Physics().Raycast(from, -NS::Vector3::UnitY, 4.0f, distance));
 }
@@ -142,9 +148,13 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
-    GL::Level::PropActor* other = scene.SpawnActor<GL::Level::PropActor>("PropActor");
+    // 当たりは地形の部品が、センサーはゴールが持つ。消すのは原点の 2 体で、x = 10 の 2 体は残す
+    NS::MapPartsActor* actor = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    GL::Level::GoalActor* actorGoal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    NS::MapPartsActor* other = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    GL::Level::GoalActor* otherGoal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    otherGoal->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     const std::size_t renderables = scene.GetSceneRenderer()->EnabledRenderableCount();
     const std::size_t sensors = EnabledSensorCount(scene);
@@ -152,8 +162,10 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     const NS::uint attached = scene.Physics().AttachedBodyCount();
 
     actor->Disappear();
+    actorGoal->Disappear();
     EXPECT_TRUE(other->IsAppeared());
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables - 4);
+    EXPECT_TRUE(otherGoal->IsAppeared());
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables - 2);
     EXPECT_EQ(EnabledSensorCount(scene), sensors - 1);
     // 当たりの body は物理シーンの外へ出るだけで壊れない
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached - 1);
@@ -163,6 +175,7 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     EXPECT_TRUE(scene.Physics().Raycast({10.0f, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance));
 
     actor->Appear();
+    actorGoal->Appear();
     EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables);
     EXPECT_EQ(EnabledSensorCount(scene), sensors);
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached);
@@ -173,8 +186,8 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 TEST(ActorLifecycle, AppearAgainKeepsRegistrationOrder)
 {
     NS::Scene scene;
-    GL::Level::PropActor* first = scene.SpawnActor<GL::Level::PropActor>("PropActor");
-    GL::Level::PropActor* second = scene.SpawnActor<GL::Level::PropActor>("PropActor");
+    GL::Level::GoalActor* first = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    GL::Level::GoalActor* second = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     second->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     const std::vector<NS::IRenderable*> renderables = scene.GetSceneRenderer()->Renderables();
@@ -192,11 +205,11 @@ TEST(ActorLifecycle, DisappearedActorLeavesRegistriesOnEndPlay)
 {
     NS::Scene scene;
     // 部品が作るシーンに 1 つの管理役 (当たりの画面の係など) は残るので、作られた後の数と比べる
-    (void)scene.SpawnActor<GL::Level::PropActor>("PropActor");
+    (void)scene.SpawnActor<PlayerActor>("PlayerActor");
     scene.OnUpdate();
     const Registrations before = CountRegistrations(scene);
 
-    const std::vector<NS::SceneActor*> actors{scene.SpawnActor<GL::Level::PropActor>("PropActor"),
+    const std::vector<NS::SceneActor*> actors{scene.SpawnActor<GL::Level::GoalActor>("GoalActor"),
                                               scene.SpawnActor<PlayerActor>("PlayerActor"),
                                               scene.SpawnActor<NS::LightActor>("LightActor"),
                                               scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor")};

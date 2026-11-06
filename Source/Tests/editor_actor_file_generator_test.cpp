@@ -53,30 +53,30 @@ namespace
 // 書いてある項目は値のまま残し、書いていない項目をコードの値で足す。姿勢の項目も同じ
 TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
 {
-    nlohmann::json actorFile = ClassOnlyActorFile("PropActor");
-    NS::ActorJsonClassObjs(actorFile)["Params"] = {{"摩擦", 0.25f}};
+    nlohmann::json actorFile = ClassOnlyActorFile("GoalActor");
+    NS::ActorJsonClassObjs(actorFile)["Params"] = {{"クリアの暗転秒", 0.25f}};
     NS::ActorJsonClassObjs(actorFile)["Transform"] = {{NS::k_PositionFieldName, {1.0f, 2.0f, 3.0f}}};
 
     std::vector<std::string> added;
     const nlohmann::json full = NS::Editor::CompleteActorFile(actorFile, added);
 
-    EXPECT_EQ(NS::ActorFileClass(full), "PropActor");
+    EXPECT_EQ(NS::ActorFileClass(full), "GoalActor");
     const nlohmann::json* params = NS::ClassObjFields(full, "Params");
     ASSERT_NE(params, nullptr);
-    EXPECT_FLOAT_EQ(params->at("摩擦").get<float>(), 0.25f);
+    EXPECT_FLOAT_EQ(params->at("クリアの暗転秒").get<float>(), 0.25f);
     const nlohmann::json* transform = NS::ClassObjFields(full, "Transform");
     ASSERT_NE(transform, nullptr);
     EXPECT_EQ(transform->at(NS::k_PositionFieldName), (nlohmann::json{1.0f, 2.0f, 3.0f}));
-    EXPECT_TRUE(Contains(added, "Params/跳ね返り"));
-    EXPECT_FALSE(Contains(added, "Params/摩擦"));
+    EXPECT_TRUE(Contains(added, "Params/クリアの明転秒"));
+    EXPECT_FALSE(Contains(added, "Params/クリアの暗転秒"));
     EXPECT_TRUE(Contains(added, std::string{"Transform/"} + NS::k_ScaleFieldName));
     EXPECT_FALSE(Contains(added, std::string{"Transform/"} + NS::k_PositionFieldName));
 
     // 全部の部品の、参照でない欄は全部ある
-    const std::unique_ptr<NS::SceneActor> rock = NS::CreateActorWithCodeValues("PropActor");
-    ASSERT_NE(rock, nullptr);
+    const std::unique_ptr<NS::SceneActor> goal = NS::CreateActorWithCodeValues("GoalActor");
+    ASSERT_NE(goal, nullptr);
     int checked = 0;
-    NS::ForEachReflectedClassObj(rock.get(), [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+    NS::ForEachReflectedClassObj(goal.get(), [&](const NS::ClassObjInfo& row, const NS::Object* part) {
         const nlohmann::json* written = NS::ClassObjFields(full, row.key);
         ASSERT_NE(written, nullptr) << row.key;
         const nlohmann::json code = NS::SerializeClassObjFields(part);
@@ -102,9 +102,9 @@ TEST(ActorFileGenerator, LeavesOutReferenceFields)
 // 派生の .actor は元から受け継ぐので書き足さない
 TEST(ActorFileGenerator, LeavesTheDerivedActorFileAsWritten)
 {
-    nlohmann::json derived = ClassOnlyActorFile("PropActor");
-    NS::SetActorFileBase(derived, "PropActor");
-    NS::ActorJsonClassObjs(derived)["Params"] = {{"質量", 2.0f}};
+    nlohmann::json derived = ClassOnlyActorFile("GoalActor");
+    NS::SetActorFileBase(derived, "GoalActor");
+    NS::ActorJsonClassObjs(derived)["Params"] = {{"クリアの暗転秒", 2.0f}};
     std::vector<std::string> added;
     EXPECT_EQ(NS::Editor::CompleteActorFile(derived, added), derived);
     EXPECT_TRUE(added.empty());
@@ -114,16 +114,16 @@ TEST(ActorFileGenerator, LeavesTheDerivedActorFileAsWritten)
 TEST(ActorFileGenerator, WritesTheCompletedActorFilesBackToTheDirectory)
 {
     const ScopedActorFileDirectory scope("ActorFileGenerator");
-    WriteActorFile(scope.Path(), "PropActor", R"({"class": "PropActor", "classObjs": {"Params": {"摩擦": 0.25}}})");
+    WriteActorFile(scope.Path(), "GoalActor", R"({"class": "GoalActor", "classObjs": {"Params": {"クリアの暗転秒": 0.25}}})");
 
     EXPECT_EQ(NS::Editor::GenerateActorFiles(scope.Path()), 1);
     const std::optional<nlohmann::json> written =
-        NS::ReadActorFileAt(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor"));
+        NS::ReadActorFileAt(NS::OS::FileSystem::Combine(scope.Path(), "GoalActor.actor"));
     ASSERT_TRUE(written.has_value());
     const nlohmann::json* params = NS::ClassObjFields(*written, "Params");
     ASSERT_NE(params, nullptr);
-    EXPECT_FLOAT_EQ(params->at("摩擦").get<float>(), 0.25f);
-    EXPECT_TRUE(params->contains("跳ね返り"));
+    EXPECT_FLOAT_EQ(params->at("クリアの暗転秒").get<float>(), 0.25f);
+    EXPECT_TRUE(params->contains("クリアの明転秒"));
 
     EXPECT_EQ(NS::Editor::GenerateActorFiles(scope.Path()), 0);
 }

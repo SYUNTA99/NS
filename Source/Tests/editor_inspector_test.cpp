@@ -370,12 +370,12 @@ namespace
         ImGuiContext* m_gui = nullptr;
     };
 
-    // 出荷の PropActor.actor の文書。試しの置き場へ敷いて、出荷のファイルは書き換えない
-    nlohmann::json ShippedPropActorFile()
+    // 出荷の name.actor の文書。試しの置き場へ敷いて、出荷のファイルは書き換えない
+    nlohmann::json ShippedActorFile(const std::string& name)
     {
         using NS::OS::FileSystem;
         const std::optional<std::string> text = FileSystem::ReadAllText(
-            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets/Actors"), "PropActor.actor"));
+            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets/Actors"), name + ".actor"));
         EXPECT_TRUE(text.has_value());
         if (!text.has_value())
         {
@@ -384,16 +384,16 @@ namespace
         return nlohmann::json::parse(*text);
     }
 
-    // directory に書かれた PropActor.actor の束。読めなければ空
-    std::vector<NS::HitReactionSet> SavedPropSets(const std::string& directory)
+    // directory に書かれた name.actor の束。読めなければ空
+    std::vector<NS::HitReactionSet> SavedSets(const std::string& directory, const std::string& name)
     {
         const std::optional<std::string> text =
-            NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory, "PropActor.actor"));
+            NS::OS::FileSystem::ReadAllText(NS::OS::FileSystem::Combine(directory, name + ".actor"));
         if (!text.has_value())
         {
             return {};
         }
-        return NS::ReadHitReactionSets("PropActor", nlohmann::json::parse(*text));
+        return NS::ReadHitReactionSets(name, nlohmann::json::parse(*text));
     }
 
     const NS::HitReactionSet* FindSetIn(const std::vector<NS::HitReactionSet>& sets, std::string_view name)
@@ -561,7 +561,7 @@ namespace
 TEST(EditorInspector, FieldChangeReachesTheCollision)
 {
     // 半径はシーンで上書きできない欄で、確定すると .actor へ書く。出荷のファイルを書かないよう試しの置き場へ敷く
-    const nlohmann::json shipped = ShippedPropActorFile();
+    const nlohmann::json shipped = ShippedActorFile("PropActor");
     const ScopedActorFileDirectory scope("InspectorFieldChange");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
@@ -608,7 +608,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     const NS::ClassObjInfo* row = RowOf(prop, &prop->Root());
@@ -693,7 +693,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 // シーンで上書きできない欄を直し終えて .actor へ書くと、同じ .actor のほかのアクターの、世界を止めた歩の後の当たりも直した形になる
 TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 {
-    const nlohmann::json shipped = ShippedPropActorFile();
+    const nlohmann::json shipped = ShippedActorFile("PropActor");
     const ScopedActorFileDirectory scope("InspectorActorFileFollowers");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
@@ -862,19 +862,19 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
 // シーンで選んだアクターの .actor の束が欄に出る。止めの長さを直すと、同じ .actor のアクターの束に効き、.actor の hitReactions に書く
 TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitAndTheFile)
 {
-    const nlohmann::json shipped = ShippedPropActorFile();
+    const nlohmann::json shipped = ShippedActorFile("PlayerActor");
     const ScopedActorFileDirectory scope("InspectorHitSets");
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PlayerActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PlayerActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 other = editor.SelectedActorId();
     editor.PlaceItem(*item);
     const NS::uint32 selected = editor.SelectedActorId();
     ASSERT_NE(other, selected);
-    const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PropActor", shipped);
+    const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PlayerActor", shipped);
     ASSERT_FALSE(before.empty());
     const NS::HitReactionSet& first = before.front();
     ASSERT_NE(first.stopFrames, 20);
@@ -898,7 +898,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
         ASSERT_NE(set, nullptr);
         EXPECT_EQ(set->stopFrames, 20);
     }
-    const std::vector<NS::HitReactionSet> saved = SavedPropSets(scope.Path());
+    const std::vector<NS::HitReactionSet> saved = SavedSets(scope.Path(), "PlayerActor");
     const NS::HitReactionSet* savedSet = FindSetIn(saved, first.name);
     ASSERT_NE(savedSet, nullptr);
     EXPECT_EQ(savedSet->stopFrames, 20);
@@ -906,7 +906,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
 
     // 戻すとファイルとアクターの束が前の長さへ戻る
     ASSERT_TRUE(editor.Editor().Undo().Undo());
-    const std::vector<NS::HitReactionSet> undoneSets = SavedPropSets(scope.Path());
+    const std::vector<NS::HitReactionSet> undoneSets = SavedSets(scope.Path(), "PlayerActor");
     const NS::HitReactionSet* undone = FindSetIn(undoneSets, first.name);
     ASSERT_NE(undone, nullptr);
     EXPECT_EQ(undone->stopFrames, first.stopFrames);
@@ -919,7 +919,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
 // 素材の窓で選んだ .actor でも束の欄が出る。持ち主へ渡す項目の値を直すと、シーンのアクターの束と .actor に書く
 TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
 {
-    const nlohmann::json shipped = ShippedPropActorFile();
+    const nlohmann::json shipped = ShippedActorFile("PropActor");
     const ScopedActorFileDirectory scope("InspectorOwnerValues");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
     NS::Scene scene;
@@ -955,6 +955,6 @@ TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
     const NS::HitReaction* reaction = scene.Actors().FindByActorId(placed)->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
     EXPECT_FLOAT_EQ(OwnerValueOf(reaction->FindSet(setName), 0, "食い込み距離"), 0.25f);
-    const std::vector<NS::HitReactionSet> saved = SavedPropSets(scope.Path());
+    const std::vector<NS::HitReactionSet> saved = SavedSets(scope.Path(), "PropActor");
     EXPECT_FLOAT_EQ(OwnerValueOf(FindSetIn(saved, setName), 0, "食い込み距離"), 0.25f);
 }

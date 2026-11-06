@@ -13,12 +13,12 @@
 
 namespace
 {
-    // 置物は、自機でない頼み手として使う
+    // ゴールは、自機でない頼み手として使う
     PlayerActor* PlaceTwo(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
         AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
-        AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 5.0f});
+        AddActorJson(doc, "GoalActor", 2, NS::Vector3{0.0f, 0.5f, 5.0f});
         scene.ResetFromJson(doc);
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }

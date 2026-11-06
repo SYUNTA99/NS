@@ -284,7 +284,7 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     const ScopedActorFileDirectory directory("EditorActionTimelineSave");
     const std::string shippedDirectory =
         NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Actors");
-    for (const char* name : {"PlayerActor", "PropActor"})
+    for (const char* name : {"PlayerActor", "GoalActor"})
     {
         const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(
             NS::OS::FileSystem::Combine(shippedDirectory, std::string{name} + ".actor"));
@@ -301,7 +301,7 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     NS::Scene scene;
     nlohmann::json snapshot = NS::MakeSceneJson();
     AddActorJson(snapshot, "PlayerActor", 1);
-    AddActorJson(snapshot, "PropActor", 2, {0.0f, 1.5f, 7.0f});
+    AddActorJson(snapshot, "GoalActor", 2, {0.0f, 1.5f, 7.0f});
     scene.ResetFromJson(std::move(snapshot));
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
@@ -322,13 +322,13 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
         timeline.Render(editor);
         ImGui::EndFrame();
     };
-    // 自機の .actor の動作に事象を足してから置物を選び直し、置物の .actor を開いた窓で保存する
+    // 自機の .actor の動作に事象を足してからゴールを選び直し、ゴールの .actor を開いた窓で保存する
     editor.SelectActorById(1);
     frame(nullptr);
     frame("再生の位置に足す");
     editor.SelectActorById(2);
     frame(nullptr);
-    EXPECT_EQ(timeline.EditingActorFile(), "PropActor");
+    EXPECT_EQ(timeline.EditingActorFile(), "GoalActor");
     frame("保存");
 
     library.Reload();

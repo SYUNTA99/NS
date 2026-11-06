@@ -249,9 +249,10 @@ TEST(GameScene, RestartReturnsActorsToTheirStart)
 TEST(GameScene, RestartReleasesAHoldStartedByAnotherActor)
 {
     nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
+    nlohmann::json goal = NS::MakeActorJson();
+    NS::SetActorJsonFile(goal, "GoalActor");
+    NS::Editor::SetActorJsonPosition(goal, NS::Vector3{50.0f, 1.0f, 0.0f});
+    NS::SceneJsonActors(doc).push_back(std::move(goal));
     NS::EnsureUniqueActorIds(doc);
 
     GL::Level::GameScene scene;
@@ -260,7 +261,7 @@ TEST(GameScene, RestartReleasesAHoldStartedByAnotherActor)
     NS::SceneActor* placed = nullptr;
     for (NS::SceneActor* actor : scene.Actors())
     {
-        if (std::string_view{actor->ClassName()} == "PropActor")
+        if (std::string_view{actor->ClassName()} == "GoalActor")
         {
             placed = actor;
         }

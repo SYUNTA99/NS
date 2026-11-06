@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -40,9 +40,9 @@ TEST(ClassObjSavedFields, SavedJsonHasNoEnabledKey)
     ExpectNoEnabledKey(NS::ActorToJson(player.get()));
     ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoEnabledKey(NS::ActorToJson(prop.get()));
-    ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("PropActor"));
+    const std::unique_ptr<GL::Level::GoalActor> goal = NS::CreateActor<GL::Level::GoalActor>();
+    ExpectNoEnabledKey(NS::ActorToJson(goal.get()));
+    ExpectNoEnabledKey(*NS::ActorFileLibrary::Get().Values("GoalActor"));
 }
 
 TEST(ClassObjSavedFields, OptionalColorIsSavedAsNullOrFourNumbers)

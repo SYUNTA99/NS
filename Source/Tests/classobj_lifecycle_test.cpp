@@ -1,8 +1,9 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
@@ -63,9 +64,11 @@ namespace
 TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Scene scene;
-    GL::Level::PropActor* actor = scene.SpawnActor<GL::Level::PropActor>("PropActor");
-    // 模型・残像・影・跡を 1 つずつ描く物に入れる
-    EXPECT_EQ(RegisteredWhileAppeared(scene, actor), (EnabledRegistrations{.renderables = 4, .sensors = 1, .bodies = 1}));
+    // 地形の部品は模型を描く物に、当たりを物理に入れる。ゴールは模型を描く物に、体のセンサーをセンサーに入れる
+    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    EXPECT_EQ(RegisteredWhileAppeared(scene, parts), (EnabledRegistrations{.renderables = 1, .bodies = 1}));
+    EXPECT_EQ(RegisteredWhileAppeared(scene, goal), (EnabledRegistrations{.renderables = 1, .sensors = 1}));
 }
 
 // 派生の部品 (重ね描き・光・仮想カメラ) も持ち主が作る時に 1 回入れ、出し入れでは外さない。

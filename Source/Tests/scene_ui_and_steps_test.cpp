@@ -1,4 +1,4 @@
-#include "Game/Level/PropActor.h"
+#include "Game/Level/FollowCameraActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -26,7 +26,7 @@ template <class T>
 concept CanReceiveMsgDirectly = requires(T& actor, const NS::Message& msg) { actor.ReceiveMsg(msg, nullptr, nullptr); };
 static_assert(!CanReceiveMsgDirectly<NS::SceneActor>);
 static_assert(!CanReceiveMsgDirectly<PlayerActor>);
-static_assert(!CanReceiveMsgDirectly<GL::Level::PropActor>);
+static_assert(!CanReceiveMsgDirectly<GL::Level::FollowCameraActor>);
 
 namespace
 {

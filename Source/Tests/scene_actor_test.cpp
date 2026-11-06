@@ -3,8 +3,11 @@
 #include "Editor/ActionTimelinePanel.h"
 #include "Editor/QuitModal.h"
 #include "Game/Level/DeathZoneActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -72,25 +75,25 @@ TEST(SceneActor, ClassOnlyActorBuildsWholeComposition)
 {
     // 部品の一覧を持たないデータでも、クラスの OnInit が部品を全て積む
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "MapPartsActor", 1);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
 
     NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(actor->CollisionClassObj()), nullptr);
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "MapPartsActor");
+    EXPECT_NE(NS::Cast<NS::MeshCollision>(actor->CollisionClassObj()), nullptr);
 }
 
 TEST(SceneActor, ToJsonKeepsClassAndValues)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "PlayerActor", 1);
 
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    GL::Level::PropActor* actor = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
+    PlayerActor* actor = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(actor, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(actor->ShadowClassObj(), nlohmann::json{{"基本直径", 1.5f}}), 0u);
     actor->AddSceneOverride("Shadow", "基本直径");
@@ -100,14 +103,14 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& objects = NS::SceneJsonActors(saved);
     ASSERT_EQ(objects.size(), 1u);
-    EXPECT_EQ(NS::ActorJsonFile(objects[0]), "PropActor");
+    EXPECT_EQ(NS::ActorJsonFile(objects[0]), "PlayerActor");
 
     // 読み直すと同じクラスで組まれ、変えた値が戻る
     NS::Scene reloaded;
     reloaded.ResetFromJson(saved);
     NS::SceneActor* again = reloaded.Actors().FindByActorId(1);
     ASSERT_NE(again, nullptr);
-    EXPECT_EQ(std::string_view{again->ClassName()}, "PropActor");
+    EXPECT_EQ(std::string_view{again->ClassName()}, "PlayerActor");
     ASSERT_NE(again->ShadowClassObj(), nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(again->ShadowClassObj()), "基本直径", 0.0f), 1.5f);
     EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
@@ -119,7 +122,7 @@ TEST(SceneActor, UnknownClassObjKeyKeepsThePlacementAsJson)
 {
     // クラスの表に無い鍵があれば、黙って捨てずにアクターを作らず ERROR を出し、JSON のまま書き戻す
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "GoalActor", 1);
     NS::ActorJsonClassObjs(NS::SceneJsonActors(doc)[0])["NotInTheClass"] = nlohmann::json{{"Radius", 9.0f}};
 
     const TestLogCapture log;
@@ -322,10 +325,10 @@ TEST(SceneJson, RefValueRoundTripsAndRejectsOtherShapes)
 TEST(SceneJson, ActorHeaderRoundTrips)
 {
     nlohmann::json object = NS::MakeActorJson();
-    NS::WriteActorHeader(object, NS::ActorHeader{.id = 4, .actorFile = "PropActor", .name = "Ball", .active = false});
+    NS::WriteActorHeader(object, NS::ActorHeader{.id = 4, .actorFile = "GoalActor", .name = "Ball", .active = false});
     const NS::ActorHeader header = NS::ReadActorHeader(object);
     EXPECT_EQ(header.id, 4u);
-    EXPECT_EQ(header.actorFile, "PropActor");
+    EXPECT_EQ(header.actorFile, "GoalActor");
     EXPECT_EQ(header.name, "Ball");
     EXPECT_FALSE(header.active);
 }
@@ -335,7 +338,7 @@ TEST(SceneJson, NextFreeActorIdStepsPastTheLargestId)
     // 手編集で nextObjectId がアクターの id より小さいファイルもある。次の id は最大の id の次より前に戻らない
     nlohmann::json doc = NS::MakeSceneJson();
     EXPECT_EQ(NS::NextFreeActorId(doc), 1u);
-    AddActorJson(doc, "PropActor", 5);
+    AddActorJson(doc, "GoalActor", 5);
     NS::SetSceneJsonNextActorId(doc, 2);
     EXPECT_EQ(NS::NextFreeActorId(doc), 6u);
     NS::SetSceneJsonNextActorId(doc, 10);
@@ -345,8 +348,8 @@ TEST(SceneJson, NextFreeActorIdStepsPastTheLargestId)
 TEST(SceneActor, ApplyFromJsonNumbersANameThatIsAlreadyUsed)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
-    AddActorJson(doc, "PropActor", 2);
+    AddActorJson(doc, "GoalActor", 1);
+    AddActorJson(doc, "GoalActor", 2);
     NS::SetActorJsonName(NS::SceneJsonActors(doc)[0], "Ball");
     NS::SetActorJsonName(NS::SceneJsonActors(doc)[1], "Other");
     NS::Scene scene;
@@ -444,23 +447,23 @@ TEST(SceneLoad, RejectsVersionWhosePlacementsNameTheClass)
 
 namespace
 {
-    // PropActor の半径だけを変えた、クラス名と違う名前で敷く .actor の中身
+    // PlayerActor の当たりの半径だけを変えた、クラス名と違う名前で敷く .actor の中身
     nlohmann::json HeavyRockActorFile()
     {
-        nlohmann::json actorFile = CodeValuesActorFile("PropActor");
-        NS::ActorJsonClassObjs(actorFile)["Collision"]["半径"] = 2.5f;
+        nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
+        NS::ActorJsonClassObjs(actorFile)["Collider"]["半径"] = 2.5f;
         return actorFile;
     }
 
     float RadiusOf(const NS::SceneActor* actor)
     {
         NS_ASSERT(Game, actor != nullptr, "RadiusOf: 渡したアクターか部品が無い");
-        const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(actor->CollisionClassObj());
-        if (sphere == nullptr)
+        const PlayerActor* player = NS::Cast<PlayerActor>(actor);
+        if (player == nullptr)
         {
             return -1.0f;
         }
-        return sphere->Radius();
+        return player->Collider().CapsuleRadius();
     }
 } // namespace
 
@@ -475,7 +478,7 @@ TEST(SceneLoad, PlacementBuildsTheClassAndValuesOfTheActorFileItNames)
 
     const NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
-    EXPECT_NE(NS::Cast<GL::Level::PropActor>(actor), nullptr);
+    EXPECT_NE(NS::Cast<PlayerActor>(actor), nullptr);
     EXPECT_EQ(actor->ActorFileName(), "HeavyRock");
     EXPECT_FLOAT_EQ(RadiusOf(actor), 2.5f);
 
@@ -483,9 +486,9 @@ TEST(SceneLoad, PlacementBuildsTheClassAndValuesOfTheActorFileItNames)
     const nlohmann::json saved = scene.ToJson();
     const nlohmann::json& object = NS::SceneJsonActors(saved)[0];
     EXPECT_EQ(NS::ActorJsonFile(object), "HeavyRock");
-    const nlohmann::json* savedSphere = NS::ClassObjFields(object, "Collision");
-    ASSERT_NE(savedSphere, nullptr);
-    EXPECT_FALSE(savedSphere->contains("半径"));
+    const nlohmann::json* savedCollider = NS::ClassObjFields(object, "Collider");
+    ASSERT_NE(savedCollider, nullptr);
+    EXPECT_FALSE(savedCollider->contains("半径"));
 }
 
 TEST(SceneActor, SnapshotNamingAnotherActorFileKeepsTheActor)
@@ -493,7 +496,7 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileKeepsTheActor)
     // 同じクラスの別の .actor を指す控えを当てても、同じアクターのまま替えた先の .actor の値になる
     const ScopedActorFile heavy{"HeavyRock", HeavyRockActorFile()};
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "PlayerActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     const NS::SceneActor* before = scene.Actors().FindByActorId(1);
@@ -513,7 +516,7 @@ TEST(SceneActor, SnapshotNamingAnotherClassActorFileIsRejected)
     // 違うクラスの .actor を指す控えは当てない。アクターも保存の中身も当てる前のまま残る
     const ScopedActorFile goal{"GoalActor", CodeValuesActorFile("GoalActor")};
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "MapPartsActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     const NS::SceneActor* before = scene.Actors().FindByActorId(1);
@@ -526,7 +529,7 @@ TEST(SceneActor, SnapshotNamingAnotherClassActorFileIsRejected)
     EXPECT_EQ(ApplySnapshot(scene, snapshot), nullptr);
     EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(scene.Actors().FindByActorId(1), before);
-    EXPECT_EQ(before->ActorFileName(), "PropActor");
+    EXPECT_EQ(before->ActorFileName(), "MapPartsActor");
     EXPECT_EQ(scene.ToJson(), saved);
 }
 
@@ -534,7 +537,7 @@ TEST(SceneActor, SnapshotWithMissingActorFileHandsBackTheOldActor)
 {
     // 見つからない .actor を指す控えは JSON のまま持ち、古いアクターは解放せずに呼び手へ返す
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "GoalActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     const NS::SceneActor* before = scene.Actors().FindByActorId(1);
@@ -615,7 +618,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
 {
     // .actor の見つからないアクターは作らずに ERROR を出す。保存で消さず、その id を新しいアクターに振らない
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "GoalActor", 1);
     AddActorJson(doc, "NoSuchActor", 7);
     nlohmann::json& lost = NS::SceneJsonActors(doc)[1];
     NS::SetActorJsonName(NS::SceneJsonActors(doc)[0], "Rock");
@@ -636,7 +639,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
     ASSERT_EQ(objects.size(), 2u);
     EXPECT_EQ(objects[1], NS::SceneJsonActors(doc)[1]);
 
-    const NS::SceneActor* added = scene.SpawnActor<GL::Level::PropActor>("Added");
+    const NS::SceneActor* added = scene.SpawnActor<GL::Level::GoalActor>("Added");
     ASSERT_NE(added, nullptr);
     EXPECT_GT(added->Id(), 7u);
 }
@@ -646,8 +649,8 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
-    AddActorJson(doc, "PropActor", 2);
+    AddActorJson(doc, "GoalActor", 1);
+    AddActorJson(doc, "GoalActor", 2);
     NS::SetSceneJsonNextActorId(doc, 3);
     const TestLogCapture log;
     NS::Scene scene;
@@ -679,7 +682,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
     EXPECT_NE(ApplySnapshot(scene, NS::SceneJsonActors(doc)[1]), nullptr);
     const nlohmann::json saved = scene.ToJson();
     ASSERT_EQ(NS::SceneJsonActors(saved).size(), 1u);
-    EXPECT_EQ(NS::ActorJsonFile(NS::SceneJsonActors(saved)[0]), "PropActor");
+    EXPECT_EQ(NS::ActorJsonFile(NS::SceneJsonActors(saved)[0]), "GoalActor");
     EXPECT_EQ(NS::ActorJsonId(NS::SceneJsonActors(saved)[0]), 2u);
 }
 
@@ -687,11 +690,11 @@ TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 {
     // 型から作るアクターは、クラスと同じ名前の .actor を敷く
     NS::Scene scene;
-    const NS::SceneActor* spawned = scene.SpawnActor<GL::Level::PropActor>("Spawned");
+    const NS::SceneActor* spawned = scene.SpawnActor<GL::Level::GoalActor>("Spawned");
     ASSERT_NE(spawned, nullptr);
-    EXPECT_EQ(spawned->ActorFileName(), "PropActor");
-    const std::unique_ptr<GL::Level::PropActor> made = NS::CreateActor<GL::Level::PropActor>();
-    EXPECT_EQ(made->ActorFileName(), "PropActor");
+    EXPECT_EQ(spawned->ActorFileName(), "GoalActor");
+    const std::unique_ptr<GL::Level::GoalActor> made = NS::CreateActor<GL::Level::GoalActor>();
+    EXPECT_EQ(made->ActorFileName(), "GoalActor");
 }
 
 // 欄の表示名と部品の登録が保存の鍵なので、鍵が変わると読み直した値が静かに既定へ戻る
@@ -815,33 +818,33 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
 TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
 {
     const ScopedActorFileDirectory directory("FieldEditChangedOutside");
-    const ScopedActorFile actorDefinition{"ChangedEffectRock", CodeValuesActorFile("PropActor")};
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Save("ChangedEffectRock"));
+    const ScopedActorFile actorDefinition{"ChangedGoal", CodeValuesActorFile("GoalActor")};
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Save("ChangedGoal"));
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "ChangedEffectRock", 1);
+    AddActorJson(doc, "ChangedGoal", 1);
     scene.ResetFromJson(doc);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(rock, nullptr);
+    GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(1));
+    ASSERT_NE(goal, nullptr);
     const NS::ClassObjInfo* row = nullptr;
-    NS::ForEachReflectedClassObj(rock, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
-        if (part == &rock->Effects())
+    NS::ForEachReflectedClassObj(goal, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
+        if (part == &goal->Params())
         {
             row = &candidate;
         }
     });
     ASSERT_NE(row, nullptr);
-    const std::string path = NS::OS::FileSystem::Combine(directory.Path(), "ChangedEffectRock.actor");
+    const std::string path = NS::OS::FileSystem::Combine(directory.Path(), "ChangedGoal.actor");
     const std::optional<std::string> saved = NS::OS::FileSystem::ReadAllText(path);
     ASSERT_TRUE(saved.has_value());
     const std::string handEdit = *saved + "\n";
-    WriteActorFile(directory.Path(), "ChangedEffectRock", handEdit);
+    WriteActorFile(directory.Path(), "ChangedGoal", handEdit);
 
     LevelEditorController editor(scene);
     editor.SelectActorById(1);
     editor.BeginClassObjEdit();
-    ASSERT_EQ(NS::ApplyJsonFields(&rock->Effects(), {{"飛び出しの尾の資産", "6e4f2fccb9df5a339885b53d42fafd45"}}), 0u);
-    editor.NoteFieldEdit(rock, *row, "飛び出しの尾の資産");
+    ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);
+    editor.NoteFieldEdit(goal, *row, "クリアの暗転秒");
     editor.CommitClassObjEdit();
     editor.Editor().Undo().Clear();
 
@@ -853,32 +856,32 @@ TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
 }
 
-TEST(SceneActor, FailedDirectEffectSaveStaysPendingAfterTheSceneHistoryIsCleared)
+TEST(SceneActor, FailedDirectFieldSaveStaysPendingAfterTheSceneHistoryIsCleared)
 {
-    const ScopedActorFileDirectory directory("FailedDirectEffectSave");
-    const ScopedActorFile actorDefinition{"FailedEffectRock", CodeValuesActorFile("PropActor")};
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Save("FailedEffectRock"));
+    const ScopedActorFileDirectory directory("FailedDirectFieldSave");
+    const ScopedActorFile actorDefinition{"FailedGoal", CodeValuesActorFile("GoalActor")};
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Save("FailedGoal"));
     NS::Scene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "FailedEffectRock", 1);
+    AddActorJson(doc, "FailedGoal", 1);
     scene.ResetFromJson(doc);
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(rock, nullptr);
+    GL::Level::GoalActor* goal = NS::Cast<GL::Level::GoalActor>(scene.Actors().FindByActorId(1));
+    ASSERT_NE(goal, nullptr);
     const NS::ClassObjInfo* row = nullptr;
-    NS::ForEachReflectedClassObj(rock, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
-        if (part == &rock->Effects())
+    NS::ForEachReflectedClassObj(goal, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
+        if (part == &goal->Params())
         {
             row = &candidate;
         }
     });
     ASSERT_NE(row, nullptr);
-    const std::string blocker = NS::OS::FileSystem::Combine(directory.Path(), "FailedEffectRock.actor.tmp");
+    const std::string blocker = NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor.tmp");
     ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(blocker));
     LevelEditorController editor(scene);
     editor.SelectActorById(1);
     editor.BeginClassObjEdit();
-    ASSERT_EQ(NS::ApplyJsonFields(&rock->Effects(), {{"飛び出しの尾の資産", "6e4f2fccb9df5a339885b53d42fafd45"}}), 0u);
-    editor.NoteFieldEdit(rock, *row, "飛び出しの尾の資産");
+    ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);
+    editor.NoteFieldEdit(goal, *row, "クリアの暗転秒");
     editor.CommitClassObjEdit();
     editor.Editor().Undo().Clear();
     ASSERT_FALSE(editor.HasUnsavedSceneChanges());
@@ -887,16 +890,16 @@ TEST(SceneActor, FailedDirectEffectSaveStaysPendingAfterTheSceneHistoryIsCleared
     EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
     const std::optional<nlohmann::json> beforeRetry = NS::ReadActorFileAt(
-        NS::OS::FileSystem::Combine(directory.Path(), "FailedEffectRock.actor"));
+        NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(beforeRetry.has_value());
-    EXPECT_EQ(NS::ActorJsonClassObjs(*beforeRetry)["LaunchEffects"]["飛び出しの尾の資産"], "");
+    EXPECT_FLOAT_EQ(NS::ActorJsonClassObjs(*beforeRetry)["Params"]["クリアの暗転秒"].get<float>(), 0.4f);
     std::error_code error;
     EXPECT_TRUE(std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(blocker)}, error));
     EXPECT_FALSE(error);
     EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
     EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
     const std::optional<nlohmann::json> afterRetry = NS::ReadActorFileAt(
-        NS::OS::FileSystem::Combine(directory.Path(), "FailedEffectRock.actor"));
+        NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(afterRetry.has_value());
-    EXPECT_EQ(NS::ActorJsonClassObjs(*afterRetry)["LaunchEffects"]["飛び出しの尾の資産"], "6e4f2fccb9df5a339885b53d42fafd45");
+    EXPECT_FLOAT_EQ(NS::ActorJsonClassObjs(*afterRetry)["Params"]["クリアの暗転秒"].get<float>(), 0.8f);
 }
