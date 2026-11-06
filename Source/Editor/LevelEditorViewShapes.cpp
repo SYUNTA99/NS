@@ -8,7 +8,6 @@
 #include "Game/Level/HitZones.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
-#include "Game/Level/SlamAim.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"

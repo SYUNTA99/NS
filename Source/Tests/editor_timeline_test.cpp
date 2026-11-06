@@ -8,7 +8,6 @@
 #include "Editor/PlayControls.h"
 #include "Editor/QuitModal.h"
 #include "Editor/Timeline.h"
-#include "Editor/TimelinePreview.h"
 #include "Game/Level/GameScene.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
@@ -72,171 +71,24 @@ namespace
         ImGuiContext* m_context = nullptr;
     };
 
-    class TimelineMovingActor : public NS::SceneActor
-    {
-    protected:
-        void OnInit() override
-        {
-            NS::Model* model = CreateClassObj(m_model);
-            NS::InitDraw(this, model, &Root());
-            model->SetMeshRef("cube");
-            model->SetMaterialRef("Assets/Materials/player.mat");
-        }
-        void BodyStep() override { Root().SetPosition(Root().Position() + NS::Vector3{0.1f, 0.0f, 0.0f}); }
-    };
-
-    std::vector<NS::uint8> ReadPixels(NS::Gfx::D3DRenderTarget& target)
-    {
-        ID3D11Texture2D* texture = target.Color()->Native();
-        D3D11_TEXTURE2D_DESC desc{};
-        texture->GetDesc(&desc);
-        desc.Usage = D3D11_USAGE_STAGING;
-        desc.BindFlags = 0;
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-        desc.MiscFlags = 0;
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
-        if (FAILED(NS::Gfx::Gpu().device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
-        {
-            return {};
-        }
-        NS::Gfx::Gpu().context->CopyResource(staging.Get(), texture);
-        D3D11_MAPPED_SUBRESOURCE mapped{};
-        if (FAILED(NS::Gfx::Gpu().context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
-        {
-            return {};
-        }
-        std::vector<NS::uint8> pixels;
-        for (UINT y = 0; y < desc.Height; ++y)
-        {
-            const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
-            pixels.insert(pixels.end(), row, row + desc.Width * 4);
-        }
-        NS::Gfx::Gpu().context->Unmap(staging.Get(), 0);
-        return pixels;
-    }
 } // namespace
 
-TEST(EditorTimeline, SignedFramesAndFrameRateShareOneClock)
-{
-    const NS::Editor::TimelineFrameRange range{-10, 10};
-    NS::Editor::TimelinePlayback playback;
-    playback.framesPerSecond = 30.0f;
-    playback.Seek(-10, range);
-    playback.Toggle(range);
-    playback.Tick(0.5f, range);
-    EXPECT_EQ(playback.frame, 5);
-    playback.Tick(0.5f, range);
-    EXPECT_EQ(playback.frame, 10);
-    EXPECT_FALSE(playback.playing);
-    playback.Toggle(range);
-    EXPECT_EQ(playback.frame, -10);
-    playback.StepBy(1, range);
-    EXPECT_EQ(playback.frame, -9);
-    EXPECT_FALSE(playback.playing);
-    EXPECT_FLOAT_EQ(playback.carry, 0.0f);
-}
-
-TEST(EditorTimeline, SeekingClearsPartialTimeAndInvalidTimeCannotMoveTheClock)
+TEST(EditorTimeline, SeekingStaysInsideTheRange)
 {
     const NS::Editor::TimelineFrameRange range{0, 20};
     NS::Editor::TimelinePlayback playback;
-    playback.playing = true;
-    playback.Tick(0.5f / 60.0f, range);
     playback.Seek(5, range);
-    playback.Toggle(range);
-    playback.Tick(0.5f / 60.0f, range);
-    EXPECT_EQ(playback.frame, 5);
-    playback.Tick(std::numeric_limits<float>::quiet_NaN(), range);
-    playback.Tick(-1.0f, range);
     EXPECT_EQ(playback.frame, 5);
     playback.Seek(100, range);
     EXPECT_EQ(playback.frame, 20);
-}
-
-TEST(EditorTimelinePreview, RewindsTheEntireSceneAndDoesNotStepWhilePaused)
-{
-    NS::Editor::TimelinePreview preview;
-    int builds = 0;
-    preview.Reset(
-        [&builds] {
-            ++builds;
-            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
-            return scene;
-        },
-        {-2, 10});
-    NS::Scene* scene = preview.Seek(-2);
-    ASSERT_NE(scene, nullptr);
-    EXPECT_TRUE(scene->IsSimulationPaused());
-    NS::SceneActor* actor = *scene->Actors().begin();
-    EXPECT_NEAR(actor->Root().Position().x, 0.1f, 1.0e-6f);
-    scene = preview.Seek(8);
-    ASSERT_NE(scene, nullptr);
-    actor = *scene->Actors().begin();
-    EXPECT_NEAR(actor->Root().Position().x, 1.1f, 1.0e-6f);
-    EXPECT_EQ(builds, 1);
-    scene = preview.Seek(-1);
-    ASSERT_NE(scene, nullptr);
-    actor = *scene->Actors().begin();
-    EXPECT_NEAR(actor->Root().Position().x, 0.2f, 1.0e-6f);
-    EXPECT_EQ(builds, 2);
-    (void)preview.Seek(-1);
-    scene->OnUpdate();
-    EXPECT_NEAR(actor->Root().Position().x, 0.2f, 1.0e-6f);
-    EXPECT_FLOAT_EQ(scene->RenderAlpha(0.0f), 1.0f);
-    preview.Clear();
-    EXPECT_EQ(preview.Scene(), nullptr);
-    EXPECT_FALSE(preview.Frame().has_value());
-    EXPECT_EQ(preview.Seek(0), nullptr);
-}
-
-TEST(EditorTimelinePreview, RenderedPixelsChangeAndRewindReproducesTheFrame)
-{
-    NS::OS::Window window(NS::OS::WindowDesc{.title = "タイムライン描画の試し", .size = {160, 90}, .visible = false});
-    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
-    ASSERT_TRUE(device.IsValid());
-    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
-    const NS::AssetManagerScope useAssets{assets};
-    std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({160, 90});
-    ASSERT_TRUE(target->IsValid());
-    NS::Editor::TimelinePreview preview;
-    preview.Reset(
-        [&device] {
-            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->GetSceneRenderer()->SetDevice(&device);
-            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
-            return scene;
-        },
-        {0, 20});
-    NS::CameraPose pose;
-    pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
-    pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
-    const NS::SceneView view{target.get(), pose};
-    device.BeginFrame();
-    ASSERT_NE(preview.Seek(0), nullptr);
-    ASSERT_TRUE(preview.RenderView(view));
-    const std::vector<NS::uint8> first = ReadPixels(*target);
-    ASSERT_FALSE(first.empty());
-    ASSERT_NE(preview.Seek(15), nullptr);
-    ASSERT_TRUE(preview.RenderView(view));
-    const std::vector<NS::uint8> later = ReadPixels(*target);
-    EXPECT_NE(first, later);
-    ASSERT_NE(preview.Seek(0), nullptr);
-    ASSERT_TRUE(preview.RenderView(view));
-    EXPECT_EQ(first, ReadPixels(*target));
-    EXPECT_TRUE(preview.RenderView(view));
-    EXPECT_EQ(first, ReadPixels(*target));
-    device.SetSceneTarget(nullptr);
-    device.BindBackbuffer();
 }
 
 TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
 {
     TimelineGui gui;
     NS::Editor::TimelinePlayback playback;
-    playback.playing = true;
     std::optional<std::size_t> selected;
-    const std::vector<NS::Editor::TimelineTrack> tracks{{"音量", -5, 20, {}}, {"カメラの位置", 0, 10, {2}}};
+    const std::vector<NS::Editor::TimelineTrack> tracks{{"音量", -5, 20}, {"カメラの位置", 0, 10}};
     const NS::Editor::TimelineFrameRange range{-5, 20};
     std::optional<NS::Editor::TimelineFrameRange> seekRange;
     ImVec2 click{};
@@ -269,7 +121,6 @@ TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     EXPECT_TRUE(draw());
     EXPECT_EQ(playback.frame, 7);
-    EXPECT_FALSE(playback.playing);
     ImGui::GetIO().AddMouseButtonEvent(0, false);
     (void)draw();
     seekRange = NS::Editor::TimelineFrameRange{-5, 4};
@@ -278,60 +129,6 @@ TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
     EXPECT_EQ(playback.frame, 4);
     ImGui::GetIO().AddMouseButtonEvent(0, false);
     (void)draw();
-}
-
-TEST(EditorTimelinePreview, GameViewDrawsTheCurrentFrameWithoutResizingTheDisplayedTexture)
-{
-    TimelineGui gui;
-    NS::OS::Window window(NS::OS::WindowDesc{.title = "Game 下見の試し", .size = {160, 90}, .visible = false});
-    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
-    ASSERT_TRUE(device.IsValid());
-    NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
-    const NS::AssetManagerScope useAssets{assets};
-    NS::Scene original;
-    LevelEditorController editor(original);
-    NS::Editor::GameViewPanel game;
-    NS::Editor::TimelinePreview preview;
-    NS::CameraPose pose;
-    pose.position = NS::Vector3{0.0f, 2.0f, -5.0f};
-    pose.target = NS::Vector3{0.0f, 0.0f, 0.0f};
-    preview.Reset(
-        [&device, pose] {
-            std::unique_ptr<NS::Scene> scene = std::make_unique<NS::Scene>();
-            scene->GetSceneRenderer()->SetDevice(&device);
-            scene->MainCamera()->ApplyPose(pose);
-            scene->SpawnActor<TimelineMovingActor>("TimelineMovingActor");
-            return scene;
-        },
-        {0, 20});
-    const auto show = [&] {
-        ImGui::NewFrame();
-        ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
-        ImGui::SetNextWindowSize(ImVec2{320.0f, 200.0f});
-        game.Render(editor);
-    };
-    show();
-    ImGui::EndFrame();
-    const std::optional<NS::SceneView> view = game.CollectView(editor);
-    ASSERT_TRUE(view.has_value());
-    ASSERT_TRUE(view->target->IsValid());
-    show();
-    device.BeginFrame();
-    ASSERT_NE(preview.Seek(0), nullptr);
-    EXPECT_TRUE(game.RenderPreview(preview));
-    const std::vector<NS::uint8> first = ReadPixels(*view->target);
-    ASSERT_NE(preview.Seek(15), nullptr);
-    EXPECT_TRUE(game.RenderPreview(preview));
-    EXPECT_NE(first, ReadPixels(*view->target));
-    ASSERT_NE(preview.Seek(0), nullptr);
-    EXPECT_TRUE(game.RenderPreview(preview));
-    EXPECT_EQ(first, ReadPixels(*view->target));
-    ImGui::EndFrame();
-    EXPECT_EQ(original.ToJson(), NS::MakeSceneJson());
-    game.ResetVisibility();
-    EXPECT_FALSE(game.RenderPreview(preview));
-    device.SetSceneTarget(nullptr);
-    device.BindBackbuffer();
 }
 
 TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)

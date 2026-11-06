@@ -95,7 +95,6 @@ namespace NS
         void EditorLayer::OnDetach()
         {
             m_dock.ExitMaximize();
-            m_actionTimeline.ResetPreview();
             // overlay は逆順で OnDetach されるので、scene を破棄する Game::OnDetach より先にここが走る
             if (m_controller)
             {
@@ -160,8 +159,6 @@ namespace NS
             m_quitModal.Render(editor, m_actionTimeline);
 
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-
-            m_actionTimeline.Tick(editor, ImGui::GetIO().DeltaTime);
 
             // プレイ中は F5 でエディタ UI を丸ごと隠せる。隠している間も 3D 描画とゲーム進行はそのまま走る
             if (m_uiVisible)
@@ -235,17 +232,6 @@ namespace NS
                 m_sceneView.ClearForHiddenUi(editor);
             }
 
-            TimelinePreview* preview = nullptr;
-            // 貼っている描画先を今の再生位置へ描き直す。リサイズは画像の実描画後
-            if (m_uiVisible)
-            {
-                preview = m_actionTimeline.Preview(editor);
-                if (preview != nullptr)
-                {
-                    (void)m_gameView.RenderPreview(*preview);
-                }
-            }
-
             // ImGui 実描画の直前に backbuffer へ戻す。それまではオフスクリーンへ描いたままで良い
             app->Device().BindBackbuffer();
             m_imgui->EndFrame();
@@ -258,13 +244,9 @@ namespace NS
                 {
                     views.push_back(*sceneView);
                 }
-                // 下見の間も描画先の寸法を合わせるために呼ぶ。下見の絵は RenderPreview が描くので、ビューは積まない
                 if (std::optional<SceneView> gameView = m_gameView.CollectView(editor))
                 {
-                    if (preview == nullptr)
-                    {
-                        views.push_back(*gameView);
-                    }
+                    views.push_back(*gameView);
                 }
                 editor.SetSceneViews(std::move(views));
             }
