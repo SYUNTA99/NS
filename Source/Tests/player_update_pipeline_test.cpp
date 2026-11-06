@@ -5,8 +5,6 @@
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "Game/Player/States/ReboundPlayerState.h"
-#include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
@@ -62,14 +60,6 @@ namespace
         if (player->States().IsCurrent<GL::Player::FallPlayerState>())
         {
             return "Fall";
-        }
-        if (player->States().IsCurrent<GL::Player::TackleHitPlayerState>())
-        {
-            return "TackleHit";
-        }
-        if (player->States().IsCurrent<GL::Player::ReboundPlayerState>())
-        {
-            return "Rebound";
         }
         return "Other";
     }

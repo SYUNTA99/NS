@@ -4,7 +4,6 @@
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include <algorithm>
 #include <cmath>
 
 namespace
@@ -54,17 +53,12 @@ namespace GL
         void PlayerAppearance::ResetDrawScale(NS::Model* renderer) noexcept
         {
             NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::ResetDrawScale: 倍率を戻す Model が空");
-            m_landingSquashRemaining = 0;
-            m_landingSquashVertical = 1.0f;
             (void)renderer->SnapDrawScale(NS::Vector3{1.0f, 1.0f, 1.0f});
         }
 
-        void PlayerAppearance::AdvanceSpin(NS::Model* renderer,
-                                           float dt,
-                                           const PlayerMotion& motion,
-                                           const ReboundStatus& rebound,
-                                           const SkidStatus& skid) noexcept
+        void PlayerAppearance::Update(NS::Model* renderer, float dt, const PlayerMotion& motion)
         {
+            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
             m_spinDegreesThisFrame = 0.0f;
 
             if (!motion.curled)
@@ -90,21 +84,6 @@ namespace GL
                 SetRollAxisToward(motion.velocity, m_spinAxis);
                 m_spinSpeed = motion.velocity.Length() * m_dashRollDegreesPerMeter;
             }
-            else if ((motion.rebounding || motion.skidding) && rebound.Tumble().has_value())
-            {
-                float skidScale = 1.0f;
-                if (motion.skidding)
-                {
-                    skidScale = skid.SpeedScale();
-                }
-                AdvanceMissTumble(dt, *rebound.Tumble(), rebound, skidScale);
-            }
-            else if (motion.rebounding)
-            {
-                // 弾かれた向きへ前転する。反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
-                SetRollAxisToward(rebound.Direction(), m_spinAxis);
-                m_spinSpeed = rebound.SpinSpeed();
-            }
             // ほかの間は、直前のフレームの軸と速さのまま回る
 
             const float degrees = m_spinSpeed * dt;
@@ -116,139 +95,6 @@ namespace GL
             m_spinDegreesThisFrame = degrees;
 
             renderer->SetLocalRotation(m_spin);
-        }
-
-        void PlayerAppearance::AdvanceMissTumble(float dt,
-                                                 const MissTumble& tumble,
-                                                 const ReboundStatus& rebound,
-                                                 float skidScale) noexcept
-        {
-            // 新しい反動の最初のフレームに、その時の回転を寄せ始めの回転として控える
-            if (m_tumbleReboundCount != rebound.Count())
-            {
-                m_tumbleReboundCount = rebound.Count();
-                m_tumbleStartSpin = m_spinAxis * m_spinSpeed;
-                m_tumbleSteps = 0;
-                // 種は何回目の反動か。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
-                const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
-                m_tumbleWobblePhase = std::fmod(static_cast<float>(rebound.Count()) * goldenAngle, 2.0f * NS::k_Pi);
-            }
-            ++m_tumbleSteps;
-
-            // 当たる前の回転を割合だけ残してねじれに足す。溜めて外したほど大きく振り回される
-            const NS::Vector3 target = tumble.twist * (m_missTwistTurnsPerSecond * 360.0f * tumble.power) +
-                                       m_tumbleStartSpin * m_missSpinCarryRatio;
-            float blend = 1.0f;
-            if (m_missSpinBlendSteps > 0)
-            {
-                blend = std::min(static_cast<float>(m_tumbleSteps) / static_cast<float>(m_missSpinBlendSteps), 1.0f);
-            }
-            // こすって止まる間は、身体の速さと同じ割合で回転も落とす
-            const NS::Vector3 spin = (m_tumbleStartSpin + (target - m_tumbleStartSpin) * blend) * skidScale;
-            const float speed = spin.Length();
-            if (!NS::HasPositiveMagnitude(speed))
-            {
-                m_spinSpeed = 0.0f;
-                return;
-            }
-
-            // 止まりかけのコマのように、軸自体をぶれの角度だけ傾け、傾けた向きをぶれの速さで回す
-            const NS::Vector3 axis = spin / speed;
-            NS::Vector3 helper{0.0f, 1.0f, 0.0f};
-            if (std::abs(axis.y) > 0.9f)
-            {
-                helper = NS::Vector3{1.0f, 0.0f, 0.0f};
-            }
-            NS::Vector3 side = axis.Cross(helper);
-            side.Normalize();
-            const NS::Vector3 other = axis.Cross(side);
-            // TODO: 歩の数に今の歩の秒を掛けるので、倍率が途中で変わると位相が跳ぶ
-            // 外した反動の間に倍率を動かす時に、経過の秒を足し込む形へ変える
-            const float phase = m_tumbleWobblePhase + 2.0f * NS::k_Pi * m_missWobbleTurnsPerSecond *
-                                                          static_cast<float>(m_tumbleSteps) * dt;
-            const float tilt = NS::ToRadians(NS::Degrees{m_missWobbleDegrees}).value;
-            const NS::Vector3 lean = side * std::cos(phase) + other * std::sin(phase);
-            NS::Vector3 tilted = axis * std::cos(tilt) + lean * std::sin(tilt);
-            tilted.Normalize();
-            m_spinAxis = tilted;
-            m_spinSpeed = speed;
-        }
-
-        void PlayerAppearance::Update(NS::Model* renderer,
-                                      float dt,
-                                      const PlayerMotion& motion,
-                                      const ReboundStatus& rebound,
-                                      const SkidStatus& skid)
-        {
-            NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
-            AdvanceSpin(renderer, dt, motion, rebound, skid);
-            AdvanceLandingSquash(motion);
-            WriteDrawScale(renderer);
-        }
-
-        void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
-        {
-            if (!motion.canMoveBody)
-            {
-                // 当たりの止めで身体を動かせない間は、潰れの戻しも止める
-                return;
-            }
-
-            // 移動の後に回るので、このフレームの着地を見る。次のフレームに立ちへ移るので、1 回の反動で 1 フレームだけ成り立つ
-            // 戻すフレーム数が 0 以下では戻す手段が無く、潰れたまま残るので潰さない
-            if (motion.reboundLanded && m_landingSquashRecoverSteps > 0)
-            {
-                m_landingSquashRemaining = m_landingSquashRecoverSteps;
-                m_landingSquashVertical = m_landingSquash;
-            }
-            else if (m_landingSquashRemaining > 0)
-            {
-                --m_landingSquashRemaining;
-                if (m_landingSquashRemaining == 0)
-                {
-                    // 補間の残差を残さない。元の形をそのまま使う
-                    m_landingSquashVertical = 1.0f;
-                    return;
-                }
-                const float total = static_cast<float>(m_landingSquashRecoverSteps);
-                const float elapsed = total - static_cast<float>(m_landingSquashRemaining);
-                m_landingSquashVertical = m_landingSquash + (1.0f - m_landingSquash) * (elapsed / total);
-            }
-            else
-            {
-                return;
-            }
-
-            if (!std::isfinite(m_landingSquashVertical) || !NS::IsPositive(m_landingSquashVertical))
-            {
-                NS_LOG_WARN(Game, "PlayerAppearance: 着地の潰れが有限の正でなく、潰さなかった: {}", m_landingSquash);
-                m_landingSquashRemaining = 0;
-                m_landingSquashVertical = 1.0f;
-            }
-        }
-
-        void PlayerAppearance::WriteDrawScale(NS::Model* renderer) noexcept
-        {
-            // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける
-            // 着地の潰れの水平は体積を保つ 1 ÷ √縦
-            const float vertical = m_landingSquashVertical;
-            const float horizontal = 1.0f / std::sqrt(vertical);
-            const NS::Vector3 scale{horizontal, vertical, horizontal};
-            if (renderer->SetDrawScale(scale))
-            {
-                m_drawScaleRejected = false;
-                return;
-            }
-            // 欄が有限の正でない間は毎フレーム断られるので、知らせるのは断られ始めたフレームだけ
-            if (!m_drawScaleRejected)
-            {
-                NS_LOG_WARN(Game,
-                            "PlayerAppearance: 描く形の倍率が有限の正でなく、書かなかった: ({}, {}, {})",
-                            scale.x,
-                            scale.y,
-                            scale.z);
-            }
-            m_drawScaleRejected = true;
         }
 
         void PlayerAppearance::ShowLook(NS::Model* renderer, NS::Mesh* mesh, const NS::Vector3& scale) noexcept

@@ -1,7 +1,6 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/AirGravity.h"
-#include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerJudges.h"
@@ -10,7 +9,6 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
@@ -27,24 +25,6 @@ namespace
         const float c = std::cos(radians);
         const float s = std::sin(radians);
         return NS::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
-    }
-
-    // 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率 (1 − elapsedSteps ÷ totalSteps)^exponent
-    // 着いた速さに依らず totalSteps フレームで 0 になる。totalSteps が 0 以下なら着いたフレームから 0。
-    // exponent が有限の正でなければ 1 (直線) とみなす
-    float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept
-    {
-        if (totalSteps <= 0 || elapsedSteps >= totalSteps)
-        {
-            return 0.0f;
-        }
-        float c = exponent;
-        if (!std::isfinite(c) || !NS::IsPositive(c))
-        {
-            c = 1.0f;
-        }
-        const float left = 1.0f - static_cast<float>(std::max(elapsedSteps, 0)) / static_cast<float>(totalSteps);
-        return std::pow(left, c);
     }
 
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
@@ -243,91 +223,8 @@ void PlayerActor::CutJumpRelease() noexcept
 
 void PlayerActor::Gravity(float dt) noexcept
 {
-    // 強さの選び方は LaunchPitch と同じ関数。写すと欄を変えた時に放つ角度の予測と実際の落ち方が割れる
     NS::Body& body = *m_body;
     body.Gravity(GL::Level::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
-}
-
-void PlayerActor::ReboundGravity(float dt) noexcept
-{
-    // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
-    NS::Body& body = *m_body;
-    body.Gravity(GL::Level::ChooseGravity(m_params->ReboundGravity(), body.VerticalVelocity()), dt);
-}
-
-void PlayerActor::AccelerateDuringRebound(float dt) noexcept
-{
-    NS::Body& body = *m_body;
-    NS::Vector3 direction{};
-    float topSpeed = 0.0f;
-    if (!TryMoveInput(direction, topSpeed))
-    {
-        return;
-    }
-
-    // 横入力で反動方向を消さないよう、入力からずれた速度は削らない
-    const float turningDrag = 0.0f;
-    // 明けのフレームは止める前の接地のフラグが残っている。接地を見て地上の加速度を選ぶと、そのフレームだけ大きく曲がる
-    GL::Player::Accelerate(&body, direction, turningDrag, m_params->m_reboundAirAcceleration, topSpeed, dt);
-}
-
-void PlayerActor::BeginSkid() noexcept
-{
-    m_skid.m_landingVelocity = m_body->LateralVelocity();
-    m_skid.m_elapsedSteps = 0;
-    m_skid.m_speedScale = MissSkidSpeedScale(0,m_params->m_missSkidSteps, m_params->m_missSkidExponent);
-}
-
-bool PlayerActor::AdvanceSkid() noexcept
-{
-    ++m_skid.m_elapsedSteps;
-    // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
-    m_skid.m_speedScale =
-        MissSkidSpeedScale(m_skid.m_elapsedSteps,m_params->m_missSkidSteps, m_params->m_missSkidExponent);
-    m_body->SetLateralVelocity(m_skid.m_landingVelocity * m_skid.m_speedScale);
-    return m_skid.m_elapsedSteps >= m_params->m_missSkidSteps;
-}
-
-namespace
-{
-    [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
-    {
-        if (!std::isfinite(seconds) || !NS::IsPositive(seconds))
-        {
-            return 0.0f;
-        }
-        return turns * 360.0f / seconds;
-    }
-} // namespace
-
-bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
-{
-    // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
-    const NS::Vector3 velocity = ReboundVelocityFor(arc);
-    if (!NS::IsPositive(velocity.y))
-    {
-        return false;
-    }
-    NS::Vector3 direction{};
-    if (!NS::TryNormalizeHorizontal(arc.direction, direction))
-    {
-        return false;
-    }
-
-    m_rebound.m_direction = direction;
-    m_rebound.m_missTumble = arc.missTumble;
-    ++m_rebound.m_count;
-    m_rebound.m_spinSpeed = SpinSpeedFor(m_params->m_chargedReboundTurns,
-                                         GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
-    m_body->SetVelocity(velocity);
-    StartAirControlReturn();
-    (void)m_states->Change<GL::Player::ReboundPlayerState>();
-    return true;
-}
-
-NS::Vector3 PlayerActor::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
-{
-    return GL::Level::LaunchArcInitialVelocity(m_params->ReboundLaunchArc(arc));
 }
 
 void PlayerActor::SetCurled(bool curled) noexcept
@@ -383,11 +280,6 @@ void PlayerActor::UncurlWhenSettled() noexcept
     }
     // 床の上でダッシュしても、床の上で返っても、その間は玉のまま
     if (IsAirDashing() || IsDashRebounding())
-    {
-        return;
-    }
-    // 外れの着地からこすって止まる間は玉のまま地面をこする
-    if (IsSkidding())
     {
         return;
     }

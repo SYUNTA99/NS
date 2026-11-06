@@ -6,7 +6,6 @@
 #include "Game/Level/SensorKinds.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerClips.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
@@ -16,9 +15,6 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "Game/Player/States/ReboundPlayerState.h"
-#include "Game/Player/States/SkidPlayerState.h"
-#include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -93,9 +89,6 @@ void PlayerActor::OnInit()
                             GL::Player::LedgeHangingPlayerState,
                             GL::Player::LedgeClimbingPlayerState,
                             GL::Player::BrakePlayerState,
-                            GL::Player::TackleHitPlayerState,
-                            GL::Player::ReboundPlayerState,
-                            GL::Player::SkidPlayerState,
                             GL::Player::AirDashPlayerState,
                             GL::Player::DashReboundPlayerState>(this, m_states);
 }
@@ -108,21 +101,13 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
     // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
     state.heightOffset = m_collider->StandingHalfHeight() - m_collider->CapsuleHalfHeight();
-    // 当たりから止めの明けまで、カメラは距離を保つ。当たる瞬間に画面が引かない
-    state.framingHeld = IsInTackleHit();
-    state.hasRebound = true;
     state.rebound = GL::Level::FollowReboundDesc{
-        .rebounding = IsRebounding(),
         .widenView = IsAirDashing() || IsDashRebounding(),
     };
-    // 地形の反動はカメラの向きを回さず、回す入力も止めない。スティックの基準がずれず、戻ったダッシュが思った向きへ出る
     // 帯の縦は表で丸めた向きから取るので、同じ当て方なら毎回同じ画面になる
     if (IsDashRebounding())
     {
         state.rebound.rebounding = true;
-        state.rebound.slamDirection = NS::Vector3{};
-        state.rebound.pullBack = false;
-        state.rebound.holdLook = false;
         state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
     }
     return state;
@@ -134,14 +119,9 @@ void PlayerActor::WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const
     const GL::Player::CameraTargetState state = GetCameraTargetState();
     vcam->SetFollowMotion(state.grounded, state.velocity);
     vcam->SetTargetHeightOffset(state.heightOffset);
-    vcam->SetFollowFramingHeld(state.framingHeld);
-    if (state.hasRebound && !vcam->SetFollowRebound(state.rebound))
+    if (!vcam->SetFollowRebound(state.rebound))
     {
-        NS_LOG_WARN(Game,
-                    "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
-                    state.rebound.slamDirection.x,
-                    state.rebound.slamDirection.y,
-                    state.rebound.slamDirection.z);
+        NS_LOG_WARN(Game, "反動の縦の向きが壊れていて、反動をカメラへ渡さなかった: {}", state.rebound.verticalLean);
     }
 }
 
@@ -182,9 +162,9 @@ void PlayerActor::DecideStep()
     {
         m_input->Update(this);
     }
-    // 止めの間と当たりの状態の間は、やり直しの押しを受け付けない
-    const bool hitAtStepStart = IsHitStopping() || IsInTackleHit();
-    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出す
+    // 止めの間は、やり直しの押しを受け付けない
+    const bool hitAtStepStart = IsHitStopping();
+    // SlamHeld のボタンはエアダッシュに使う。押した瞬間に出す
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
@@ -216,12 +196,7 @@ bool PlayerActor::PrepareOrSkipStateStep()
     }
     // 体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
     DropPresses();
-    // 当たりの状態は体を動かさないので、エアダッシュの発動と丸まりの解除を通さずに状態機械だけを進める。
-    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
-    if (!(IsInTackleHit() && dt > 0.0f))
-    {
-        SkipStateStep();
-    }
+    SkipStateStep();
     return false;
 }
 
@@ -261,7 +236,7 @@ void PlayerActor::VisualStep()
     UpdateReboundPreview();
 #endif
     const GL::Player::PlayerMotion motion = Motion();
-    m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion, m_rebound, m_skid);
+    m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
     // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない実時間の秒で数える
     m_playerSounds->Update(this, OwningScene()->WorldStepSeconds());
     DrawTerrainRebound();
@@ -460,14 +435,9 @@ float PlayerActor::MaxSpeed() const noexcept
 
 float PlayerActor::RunSpeed() const noexcept { return m_params->m_runSpeed; }
 
-bool PlayerActor::IsRebounding() const noexcept
-{
-    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
-}
-
 bool PlayerActor::IsAirDashing() const noexcept
 {
+    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
     return m_states != nullptr && m_states->IsCurrent<GL::Player::AirDashPlayerState>();
 }
 
@@ -476,39 +446,9 @@ bool PlayerActor::IsDashRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<GL::Player::DashReboundPlayerState>();
 }
 
-bool PlayerActor::IsReboundLanded() const noexcept
-{
-    return IsRebounding() && GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity());
-}
-
-bool PlayerActor::IsSkidding() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::SkidPlayerState>();
-}
-
-bool PlayerActor::SkidsOnLanding() const noexcept
-{
-    return m_rebound.m_missTumble.has_value() && m_params->m_missSkidSteps > 0;
-}
-
-float PlayerActor::SkidSpeedScale() const noexcept
-{
-    if (!IsSkidding())
-    {
-        return 1.0f;
-    }
-    return m_skid.SpeedScale();
-}
-
 bool PlayerActor::CanMoveBody() const noexcept
 {
-    // 止めの残りは止めの最後のフレームの終わりで 0 になるので、明けて反動へ移るまでは当たりの状態も読む
-    return IsAppeared() && !IsHitStopping() && !IsInTackleHit();
-}
-
-bool PlayerActor::IsInTackleHit() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::TackleHitPlayerState>();
+    return IsAppeared() && !IsHitStopping();
 }
 
 void PlayerActor::StopTackleHitEffects() noexcept
@@ -530,9 +470,6 @@ void PlayerActor::StopTackleHitEffects() noexcept
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
 {
     return GL::Player::PlayerMotion{
-        .rebounding = IsRebounding(),
-        .reboundLanded = IsReboundLanded(),
-        .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
         .airDashing = IsAirDashing(),
@@ -543,8 +480,6 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
 
 void PlayerActor::ResetState() noexcept
 {
-    // 状態機械を戻す前に読む。自機を止めていない時は、前の当たりの白・振動・カメラの返りの薄れを残す
-    const bool heldByHit = IsInTackleHit();
     m_body->SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_input->ResetMovementInput();
     m_prevJumpHeld = false;
@@ -559,8 +494,6 @@ void PlayerActor::ResetState() noexcept
     m_ledgeMantleTimer = 0.0f;
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
-    m_rebound.Reset();
-    m_skid = GL::Player::SkidStatus{};
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
     m_reboundPreview->Hide();
@@ -573,10 +506,6 @@ void PlayerActor::ResetState() noexcept
     // StateMachineOf::Reset は OnExit を呼ばないので、当たりの演出もここで止める
     OverrideHitStop(0);
     StopTackleHitEffects();
-    if (heldByHit && HitReactionClassObj() != nullptr)
-    {
-        HitReactionClassObj()->Stop(this);
-    }
     // 動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
     OwningScene()->RequestStopScene(this, 0);

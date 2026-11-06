@@ -2,7 +2,6 @@
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"
-#include "Game/Level/LaunchArc.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"

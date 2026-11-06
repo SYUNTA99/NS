@@ -99,10 +99,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"縁へ手を伸ばす距離", 0.3f},
                                      {"よじ登りの所要時間", 0.25f},
                                      {"縁の横移動速度", 2.0f},
-                                     {"振り向きの速さ", 970.0f},
-                                     {"放つ角度の上限", 40.0f},
-                                     {"反動の上りの重力倍率", 0.5f},
-                                     {"反動中の空中の加速度", 2.0f}};
+                                     {"振り向きの速さ", 970.0f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
     {
         ASSERT_TRUE(fields.contains(it.key())) << it.key();
@@ -169,19 +166,8 @@ TEST(PlayerParams, AppearanceDefaultsBelongToThePartThatDrawsThem)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json appearance = {{"立ち姿のメッシュ", "capsule"},
-                                       {"玉のメッシュ", "sphere"},
-                                       {"着地の潰れ", 0.8f},
-                                       {"着地の潰れを戻すフレーム数", 6},
-                                       {"外れの縁でのねじれの回転数", 2.0f},
-                                       {"外れで当たる前の回転を引き継ぐ割合", 0.4f},
-                                       {"外れの回転を寄せるフレーム数", 6},
-                                       {"外れの軸のぶれの角度", 10.0f},
-                                       {"外れの軸のぶれの速さ", 1.5f}};
-    // 回転数は PlayerActor が反動の回る速さを出すのに読むので、調整値の部品に残る
-    const nlohmann::json spin = {{"溜めて当てた反動の回転数", 3.0f}};
+    const nlohmann::json appearance = {{"立ち姿のメッシュ", "capsule"}, {"玉のメッシュ", "sphere"}};
     ExpectClassObjFields(&player.Appearance(), appearance);
-    ExpectClassObjFields(&player.Params(), spin);
     ExpectNotInParams(&player, appearance);
 }
 
@@ -190,8 +176,6 @@ TEST(PlayerParams, ImpactDefaultsKeepGameOwnedDisplayNamesAndValues)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json fields = NS::SerializeClassObjFields(&player.Params());
-    const nlohmann::json play = {{"反動の高さ", 1.15f}, {"反動の距離", 0.575f}};
-    ExpectClassObjFields(&player.Params(), play);
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
     // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
@@ -217,9 +201,29 @@ TEST(PlayerParams, ImpactDefaultsKeepGameOwnedDisplayNamesAndValues)
                                 "弾け伸びの行き過ぎ",
                                 "弾け伸びを戻すフレーム数",
                                 "中心近くの当たりの白の濃さ",
-                                "中心近くの当たりの白のフレーム数"})
+                                "中心近くの当たりの白のフレーム数",
+                                "放つ角度の上限",
+                                "反動の上りの重力倍率",
+                                "反動中の空中の加速度",
+                                "反動の高さ",
+                                "反動の距離",
+                                "外れのこすって止まるまでのフレーム数",
+                                "外れのこすって止まる減り方",
+                                "溜めて当てた反動の回転数"})
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
+    }
+    // 外れの回り方と着地の潰れは、消した前の反動だけの見た目。欄が戻ると、始める経路の無い値が保存に載る
+    const nlohmann::json looks = NS::SerializeClassObjFields(&player.Appearance());
+    for (const char* removed : {"外れの縁でのねじれの回転数",
+                                "外れで当たる前の回転を引き継ぐ割合",
+                                "外れの回転を寄せるフレーム数",
+                                "外れの軸のぶれの角度",
+                                "外れの軸のぶれの速さ",
+                                "着地の潰れ",
+                                "着地の潰れを戻すフレーム数"})
+    {
+        EXPECT_FALSE(looks.contains(removed)) << removed;
     }
 }
 

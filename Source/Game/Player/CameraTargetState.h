@@ -13,10 +13,7 @@ namespace GL
             bool grounded = true;                   // 接地しているか。自動ズームの判定に使う
             NS::Vector3 velocity{0.0f, 0.0f, 0.0f}; // 速度 (m/s)
             float heightOffset = 0.0f;              // 根から見る所までの高さのずれ (m)
-            bool hasRebound = false;
             Level::FollowReboundDesc rebound{};
-            //! 体当たりから止めの明けまでか。真の間、カメラは距離をその時のまま保つ
-            bool framingHeld = false;
         };
     } // namespace Player
 } // namespace GL

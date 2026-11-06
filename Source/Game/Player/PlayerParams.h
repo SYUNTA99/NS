@@ -9,25 +9,9 @@ class PlayerActor;
 
 namespace GL
 {
-    namespace Level
-    {
-        struct LaunchArc;
-    } // namespace Level
-} // namespace GL
-
-namespace GL
-{
     namespace Player
     {
-        struct ReboundArc;
-    } // namespace Player
-} // namespace GL
-
-namespace GL
-{
-    namespace Player
-    {
-        //! 自機の移動・溜め・衝突・反動の調整値を持つ部品
+        //! 自機の移動・エアダッシュ・反動の調整値を持つ部品
         class PlayerParams : public NS::Object
         {
         public:
@@ -57,17 +41,6 @@ namespace GL
                                              .apexSpeed = m_apexHangVy,
                                              .apexScale = m_apexHangScale};
             }
-            //! 上りだけ反動の倍率を掛けた重力を返す。移動と初速の計算に同じ値を使う
-            [[nodiscard]] GL::Level::AirGravity ReboundGravity() const noexcept
-            {
-                return GL::Level::AirGravity{.rise = m_gravityUp * m_reboundRiseGravityScale,
-                                             .fall = m_gravityDown,
-                                             .apexSpeed = m_apexHangVy,
-                                             .apexScale = m_apexHangScale};
-            }
-            //! 当たりが決めた反動の向き・高さ・距離を、ReboundGravity の重力で飛ぶ曲線にする
-            //! 反動の初速と滞空の秒はこの曲線から引く
-            [[nodiscard]] GL::Level::LaunchArc ReboundLaunchArc(const ReboundArc& arc) const noexcept;
 
             NS_REFLECT_BEGIN(PlayerParams, NS::Object)
             NS_GROUP("体力")
@@ -102,8 +75,6 @@ namespace GL
             NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
             NS_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
-            NS_GROUP("突進")
-            NS_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
             NS_GROUP("エアダッシュ")
             NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
@@ -129,27 +100,9 @@ namespace GL
             NS_FIELD(m_reboundSteerMaxDegreesPerSecond, "曲げの最大の角速度")
             NS_PROTECTED_FIELD(m_drawReboundLines, "反動の線を描く")
             NS_FIELD(m_reboundLineLength, "反動の線の長さ")
-            NS_GROUP("反動")
-            NS_FIELD(m_reboundRiseGravityScale, "反動の上りの重力倍率")
-            NS_FIELD(m_reboundAirAcceleration, "反動中の空中の加速度")
-            NS_FIELD(m_reboundApexHeight, "反動の高さ")
-            NS_FIELD(m_reboundDistance, "反動の距離")
-            NS_GROUP("外れ")
-            NS_FIELD(m_missSkidSteps, "外れのこすって止まるまでのフレーム数")
-            NS_FIELD(m_missSkidExponent, "外れのこすって止まる減り方")
-            NS_GROUP("演出: 突進の回転数")
-            NS_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
             NS_REFLECT_END()
 
         private:
-            float m_reboundApexHeight = 1.15f;
-            float m_reboundDistance = 0.575f;
-            // 着地時の速さに依らず、この固定フレーム数で操作を戻す。0 なら着地直後に戻す
-            int m_missSkidSteps = 10;
-            // 速さ = 着いた速さ × (1 − 経過 ÷ フレーム数)^減り方。2 で、すぐ落ちて最後に少し擦れが残る
-            float m_missSkidExponent = 2.0f;
-            // 回転数で指定し、到達時間から速さを求める。速度や距離を変えても回る数を保つ
-            float m_chargedReboundTurns = 3.0f; // 当てた反動が着地までに回る回転数
             friend class ::PlayerActor;
             int m_maxHealth = 8;
             float m_jumpImpulse = 12.0f;
@@ -182,10 +135,6 @@ namespace GL
             float m_ledgeClimbDuration = 0.25f;
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
-            // 赤の高さへ向ける角度の上限 (度)。突進で高所へ登れる範囲を抑える
-            float m_launchPitchLimitDegrees = 40.0f;
-            float m_reboundRiseGravityScale = 0.5f;
-            float m_reboundAirAcceleration = 2.0f;
             float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める

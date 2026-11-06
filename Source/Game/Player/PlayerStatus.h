@@ -1,11 +1,8 @@
 #pragma once
 
 #include "Game/Level/ReboundDirections.h"
-#include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-
-#include <optional>
 
 class PlayerActor;
 
@@ -19,45 +16,11 @@ namespace GL
         //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PlayerMotion
         {
-            bool rebounding = false;
-            bool reboundLanded = false; // 反動のまま着いたか。答えるのは PlayerActor::IsReboundLanded
-            bool skidding = false;
             bool curled = false;
-            bool canMoveBody = false; // 身体が有効で、当たりの止め・反動待ちの外か
+            bool canMoveBody = false; // 身体が有効で、当たりの止めの外か
             bool airDashing = false;
             bool dashRebounding = false; // 地形の面で返った反動の状態に居るか
             NS::Vector3 velocity{};      // 身体の今の速度 (m/s)
-        };
-
-        //! 反動の値
-        class ReboundStatus
-        {
-        public:
-            //! 最後に始めた反動の水平の向き。正規化済み。反動を始める前と ResetState の後はゼロ
-            [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_direction; }
-            //! 最後に始めた反動の玉の回る速さ (度/秒)。開始前と ResetState 後は 0
-            [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
-            //! 最後に始めた反動の外れの回り方。外れの反動の時だけ値を持つ
-            [[nodiscard]] const std::optional<MissTumble>& Tumble() const noexcept { return m_missTumble; }
-            //! 反動を始めた回数
-            //! 見た目が新しい反動の始まりを知るために読む。ResetState では戻さない
-            [[nodiscard]] NS::uint32 Count() const noexcept { return m_count; }
-
-            //! 通算の反動回数を保ったまま、今の反動の状態だけを初期値へ戻す
-            void Reset() noexcept
-            {
-                m_direction = NS::Vector3{};
-                m_spinSpeed = 0.0f;
-                m_missTumble.reset();
-            }
-
-        private:
-            friend class ::PlayerActor;
-
-            NS::Vector3 m_direction{};
-            float m_spinSpeed = 0.0f;
-            std::optional<MissTumble> m_missTumble{}; // 書くのは BeginRebound
-            NS::uint32 m_count = 0;
         };
 
         //! 地形の面で返った最後の反動の記録。開発用の線と Replay が読む
@@ -122,21 +85,6 @@ namespace GL
             bool m_reboundChosen = false;  // 今の反動の向きを、止めが明けたフレームに選んだか。選ぶのは反動 1 回に 1 度
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
-        };
-
-        //! 外れの着地からこすって止まる間の値。書くのは BeginSkid と AdvanceSkid
-        class SkidStatus
-        {
-        public:
-            //! 着いた水平の速さに今掛けている倍率 0〜1。身体と玉の回転が同じ倍率で落ちる
-            [[nodiscard]] float SpeedScale() const noexcept { return m_speedScale; }
-
-        private:
-            friend class ::PlayerActor;
-
-            NS::Vector3 m_landingVelocity{}; // 着いたフレームの水平の速度
-            int m_elapsedSteps = 0;          // 着いてからのフレーム数
-            float m_speedScale = 1.0f;
         };
     } // namespace Player
 } // namespace GL

@@ -11,7 +11,6 @@
 #include "Game/Player/States/DashReboundPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
-#include "Game/Player/States/SkidPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -72,8 +71,7 @@ bool PlayerActor::AcceptsAirDash() const noexcept
         return m_airDash.m_steerStarted;
     }
     return m_states->IsCurrent<GL::Player::IdlePlayerState>() || m_states->IsCurrent<GL::Player::WalkPlayerState>() ||
-           m_states->IsCurrent<GL::Player::FallPlayerState>() || m_states->IsCurrent<GL::Player::BrakePlayerState>() ||
-           m_states->IsCurrent<GL::Player::SkidPlayerState>();
+           m_states->IsCurrent<GL::Player::FallPlayerState>() || m_states->IsCurrent<GL::Player::BrakePlayerState>();
 }
 
 bool PlayerActor::BeginAirDash() noexcept

@@ -770,8 +770,6 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
     const GL::Player::CameraTargetState rebounding = player->GetCameraTargetState();
     EXPECT_TRUE(rebounding.rebound.rebounding);
     EXPECT_TRUE(rebounding.rebound.widenView);
-    EXPECT_FALSE(rebounding.rebound.holdLook);
-    EXPECT_FLOAT_EQ(rebounding.rebound.slamDirection.Length(), 0.0f);
     EXPECT_FLOAT_EQ(rebounding.rebound.verticalLean, player->AirDash().LastRebound().shifted.y);
 
     player->ResetState();

@@ -4,12 +4,10 @@
 #include "Game/Level/IGetCameraTarget.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Level/SlamAim.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/Player/CameraTargetState.h"
 #include "Game/Player/PlayerEvents.h"
 #include "Game/Player/PlayerStatus.h"
-#include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Sphere.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -84,7 +82,7 @@ public:
     // =========================================================================
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
-    //! 体当たりの残像の子。OnInit で作り、自機と一緒に終わる
+    //! エアダッシュの残像の子。OnInit で作り、自機と一緒に終わる
     [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost; }
     [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost; }
 
@@ -113,7 +111,6 @@ public:
     // =========================================================================
     // 反動・エアダッシュ・丸まりの状態と操作
     // =========================================================================
-    [[nodiscard]] bool IsRebounding() const noexcept;
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
@@ -127,26 +124,8 @@ public:
     void ChangeToWalkOrFall() noexcept;
     //! 地形の反動の 1 フレームを進める
     void UpdateDashRebound(float dt) noexcept;
-    [[nodiscard]] bool IsReboundLanded() const noexcept;
-    [[nodiscard]] bool IsSkidding() const noexcept;
-    //! 外れで着地後に滑って止まるか。滑るフレーム数が 0 なら false
-    [[nodiscard]] bool SkidsOnLanding() const noexcept;
-    //! 出ていて、当たりの止めの外で、当たりの状態に居ないか
+    //! 出ていて、当たりの止めの外か
     [[nodiscard]] bool CanMoveBody() const noexcept;
-    [[nodiscard]] bool IsInTackleHit() const noexcept;
-    //! 最後に始めた反動の正規化済みの水平の向き。反動を始める前と ResetState の後はゼロ
-    [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
-    //! 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
-    [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.SpinSpeed(); }
-    //! 外れの反動の時だけ値を持つ
-    [[nodiscard]] const std::optional<GL::Player::MissTumble>& ReboundMissTumble() const noexcept
-    {
-        return m_rebound.Tumble();
-    }
-    //! 反動を始めた回数。ResetState では戻さない
-    [[nodiscard]] NS::uint32 ReboundCount() const noexcept { return m_rebound.Count(); }
-    //! こすって止まる間の、着いた水平の速さに掛けている倍率 (0..1)。こすり状態でない間は 1
-    [[nodiscard]] float SkidSpeedScale() const noexcept;
     //! 丸まっているか (当たりを球にしている間は true)
     [[nodiscard]] bool IsCurled() const noexcept;
     [[nodiscard]] GL::Player::PlayerMotion Motion() const noexcept;
@@ -170,13 +149,6 @@ public:
     void CutJumpRelease() noexcept;
     //! 上昇と下降で非対称な重力を当てる (頂点の近くは弱める)
     void Gravity(float dt) noexcept;
-    void ReboundGravity(float dt) noexcept;
-    //! 反動の間、入力の向きへ反動中の空中の加速度で加速する (入力からずれた速度は減らさない)
-    void AccelerateDuringRebound(float dt) noexcept;
-    //! 今の水平の速度を着いた速度として控え、こすり止めを始める
-    void BeginSkid() noexcept;
-    //! 着地時の速度を減らし、止まりきったら true を返す
-    [[nodiscard]] bool AdvanceSkid() noexcept;
 
     // =========================================================================
     // 崖掴まり・よじ登り
@@ -196,12 +168,8 @@ public:
     void DropLedge() noexcept;
 
     // =========================================================================
-    // 反動軌道
+    // 丸まり
     // =========================================================================
-    //! 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
-    [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
-    //! 反動軌道の初速 (m/s) を求める。曲線を組めなければゼロ
-    [[nodiscard]] NS::Vector3 ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept;
     //! 丸まりを入れるか解く。丸まると当たりを球にして根を立ち姿の半長ぶん下げ、解くと立ち姿へ戻して上げる
     //! 縁に掴まっている間とよじ登っている間の true は受けない
     void SetCurled(bool curled) noexcept;
@@ -353,8 +321,6 @@ private:
     bool m_airControlReturning = false;
     float m_airControlReturnElapsed = 0.0f; // 秒
 
-    GL::Player::ReboundStatus m_rebound;
-    GL::Player::SkidStatus m_skid;
     GL::Player::AirDashStatus m_airDash;
 
     NS::Vector3 m_facingDir{0.0f, 0.0f, 0.0f}; // 掴む水平の向き

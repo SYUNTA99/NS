@@ -64,8 +64,6 @@ namespace
         DashScene dash;
         dash.Step(30);
         dash.target->rebound.rebounding = true;
-        dash.target->rebound.holdLook = false;
-        dash.target->rebound.pullBack = false;
         dash.target->rebound.verticalLean = verticalLean;
         for (int frame = 0; frame < 60; ++frame)
         {
@@ -101,8 +99,6 @@ namespace
             Step(30);
             target->Root().SetPosition(NS::Vector3{0.0f, 8.0f, 0.0f});
             target->rebound.rebounding = true;
-            target->rebound.holdLook = false;
-            target->rebound.pullBack = false;
         }
 
         // 本人の入力の向きから下げた角度 (度)。回り込みと向きの下げの合計
@@ -266,8 +262,6 @@ TEST(FollowDashRebound, ReboundTowardTheCameraKeepsTheDistance)
     ASSERT_GE(cap, 0.0f);
 
     dash.target->rebound.rebounding = true;
-    dash.target->rebound.holdLook = false;
-    dash.target->rebound.pullBack = false;
     // 地形の反動の速さ 14 m/s で、カメラへ真っすぐ 0.5 秒飛ぶ
     float smallestGap = startGap;
     for (int frame = 1; frame <= 30; ++frame)
@@ -318,8 +312,6 @@ TEST(FollowDashRebound, LookInsideTheWallDoesNotCollapseTheDistance)
     (void)AddTerrainBox(dash.scene, NS::Vector3{0.0f, 0.0f, 1.6f}, 10.0f, 20.0f, 1.0f);
 
     dash.target->rebound.rebounding = true;
-    dash.target->rebound.holdLook = false;
-    dash.target->rebound.pullBack = false;
     dash.target->rebound.verticalLean = 1.0f;
     float shortest = distance;
     for (int frame = 1; frame <= 40; ++frame)
@@ -379,8 +371,6 @@ TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
                         3.0f);
 
     dash.target->rebound.rebounding = true;
-    dash.target->rebound.holdLook = false;
-    dash.target->rebound.pullBack = false;
     dash.target->rebound.verticalLean = 1.0f;
     float shortest = distance;
     for (int frame = 1; frame <= 30; ++frame)

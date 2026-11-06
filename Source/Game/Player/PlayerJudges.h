@@ -141,28 +141,5 @@ namespace GL
         public:
             [[nodiscard]] static bool Judge(bool releasePressed) noexcept { return releasePressed; }
         };
-
-        //! 通常移動の状態かの判定
-        class PlayerJudgeLocomotion
-        {
-        public:
-            struct StateFlags
-            {
-                bool idle = false;
-                bool walk = false;
-                bool fall = false;
-                bool rebound = false;
-            };
-
-            [[nodiscard]] static bool Judge(const StateFlags& flags) noexcept
-            {
-                return flags.idle || flags.walk || flags.fall || flags.rebound;
-            }
-
-            [[nodiscard]] static bool Judge(bool idle, bool walk, bool fall, bool rebound) noexcept
-            {
-                return Judge(StateFlags{idle, walk, fall, rebound});
-            }
-        };
     } // namespace Player
 } // namespace GL

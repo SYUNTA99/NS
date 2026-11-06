@@ -1,13 +1,10 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/AirGravity.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
-#include "Game/Player/SlamBall.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "Game/Player/States/ReboundPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
@@ -472,69 +469,32 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     EXPECT_EQ(screen->FlashFramesRemaining(), 2);
 }
 
-TEST(PlayerStateSequence, ReboundKeepsGravityOrderAndIgnoresJump)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSequencePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::Body* movement = &player->Body();
-    movement->SetGrounded(true);
-    const GL::Player::ReboundArc arc{.apexHeight = 1.0f, .distance = 5.0f};
-    const NS::Vector3 initial = player->ReboundVelocityFor(arc);
-    ASSERT_TRUE(player->BeginRebound(arc));
-    EXPECT_FLOAT_EQ(movement->VerticalVelocity(), initial.y);
-    player->Input().SetJumpPressed();
-    player->States().Step(0.01f);
-    EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.125f, 0.00001f);
-    EXPECT_TRUE(player->States().IsCurrent<GL::Player::ReboundPlayerState>());
-    player->States().Step(0.02f);
-    EXPECT_NEAR(movement->VerticalVelocity(), initial.y - 0.375f, 0.00001f);
-    movement->SetVerticalVelocity(0.0f);
-    player->States().Step(0.01f);
-    EXPECT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
-}
-
-// 反動の 1 フレームに当てる重力は、普段と同じ選び方 ChooseGravity へ反動の組 (上りだけ倍率付き) を渡した値
-// 頂点の帯 (縦の速さの大きさが頂点滞空 Vy 未満) を反動でも同じ式で見るので、1 と -1 の場合が帯を外すと割れる
-TEST(PlayerStateSequence, ReboundGravityIsTheChoiceWithTheReboundRise)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSequencePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), {{"頂点滞空 Vy", 3.0f}, {"頂点滞空倍率", 0.3f}}), 0u);
-    constexpr float k_Dt = 1.0f / 60.0f;
-    const GL::Level::AirGravity gravity = player->Params().ReboundGravity();
-    for (const float vertical : {5.0f, 1.0f, -1.0f, -5.0f})
-    {
-        SCOPED_TRACE(vertical);
-        player->Body().SetVerticalVelocity(vertical);
-        player->ReboundGravity(k_Dt);
-        EXPECT_FLOAT_EQ(player->Body().VerticalVelocity(),
-                        vertical + GL::Level::ChooseGravity(gravity, vertical) * k_Dt);
-    }
-}
-
-// 突進の玉は、丸まる前の立ち姿の下の球がそのまま玉になる。丸まる時の根の下げ幅 (ChangeCurled)
-// と玉の中心の決まりが結ばれている 下げ幅を変えると、判定・矢印・エディタの面が読む玉だけが黙ってずれる
-TEST(PlayerStateSequence, SlamBallStaysPutWhenCurling)
+// 丸まると根が立ち姿の半長だけ下がり、立ち姿の下の球がそのまま玉になる。解くと根が同じだけ上がる。
+// 下げ幅がずれると、押したフレームに玉が床へ沈むか浮き、エアダッシュの出だしの位置がずれる
+TEST(PlayerStateSequence, CurlingKeepsTheLowerSphereInPlace)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     player->Root().SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
     ASSERT_FALSE(player->IsCurled());
+    const float standingHalf = player->Collider().StandingHalfHeight();
+    ASSERT_GT(standingHalf, 0.0f);
     const NS::Vector3 standingRoot = player->Root().Position();
-    const NS::Sphere standing = GL::Player::SlamBallAt(&player->Collider(), standingRoot);
-    EXPECT_FLOAT_EQ(standing.center.y, standingRoot.y - player->Collider().StandingHalfHeight());
-    EXPECT_FLOAT_EQ(standing.radius, player->Collider().CapsuleRadius());
+    const NS::Phys::Capsule standing = player->Collider().WorldCapsule();
 
     player->SetCurled(true);
     ASSERT_TRUE(player->IsCurled());
-    const NS::Sphere curled = GL::Player::SlamBallAt(&player->Collider(), player->Root().Position());
-    EXPECT_FLOAT_EQ(curled.center.x, standing.center.x);
-    EXPECT_FLOAT_EQ(curled.center.y, standing.center.y);
-    EXPECT_FLOAT_EQ(curled.center.z, standing.center.z);
+    const NS::Vector3 curledRoot = player->Root().Position();
+    const NS::Phys::Capsule curled = player->Collider().WorldCapsule();
+    EXPECT_FLOAT_EQ(curledRoot.y, standingRoot.y - standingHalf);
+    EXPECT_FLOAT_EQ(curledRoot.x, standingRoot.x);
+    EXPECT_FLOAT_EQ(curledRoot.z, standingRoot.z);
+    EXPECT_FLOAT_EQ(curled.center.y - curled.halfHeight, standing.center.y - standing.halfHeight);
     EXPECT_FLOAT_EQ(curled.radius, standing.radius);
+
+    player->SetCurled(false);
+    EXPECT_FLOAT_EQ(player->Root().Position().y, standingRoot.y);
 }
 
 // 丸まりの正は当たりの形。丸まる・解く・やり直しの直後に、丸まりの答え・当たりの形・描くメッシュが揃う

@@ -91,12 +91,3 @@ TEST(PlayerJudges, FallAndLedgeChoicesFollowTheirOneSignal)
     EXPECT_TRUE(GL::Player::PlayerJudgeDropLedge::Judge(true));
     EXPECT_FALSE(GL::Player::PlayerJudgeDropLedge::Judge(false));
 }
-
-TEST(PlayerJudges, LocomotionIsAnyOfIdleWalkFallRebound)
-{
-    EXPECT_FALSE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(true, false, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, true, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, true, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, false, true));
-}
