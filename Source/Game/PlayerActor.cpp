@@ -6,7 +6,6 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Level/TargetMarker.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerClips.h"
@@ -55,7 +54,6 @@ NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_resolver, "ImpactResolver")
-NS_CLASSOBJ(m_targetMarker, "TargetMarker")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
@@ -86,8 +84,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
-    CreateClassObj(m_targetMarker);
-    NS::InitOverlay(this, m_targetMarker.get());
     CreateClassObj(m_reboundPreview);
     NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
@@ -199,9 +195,9 @@ void PlayerActor::UpdateAnimation()
     animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
 }
 
-void PlayerActor::Update(bool chargeHeld)
+void PlayerActor::Update(bool slamHeld)
 {
-    m_input->SetSlamHeld(chargeHeld);
+    m_input->SetSlamHeld(slamHeld);
     m_inputInjected = true;
     NS::SceneActor::Update();
     m_inputInjected = false;
@@ -216,16 +212,14 @@ void PlayerActor::DecideStep()
     }
     // 明けのフレームは、この後で当たりの状態を抜けるので、ここで読んでおく
     const bool hitAtStepStart = IsHitStopping() || IsInTackleHit();
-    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
+    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出す
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
     ObserveStick();
     ExtendReboundStop();
-    ObserveCharge(false);
     m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
 
-    AdvanceCharge(NS::GetFrameDelta(this));
     // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
     const bool releasing = IsInTackleHit() && !IsHitStopping();
     m_resolver->StepState(
@@ -341,25 +335,20 @@ void PlayerActor::BodyStep()
 void PlayerActor::VisualStep()
 {
     UpdateAnimation();
-    m_targetMarker->Update(m_charge);
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
 #endif
     const GL::Player::PlayerMotion motion = Motion();
     const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
     // clang-format off
-    const NS::Vector3 release = ReleaseDirection();
     const NS::Vector3 center = Root().Position();
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this),
-                         motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
+                         motion, m_slam, m_rebound, m_skid, impact);
     m_impactEffects->UpdateSlam(this, center, m_slam, motion, impact);
     m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
     // clang-format on
     // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない実時間の秒で数える
     m_playerSounds->Update(this, OwningScene()->WorldStepSeconds());
-#if !defined(NS_SHIPPING)
-    DrawChargeRing();
-#endif
     DrawTerrainRebound();
 }
 
@@ -440,7 +429,6 @@ void PlayerActor::OnEndPlay()
     // 戻す物はやり直しと同じ組。当たりの止めと状態と演出も捨て、止めが次のプレイへ残らない
     ResetState();
     NS::SceneActor::OnEndPlay();
-    NS::EndOverlay(this, m_targetMarker.get());
     NS::EndOverlay(this, m_reboundPreview.get());
 }
 
@@ -449,7 +437,6 @@ void PlayerActor::OnAppear()
     NS::SceneActor::OnAppear();
     if (IsAppeared())
     {
-        NS::ShowOverlay(this, m_targetMarker.get());
         NS::ShowOverlay(this, m_reboundPreview.get());
     }
 }
@@ -457,7 +444,6 @@ void PlayerActor::OnAppear()
 void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
-    NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_reboundPreview.get());
 }
 
@@ -515,11 +501,6 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
     if (const GL::Level::MsgInputLock* lock = NS::MsgCast<GL::Level::MsgInputLock>(msg))
     {
         m_input->SetLocked(lock->Locked());
-        // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
-        if (lock->Locked())
-        {
-            CancelCharge();
-        }
         return true;
     }
     return false;
@@ -560,22 +541,7 @@ int PlayerActor::Health() const noexcept { return m_health.Current(); }
 
 float PlayerActor::MaxSpeed() const noexcept
 {
-    const float capped = m_params->m_runSpeed * m_maxSpeedScale;
-    if (capped < 0.0f)
-    {
-        return 0.0f;
-    }
-    return capped;
-}
-
-void PlayerActor::SetMaxSpeedScale(float scale) noexcept
-{
-    // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
-    if (!std::isfinite(scale))
-    {
-        return;
-    }
-    m_maxSpeedScale = scale;
+    return std::max(m_params->m_runSpeed, 0.0f);
 }
 
 float PlayerActor::RunSpeed() const noexcept { return m_params->m_runSpeed; }
@@ -799,8 +765,6 @@ void PlayerActor::ResetState() noexcept
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
     m_request = BodySlamRequest{};
-    // 押したまま出直すと、次の押しのフレームから溜め直す。残すと、出直した後に放したフレームで前の溜めの突進が出る
-    CancelCharge();
     m_impactEffects->Reset(this);
     m_slam = GL::Player::BodySlamStatus{};
     m_rebound.Reset();

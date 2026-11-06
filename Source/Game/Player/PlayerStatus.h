@@ -1,8 +1,6 @@
 #pragma once
 
-#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ReboundDirections.h"
-#include "Game/Level/SlamAim.h"
 #include "Game/Player/ReboundArc.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
@@ -171,68 +169,6 @@ namespace GL
             NS::Vector3 m_landingVelocity{}; // 着いたフレームの水平の速度
             int m_elapsedSteps = 0;          // 着いてからのフレーム数
             float m_speedScale = 1.0f;
-        };
-
-        //! 決定の段で確定した溜めと狙いの値
-        //! DecideStep の頭で控えただけの押しと狙いは入れない。
-        //!          読み手が 1 フレーム前の狙いを読まないようにするため
-        class ChargeStatus
-        {
-        public:
-            //! 通常突進と溜めの判定
-            [[nodiscard]] const GL::Level::ImpactInputJudge& Judge() const noexcept { return m_judge; }
-            //! 押している間の狙いの線を返す。線が無い場合は false で outLine を変更しない
-            [[nodiscard]] bool TryGetAimLine(GL::Level::AimLine& outLine) const noexcept
-            {
-                if (!m_hasAimLine)
-                {
-                    return false;
-                }
-                outLine = m_aimLine;
-                return true;
-            }
-            //! 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
-            [[nodiscard]] bool TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
-            {
-                if (!m_hasAimTarget)
-                {
-                    return false;
-                }
-                outTarget = m_aimTarget;
-                return true;
-            }
-            //! 紫の揺れを足した線で最初に触れる相手を返す。相手が無い場合は false で outTarget を変更しない
-            [[nodiscard]] bool TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept
-            {
-                if (!m_hasLineTarget)
-                {
-                    return false;
-                }
-                outTarget = m_lineTarget;
-                return true;
-            }
-            //! 紫の揺れの位相 (ラジアン)。紫でない間は 0
-            [[nodiscard]] float SwayPhase() const noexcept { return m_swayPhase; }
-            //! 紫の揺れの横のずれ (m)。狙いの線の右が正。紫でない間は 0
-            [[nodiscard]] float SwayOffset() const noexcept { return m_swayOffset; }
-            //! このフレームに紫の揺れが端を通った場合 true、それ以外の場合は false
-            [[nodiscard]] bool SwayReachedEdge() const noexcept { return m_swayReachedEdge; }
-
-        private:
-            friend class ::PlayerActor;
-
-            GL::Level::ImpactInputJudge m_judge{};
-            GL::Level::AimLine m_aimLine{}; // m_hasAimLine が偽の間は読まない
-            bool m_hasAimLine = false;
-            GL::Level::SlamLineTarget m_aimTarget{}; // m_hasAimTarget が偽の間は読まない
-            bool m_hasAimTarget = false;
-            GL::Level::SlamLineTarget m_lineTarget{}; // m_hasLineTarget が偽の間は読まない
-            bool m_hasLineTarget = false;
-            float m_swayPhase = 0.0f;
-            float m_swayOffset = 0.0f;
-            int m_swayEdge = 0;         // 位相が通った端の番号。(位相 − π/2) ÷ π の切り捨て
-            bool m_hasSwayEdge = false; // 前のフレームの端の番号を控えているか
-            bool m_swayReachedEdge = false;
         };
     } // namespace Player
 } // namespace GL

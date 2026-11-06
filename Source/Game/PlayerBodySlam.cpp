@@ -364,14 +364,6 @@ NS::Vector3 PlayerActor::BlendedAimDirection() const noexcept
 
 NS::Vector3 PlayerActor::ReleaseDirection() const noexcept
 {
-    // しきい値を越えて放すと、AdvanceCharge が控えた狙いの線の向きを添えて頼む。越える前に放すと通常突進になる
-    GL::Level::AimLine line{};
-    NS::Vector3 lineDirection{};
-    if (m_charge.m_judge.IsCharging() && m_charge.TryGetAimLine(line) &&
-        NS::TryNormalizeHorizontal(line.direction, lineDirection))
-    {
-        return lineDirection;
-    }
     return BlendedAimDirection();
 }
 
@@ -431,9 +423,6 @@ bool PlayerActor::BodySlam() noexcept
     // 出せた時だけ書く。反動の後のカメラと放した瞬間の絵が、突進の後も最後に出た突進の向きとして読む
     m_slam.m_dir = dir;
     m_request.hasDir = false;
-    // 溜めすぎで控えた突進なら、判定が頼み直しを止めて放すまで溜め無しになる
-    m_slam.m_forced = m_charge.m_judge.IsAwaitingLaunch();
-    m_charge.m_judge.MarkLaunched();
     // 地面から出した突進は数えない。数えると、浮いて当てた通常突進や上向きに放った突進の反動で空中の 1 発が出ない
     if (launchedInAir)
     {
@@ -536,8 +525,7 @@ void PlayerActor::UncurlWhenSettled() noexcept
     {
         return;
     }
-    // 押している間は着地しても丸まりを解かない
-    if (m_charge.m_judge.IsHeld() || IsBodySlamming() || !body.IsGrounded())
+    if (IsBodySlamming() || !body.IsGrounded())
     {
         return;
     }

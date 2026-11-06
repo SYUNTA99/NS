@@ -21,7 +21,6 @@ namespace GL
     namespace Player
     {
         class BodySlamStatus;
-        class ChargeStatus;
         class ReboundStatus;
         class SkidStatus;
         struct MissTumble;
@@ -45,24 +44,18 @@ namespace GL
 
             //! 丸まりに合わせて玉を回し、回転と描く形の倍率を renderer へ書く。持ち主の見た目の段が呼ぶ
             //! @param[in] dt 持ち主の 1 フレームの秒。玉を回す角度と外れのぶれの位相に掛ける
-            //! @param[in] aimDirection 今放せば出る水平の向き (PlayerActor::ReleaseDirection)
             //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
             void Update(NS::Model* renderer,
                         float dt,
                         const PlayerMotion& motion,
-                        const ChargeStatus& charge,
                         const BodySlamStatus& slam,
                         const ReboundStatus& rebound,
                         const SkidStatus& skid,
-                        const NS::Vector3& aimDirection,
                         const GL::Level::ImpactAnswer& impact);
 
             //! renderer (持ち主の Model) の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
-            //! やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の構えと当たりの形で組み直す
+            //! やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の着地の潰れで組み直す
             void ResetDrawScale(NS::Model* renderer) noexcept;
-
-            //! 押している間の構えの縦の倍率。押していない間は 1、溜めている間は構えの縮み、その前は押しの構えの縮み
-            [[nodiscard]] float StanceHeight(const ChargeStatus& charge) const noexcept;
 
             //! 直前の Update で玉が回った角度を度で返す。立ち姿と止めの間は 0
             [[nodiscard]] float SpinDegreesThisFrame() const noexcept { return m_spinDegreesThisFrame; }
@@ -78,9 +71,6 @@ namespace GL
             NS_FIELD(m_ballMesh, "玉のメッシュ")
             NS_FIELD(m_standingScale, "立ち姿の倍率")
             NS_FIELD(m_ballScale, "玉の倍率")
-            NS_GROUP("溜めの回転")
-            NS_FIELD(m_emptyChargeSpinSpeed, "溜め 0 の回る速さ")
-            NS_FIELD(m_fullChargeSpinSpeed, "溜めきりの回る速さ")
             NS_GROUP("エアダッシュの転がり")
             NS_FIELD(m_dashRollDegreesPerMeter, "エアダッシュの 1 m で回る角度")
             NS_GROUP("外れの回り方")
@@ -92,20 +82,15 @@ namespace GL
             NS_GROUP("着地の潰れ")
             NS_FIELD(m_landingSquash, "着地の潰れ")
             NS_FIELD(m_landingSquashRecoverSteps, "着地の潰れを戻すフレーム数")
-            NS_GROUP("構えの縮み")
-            NS_FIELD(m_chargeSquashScale, "構えの縮み")
-            NS_FIELD(m_pressSquashScale, "押しの構えの縮み")
             NS_REFLECT_END()
 
         private:
             void AdvanceSpin(NS::Model* renderer,
                              float dt,
                              const PlayerMotion& motion,
-                             const ChargeStatus& charge,
                              const BodySlamStatus& slam,
                              const ReboundStatus& rebound,
                              const SkidStatus& skid,
-                             const NS::Vector3& aimDirection,
                              const GL::Level::ImpactAnswer& impact) noexcept;
             // skidScale はこすって止まる間の身体の速さの倍率。こすっていない間は 1
             void AdvanceMissTumble(float dt,
@@ -115,8 +100,8 @@ namespace GL
                                    const GL::Level::ImpactAnswer& impact) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
             void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
-            // 構えの縮みに着地の潰れを掛け、描く時だけの倍率に控える。当たりの形の再生の間は構えを混ぜない
-            void WriteDrawScale(NS::Model* renderer, const ChargeStatus& charge) noexcept;
+            // 着地の潰れを、描く時だけの倍率に控える
+            void WriteDrawScale(NS::Model* renderer) noexcept;
             // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す
             void ShowLook(NS::Model* renderer, NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
 
@@ -126,10 +111,8 @@ namespace GL
             NS::Vector3 m_standingScale{1.3f, 1.15f, 1.3f};
             NS::Vector3 m_ballScale{1.3f, 1.3f, 1.3f};
 
-            // 回る速さは 3 つとも 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
+            // 玉の回る速さは 1 フレーム 180 度未満 (1/60 秒のフレームで 10800 度/秒未満) で使う。超えると描く時の
             // 補間が短い側を通り、逆回りに見える
-
-            // 立ち姿の間の軸。丸まった直後に狙いが決まらなければこの軸で回る
 
             NS::Quaternion m_spin = NS::Quaternion::Identity;
             NS::Vector3 m_spinAxis = NS::Vector3::UnitX; // 直前のフレームに回した軸
@@ -143,8 +126,6 @@ namespace GL
             float m_landingSquashVertical = 1.0f;        // 着地の潰れの今の縦の倍率。潰れていない間は 1
             bool m_drawScaleRejected = false;            // 直前に組んだ倍率が有限の正でなかったか。知らせを 1 回に絞る
 
-            float m_emptyChargeSpinSpeed = 360.0f; // 溜め 0 の玉が回る速さ。度/秒
-            float m_fullChargeSpinSpeed = 1440.0f; // 溜めきりの玉が回る速さ。度/秒
             // エアダッシュと地形の反動の間、1 m 進むごとに玉が回る角度 (度/m)。回る速さは今の速さに掛ける
             float m_dashRollDegreesPerMeter = 88.0f;
             // 縁で威力 1 の時のねじれの回転数 (回/秒)。威力と縁への近さを掛ける
@@ -158,8 +139,6 @@ namespace GL
             float m_missWobbleTurnsPerSecond = 1.5f;
             float m_landingSquash = 0.8f;        // 反動のまま着地したフレームの縦の倍率
             int m_landingSquashRecoverSteps = 6; // 着地の潰れを 1 へ戻すまでのフレーム数
-            float m_chargeSquashScale = 0.95f;
-            float m_pressSquashScale = 0.97f;
         };
     } // namespace Player
 } // namespace GL

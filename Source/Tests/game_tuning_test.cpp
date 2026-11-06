@@ -4,7 +4,6 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchEffects.h"
 #include "Game/Level/PropActor.h"
-#include "Game/Level/TargetMarker.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
@@ -97,7 +96,7 @@ TEST(GameTuning, EditedTrailAngleKeepsTheOutputFinite)
     EXPECT_NEAR(heading.Length(), 1.0f, 0.001f);
 }
 
-TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
+TEST(GameTuning, EditableSparkDirectionReachesItsShape)
 {
     GL::Player::ImpactEffects effects;
 
@@ -107,18 +106,4 @@ TEST(GameTuning, EditableSparkDirectionAndMarkerWidthReachTheirShapes)
         effects.MissSparkHeading(0.8f, 0.0f, GL::Level::MissSurfaceNormal(0.8f, 0.0f, 2.0f, forward), forward);
     EXPECT_NEAR(heading.x, 1.0f, 0.001f);
     EXPECT_NEAR(heading.z, 0.0f, 0.001f);
-    GL::Level::TargetMarker marker;
-    ASSERT_EQ(NS::ApplyJsonFields(&marker, {{"枠の縁の幅", 3.0f}}), 0u);
-    const nlohmann::json fields = NS::SerializeClassObjFields(&marker);
-    EXPECT_EQ(fields["枠の縁の幅"], 3.0f);
-    GL::Level::TargetMarkerDesc desc;
-    desc.outlineWidth = 3.0f;
-    NS::AABB bounds;
-    bounds.Center = {0.0f, 0.0f, 0.5f};
-    bounds.Extents = {0.1f, 0.1f, 0.1f};
-    GL::Level::LockOnFrameShape frame;
-    ASSERT_TRUE(GL::Level::BuildLockOnFrame(NS::Matrix::Identity, {1280, 720}, bounds, {}, desc, frame));
-    ASSERT_FALSE(frame.corners.empty());
-    ASSERT_EQ(frame.outline.size(), frame.corners.size());
-    EXPECT_NEAR(frame.outline.front().width - frame.corners.front().width, 6.0f, 0.001f);
 }

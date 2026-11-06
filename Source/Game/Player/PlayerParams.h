@@ -98,8 +98,6 @@ namespace GL
             //! @param[in] overcharge01 溜めすぎの深さ
             //! @return 威力の倍率
             [[nodiscard]] float ChargeFactorFor(float charge01, float overcharge01) const noexcept;
-            //! 溜め中の最高速度の倍率を返す。1 − チャージ減速率を 0〜1 に丸める
-            [[nodiscard]] float ChargingSpeedScale() const noexcept;
 
             NS_REFLECT_BEGIN(PlayerParams, NS::Object)
             NS_GROUP("体力")
@@ -144,16 +142,7 @@ namespace GL
             NS_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
             NS_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
             NS_GROUP("溜め")
-            NS_FIELD(m_chargeThresholdSeconds, "チャージしきい値秒")
-            NS_FIELD(m_chargeFullSeconds, "チャージ満タン秒")
-            NS_FIELD(m_chargeSlowRate, "チャージ減速率")
             NS_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
-            NS_GROUP("溜めすぎ")
-            NS_FIELD(m_overchargeSeconds, "溜めすぎの秒数")
-            NS_FIELD(m_overchargeSwayMaxOffset, "紫の揺れの最大のずれ")
-            NS_FIELD(m_overchargeSwayStartRate, "紫の揺れの始めの速さ")
-            NS_FIELD(m_overchargeSwayEndRate, "紫の揺れの終わりの速さ")
-            NS_FIELD(m_overchargeSwayFallbackDistance, "相手がいない時に直す距離")
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
             NS_GROUP("エアダッシュ")
             NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
@@ -253,20 +242,8 @@ namespace GL
             float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
             float m_tapReboundTurns = 1.0f;     // 通常突進で当てた反動が着地までに回る回転数
             friend class ::PlayerActor;
-            float m_chargeThresholdSeconds = 0.2f;
-            float m_chargeFullSeconds = 1.0f;
-            // 溜めきりから自動発動までの秒
-            float m_overchargeSeconds = 3.0f;
-            // 相手の位置での横ずれ (m)。角度指定だと遠い相手ほど外れやすくなる
-            float m_overchargeSwayMaxOffset = 2.2f;
-            // 揺れの回数 (回/秒)。溜めすぎの深さの 2 乗で終わりの速さへ寄せる
-            float m_overchargeSwayStartRate = 0.8f;
-            float m_overchargeSwayEndRate = 2.6f;
-            // 相手がいない時に、横ずれを角度へ変換する距離 (m)
-            float m_overchargeSwayFallbackDistance = 10.0f;
             // 溜めすぎきった時に、溜めきりの威力へ掛ける倍率
             float m_overchargePowerMax = 1.5f;
-            float m_chargeSlowRate = 0.7f;
             NS::Curve m_chargeFactorCurve{};
             int m_maxHealth = 8;
             float m_jumpImpulse = 12.0f;

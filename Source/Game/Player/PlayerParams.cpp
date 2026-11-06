@@ -54,12 +54,6 @@ namespace GL
             return ChargeFactorFor(charge01) * (1.0f + (m_overchargePowerMax - 1.0f) * depth);
         }
 
-        float PlayerParams::ChargingSpeedScale() const noexcept
-        {
-            // 減速率の欄は非有限の書き込みを捨てるので、ここへ来る値は有限。Clamp だけで 0..1 に収まる
-            return NS::Clamp(1.0f - m_chargeSlowRate, 0.0f, 1.0f);
-        }
-
         GL::Level::LaunchArc PlayerParams::ReboundLaunchArc(const ReboundArc& arc) const noexcept
         {
             // LaunchArc には正の上昇重力と下降倍率を渡す

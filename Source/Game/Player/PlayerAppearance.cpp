@@ -1,6 +1,5 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
@@ -53,19 +52,6 @@ namespace GL
             ShowLook(renderer, m_standingMesh, m_standingScale);
         }
 
-        float PlayerAppearance::StanceHeight(const ChargeStatus& charge) const noexcept
-        {
-            if (!charge.Judge().IsHoldingCharge())
-            {
-                return 1.0f;
-            }
-            if (charge.Judge().IsCharging())
-            {
-                return m_chargeSquashScale;
-            }
-            return m_pressSquashScale;
-        }
-
         void PlayerAppearance::ResetDrawScale(NS::Model* renderer) noexcept
         {
             NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::ResetDrawScale: 倍率を戻す Model が空");
@@ -77,11 +63,9 @@ namespace GL
         void PlayerAppearance::AdvanceSpin(NS::Model* renderer,
                                            float dt,
                                            const PlayerMotion& motion,
-                                           const ChargeStatus& charge,
                                            const BodySlamStatus& slam,
                                            const ReboundStatus& rebound,
                                            const SkidStatus& skid,
-                                           const NS::Vector3& aimDirection,
                                            const GL::Level::ImpactAnswer& impact) noexcept
         {
             m_spinDegreesThisFrame = 0.0f;
@@ -115,13 +99,6 @@ namespace GL
                 // 欄の速さで、速さが正なら同じ向き
                 SetRollAxisToward(slam.Direction(), m_spinAxis);
                 m_spinSpeed = slam.SpinSpeed();
-            }
-            else if (charge.Judge().IsHoldingCharge())
-            {
-                // 今放せば出る向きへ回す。向きが決まらないフレームは前の軸で回し続ける
-                SetRollAxisToward(aimDirection, m_spinAxis);
-                m_spinSpeed = m_emptyChargeSpinSpeed +
-                              (m_fullChargeSpinSpeed - m_emptyChargeSpinSpeed) * charge.Judge().Charge01();
             }
             else if ((motion.rebounding || motion.skidding) && rebound.Tumble().has_value())
             {
@@ -213,17 +190,15 @@ namespace GL
         void PlayerAppearance::Update(NS::Model* renderer,
                                       float dt,
                                       const PlayerMotion& motion,
-                                      const ChargeStatus& charge,
                                       const BodySlamStatus& slam,
                                       const ReboundStatus& rebound,
                                       const SkidStatus& skid,
-                                      const NS::Vector3& aimDirection,
                                       const GL::Level::ImpactAnswer& impact)
         {
             NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
-            AdvanceSpin(renderer, dt, motion, charge, slam, rebound, skid, aimDirection, impact);
+            AdvanceSpin(renderer, dt, motion, slam, rebound, skid, impact);
             AdvanceLandingSquash(motion);
-            WriteDrawScale(renderer, charge);
+            WriteDrawScale(renderer);
         }
 
         void PlayerAppearance::AdvanceLandingSquash(const PlayerMotion& motion) noexcept
@@ -267,19 +242,13 @@ namespace GL
             }
         }
 
-        void PlayerAppearance::WriteDrawScale(NS::Model* renderer, const ChargeStatus& charge) noexcept
+        void PlayerAppearance::WriteDrawScale(NS::Model* renderer) noexcept
         {
-            // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける。その間は構えを混ぜず、
-            // 構えの最中に来た止めも元の形から潰す
-            float stance = 1.0f;
-            if (!renderer->IsDrawingShape())
-            {
-                stance = StanceHeight(charge);
-            }
+            // 当たりの潰れと伸びは Model の形の再生が描く倍率に掛ける
             // 着地の潰れの水平は体積を保つ 1 ÷ √縦
             const float vertical = m_landingSquashVertical;
             const float horizontal = 1.0f / std::sqrt(vertical);
-            const NS::Vector3 scale{horizontal, stance * vertical, horizontal};
+            const NS::Vector3 scale{horizontal, vertical, horizontal};
             if (renderer->SetDrawScale(scale))
             {
                 m_drawScaleRejected = false;

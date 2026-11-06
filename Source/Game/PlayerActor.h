@@ -2,7 +2,6 @@
 
 #include "Game/Level/Health.h"
 #include "Game/Level/IGetCameraTarget.h"
-#include "Game/Level/ImpactInputJudge.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/SlamAim.h"
@@ -53,7 +52,6 @@ namespace GL
     namespace Level
     {
         class ImpactResolver;
-        class TargetMarker;
         class ReboundPreview;
         struct BodySlamMotion;
         struct ImpactAnswer;
@@ -88,28 +86,10 @@ public:
     [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerSounds& Sounds() const noexcept { return *m_playerSounds; }
     // =========================================================================
-    // チャージ・照準・演出サブシステムの参照
+    // 当たり・演出サブシステムの参照
     // =========================================================================
-    [[nodiscard]] const GL::Level::ImpactInputJudge& ChargeJudge() const noexcept;
-    //! 保持中の狙いの線を返す。入力方向ではなく、効果を掛ける前のカメラ方向を使う
-    //! 押していない、カメラ管理なし、無効な方向では false で outLine を変更しない
-    [[nodiscard]] bool TryGetAimLine(GL::Level::AimLine& outLine) const noexcept;
-    //! 揺れを足す前の線で狙う相手を返す。相手が無い場合は false で outTarget を変更しない
-    [[nodiscard]] bool TryGetAimTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
-    //! 溜めすぎの揺れを足した線で、最初に触れる相手を返す
-    //! 枠と縦速度は TryGetAimTarget の相手を使う。相手が無い場合は false で outTarget を変更しない
-    [[nodiscard]] bool TryGetLineTarget(GL::Level::SlamLineTarget& outTarget) const noexcept;
-    //! 紫の揺れの位相 (ラジアン)。紫になりきった瞬間に π/2 を通り、紫でない間は 0
-    [[nodiscard]] float ChargeSwayPhase() const noexcept { return m_charge.SwayPhase(); }
-    //! 狙いの線の右を正にした、相手の所 (相手がいなければ規定距離) での紫の揺れの横のずれ (m)。紫でない間は 0
-    [[nodiscard]] float ChargeSwayOffset() const noexcept { return m_charge.SwayOffset(); }
-    //! このフレームに紫の揺れが端 (位相 π/2 + nπ) を通ったか。紫に入ったフレームは数えない
-    [[nodiscard]] bool ChargeSwayReachedEdge() const noexcept { return m_charge.SwayReachedEdge(); }
-    //! 構えの縦倍率を返す。非保持時は 1
-    [[nodiscard]] float StanceHeight() const noexcept;
     [[nodiscard]] GL::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
-    [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     //! 体当たりの残像の子。OnInit で作り、自機と一緒に終わる
@@ -120,8 +100,8 @@ public:
     // 更新・アニメーション・移動入力・ジャンプ状態
     // =========================================================================
     using NS::SceneActor::Update;
-    //! 機器を読まずに chargeHeld を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
-    void Update(bool chargeHeld);
+    //! 機器を読まずに slamHeld (エアダッシュのボタンの押し) を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
+    void Update(bool slamHeld);
     //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     void UpdateAnimation();
     void OnEndPlay() override;
@@ -129,10 +109,10 @@ public:
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
     //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
     [[nodiscard]] float CoyoteRemaining() const noexcept { return m_coyoteTimer; }
-    //! 走行速度に溜め中の倍率を掛けた最高速度 (m/s、下限 0)
+    //! 走行速度を最高速度として返す (m/s、下限 0)
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
-    //! 先に根を出現位置へ置いて呼ぶ。根は動かさず、移動・溜め・命中・丸まり・描画倍率を初期状態へ戻す
+    //! 先に根を出現位置へ置いて呼ぶ。根は動かさず、移動・命中・丸まり・描画倍率を初期状態へ戻す
     void ResetState() noexcept;
     //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
     void SyncGroundState() noexcept;
@@ -340,15 +320,6 @@ private:
         float aimAge = 0.0f;        // 狙いを控えてからの経過秒
     };
 
-    struct ChargeObservation
-    {
-        bool held = false;
-        GL::Level::AimLine aimLine{};
-        bool hasAimLine = false;
-        GL::Level::SlamLineTarget aimTarget{};
-        bool hasAimTarget = false;
-    };
-
     // =========================================================================
     // 内部ヘルパー：移動・エアダッシュ・地形反動
     // =========================================================================
@@ -419,21 +390,13 @@ private:
     [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
     void ChangeCurled(bool curled) noexcept;
     void UncurlWhenSettled() noexcept;
-    void SetMaxSpeedScale(float scale) noexcept;
     //! 左スティックをデッドゾーンより倒していれば、その水平の向き (正規化済み) を outDirection に書いて true
     [[nodiscard]] bool TryStickDirection(NS::Vector3& outDirection) const noexcept;
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
     void MarkBodySlamAim() noexcept;
     // =========================================================================
-    // 内部ヘルパー：チャージ観測・接地復帰・状態進行・アニメーション選択
+    // 内部ヘルパー：接地復帰・状態進行・アニメーション選択
     // =========================================================================
-    void ObserveCharge(bool held);
-    void AdvanceCharge(float dt);
-    void ApplyChargeSway(float dt);
-    void CancelCharge() noexcept;
-#if !defined(NS_SHIPPING)
-    void DrawChargeRing() const;
-#endif
     void RestoreOnLanding() noexcept;
     void RestoreWhileGrounded() noexcept;
     void LaunchJump() noexcept;
@@ -456,7 +419,6 @@ private:
     std::unique_ptr<NS::Collider> m_collider;
     std::unique_ptr<GL::Player::PlayerAppearance> m_appearance;
     std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
-    std::unique_ptr<GL::Level::TargetMarker> m_targetMarker;
     std::unique_ptr<GL::Level::ReboundPreview> m_reboundPreview;
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
@@ -475,7 +437,7 @@ private:
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================
-    // メンバ変数：通常移動・ジャンプ・突進・反動・チャージ・崖掴まり状態
+    // メンバ変数：通常移動・ジャンプ・突進・反動・崖掴まり状態
     // =========================================================================
     bool m_inputInjected = false;
     bool m_stateStepPrepared = false;
@@ -486,16 +448,11 @@ private:
     bool m_airControlReturning = false;
     float m_airControlReturnElapsed = 0.0f; // 秒
 
-    float m_maxSpeedScale = 1.0f;
-
     GL::Player::BodySlamStatus m_slam;
     BodySlamRequest m_request;
     GL::Player::ReboundStatus m_rebound;
     GL::Player::SkidStatus m_skid;
     GL::Player::AirDashStatus m_airDash;
-    GL::Player::ChargeStatus m_charge;
-    ChargeObservation m_chargeObserved;
-    int m_overchargeCount = 0; // 紫に入った回数。溜めを捨てても戻さない
 
     NS::Vector3 m_facingDir{0.0f, 0.0f, 0.0f}; // 掴む水平の向き
     float m_lastMoveDistance = 0.0f;           // 直前の Move で動いた距離 (m)

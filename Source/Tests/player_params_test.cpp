@@ -2,7 +2,6 @@
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/PropActor.h"
-#include "Game/Level/TargetMarker.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
@@ -182,8 +181,6 @@ TEST(PlayerParams, AppearanceDefaultsBelongToThePartThatDrawsThem)
     PlayerActor& player = *playerOwned;
     const nlohmann::json appearance = {{"立ち姿のメッシュ", "capsule"},
                                        {"玉のメッシュ", "sphere"},
-                                       {"溜め 0 の回る速さ", 360.0f},
-                                       {"溜めきりの回る速さ", 1440.0f},
                                        {"着地の潰れ", 0.8f},
                                        {"着地の潰れを戻すフレーム数", 6},
                                        {"外れの縁でのねじれの回転数", 2.0f},
@@ -340,31 +337,6 @@ TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
     EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
     EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
     EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
-}
-
-TEST(PlayerParams, MarkerDefaultsKeepAllFields)
-{
-    const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
-    PlayerActor& player = *playerOwned;
-    const GL::Level::TargetMarkerDesc marker{};
-    const nlohmann::json markerFields = {
-        {"ロックオンの枠の色", {marker.color.x, marker.color.y, marker.color.z, marker.color.w}},
-        {"ロックオンの枠の太さ", marker.lineThickness},
-        {"ロックオンの枠の腕の割合", marker.armRatio},
-        {"枠と輪郭の間", marker.frameGap},
-        {"枠の一辺の下限", marker.frameMinSide},
-        {"枠が出る時の倍率", marker.appearScale},
-        {"枠が出る時の一辺の上限", marker.appearMaxSide},
-        {"枠が縮むフレーム数", marker.appearFrames},
-        {"枠が縮む進みの曲線",
-         {{"curve", {{0.0f, 0.0f}, {0.25f, 0.12f}, {0.5f, 0.38f}, {0.75f, 0.70f}, {1.0f, 1.0f}}}}},
-        {"枠が出る時の色", {marker.appearColor.x, marker.appearColor.y, marker.appearColor.z, marker.appearColor.w}},
-        {"外れた時の枠の倍率", marker.lostScale},
-        {"外れた時の枠のフレーム数", marker.lostFrames},
-        {"枠の縁の色", {marker.outlineColor.x, marker.outlineColor.y, marker.outlineColor.z, marker.outlineColor.w}}};
-    // 枠の見た目は描く部品が持ち、遊びの欄と並ばない
-    ExpectClassObjFields(&player.TargetIndicator(), markerFields);
-    ExpectNotInParams(&player, markerFields);
 }
 
 // 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも

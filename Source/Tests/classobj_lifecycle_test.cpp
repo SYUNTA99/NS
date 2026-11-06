@@ -1,7 +1,6 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/PropActor.h"
 #include "Game/Level/ReboundPreview.h"
-#include "Game/Level/TargetMarker.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -76,13 +75,12 @@ TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .overlays = 2, .sensors = 1}));
+    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .overlays = 1, .sensors = 1}));
 
-    // 当たりの画面の係も重ね描きに入るので、消えている間も枠と反動の矢印が入っている事は、外した時に数が減るかで見る
+    // 当たりの画面の係も重ね描きに入るので、消えている間も反動の矢印が入っている事は、外した時に数が減るかで見る
     const std::size_t registered = scene.GetSceneRenderer()->OverlayCount();
-    NS::EndOverlay(&scene, &player->TargetIndicator());
     NS::EndOverlay(&scene, &player->ReboundIndicator());
-    EXPECT_EQ(scene.GetSceneRenderer()->OverlayCount(), registered - 2);
+    EXPECT_EQ(scene.GetSceneRenderer()->OverlayCount(), registered - 1);
 }
 
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)

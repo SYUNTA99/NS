@@ -78,7 +78,7 @@ namespace GL
         bool SendMsgCourseRestart(NS::SceneActor* receiver);
         //! 操作を止めるか戻す知らせ。GameScene がクリアの演出の間だけプレイヤーの操作を止める
         //! 世界は止めない。止めている間も重力とカメラは動いたまま。
-        //! 受け手は入力を中立にし、止める時は溜めを放させずに捨てる
+        //! 受け手は入力を中立にする
         class MsgInputLock final : public NS::Message
         {
             NS_MESSAGE(MsgInputLock)
