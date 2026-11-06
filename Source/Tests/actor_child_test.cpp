@@ -4,10 +4,11 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "Game/Level/PropActor.h"
+#include "Game/Level/TackleGhost.h"
 #include "Game/PlayerActor.h"
+#include "Tests/TestLogCapture.h"
 #include "Tests/TestViewCamera.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -15,18 +16,21 @@
 #include "NSlib/Gfx/Render/RenderContext.h"
 
 #include <gtest/gtest.h>
-#include <array>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
-static_assert(std::is_same_v<decltype(std::declval<NS::SceneActor&>().ChildActor()), NS::ChildActorObj*>);
-static_assert(std::is_same_v<decltype(std::declval<const NS::SceneActor&>().ChildActor()), const NS::ChildActorObj*>);
 static_assert(!std::derived_from<NS::SceneActor, NS::IRenderable>);
+static_assert(std::derived_from<GL::Level::TackleGhost, NS::SceneActor>);
+static_assert(std::derived_from<GL::Level::TackleGhost, NS::IRenderable>);
 
 namespace
 {
     class SharedModelParent final : public NS::SceneActor
     {
+    public:
+        [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost; }
+
     protected:
         void OnInit() override
         {
@@ -34,8 +38,11 @@ namespace
             NS::InitDraw(this, m_model.get(), &Root());
             m_model->SetMeshRef("cube");
             m_model->SetMaterialRef("Assets/Materials/player.mat");
-            CreateChildActor<NS::ChildActorObj>()->UseParentModel();
+            m_ghost = CreateChildActor<GL::Level::TackleGhost>();
         }
+
+    private:
+        GL::Level::TackleGhost* m_ghost = nullptr;
     };
 
     struct ChildCounts
@@ -50,8 +57,6 @@ namespace
         bool parentStarted = false;
         bool startedAfterParent = false;
         bool endedWithParentModel = false;
-        bool destroyDuringStep = false;
-        bool aliveUntilStepEnd = false;
         float parentX = 0.0f;
         int assetLoads = 0;
         bool parentAssetsLoaded = false;
@@ -62,12 +67,12 @@ namespace
         bool hiddenBeforeChild = false;
     };
 
-    class ChildProbe final : public NS::ChildActorObj
+    class ChildProbe final : public NS::SceneActor
     {
     public:
         explicit ChildProbe(ChildCounts& counts) : m_counts(counts) { ++m_counts.made; }
         ~ChildProbe() override { ++m_counts.destroyed; }
-        NS_REFLECT_NONE(ChildProbe, NS::ChildActorObj)
+        NS_REFLECT_NONE(ChildProbe, NS::SceneActor)
 
         void OnStart() override
         {
@@ -80,7 +85,7 @@ namespace
         {
             m_counts.endedWithParentModel = ParentActor()->ModelClassObj() != nullptr;
             ++m_counts.ended;
-            NS::ChildActorObj::OnEndPlay();
+            NS::SceneActor::OnEndPlay();
         }
 
         void InitAfterPlacement() override
@@ -102,17 +107,12 @@ namespace
             ++m_counts.steps;
             m_counts.parentX = ParentActor()->Root().Position().x;
             EXPECT_EQ(m_counts.steps, m_counts.parentSteps);
-            if (m_counts.destroyDuringStep)
-            {
-                Destroy();
-                m_counts.aliveUntilStepEnd = m_counts.destroyed == 0;
-            }
         }
 
         void OnDisappear() noexcept override
         {
             ++m_counts.vanished;
-            NS::ChildActorObj::OnDisappear();
+            NS::SceneActor::OnDisappear();
         }
 
     private:
@@ -125,6 +125,7 @@ namespace
         explicit ParentProbe(ChildCounts& counts) : m_counts(counts) {}
         NS_REFLECT_NONE(ParentProbe, NS::SceneActor)
 
+        [[nodiscard]] ChildProbe* Child() noexcept { return m_child; }
         bool TryAnotherChild() { return CreateChildActor<ChildProbe>(m_counts) != nullptr; }
         void InitAfterPlacement() override { m_counts.parentPlaced = true; }
 
@@ -142,7 +143,7 @@ namespace
             {
                 Disappear();
             }
-            (void)CreateChildActor<ChildProbe>(m_counts);
+            m_child = CreateChildActor<ChildProbe>(m_counts);
         }
 
         void BodyStep() override
@@ -160,7 +161,93 @@ namespace
 
     private:
         ChildCounts& m_counts;
+        ChildProbe* m_child = nullptr;
     };
+
+    //! 木の 1 つの節が受けた呼び出しの数
+    struct NodeCounts
+    {
+        int appeared = 0;
+        int vanished = 0;
+        int steps = 0;
+        int ended = 0;
+        int placed = 0;
+        int resolved = 0;
+    };
+
+    class TreeNode final : public NS::SceneActor
+    {
+    public:
+        //! grandchild が空でなければ、作る時に自分の子を 1 体作る
+        TreeNode(NodeCounts& counts, NodeCounts* grandchild) : m_counts(counts), m_grandchild(grandchild) {}
+        NS_REFLECT_NONE(TreeNode, NS::SceneActor)
+
+        void InitAfterPlacement() override { ++m_counts.placed; }
+        void ResolveActorRefs() override { ++m_counts.resolved; }
+
+        void OnEndPlay() override
+        {
+            ++m_counts.ended;
+            NS::SceneActor::OnEndPlay();
+        }
+
+    protected:
+        void OnInit() override
+        {
+            if (m_grandchild != nullptr)
+            {
+                ASSERT_NE(CreateChildActor<TreeNode>(*m_grandchild, nullptr), nullptr);
+            }
+        }
+
+        void VisualStep() override { ++m_counts.steps; }
+
+        void OnAppear() override
+        {
+            NS::SceneActor::OnAppear();
+            ++m_counts.appeared;
+        }
+
+        void OnDisappear() noexcept override
+        {
+            ++m_counts.vanished;
+            NS::SceneActor::OnDisappear();
+        }
+
+    private:
+        NodeCounts& m_counts;
+        NodeCounts* m_grandchild = nullptr;
+    };
+
+    //! 子を 2 体持ち、1 体目の子が孫を 1 体持つ親
+    class TreeParent final : public NS::SceneActor
+    {
+    public:
+        TreeParent(NodeCounts& first, NodeCounts& second, NodeCounts& grandchild)
+            : m_first(first), m_second(second), m_grandchild(grandchild)
+        {
+        }
+        NS_REFLECT_NONE(TreeParent, NS::SceneActor)
+
+    protected:
+        void OnInit() override
+        {
+            ASSERT_NE(CreateChildActor<TreeNode>(m_first, &m_grandchild), nullptr);
+            ASSERT_NE(CreateChildActor<TreeNode>(m_second, nullptr), nullptr);
+        }
+
+    private:
+        NodeCounts& m_first;
+        NodeCounts& m_second;
+        NodeCounts& m_grandchild;
+    };
+
+    int CountSelfAndDescendants(NS::SceneActor* actor)
+    {
+        int count = 0;
+        actor->VisitSelfAndDescendants([&count](NS::SceneActor*) { ++count; });
+        return count;
+    }
 }
 
 TEST(ActorChild, BelongsToItsParentAndStartsAfterItWithoutAnotherScenePlacement)
@@ -169,15 +256,66 @@ TEST(ActorChild, BelongsToItsParentAndStartsAfterItWithoutAnotherScenePlacement)
     NS::Scene scene;
     ParentProbe* parent = scene.SpawnActor<ParentProbe>("parent", counts);
     ASSERT_NE(parent, nullptr);
-    NS::ChildActorObj* child = parent->ChildActor();
+    ChildProbe* child = parent->Child();
     ASSERT_NE(child, nullptr);
     EXPECT_EQ(child->ParentActor(), parent);
     EXPECT_EQ(child->OwningScene(), &scene);
     EXPECT_EQ(scene.Actors().ActorCount(), 1u);
     EXPECT_EQ(counts.started, 1);
     EXPECT_TRUE(counts.startedAfterParent);
+    // 開始の後は子を足せない
     EXPECT_FALSE(parent->TryAnotherChild());
     EXPECT_EQ(counts.made, 1);
+}
+
+TEST(ActorChild, EveryChildAndGrandchildFollowsTheParent)
+{
+    NodeCounts first;
+    NodeCounts second;
+    NodeCounts grandchild;
+    {
+        NS::Scene scene;
+        TreeParent* parent = scene.SpawnActor<TreeParent>("parent", first, second, grandchild);
+        ASSERT_NE(parent, nullptr);
+        EXPECT_EQ(CountSelfAndDescendants(parent), 4);
+        EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+        for (const NodeCounts* node : {&first, &second, &grandchild})
+        {
+            EXPECT_EQ(node->placed, 1);
+        }
+
+        const int resolvedBefore = first.resolved;
+        // 一覧にアクターを入れると、一覧が全部の参照を取得し直す
+        ASSERT_NE(scene.SpawnActor<NS::SceneActor>("other"), nullptr);
+        for (const NodeCounts* node : {&first, &second, &grandchild})
+        {
+            EXPECT_EQ(node->resolved, resolvedBefore + 1);
+        }
+
+        scene.OnUpdate();
+        for (const NodeCounts* node : {&first, &second, &grandchild})
+        {
+            EXPECT_EQ(node->steps, 1);
+        }
+
+        const int appearedBefore = first.appeared;
+        parent->Disappear();
+        parent->Appear();
+        for (const NodeCounts* node : {&first, &second, &grandchild})
+        {
+            EXPECT_EQ(node->vanished, 1);
+            EXPECT_EQ(node->appeared, appearedBefore + 1);
+        }
+
+        parent->Destroy();
+        scene.OnUpdate();
+        // 残るのは参照を取得し直させるために入れた 1 体だけ
+        EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+    }
+    for (const NodeCounts* node : {&first, &second, &grandchild})
+    {
+        EXPECT_EQ(node->ended, 1);
+    }
 }
 
 TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
@@ -211,11 +349,11 @@ TEST(ActorChild, FollowsPresenceAndEndsBeforeTheParentsModelGoesAway)
         ParentProbe* parent = scene.SpawnActor<ParentProbe>("parent", counts);
         ASSERT_NE(parent, nullptr);
         parent->Disappear();
-        EXPECT_FALSE(parent->ChildActor()->IsAppeared());
+        EXPECT_FALSE(parent->Child()->IsAppeared());
         scene.OnUpdate();
         EXPECT_EQ(counts.steps, 0);
         parent->Appear();
-        EXPECT_TRUE(parent->ChildActor()->IsAppeared());
+        EXPECT_TRUE(parent->Child()->IsAppeared());
         scene.OnUpdate();
         EXPECT_EQ(counts.steps, 1);
         parent->Destroy();
@@ -236,44 +374,51 @@ TEST(ActorChild, ChildStartsHiddenWhenCreatedByAHiddenParent)
     ParentProbe* parent = scene.SpawnActor<ParentProbe>("parent", counts);
     ASSERT_NE(parent, nullptr);
     EXPECT_FALSE(parent->IsAppeared());
-    ASSERT_NE(parent->ChildActor(), nullptr);
-    EXPECT_FALSE(parent->ChildActor()->IsAppeared());
+    ASSERT_NE(parent->Child(), nullptr);
+    EXPECT_FALSE(parent->Child()->IsAppeared());
     scene.OnUpdate();
     EXPECT_EQ(counts.steps, 0);
 }
 
-TEST(ActorChild, DestroyedChildIsReleasedAtTheEndOfTheStep)
+TEST(ActorChild, RefusesToDestroyAChildAloneAndKeepsItWithTheParent)
 {
     ChildCounts counts;
     NS::Scene scene;
     ParentProbe* parent = scene.SpawnActor<ParentProbe>("parent", counts);
     ASSERT_NE(parent, nullptr);
-    counts.destroyDuringStep = true;
+    ChildProbe* child = parent->Child();
+    ASSERT_NE(child, nullptr);
+    {
+        TestLogCapture log;
+        child->Destroy();
+        EXPECT_EQ(log.ErrorCount(), 1);
+    }
+    EXPECT_FALSE(child->IsPendingDestroy());
+    EXPECT_TRUE(child->IsAppeared());
     scene.OnUpdate();
-    EXPECT_TRUE(counts.aliveUntilStepEnd);
-    EXPECT_EQ(counts.destroyed, 1);
-    EXPECT_EQ(counts.ended, 1);
-    EXPECT_EQ(parent->ChildActor(), nullptr);
-    EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+    EXPECT_EQ(counts.destroyed, 0);
+    EXPECT_EQ(counts.ended, 0);
+    EXPECT_EQ(counts.steps, 1);
+    EXPECT_EQ(CountSelfAndDescendants(parent), 2);
 }
 
-TEST(ActorChild, PlayerAndPropUseTheirMainModelWithoutGivingTheChildAnotherModel)
+TEST(ActorChild, PlayerAndPropOwnATackleGhostThatDrawsTheirMainModel)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
     GL::Level::PropActor* prop = scene.SpawnActor<GL::Level::PropActor>("prop");
     ASSERT_NE(player, nullptr);
     ASSERT_NE(prop, nullptr);
-    ASSERT_NE(player->ChildActor(), nullptr);
-    ASSERT_NE(prop->ChildActor(), nullptr);
-    EXPECT_STREQ(player->ChildActor()->ClassName(), "ChildActorObj");
-    EXPECT_STREQ(prop->ChildActor()->ClassName(), "ChildActorObj");
-    EXPECT_EQ(player->ChildActor()->ParentActor(), player);
-    EXPECT_EQ(prop->ChildActor()->ParentActor(), prop);
-    EXPECT_EQ(player->ChildActor()->ModelClassObj(), nullptr);
-    EXPECT_EQ(prop->ChildActor()->ModelClassObj(), nullptr);
-    EXPECT_EQ(player->ChildActor()->ModelSource(), player->ModelClassObj());
-    EXPECT_EQ(prop->ChildActor()->ModelSource(), prop->ModelClassObj());
+    ASSERT_NE(player->Ghost(), nullptr);
+    ASSERT_NE(prop->Ghost(), nullptr);
+    EXPECT_STREQ(player->Ghost()->ClassName(), "TackleGhost");
+    EXPECT_STREQ(prop->Ghost()->ClassName(), "TackleGhost");
+    EXPECT_EQ(player->Ghost()->ParentActor(), player);
+    EXPECT_EQ(prop->Ghost()->ParentActor(), prop);
+    EXPECT_EQ(CountSelfAndDescendants(player), 2);
+    EXPECT_EQ(CountSelfAndDescendants(prop), 2);
+    EXPECT_EQ(player->Ghost()->ModelClassObj(), nullptr);
+    EXPECT_EQ(prop->Ghost()->ModelClassObj(), nullptr);
     EXPECT_EQ(scene.Actors().ActorCount(), 2u);
     NS::SceneRenderer* renderer = player->GetSceneRenderer();
     ASSERT_NE(renderer, nullptr);
@@ -281,27 +426,19 @@ TEST(ActorChild, PlayerAndPropUseTheirMainModelWithoutGivingTheChildAnotherModel
     ASSERT_TRUE(player->Ghost()->SetSpread(NS::Vector3{0.3f, 0.0f, 0.0f}));
     ASSERT_TRUE(player->Ghost()->SetAfterimageOpacity(0.4f));
     player->Disappear();
-    EXPECT_FALSE(player->ChildActor()->IsAppeared());
+    EXPECT_FALSE(player->Ghost()->IsAppeared());
     EXPECT_EQ(renderer->RenderableCount(), registered);
     player->Appear();
-    EXPECT_TRUE(player->ChildActor()->IsAppeared());
+    EXPECT_TRUE(player->Ghost()->IsAppeared());
     EXPECT_FLOAT_EQ(player->Ghost()->Spread().x, 0.3f);
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.4f);
-    player->ChildActor()->Destroy();
-    scene.OnUpdate();
-    EXPECT_EQ(player->ChildActor(), nullptr);
-    EXPECT_EQ(player->Ghost(), nullptr);
-    EXPECT_EQ(renderer->RenderableCount(), registered - 1u);
-    prop->ChildActor()->Destroy();
-    scene.OnUpdate();
-    EXPECT_EQ(prop->Ghost(), nullptr);
     player->Destroy();
     prop->Destroy();
     scene.OnUpdate();
     EXPECT_EQ(renderer->RenderableCount(), 0u);
 }
 
-TEST(ActorChild, OrdinaryChildDrawsTheSharedModelWithItsOwnPoseAndOpacity)
+TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "子のモデル参照描画の試し", .size = {64, 36}, .visible = false});
     NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
@@ -312,68 +449,52 @@ TEST(ActorChild, OrdinaryChildDrawsTheSharedModelWithItsOwnPoseAndOpacity)
     scene.GetSceneRenderer()->SetDevice(&device);
     SharedModelParent* parent = scene.SpawnActor<SharedModelParent>("parent");
     ASSERT_NE(parent, nullptr);
-    NS::ChildActorObj* child = parent->ChildActor();
-    ASSERT_NE(child, nullptr);
-    EXPECT_STREQ(child->ClassName(), "ChildActorObj");
-    EXPECT_EQ(child->ModelClassObj(), nullptr);
-    EXPECT_EQ(child->ModelSource(), parent->ModelClassObj());
+    GL::Level::TackleGhost* ghost = parent->Ghost();
+    ASSERT_NE(ghost, nullptr);
+    EXPECT_EQ(ghost->ModelClassObj(), nullptr);
     parent->Root().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
-    child->Root().SetPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
-    child->Root().Snapshot();
-    child->Root().SetPosition(NS::Vector3{14.0f, 0.0f, 0.0f});
-    std::array<NS::ModelDraw, 2> draws{
-        NS::ModelDraw{.offset = NS::Vector3{1.0f, 0.0f, 0.0f}, .opacity = 0.5f, .groundWave = false},
-        NS::ModelDraw{.world = NS::Matrix::CreateTranslation(40.0f, 0.0f, 0.0f),
-                       .opacity = 0.25f, .groundWave = false, .tremor = false}};
-    child->SetModelDraws(draws);
-    draws[0].opacity = 0.0f;
+    ASSERT_TRUE(ghost->SetSpread(NS::Vector3{1.0f, 0.0f, 0.0f}));
+    ASSERT_TRUE(ghost->SetSideOpacity(0.5f));
+    ASSERT_TRUE(ghost->SetAfterimageOpacity(0.25f));
+    scene.OnUpdate();
+    parent->PrepareRender();
+    EXPECT_EQ(ghost->Root().WorldMatrix(), parent->Root().WorldMatrix());
+
     NS::Gfx::RenderContext context{};
-    context.alpha = 0.5f;
     context.groundWave.strength = 2.0f;
     std::vector<NS::Gfx::DrawItem> copies;
-    child->Collect(context, NS::RenderSource{child->Root().InterpolatedWorldMatrix(context.alpha)}, copies);
-    ASSERT_EQ(copies.size(), 2u);
-    EXPECT_FLOAT_EQ(copies[0].constants.world._41, 13.0f);
-    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 40.0f);
+    ghost->Collect(context, NS::RenderSource{ghost->Root().WorldMatrix()}, copies);
+    ASSERT_EQ(copies.size(), 3u);
+    EXPECT_FLOAT_EQ(copies[0].constants.world._41, 5.0f);
+    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 3.0f);
+    EXPECT_FLOAT_EQ(copies[2].constants.world._41, 0.0f);
     EXPECT_FLOAT_EQ(copies[0].constants.opacity, 0.5f);
-    EXPECT_FLOAT_EQ(copies[1].constants.opacity, 0.25f);
+    EXPECT_FLOAT_EQ(copies[1].constants.opacity, 0.5f);
+    EXPECT_FLOAT_EQ(copies[2].constants.opacity, 0.25f);
     EXPECT_EQ(copies[0].blend, NS::Gfx::BlendMode::Alpha);
     EXPECT_FLOAT_EQ(copies[0].constants.groundWaveStrength, 0.0f);
     std::vector<NS::Gfx::DrawItem> body;
     parent->ModelClassObj()->Collect(context, NS::RenderSource{parent->Root().WorldMatrix()}, body);
     ASSERT_EQ(body.size(), 1u);
     EXPECT_EQ(copies[0].mesh, body[0].mesh);
-    EXPECT_EQ(copies[1].material, body[0].material);
-    EXPECT_FLOAT_EQ(body[0].constants.world._41, 4.0f);
+    EXPECT_EQ(copies[2].material, body[0].material);
     EXPECT_FLOAT_EQ(body[0].constants.opacity, 1.0f);
     EXPECT_FLOAT_EQ(body[0].constants.groundWaveStrength, 2.0f);
-    const NS::AABB bounds = child->WorldBounds(NS::RenderSource{child->Root().WorldMatrix()});
-    EXPECT_GE(bounds.Center.x + bounds.Extents.x, 40.0f);
-    parent->Root().SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
-    child->Root().SetPosition(NS::Vector3{100.0f, 0.0f, 0.0f});
-    copies.clear();
-    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
-    ASSERT_EQ(copies.size(), 2u);
-    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 40.0f);
-    const std::size_t registered = parent->GetSceneRenderer()->RenderableCount();
-    child->UseParentModel();
-    EXPECT_EQ(parent->GetSceneRenderer()->RenderableCount(), registered);
-    const std::size_t enabled = parent->GetSceneRenderer()->EnabledRenderableCount();
-    child->Disappear();
-    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled - 1u);
+    EXPECT_EQ(ghost->SortPriority(), -1);
+
+    NS::SceneRenderer* renderer = parent->GetSceneRenderer();
+    const std::size_t registered = renderer->RenderableCount();
+    const std::size_t enabled = renderer->EnabledRenderableCount();
+    ghost->Disappear();
+    EXPECT_EQ(renderer->EnabledRenderableCount(), enabled - 1u);
     EXPECT_TRUE(parent->IsAppeared());
-    NS::ShowModel(parent, parent->ModelClassObj());
-    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled - 1u);
-    child->Appear();
-    EXPECT_EQ(parent->GetSceneRenderer()->EnabledRenderableCount(), enabled);
+    ghost->Appear();
+    EXPECT_EQ(renderer->EnabledRenderableCount(), enabled);
+    ghost->OnEndPlay();
     copies.clear();
-    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
-    EXPECT_EQ(copies.size(), 2u);
-    child->OnEndPlay();
-    copies.clear();
-    child->Collect(context, NS::RenderSource{child->Root().WorldMatrix()}, copies);
+    ghost->Collect(context, NS::RenderSource{ghost->Root().WorldMatrix()}, copies);
     EXPECT_TRUE(copies.empty());
-    EXPECT_EQ(parent->GetSceneRenderer()->RenderableCount(), registered - 1u);
+    EXPECT_EQ(renderer->RenderableCount(), registered - 1u);
 }
 
 TEST(ActorChild, ReloadsTheChildAssetsAfterTheParent)
@@ -413,12 +534,13 @@ TEST(ActorChild, PausesTheAfterimageWhileHiddenAndContinuesAfterReappearing)
                        {"左右の残像の不透明度", 0.4f},
                        {"明けの残像のフレーム数", 4.0f},
                        {"明けの残像の不透明度", 0.6f}};
-    player->Ghost()->Start(run, player);
+    player->Ghost()->Start(run);
     scene.OnUpdate();
     const float firstSpread = player->Ghost()->Spread().Length();
     ASSERT_GT(firstSpread, 0.0f);
-    EXPECT_EQ(player->ChildActor()->Root().Position(), player->Root().Position());
-    EXPECT_EQ(player->ChildActor()->Root().PreviousPosition(), player->Root().PreviousPosition());
+    player->PrepareRender();
+    EXPECT_EQ(player->Ghost()->Root().Position(), player->Root().Position());
+    EXPECT_EQ(player->Ghost()->Root().PreviousPosition(), player->Root().PreviousPosition());
     player->Disappear();
     scene.OnUpdate();
     scene.OnUpdate();
@@ -473,10 +595,10 @@ TEST(ActorChild, ResyncsTheLiveCopiesAfterTheParentMovesLaterInTheStep)
     prop->Root().ShiftPosition(NS::Vector3{-10.0f, 0.0f, 0.0f});
     player->PrepareRender();
     prop->PrepareRender();
-    EXPECT_EQ(player->ChildActor()->Root().WorldMatrix(), player->Root().WorldMatrix());
-    EXPECT_EQ(player->ChildActor()->Root().PreviousPosition(), player->Root().PreviousPosition());
-    EXPECT_EQ(prop->ChildActor()->Root().WorldMatrix(), prop->Root().WorldMatrix());
-    EXPECT_EQ(prop->ChildActor()->Root().PreviousPosition(), prop->Root().PreviousPosition());
+    EXPECT_EQ(player->Ghost()->Root().WorldMatrix(), player->Root().WorldMatrix());
+    EXPECT_EQ(player->Ghost()->Root().PreviousPosition(), player->Root().PreviousPosition());
+    EXPECT_EQ(prop->Ghost()->Root().WorldMatrix(), prop->Root().WorldMatrix());
+    EXPECT_EQ(prop->Ghost()->Root().PreviousPosition(), prop->Root().PreviousPosition());
     EXPECT_EQ(player->Ghost()->AfterimageWorldMatrix(), playerCapture);
     EXPECT_EQ(prop->Ghost()->AfterimageWorldMatrix(), propCapture);
 }

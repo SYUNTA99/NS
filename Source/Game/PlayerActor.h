@@ -112,22 +112,9 @@ public:
     [[nodiscard]] GL::Level::TargetMarker& TargetIndicator() noexcept { return *m_targetMarker; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
     [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
-    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept
-    {
-        if (ChildActor() == nullptr)
-        {
-            return nullptr;
-        }
-        return &m_ghost;
-    }
-    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept
-    {
-        if (ChildActor() == nullptr)
-        {
-            return nullptr;
-        }
-        return &m_ghost;
-    }
+    //! 体当たりの残像の子。OnInit で作り、自機と一緒に終わる
+    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost; }
+    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost; }
 
     // =========================================================================
     // 更新・アニメーション・移動入力・ジャンプ状態
@@ -138,7 +125,6 @@ public:
     //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
     void UpdateAnimation();
     void OnEndPlay() override;
-    void PrepareRender() override;
 
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
     //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
@@ -485,7 +471,7 @@ private:
     BeforeContactEntry m_beforeContact;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
-    GL::Level::TackleGhost m_ghost;
+    GL::Level::TackleGhost* m_ghost = nullptr; // 子として基底が所有する
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================

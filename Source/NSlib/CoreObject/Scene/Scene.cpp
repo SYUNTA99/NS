@@ -1,5 +1,4 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -283,10 +282,7 @@ namespace NS
         // 素材は作る関数の Init が読み終えている
         obj->Start();
         // 後から入る物は他のアクターが既に揃っている
-        for (SceneActor* actor = obj; actor != nullptr; actor = actor->ChildActor())
-        {
-            actor->InitAfterPlacement();
-        }
+        obj->VisitSelfAndDescendants([](SceneActor* actor) { actor->InitAfterPlacement(); });
     }
 
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)

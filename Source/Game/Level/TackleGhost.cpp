@@ -1,22 +1,22 @@
 #include "Game/Level/TackleGhost.h"
-#include "NSlib/CoreObject/ChildActorObj.h"
 
 #include "NSlib/Core/Assert.h"
+#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/IGet/IGetRenderer.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 
 namespace GL
 {
     namespace Level
     {
-        void TackleGhost::Start(const NS::HitOwnerRun& run, const NS::SceneActor* owner)
+        void TackleGhost::Start(const NS::HitOwnerRun& run)
         {
+            const NS::SceneActor* owner = ParentActor();
             NS_ASSERT(Game, owner != nullptr, "残像に親アクターが無い");
             if (run.length <= 0)
             {
@@ -41,51 +41,12 @@ namespace GL
             m_running = true;
         }
 
-        void TackleGhost::Advance(NS::SceneActor* owner)
+        void TackleGhost::Stop() noexcept
         {
-            NS_ASSERT(Game, owner != nullptr, "残像の持ち主が渡されていない");
-            NS::ChildActorObj* child = owner->ChildActor();
-            if (child == nullptr || !child->IsAppeared())
-            {
-                return;
-            }
-            child->Root().CopyFrom(owner->Root());
-            if (m_running)
-            {
-                ++m_frame;
-                m_running = m_desc.WriteTo(this, m_frame, owner->ModelClassObj(), owner->Root().WorldMatrix());
-            }
-            std::array<NS::ModelDraw, 3> draws{};
-            std::size_t count = 0;
-            if (m_spread.LengthSquared() > 0.0f)
-            {
-                for (const float side : {1.0f, -1.0f})
-                {
-                    draws[count++] = NS::ModelDraw{.offset = m_spread * side,
-                                                   .opacity = m_sideOpacity,
-                                                   .groundWave = false};
-                }
-            }
-            if (m_afterimageOpacity > 0.0f)
-            {
-                draws[count++] = NS::ModelDraw{.world = m_afterimageWorld,
-                                               .opacity = m_afterimageOpacity,
-                                               .groundWave = false,
-                                               .tremor = false};
-            }
-            child->SetModelDraws(std::span<const NS::ModelDraw>{draws.data(), count});
-        }
-
-        void TackleGhost::Stop(NS::SceneActor* owner) noexcept
-        {
-            NS_ASSERT(Game, owner != nullptr, "残像の持ち主が渡されていない");
             m_running = false;
             (void)SetSpread(NS::Vector3{});
             (void)SetAfterimageOpacity(0.0f);
-            if (owner->ChildActor() != nullptr)
-            {
-                owner->ChildActor()->SetModelDraws({});
-            }
+            m_draws.clear();
         }
 
         void TackleGhost::ScaleOpacity(float scale) noexcept
@@ -137,6 +98,120 @@ namespace GL
             }
             m_afterimageOpacity = std::clamp(opacity, 0.0f, 1.0f);
             return true;
+        }
+
+        void TackleGhost::Collect(const NS::Gfx::RenderContext& context,
+                                  const NS::RenderSource& source,
+                                  std::vector<NS::Gfx::DrawItem>& out)
+        {
+            const NS::Model* model = ParentModel();
+            if (m_drawRegistered && model != nullptr)
+            {
+                model->CollectDraws(context, source, m_draws, out);
+            }
+        }
+
+        NS::AABB TackleGhost::WorldBounds(const NS::RenderSource& source) const noexcept
+        {
+            const NS::Model* model = ParentModel();
+            if (m_drawRegistered && model != nullptr)
+            {
+                return model->DrawsWorldBounds(source, m_draws);
+            }
+            return {};
+        }
+
+        NS::Vector3 TackleGhost::SortCenter(const NS::RenderSource& source) const noexcept
+        {
+            const NS::Model* model = ParentModel();
+            if (m_drawRegistered && model != nullptr)
+            {
+                return model->SortCenter(source);
+            }
+            return source.root.Translation();
+        }
+
+        void TackleGhost::PrepareRender()
+        {
+            // 親の根は、親の更新の後に届いた衝突の知らせでも動く。描く直前に補間の前後をそろえる
+            NS_ASSERT(Game, ParentActor() != nullptr, "残像に親アクターが無い");
+            Root().CopyFrom(ParentActor()->Root());
+            NS::SceneActor::PrepareRender();
+        }
+
+        void TackleGhost::OnEndPlay()
+        {
+            NS::SceneActor::OnEndPlay();
+            m_draws.clear();
+            if (m_drawRegistered)
+            {
+                NS::EndDraw(this, this);
+                m_drawRegistered = false;
+            }
+        }
+
+        void TackleGhost::OnInit()
+        {
+            if (ParentModel() == nullptr)
+            {
+                NS_LOG_ERROR(Game, "残像の親に描く Model が無いので、残像を描かない");
+                return;
+            }
+            NS::InitDraw(this, this, &Root());
+            m_drawRegistered = true;
+        }
+
+        void TackleGhost::OnAppear()
+        {
+            NS::SceneActor::OnAppear();
+            if (m_drawRegistered)
+            {
+                NS::ShowModel(this, this);
+            }
+        }
+
+        void TackleGhost::OnDisappear() noexcept
+        {
+            NS::SceneActor::OnDisappear();
+            if (m_drawRegistered)
+            {
+                NS::HideModel(this, this);
+            }
+        }
+
+        void TackleGhost::VisualStep()
+        {
+            const NS::SceneActor* owner = ParentActor();
+            NS_ASSERT(Game, owner != nullptr, "残像に親アクターが無い");
+            if (m_running)
+            {
+                ++m_frame;
+                m_running = m_desc.WriteTo(this, m_frame, owner->ModelClassObj(), owner->Root().WorldMatrix());
+            }
+            m_draws.clear();
+            if (m_spread.LengthSquared() > 0.0f)
+            {
+                for (const float side : {1.0f, -1.0f})
+                {
+                    m_draws.push_back(NS::ModelDraw{.offset = m_spread * side,
+                                                    .opacity = m_sideOpacity,
+                                                    .groundWave = false});
+                }
+            }
+            if (m_afterimageOpacity > 0.0f)
+            {
+                m_draws.push_back(NS::ModelDraw{.world = m_afterimageWorld,
+                                                .opacity = m_afterimageOpacity,
+                                                .groundWave = false,
+                                                .tremor = false});
+            }
+        }
+
+        const NS::Model* TackleGhost::ParentModel() const noexcept
+        {
+            // 親は CreateChildActor が OnInit より先に設定する
+            NS_ASSERT(Game, ParentActor() != nullptr, "残像に親アクターが無い");
+            return ParentActor()->ModelClassObj();
         }
 
     } // namespace Level

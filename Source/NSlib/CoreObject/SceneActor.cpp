@@ -2,7 +2,6 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/ChildActorObj.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
@@ -54,8 +53,6 @@ namespace NS
     Transform& SceneActor::Root() noexcept { return *m_transform; }
 
     const Transform& SceneActor::Root() const noexcept { return *m_transform; }
-
-    const Model* SceneActor::ModelSource() const noexcept { return m_model.get(); }
 
     const ClassObjInfo* SceneActor::FindReflectedMember(const void* member) const
     {
@@ -126,9 +123,9 @@ namespace NS
         }
         m_presence = Presence::Appeared;
         OnAppear();
-        if (m_child != nullptr && !m_child->IsPendingDestroy())
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->Appear();
+            child->Appear();
         }
     }
 
@@ -140,14 +137,19 @@ namespace NS
         }
         m_presence = Presence::Disappeared;
         OnDisappear();
-        if (m_child != nullptr)
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->Disappear();
+            child->Disappear();
         }
     }
 
     void SceneActor::Destroy() noexcept
     {
+        if (m_parent != nullptr)
+        {
+            NS_LOG_ERROR(Scene, "子の {} は親と一緒に終わるので、単独では消さない。外すなら Disappear を使う", ClassName());
+            return;
+        }
         Disappear();
         m_presence = Presence::PendingDestroy;
     }
@@ -239,31 +241,18 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
-    void SceneActor::InitChild(std::unique_ptr<ChildActorObj> child)
+    void SceneActor::InitChild(std::unique_ptr<SceneActor> child)
     {
-        m_child = std::move(child);
-        m_child->m_parent = this;
-        m_child->m_scene = m_scene;
-        m_child->InitWithCodeValues({});
+        SceneActor* raw = child.get();
+        m_children.push_back(std::move(child));
+        raw->m_parent = this;
+        raw->m_scene = m_scene;
+        raw->InitWithCodeValues({});
+        // 子はコンストラクタで出ているので、隠れている親の子は隠す
         if (!IsAppeared())
         {
-            m_child->Disappear();
+            raw->Disappear();
         }
-    }
-
-    void SceneActor::RemoveDestroyedChildren()
-    {
-        if (m_child == nullptr)
-        {
-            return;
-        }
-        if (m_child->IsPendingDestroy())
-        {
-            m_child->OnEndPlay();
-            m_child.reset();
-            return;
-        }
-        m_child->RemoveDestroyedChildren();
     }
 
     void SceneActor::InitWithCodeValues(std::string_view actorFile)
@@ -346,9 +335,9 @@ namespace NS
         {
             m_model->ChooseDrawnMaterial();
         }
-        if (m_child != nullptr)
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->ReloadAssets();
+            child->ReloadAssets();
         }
     }
 
@@ -380,9 +369,9 @@ namespace NS
         }
         m_started = true;
         OnStart();
-        if (m_child != nullptr)
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->Start();
+            child->Start();
         }
     }
 
@@ -525,9 +514,12 @@ namespace NS
         // clang-format off
         if (m_model) { m_model->AdvanceDraw(this, Root().Position()); }
         // clang-format on
-        if (m_child != nullptr && m_child->IsAppeared())
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->Update();
+            if (child->IsAppeared())
+            {
+                child->Update();
+            }
         }
         VisualStep();
         if (m_hitStopFrames > 0)
@@ -542,9 +534,9 @@ namespace NS
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
         // clang-format on
-        if (m_child != nullptr)
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->SnapshotForInterpolation();
+            child->SnapshotForInterpolation();
         }
     }
 
@@ -553,17 +545,20 @@ namespace NS
         // clang-format off
         if (m_animation) { m_animation->Update(m_model.get(), GetFrameDelta(this)); }
         // clang-format on
-        if (m_child != nullptr && m_child->IsAppeared())
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->PrepareRender();
+            if (child->IsAppeared())
+            {
+                child->PrepareRender();
+            }
         }
     }
 
     void SceneActor::OnEndPlay()
     {
-        if (m_child != nullptr)
+        for (const std::unique_ptr<SceneActor>& child : m_children)
         {
-            m_child->OnEndPlay();
+            child->OnEndPlay();
         }
         // 描く物・センサー・当たりの body は消えても残っているので、出ていたかを問わずここで外す
         Disappear();
