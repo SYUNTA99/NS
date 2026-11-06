@@ -170,28 +170,3 @@ TEST(MissTumble, TumbleBlendsIntoTheTwistAndTiltsByTheWobble)
         EXPECT_NEAR(-axis.y, std::cos(NS::ToRadians(NS::Degrees{wobble}).value), 1.0e-4f);
     }
 }
-
-// 溜めて外したほど大きく振り回される。突進の回転を欄の割合だけ引き継ぎ、ねじれに足す
-TEST(MissTumble, TumbleCarriesTheSlamSpin)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceTumblePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&player->Appearance(),
-                                  {{"外れの縁でのねじれの回転数", 0.0f},
-                                   {"外れで当たる前の回転を引き継ぐ割合", 0.5f},
-                                   {"外れの回転を寄せるフレーム数", 1},
-                                   {"外れの軸のぶれの角度", 0.0f}}),
-              0u);
-    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    player->Update(false);
-    ASSERT_TRUE(player->IsBodySlamming());
-    const float slamDegrees = player->Appearance().SpinDegreesThisFrame();
-    const NS::Vector3 slamAxis = player->Appearance().SpinAxis();
-    ASSERT_GT(slamDegrees, 0.0f);
-
-    ASSERT_TRUE(player->BeginRebound(MissArc(3.0f)));
-    player->Update(false);
-    EXPECT_NEAR(player->Appearance().SpinDegreesThisFrame(), slamDegrees * 0.5f, 1.0e-3f);
-    EXPECT_NEAR(player->Appearance().SpinAxis().Dot(slamAxis), 1.0f, 1.0e-4f);
-}

@@ -457,62 +457,6 @@ TEST(GameScene, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
     EXPECT_FALSE(scene.IsClearing());
 }
 
-// 当たりを検知した歩に押したリスポーンは断る。相手だけが戻ると、明けの知らせが戻った相手を飛ばす
-TEST(GameScene, RespawnPressedInTheStepOfAHitLeavesTheTargetInPlace)
-{
-    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
-    const NS::Vector3 playerAt{0.0f, 1.0f, 0.0f};
-    const NS::Vector3 rockAt{0.0f, 1.0f, 2.0f};
-    constexpr int k_MaxSteps = 30;
-
-    // 当たるまでの歩は毎回同じなので、押さずに回して当たる歩を数えてから、その歩で押して回す
-    int hitStep = -1;
-    {
-        GL::Level::GameScene scene;
-        scene.ResetFromJson(doc);
-        scene.StartPlay();
-        PlayerActor* player = FindPlayer(scene.Actors());
-        ASSERT_NE(player, nullptr);
-        NS::SceneActor* rock = FindProp(scene);
-        ASSERT_NE(rock, nullptr);
-        player->Root().SetPosition(playerAt);
-        rock->Root().SetPosition(rockAt);
-        player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-        for (int step = 0; step < k_MaxSteps && hitStep < 0; ++step)
-        {
-            scene.OnUpdate();
-            if (player->Resolver().Answer().lastImpact.sequence > 0)
-            {
-                hitStep = step;
-            }
-        }
-    }
-    ASSERT_GE(hitStep, 0);
-
-    GL::Level::GameScene scene;
-    scene.ResetFromJson(doc);
-    scene.StartPlay();
-    PlayerActor* player = FindPlayer(scene.Actors());
-    ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = FindProp(scene);
-    ASSERT_NE(rock, nullptr);
-    player->Root().SetPosition(playerAt);
-    rock->Root().SetPosition(rockAt);
-    player->RequestBodySlam(1.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    for (int step = 0; step < hitStep; ++step)
-    {
-        scene.OnUpdate();
-    }
-    {
-        const KeyPress press{NS::OS::Key::R};
-        scene.OnUpdate();
-    }
-
-    ASSERT_GT(player->Resolver().Answer().lastImpact.sequence, 0u);
-    // 開始時の姿は x = 5 にある。戻っていなければ、置いた x = 0 の近くに居る
-    EXPECT_NEAR(rock->Root().Position().x, rockAt.x, 0.5f);
-}
-
 TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
 {
     const nlohmann::json doc = CourseWithProp(CourseWithPlayerOnGoal());

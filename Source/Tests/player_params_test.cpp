@@ -104,13 +104,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"縁の横移動速度", 2.0f},
                                      {"振り向きの速さ", 970.0f},
                                      {"チャージ突進の速度", 20.0f},
-                                     {"チャージ突進の距離", 10.0f},
                                      {"放つ角度の上限", 40.0f},
-                                     {"通常突進の初速", 15.0f},
-                                     {"通常突進の上向き初速", 3.0f},
-                                     {"通常突進の距離", 6.25f},
-                                     {"狙いの巻き戻し秒", 0.11f},
-                                     {"狙いの巻き戻しが消える秒", 0.19f},
                                      {"反動の上りの重力倍率", 0.5f},
                                      {"反動中の空中の加速度", 2.0f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -188,11 +182,8 @@ TEST(PlayerParams, AppearanceDefaultsBelongToThePartThatDrawsThem)
                                        {"外れの回転を寄せるフレーム数", 6},
                                        {"外れの軸のぶれの角度", 10.0f},
                                        {"外れの軸のぶれの速さ", 1.5f}};
-    // 回転数は PlayerActor が突進と反動の回る速さを出すのに読むので、調整値の部品に残る
-    const nlohmann::json spin = {{"溜めた突進の届くまでの回転数", 5.0f},
-                                 {"通常突進の届くまでの回転数", 2.0f},
-                                 {"溜めて当てた反動の回転数", 3.0f},
-                                 {"通常突進で当てた反動の回転数", 1.0f}};
+    // 回転数は PlayerActor が反動の回る速さを出すのに読むので、調整値の部品に残る
+    const nlohmann::json spin = {{"溜めて当てた反動の回転数", 3.0f}};
     ExpectClassObjFields(&player.Appearance(), appearance);
     ExpectClassObjFields(&player.Params(), spin);
     ExpectNotInParams(&player, appearance);
@@ -308,35 +299,6 @@ TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
     EXPECT_EQ(unknown.holdLastFrame, wide.holdLastFrame);
     EXPECT_EQ(unknown.sparkHeading, wide.sparkHeading);
     EXPECT_FALSE(unknown.centerLayers);
-}
-
-TEST(PlayerParams, LiveImpactTuningDrivesReboundAndLaunchRecord)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
-    // 自機の玉の中心 (根 1 m − 半分の高さ 0.5 m) と同じ高さ。赤の真ん中に当たり、威力の倍率は 1
-    AddActorJson(doc, "PropActor", 2, NS::Vector3{0.0f, 0.5f, 1.0f});
-    scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(player, nullptr);
-    // 飛び方の高さは相手の欄に書く。.actor だけが持つ欄なので、読んだ後のアクターへ書く
-    GL::Level::PropActor* target = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(2));
-    ASSERT_NE(target, nullptr);
-    ASSERT_EQ(NS::ApplyJsonFields(&target->Params(), nlohmann::json{{"押し飛ばしの高さ", 3.0f}}), 0u);
-    EXPECT_FALSE(NS::SerializeClassObjFields(&player->Params()).contains("押し飛ばしの高さ"));
-    EXPECT_EQ(NS::ApplyJsonFields(
-                  &player->Params(),
-                  {{"押し飛ばしの距離", 8.0f}, {"反動の高さ", 2.0f}, {"中心近くの当たりの反動の高さの倍率", 1.0f}}),
-              0u);
-    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->BodySlam());
-    player->Update(false);
-    ASSERT_TRUE(player->Resolver().Answer().rebounded);
-    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-    EXPECT_FLOAT_EQ(impact.launchDistance, 8.0f);
-    EXPECT_FLOAT_EQ(impact.launchApexHeight, 3.0f);
-    EXPECT_FLOAT_EQ(impact.reboundApexHeight, 2.0f);
 }
 
 // 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも

@@ -10,6 +10,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -94,8 +95,8 @@ namespace NS
                             camera->Vcam().SetInitialPoseFromCameraPosition(behind);
                         }
                     }
+                    // 体当たりは無いので、自機は突進しない。下見は当たらない結果になる
                     outPlayer->Input().SetLocked(true);
-                    outPlayer->RequestBodySlam(placement.desc.charge01, placement.direction);
                 }
                 return scene;
             }
@@ -339,7 +340,9 @@ namespace NS
             }
             const SensorVolume body = bodySensor->WorldVolume(target->Root().WorldMatrix());
             const Vector3 root = player->Root().Position();
-            const Sphere ball = player->SlamBallAt(root);
+            // 当たりのカプセルの下の球。丸まりで下端を揃えるので、立ち姿と玉で同じ球
+            const Phys::Capsule capsule = player->Collider().CapsuleAt(root);
+            const Sphere ball{capsule.center - capsule.axis * capsule.halfHeight, capsule.radius};
             const Vector3 ballOffset = ball.center - root;
             // 向きはエディタが面を描く時と同じく、自機の玉から相手の体の中心へ
             GL::Level::HitFaceFrame face;

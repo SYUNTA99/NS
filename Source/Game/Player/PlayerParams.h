@@ -134,13 +134,7 @@ namespace GL
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
             NS_GROUP("突進")
             NS_FIELD(m_bodySlamSpeed, "チャージ突進の速度")
-            NS_FIELD(m_bodySlamDistance, "チャージ突進の距離")
             NS_FIELD(m_launchPitchLimitDegrees, "放つ角度の上限")
-            NS_FIELD(m_tapSlamSpeed, "通常突進の初速")
-            NS_FIELD(m_tapSlamUpSpeed, "通常突進の上向き初速")
-            NS_FIELD(m_tapSlamDistance, "通常突進の距離")
-            NS_FIELD(m_slamAimHoldTime, "狙いの巻き戻し秒")
-            NS_FIELD(m_slamAimFadeTime, "狙いの巻き戻しが消える秒")
             NS_GROUP("溜め")
             NS_FIELD(m_chargeFactorCurve, "チャージ倍率カーブ")
             NS_FIELD(m_overchargePowerMax, "紫の威力の上限")
@@ -194,10 +188,7 @@ namespace GL
             NS_FIELD(m_breakSpeedScale, "貫通時の減速倍率")
             NS_FIELD(m_breakStopSeconds, "貫通の止め秒")
             NS_GROUP("演出: 突進の回転数")
-            NS_FIELD(m_chargedSlamTurns, "溜めた突進の届くまでの回転数")
-            NS_FIELD(m_tapSlamTurns, "通常突進の届くまでの回転数")
             NS_FIELD(m_chargedReboundTurns, "溜めて当てた反動の回転数")
-            NS_FIELD(m_tapReboundTurns, "通常突進で当てた反動の回転数")
             NS_GROUP("計算の内部")
             NS_FIELD(m_contactTolerance, "突進の接触探索の誤差")
             NS_FIELD(m_launchHeightTolerance, "突進の高さ探索の誤差")
@@ -237,10 +228,7 @@ namespace GL
             float m_breakSpeedScale = 0.75f;
             float m_breakStopSeconds = 4.0f / 60.0f;
             // 回転数で指定し、到達時間から速さを求める。速度や距離を変えても回る数を保つ
-            float m_chargedSlamTurns = 5.0f;    // 溜めた突進が届くまでに回る回転数
-            float m_tapSlamTurns = 2.0f;        // 通常突進が届くまでに回る回転数
-            float m_chargedReboundTurns = 3.0f; // 溜めて当てた反動が着地までに回る回転数
-            float m_tapReboundTurns = 1.0f;     // 通常突進で当てた反動が着地までに回る回転数
+            float m_chargedReboundTurns = 3.0f; // 当てた反動が着地までに回る回転数
             friend class ::PlayerActor;
             // 溜めすぎきった時に、溜めきりの威力へ掛ける倍率
             float m_overchargePowerMax = 1.5f;
@@ -277,15 +265,8 @@ namespace GL
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
             float m_bodySlamSpeed = 20.0f;
-            float m_bodySlamDistance = 10.0f;
             // 赤の高さへ向ける角度の上限 (度)。突進で高所へ登れる範囲を抑える
             float m_launchPitchLimitDegrees = 40.0f;
-            // 通常突進の速度 (m/s)。距離は溜めた突進と同じ
-            float m_tapSlamSpeed = 15.0f;
-            float m_tapSlamUpSpeed = 3.0f;
-            float m_tapSlamDistance = 6.25f;
-            float m_slamAimHoldTime = 0.11f;
-            float m_slamAimFadeTime = 0.19f;
             float m_reboundRiseGravityScale = 0.5f;
             float m_reboundAirAcceleration = 2.0f;
             float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む

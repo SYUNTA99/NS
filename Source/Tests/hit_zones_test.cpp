@@ -131,30 +131,6 @@ namespace
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     }
 
-    // 溜め 0 で +z へ突進させ、本番の 1 フレームを 1 回回す。裁定は決定の段で身体が動く前に記録される
-    // 溜め 0 のチャージ倍率は 1
-    const GL::Level::ImpactRecord& SlamOnce(PlayerActor* player)
-    {
-        NS_ASSERT(Game, player != nullptr, "SlamOnce: 渡したアクターか部品が無い");
-        player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
-        EXPECT_TRUE(player->BodySlam());
-        player->Update(false);
-        return player->Resolver().Answer().lastImpact;
-    }
-
-    // 裁定の観測と決定を、自機の DecideStep と同じ引数で 1 回ずつ呼ぶ。答えにある自機を動かす事はしない
-    void ObserveAndStepImpact(PlayerActor* player)
-    {
-        NS_ASSERT(Game, player != nullptr, "ObserveAndStepImpact: 渡したアクターか部品が無い");
-        player->Resolver().ObserveImpact(player->SelfForImpact(), player->SlamMotion(), &player->Collider());
-        player->Resolver().StepState(player->SelfForImpact(),
-                                    player->SlamMotion(),
-                                    &player->Params(),
-                                    &player->Body(),
-                                    &player->Collider(),
-                                    player->HitReactionClassObj());
-    }
-
     bool FindSlamLineTarget(PlayerActor* player,
                             const Vector3& direction,
                             float distance,
@@ -732,32 +708,6 @@ TEST(HitZonesTest, RedOutlineAgreesWithTheJudgement)
     EXPECT_GT(checked, 0);
 }
 
-// 直近の当たりの記録に、自機の玉が相手の表面に触れた点が載る。エディタはこの点にマーカーを描く
-TEST(HitZonesTest, LastImpactRecordsWhereTheBallTouchedTheSurface)
-{
-    NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PlayerActor", 1, Vector3{0.0f, 1.0f, 0.0f});
-    AddActorJson(doc, "PropActor", 2, Vector3{0.0f, 1.0f, 1.0f});
-    scene.ResetFromJson(doc);
-    PlayerActor* player = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
-    ASSERT_NE(player, nullptr);
-    const NS::SceneActor* target = scene.Actors().FindByActorId(2);
-    ASSERT_NE(target, nullptr);
-    const SensorVolume body = target->HitSensorsClassObj()->Find("Body")->WorldVolume(target->Root().WorldMatrix());
-
-    player->RequestBodySlam(0.0f, Vector3{0.0f, 0.0f, 1.0f});
-    ASSERT_TRUE(player->BodySlam());
-    player->Update(false);
-    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-    ASSERT_EQ(impact.sequence, 1u);
-
-    const Vector3 center = body.Center();
-    EXPECT_NEAR((impact.surfacePoint - center).Length(), body.radius, k_Tolerance);
-    // 自機の来た側の表面
-    EXPECT_LT(impact.surfacePoint.z, center.z);
-}
-
 // 体の形が判定できない時は、中心近く・係数 1 にせず外れと残りの威力の倍率にする。触れた点は体の中心
 TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
 {
@@ -793,89 +743,6 @@ TEST(HitZonesTest, BodyThatIsNoShapeFallsToWideWithTheRemainderPower)
     EXPECT_FLOAT_EQ(passed.surfacePoint.x, judged.surfacePoint.x);
 }
 
-// 裁定の段と威力の当たり位置の係数は、相手の面の同じ決まりから出る
-// 相手の赤の位置を変えると、同じ線でもその相手だけ外れになる
-TEST(HitZonesTest, VerdictTakesTheTierAndPowerFromTheFace)
-{
-    NS::Scene plainScene;
-    PlayerActor* plain =
-        PlaceSlamTarget(plainScene, {{"HitZones", {{"威力の倍率", 1.1f}, {"残りの威力の倍率", 0.6f}}}});
-    ASSERT_NE(plain, nullptr);
-    const GL::Level::ImpactRecord& centered = SlamOnce(plain);
-    ASSERT_EQ(centered.sequence, 1u);
-    EXPECT_EQ(centered.tier, HitTier::Center);
-    EXPECT_FLOAT_EQ(centered.positionFactor, 1.1f);
-    EXPECT_FLOAT_EQ(centered.power, 1.1f);
-    EXPECT_TRUE(centered.centerHit);
-
-    NS::Scene movedScene;
-    PlayerActor* moved = PlaceSlamTarget(
-        movedScene, {{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}, {"残りの威力の倍率", 0.6f}}}});
-    ASSERT_NE(moved, nullptr);
-    const GL::Level::ImpactRecord& missed = SlamOnce(moved);
-    ASSERT_EQ(missed.sequence, 1u);
-    EXPECT_EQ(missed.tier, HitTier::Wide);
-    EXPECT_FLOAT_EQ(missed.positionFactor, 0.6f);
-    EXPECT_FLOAT_EQ(missed.power, 0.6f);
-    EXPECT_FALSE(missed.centerHit);
-}
-
-// 上下のずれも段に効く。赤の既定 0.43 に対し、玉の中心が相手の中心より 0.5 m 低い線は 0.5 ÷ 1.15 ≒ 0.435 で外
-// 溜め 0 の通常突進は上向きの初速で 1 ステップぶん上がって赤へ入るので、縦の速さ 0 を添えた溜めた突進で見る
-TEST(HitZonesTest, VerdictMissesWhenTheLinePassesBelowTheRed)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
-    ASSERT_NE(player, nullptr);
-    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, 0.0f);
-    ASSERT_TRUE(player->BodySlam());
-    ObserveAndStepImpact(player);
-    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-    ASSERT_EQ(impact.sequence, 1u);
-    EXPECT_EQ(impact.tier, HitTier::Wide);
-    EXPECT_FLOAT_EQ(impact.positionFactor, 0.7f);
-    // 横にはずれていない
-    EXPECT_NEAR(impact.offset01, 0.0f, k_Tolerance);
-}
-
-// 段は重なりを見たのと同じ、この固定ステップで進んだ先の玉の高さで決める
-// 今の玉の中心は相手より 0.5 m 低く赤の外。1 ステップで 0.15 m 上がる速さなら 0.35 ÷ 1.15 ≒ 0.30 で赤の中
-TEST(HitZonesTest, VerdictJudgesTheBallWhereThisStepMovesIt)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object(), 1.0f);
-    ASSERT_NE(player, nullptr);
-    const float riseSpeed = 0.15f / NS::OS::FrameTimer::FixedDelta();
-    player->RequestBodySlam(1.0f, Vector3{0.0f, 0.0f, 1.0f}, riseSpeed);
-    ASSERT_TRUE(player->BodySlam());
-    ASSERT_FLOAT_EQ(player->BodySlamVelocity().y, riseSpeed);
-    ObserveAndStepImpact(player);
-    const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-    ASSERT_EQ(impact.sequence, 1u);
-    EXPECT_EQ(impact.tier, HitTier::Center);
-}
-
-// 押している間の狙いの予測は、裁定と同じ面の判定で段と横ずれを出す
-TEST(HitZonesTest, AimPredictionGivesTheSameTierAsTheVerdict)
-{
-    const nlohmann::json raised{{"HitZones", {{"上下の位置", 0.8f}, {"縦の幅", 0.15f}}}};
-    const std::vector<std::pair<nlohmann::json, HitTier>> cases{{nlohmann::json::object(), HitTier::Center},
-                                                                {raised, HitTier::Wide}};
-    for (const std::pair<nlohmann::json, HitTier>& entry : cases)
-    {
-        NS::Scene scene;
-        PlayerActor* player = PlaceSlamTarget(scene, entry.first);
-        ASSERT_NE(player, nullptr);
-        GL::Level::SlamLineTarget predicted{};
-        ASSERT_TRUE(FindSlamLineTarget(player, Vector3{0.0f, 0.0f, 1.0f}, 10.0f, predicted));
-        EXPECT_EQ(predicted.tier, entry.second);
-        const GL::Level::ImpactRecord& impact = SlamOnce(player);
-        ASSERT_EQ(impact.sequence, 1u);
-        EXPECT_EQ(predicted.tier, impact.tier);
-        EXPECT_FLOAT_EQ(predicted.offset, impact.offset01);
-    }
-}
-
 // 放つ角度の自動が狙う高さは、相手の体の中心の高さ + 赤の上下の位置 × (半分の高さ + 自機の半径)
 // 赤がどこも覆わない時は相手の中心の高さ
 TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
@@ -904,20 +771,6 @@ TEST(HitZonesTest, AimHeightIsTheRedCenterOnTheFace)
         GL::Level::HitFaceAimHeight(face, SensorVolume::Sphere(Vector3{}, 0.0f), forward, k_PlayerRadius, height));
     EXPECT_FALSE(GL::Level::HitFaceAimHeight(face, ball, Vector3{0.0f, 1.0f, 0.0f}, k_PlayerRadius, height));
     EXPECT_FLOAT_EQ(height, 7.0f);
-}
-
-// 体当たりの相手は置物の体だけ。1 ステップ先の自機に岩より近く重なるゴールの範囲は相手にしない
-TEST(ImpactResolver, TackleSkipsANearerAreaSensor)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceSlamTarget(scene, nlohmann::json::object());
-    ASSERT_NE(player, nullptr);
-    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    goal->Root().SetPosition(Vector3{0.0f, 1.0f, 0.3f});
-
-    const GL::Level::ImpactRecord& impact = SlamOnce(player);
-    ASSERT_EQ(impact.sequence, 1u);
-    EXPECT_EQ(impact.targetId, 2u);
 }
 
 // 狙いの線も同じ相手を選ぶ。岩より手前の線の上にゴールの範囲があっても、最初に触れる相手は岩

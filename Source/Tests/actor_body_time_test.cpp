@@ -54,25 +54,6 @@ namespace
         release.arc.apexHeight = 1.0f;
         ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
     }
-
-    struct SlamStep
-    {
-        NS::Vector3 moved;
-        float spinDegrees = 0.0f;
-    };
-
-    SlamStep SecondSlamStep(PlayerActor* player)
-    {
-        NS_ASSERT(Game, player != nullptr, "SecondSlamStep: 渡したアクターか部品が無い");
-        player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-        player->Update(false);
-        const NS::Vector3 from = player->Root().Position();
-        player->Update(false);
-        SlamStep step;
-        step.moved = player->Root().Position() - from;
-        step.spinDegrees = player->Appearance().SpinDegreesThisFrame();
-        return step;
-    }
 } // namespace
 
 TEST(ActorBodyTime, ScaleOneGivesTheFixedStep)
@@ -110,28 +91,6 @@ TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
     }
     EXPECT_GT(slowRock->Root().Position().x, 0.5f);
     EXPECT_EQ(NS::GetFrameDelta(player), NS::OS::FrameTimer::FixedDelta());
-}
-
-TEST(ActorBodyTime, PlayerAtScaleTwoMovesAndSpinsTwoStepsInOne)
-{
-    NS::Scene normal;
-    NS::Scene fast;
-    PlaceBodies(normal, true);
-    PlaceBodies(fast, true);
-    PlayerActor* slowPlayer = PlayerOf(normal);
-    PlayerActor* fastPlayer = PlayerOf(fast);
-    ASSERT_NE(slowPlayer, nullptr);
-    ASSERT_NE(fastPlayer, nullptr);
-    ASSERT_TRUE(NS::SetFrameRate(fastPlayer, 2.0f));
-    const SlamStep slow = SecondSlamStep(slowPlayer);
-    const SlamStep fastStep = SecondSlamStep(fastPlayer);
-    ASSERT_GT(slow.moved.z, 0.0f);
-    ASSERT_GT(slow.spinDegrees, 0.0f);
-    EXPECT_NEAR(fastStep.moved.z, slow.moved.z * 2.0f, slow.moved.z * 0.01f);
-    EXPECT_NEAR(fastStep.spinDegrees, slow.spinDegrees * 2.0f, slow.spinDegrees * 0.01f);
-    GL::Level::PropActor* rock = RockOf(fast);
-    ASSERT_NE(rock, nullptr);
-    EXPECT_EQ(NS::GetFrameDelta(rock), NS::OS::FrameTimer::FixedDelta());
 }
 
 TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)

@@ -53,7 +53,6 @@ namespace GL
     {
         class ImpactResolver;
         class ReboundPreview;
-        struct BodySlamMotion;
         struct ImpactAnswer;
         struct ImpactRecord;
         struct ImpactSelf;
@@ -114,30 +113,13 @@ public:
     [[nodiscard]] float RunSpeed() const noexcept;
     //! 先に根を出現位置へ置いて呼ぶ。根は動かさず、移動・命中・丸まり・描画倍率を初期状態へ戻す
     void ResetState() noexcept;
-    //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予と突進の使用済みを戻す
+    //! 着地でジャンプ回数を戻し、接地中はコヨーテ猶予とエアダッシュの回数を戻す
     void SyncGroundState() noexcept;
     [[nodiscard]] GL::Player::PlayerEvents& PlayerEventsRef() noexcept { return m_playerEvents; }
 
     // =========================================================================
-    // 体当たり（突進）・反動・エアダッシュ・丸まりの状態と操作
+    // 反動・エアダッシュ・丸まりの状態と操作
     // =========================================================================
-    //! 突進または当たる直前の状態に居るか
-    [[nodiscard]] bool IsBodySlamming() const noexcept;
-    [[nodiscard]] bool IsInBeforeContact() const noexcept;
-    //! 予測した相手の段の当たる直前の動作を、残りの歩に合うフレームから始める
-    void BeginBeforeContact() noexcept;
-    //! 検知で出る時は何もせず、予測が外れて出る時は形と自機以外の止めと返りを戻す
-    void EndBeforeContact() noexcept;
-    //! 突進の進み具合 0..1。突進中でなければ 0
-    [[nodiscard]] float BodySlamProgress01() const noexcept;
-    //! 発動時の溜め量 0..1
-    [[nodiscard]] float BodySlamCharge01() const noexcept { return m_slam.Charge01(); }
-    //! 発動時の溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
-    [[nodiscard]] float BodySlamOvercharge01() const noexcept { return m_slam.Overcharge01(); }
-    //! 溜めた突進を終える水平の距離 (m)
-    [[nodiscard]] float BodySlamDistance() const noexcept;
-    //! 最後に出した突進の正規化済みの水平の向き。突進を出す前と ResetState の後はゼロ
-    [[nodiscard]] NS::Vector3 BodySlamDirection() const noexcept { return m_slam.Direction(); }
     [[nodiscard]] bool IsRebounding() const noexcept;
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
@@ -165,8 +147,6 @@ public:
     void StartReboundReaction() noexcept;
     //! 最後に始めた反動の正規化済みの水平の向き。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
-    //! 最後に出した突進の角速度 (度/秒)。突進を出す前と ResetState 後は 0
-    [[nodiscard]] float BodySlamSpinSpeed() const noexcept { return m_slam.SpinSpeed(); }
     //! 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
     [[nodiscard]] float ReboundSpinSpeed() const noexcept { return m_rebound.SpinSpeed(); }
     //! 外れの反動の時だけ値を持つ
@@ -181,8 +161,6 @@ public:
     //! 丸まっているか (当たりを球にしている間は true)
     [[nodiscard]] bool IsCurled() const noexcept;
     [[nodiscard]] GL::Player::PlayerMotion Motion() const noexcept;
-    //! 世界の rootPosition にある当たりのカプセルの下の球を返す (立ち姿と玉で同じ球)
-    [[nodiscard]] NS::Sphere SlamBallAt(const NS::Vector3& rootPosition) const noexcept;
 
     // =========================================================================
     // 物理挙動・速度制御（重力・加速・減速・ジャンプ）
@@ -203,8 +181,6 @@ public:
     void CutJumpRelease() noexcept;
     //! 上昇と下降で非対称な重力を当てる (頂点の近くは弱める)
     void Gravity(float dt) noexcept;
-    //! 通常突進の滞空秒が通常突進の距離を進む秒と揃う強さの重力を当てる
-    void TapSlamGravity(float dt) noexcept;
     void ReboundGravity(float dt) noexcept;
     //! 反動の間、入力の向きへ反動中の空中の加速度で加速する (入力からずれた速度は減らさない)
     void AccelerateDuringRebound(float dt) noexcept;
@@ -212,8 +188,6 @@ public:
     void BeginSkid() noexcept;
     //! 着地時の速度を減らし、止まりきったら true を返す
     [[nodiscard]] bool AdvanceSkid() noexcept;
-    //! 突進の 1 フレームを進める。溜めた突進は水平を BodySlamVelocity で書き直し、重力を当てる
-    void UpdateBodySlam(float dt) noexcept;
 
     // =========================================================================
     // 崖掴まり・よじ登り
@@ -233,29 +207,9 @@ public:
     void DropLedge() noexcept;
 
     // =========================================================================
-    // 体当たり（突進）の要求・開始・方向解決・反動軌道
+    // 当たりの裁定・反動軌道
     // =========================================================================
-    //! 体当たりを要求する。charge01・overcharge01 は 0〜1 に丸め、非有限は 0
-    //! 出せない要求は先行入力時間まで残し、突進中・身体の停止中は捨てる。空中発動は接地まで一度だけ
-    void RequestBodySlam(float charge01, float overcharge01 = 0.0f) noexcept;
-    //! 向きと縦速度 (m/s、上が正、非有限は 0、通常突進には無効) を添えて体当たりを要求する
-    //! aimDirection は世界の水平成分を正規化し、無効なら方向指定なしとして扱う
-    void RequestBodySlam(float charge01,
-                         const NS::Vector3& aimDirection,
-                         float launchVerticalSpeed = 0.0f,
-                         float overcharge01 = 0.0f) noexcept;
-    //! 突進中は予定の水平速度と身体の現在の縦速度、それ以外は身体の速度を返す
-    [[nodiscard]] NS::Vector3 BodySlamVelocity() const noexcept;
-    [[nodiscard]] GL::Level::BodySlamMotion SlamMotion() const noexcept;
     [[nodiscard]] GL::Level::ImpactSelf SelfForImpact() const noexcept;
-    //! 突進を打ち切って通常移動へ戻す。突進中でなければ何もしない
-    void CancelBodySlam() noexcept;
-    //! 向きを解決して突進を始める。向きが決まらないか距離が 0 以下なら false
-    [[nodiscard]] bool BodySlam() noexcept;
-    //! 向きを添えずに要求した体当たり (通常突進) を出す水平の向き (入力・カメラの前・速度の順、無ければゼロ)
-    [[nodiscard]] NS::Vector3 AimDirection() const noexcept;
-    //! このフレームの終わりに放したら次のフレームに出る突進の正規化済みの水平の向き (決まらなければゼロ)
-    [[nodiscard]] NS::Vector3 ReleaseDirection() const noexcept;
     //! 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
     [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
     //! 反動軌道の初速 (m/s) を求める。曲線を組めなければゼロ
@@ -306,19 +260,6 @@ protected:
 private:
     [[nodiscard]] NS::SensorVolume BodySensorVolume(const NS::Matrix& rootWorld) const noexcept;
     NS::HitSensor* m_bodyHitSensor = nullptr; // 体のセンサー (非所有)。持つのは HitSensorsObj
-
-    struct BodySlamRequest
-    {
-        float bufferRemaining = 0.0f; // 先行入力の残り秒
-        bool spent = false;           // 空中で発動してから接地していないか
-        float charge01 = 0.0f;        // 0..1
-        float overcharge01 = 0.0f;    // 0..1
-        NS::Vector3 dir{};            // 正規化済み
-        bool hasDir = false;
-        float verticalSpeed = 0.0f; // 放つ瞬間の縦の速さ (m/s)。hasDir が偽の間は読まない
-        NS::Vector3 aimDir{};       // 押したフレームに控えた狙いの向き (正規化済み)
-        float aimAge = 0.0f;        // 狙いを控えてからの経過秒
-    };
 
     // =========================================================================
     // 内部ヘルパー：移動・エアダッシュ・地形反動
@@ -373,27 +314,18 @@ private:
     void DrawTerrainRebound() const;
     void DropPresses() noexcept;
     // =========================================================================
-    // 内部ヘルパー：突進・衝突裁定・命中反応・丸まり切り替え
+    // 内部ヘルパー：衝突裁定・命中反応・丸まり切り替え
     // =========================================================================
-    void AdvanceBodySlamTravel(const NS::Vector3& delta) noexcept;
-    void EndBodySlam() noexcept;
-    [[nodiscard]] float BodySlamAimBlend01() const noexcept;
-    [[nodiscard]] float BodySlamSpeed() const noexcept;
-    [[nodiscard]] NS::Vector3 BlendedAimDirection() const noexcept;
     void ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept;
     void ReleaseTackleHit() noexcept;
     void StopTackleHitEffects() noexcept;
     [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
     [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
-    void DecideBeforeContact(const GL::Level::ImpactAnswer& answer) noexcept;
-    [[nodiscard]] bool ContinuesBeforeContact(const GL::Level::ImpactAnswer& answer) const noexcept;
-    [[nodiscard]] bool AcceptsBodySlamRequest() const noexcept;
     void ChangeCurled(bool curled) noexcept;
     void UncurlWhenSettled() noexcept;
     //! 左スティックをデッドゾーンより倒していれば、その水平の向き (正規化済み) を outDirection に書いて true
     [[nodiscard]] bool TryStickDirection(NS::Vector3& outDirection) const noexcept;
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
-    void MarkBodySlamAim() noexcept;
     // =========================================================================
     // 内部ヘルパー：接地復帰・状態進行・アニメーション選択
     // =========================================================================
@@ -401,7 +333,7 @@ private:
     void RestoreWhileGrounded() noexcept;
     void LaunchJump() noexcept;
     void PrepareStateStep();
-    void FinishStateStep(float dt);
+    void FinishStateStep();
     [[nodiscard]] bool PrepareOrSkipStateStep();
     [[nodiscard]] bool FindLedgeTopAt(const NS::Vector3& hangPos,
                                       float& outTop,
@@ -423,21 +355,13 @@ private:
     std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     bool m_slowedWorld = false;
-    struct BeforeContactEntry
-    {
-        NS::SceneActor* target = nullptr;
-        GL::Level::HitTier tier = GL::Level::HitTier::Center;
-        int startFrame = 0;  // 状態の最初の歩に当てる動作のフレーム
-        NS::Vector3 point{}; // 予測した玉が相手に触れる時の玉の中心 (世界座標)
-    };
-    BeforeContactEntry m_beforeContact;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
     GL::Level::TackleGhost* m_ghost = nullptr; // 子として基底が所有する
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================
-    // メンバ変数：通常移動・ジャンプ・突進・反動・崖掴まり状態
+    // メンバ変数：通常移動・ジャンプ・反動・崖掴まり状態
     // =========================================================================
     bool m_inputInjected = false;
     bool m_stateStepPrepared = false;
@@ -448,8 +372,6 @@ private:
     bool m_airControlReturning = false;
     float m_airControlReturnElapsed = 0.0f; // 秒
 
-    GL::Player::BodySlamStatus m_slam;
-    BodySlamRequest m_request;
     GL::Player::ReboundStatus m_rebound;
     GL::Player::SkidStatus m_skid;
     GL::Player::AirDashStatus m_airDash;

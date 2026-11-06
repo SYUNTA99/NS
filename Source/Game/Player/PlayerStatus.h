@@ -19,8 +19,6 @@ namespace GL
         //! が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
         struct PlayerMotion
         {
-            bool bodySlamming = false;  // 突進か、突進を続ける当たる直前の状態に居るか
-            bool beforeContact = false; // 当たる直前の状態に居るか
             bool rebounding = false;
             bool reboundLanded = false; // 反動のまま着いたか。答えるのは PlayerActor::IsReboundLanded
             bool skidding = false;
@@ -29,36 +27,6 @@ namespace GL
             bool airDashing = false;
             bool dashRebounding = false; // 地形の面で返った反動の状態に居るか
             NS::Vector3 velocity{};      // 身体の今の速度 (m/s)
-        };
-
-        //! 突進の値。向きと溜め量は終了後も使うため状態内には置かず、ResetState で戻す
-        class BodySlamStatus
-        {
-        public:
-            //! 発動時に確定した溜め量 0..1
-            [[nodiscard]] float Charge01() const noexcept { return m_charge01; }
-            //! 発動時に確定した溜めすぎの深さ 0..1。赤で放した突進と通常突進は 0
-            [[nodiscard]] float Overcharge01() const noexcept { return m_overcharge01; }
-            //! 最後に出した突進の水平の向き
-            //! 突進が終わった後も、次の突進を出すまで残す
-            //! @return 正規化済みの向き。突進を出す前と ResetState の後はゼロ
-            [[nodiscard]] NS::Vector3 Direction() const noexcept { return m_dir; }
-            //! 最後に出した突進で玉が回る速さ (度/秒)。突進を出す前と ResetState の後は 0
-            [[nodiscard]] float SpinSpeed() const noexcept { return m_spinSpeed; }
-
-        private:
-            friend class ::PlayerActor;
-
-            float m_spinSpeed = 0.0f;      // 書くのは突進を出した時
-            float m_travelled = 0.0f;      // 突進で進んだ水平距離
-            float m_distanceTarget = 0.0f; // 突進を終える水平距離
-            bool m_isTap = false;          // 溜め量 0 の飛び込みか
-            bool m_justStarted = false;    // 発動したフレームか
-            NS::Vector3 m_dir{};           // 書くのは出せた時だけ
-            float m_charge01 = 0.0f;
-            float m_overcharge01 = 0.0f;
-            bool m_forced = false;
-            bool m_wasSlamming = false; // 直前のフレームを突進中で終えたか。書くのは MoveBody と ResetState
         };
 
         //! 反動の値

@@ -343,16 +343,8 @@ namespace NS
         void LevelEditorController::RenderHitFaces(Gfx::DebugShapes& shapes) noexcept
         {
             PlayerActor* player = FindPlayer(m_scene.Actors());
-            // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
-            float playerRadius = 0.0f;
-            Vector3 ballCenter{};
-            if (player != nullptr)
-            {
-                // 突進の玉は、狙う相手の探し方と同じ PlayerActor::SlamBallAt から引く
-                const Sphere ball = player->SlamBallAt(player->Root().Position());
-                ballCenter = ball.center;
-                playerRadius = ball.radius;
-            }
+            // 体当たりが無いので自機の玉から向けず、半径 0 として相手の輪郭の大きさで、カメラから見た向きで描く
+            const float playerRadius = 0.0f;
             const Vector3 cameraPosition = m_editorCamera.Pose().position;
 
             for (SceneActor* object : m_scene.Actors())
@@ -379,11 +371,7 @@ namespace NS
                     continue;
                 }
                 const SensorVolume body = bodySensor->WorldVolume(object->Root().WorldMatrix());
-                Vector3 direction = body.Center() - cameraPosition;
-                if (player != nullptr)
-                {
-                    direction = body.Center() - ballCenter;
-                }
+                const Vector3 direction = body.Center() - cameraPosition;
                 // 真上や真下から見て水平の向きが決まらない相手は描かない
                 GL::Level::HitFaceFrame frame;
                 if (!GL::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))

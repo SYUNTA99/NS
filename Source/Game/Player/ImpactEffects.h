@@ -33,7 +33,6 @@ namespace GL
 {
     namespace Player
     {
-        class BodySlamStatus;
         struct PlayerMotion;
 
         //! 火花を飛ばす向き
@@ -83,13 +82,6 @@ namespace GL
         class ImpactEffects : public NS::Object
         {
         public:
-            //! 突進の開始と接触から、弾けと尾を出す。保持中の溜め演出は出さない
-            //! userは空でないこと。位置はワールド座標
-            void UpdateSlam(const NS::IGetEffect* user,
-                            const NS::Vector3& center,
-                            const BodySlamStatus& slam,
-                            const PlayerMotion& motion,
-                            const GL::Level::ImpactAnswer& impact);
             //! やり直しでエフェクトと未消化の命中・飛行の頼みを消す。userは空でないこと
             void Reset(const NS::IGetEffect* user);
             //! 当たり・反動・着地の絵を先に読む。絵は effect (持ち主のアクター) のシーンへ出す。持ち主の OnAssetsLoaded
@@ -108,14 +100,12 @@ namespace GL
             //! @param[in] effect 絵を出す持ち主のアクター。空でないこと
             //! @param[in] camera 反動の尾を視点へ向けるのに、効果を掛ける前の視点を読む。空でないこと
             //! @param[in] position 持ち主のルートの位置。世界座標
-            //! @param[in] slam 外れの火花の向きに突進の向きを読む
             //! @param[in] body 反動の尾の向きと、頂点と着地の判定に速度と接地を読む。空でないこと
             //! @param[in] collider 接触点と足元を、当たりのカプセルから作る。空でないこと
             //! @param[in] impact 最後の当たりの内訳。絵の置き所と素材へ渡す強さを決める
             void Update(const NS::IGetEffect* effect,
                         const NS::IGetCamera* camera,
                         const NS::Vector3& position,
-                        const BodySlamStatus& slam,
                         const PlayerMotion& motion,
                         const NS::Body* body,
                         const NS::Collider* collider,
@@ -265,7 +255,6 @@ namespace GL
 
             void BeginHit(const Owner& owner,
                           const GL::Level::ImpactRecord& impact,
-                          const BodySlamStatus& slam,
                           const NS::Collider* collider);
             void AdvanceHit(const Owner& owner, const NS::Collider* collider);
             void AdvanceHitCore(const Owner& owner, int frame);

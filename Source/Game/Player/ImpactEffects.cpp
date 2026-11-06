@@ -65,65 +65,6 @@ namespace GL
                                 m_slamTrailAsset});
         }
 
-        void ImpactEffects::UpdateSlam(const NS::IGetEffect* user,
-                                       const NS::Vector3& center,
-                                       const BodySlamStatus& slam,
-                                       const PlayerMotion& motion,
-                                       const GL::Level::ImpactAnswer& impact)
-        {
-            NS_ASSERT(Game, user != nullptr, "絵を出すアクターが空");
-            for (NS::uint32* id : {&m_burst, &m_slamTrail})
-            {
-                const NS::EffectRecord* record = NS::FindEffect(user, *id);
-                if (record != nullptr && record->endStep.has_value())
-                {
-                    *id = 0;
-                }
-            }
-            if (motion.bodySlamming)
-            {
-                m_slamDirection = slam.Direction();
-            }
-            Quaternion rotation = Quaternion::Identity;
-            if (NS::HasPositiveMagnitudeHorizontal(m_slamDirection))
-            {
-                rotation = Quaternion::CreateFromAxisAngle(Vector3{0.0f, 1.0f, 0.0f},
-                                                            std::atan2(m_slamDirection.x, m_slamDirection.z));
-            }
-            if (motion.bodySlamming && !m_wasSlamming)
-            {
-                NS::Gfx::EffectPlayDesc desc = PlayAt(center, rotation, Uniform(1.0f));
-                desc.dynamicInputs[0] = slam.Charge01();
-                m_burst = NS::PlayEffect(user, m_burstAsset, desc);
-                NS::StopEffectAfter(user, m_burst, std::max(m_burstSteps, 1));
-                NS::StopEffectRoot(user, m_slamTrail);
-                NS::StopEffectAfter(user, m_slamTrail, std::max(m_slamTrailFadeSteps, 1));
-                m_slamTrail = NS::PlayEffect(user, m_slamTrailAsset, desc);
-            }
-            const NS::EffectRecord* trail = NS::FindEffect(user, m_slamTrail);
-            if (trail != nullptr && !trail->rootStopStep.has_value())
-            {
-                if (impact.beginHit || (!motion.bodySlamming && !impact.rebounded && !impact.broke))
-                {
-                    NS::StopEffectRoot(user, m_slamTrail);
-                    NS::StopEffectAfter(user, m_slamTrail, std::max(m_slamTrailFadeSteps, 1));
-                }
-                else
-                {
-                    NS::SetEffectRotation(user, m_slamTrail, rotation);
-                    NS::SetEffectTransform(user, m_slamTrail, center, rotation, Uniform(1.0f));
-                }
-            }
-            const bool contactNear = impact.framesToPredictedContact >= 0 &&
-                                     impact.framesToPredictedContact <= std::max(m_burstClearFrames, 0);
-            if (m_burst != 0 && (motion.beforeContact || impact.rebounded || impact.broke || contactNear))
-            {
-                NS::StopEffect(user, m_burst);
-                m_burst = 0;
-            }
-            m_wasSlamming = motion.bodySlamming;
-        }
-
         void ImpactEffects::Reset(const NS::IGetEffect* user)
         {
             NS_ASSERT(Game, user != nullptr, "絵を出したアクターが空");
@@ -160,7 +101,6 @@ namespace GL
         void ImpactEffects::Update(const NS::IGetEffect* effect,
                                    const NS::IGetCamera* camera,
                                    const NS::Vector3& position,
-                                   const BodySlamStatus& slam,
                                    const PlayerMotion& motion,
                                    const NS::Body* body,
                                    const NS::Collider* collider,
@@ -172,7 +112,7 @@ namespace GL
             if (m_hitRequested)
             {
                 m_hitRequested = false;
-                BeginHit(owner, impact, slam, collider);
+                BeginHit(owner, impact, collider);
             }
             if (m_flightRequested)
             {
@@ -300,7 +240,6 @@ namespace GL
 
         void ImpactEffects::BeginHit(const Owner& owner,
                                      const GL::Level::ImpactRecord& impact,
-                                     const BodySlamStatus& slam,
                                      const NS::Collider* collider)
         {
             // 前の当たりの層が残っていても、次の核は当たりの絵の頭から出す。前の粉は親を止めて短くする
@@ -342,7 +281,7 @@ namespace GL
             // 外れは、どこで、どっちへ力がそれたかを読ませる。面の上の位置から外した側を取り、段と逸れ方と向きを揃える
             // 位置の無い当たり (面で判定できない体) は前の擦れの向きのまま
             const Vector3 missHeading =
-                MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, slam.Direction());
+                MissSparkHeading(impact.faceU, impact.faceV, impact.faceNormal, impact.impactDir);
             if (missHeading.Length() > 0.5f)
             {
                 plan.scrapeDir = missHeading;

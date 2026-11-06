@@ -910,7 +910,7 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
 }
 
 // 出荷の束と動作 (自機と置物の .actor)。沈みの深さと震えの幅・トラウマの量は威力に依らない固定の値で、
-// 見た目の基準の試し (impact_look_baseline_test) の当たりの威力を、威力を掛ける式に入れた値と同じ。
+// 溜めきりの体当たりの当たりの威力を、威力を掛ける式に入れた値と同じ。
 // 真ん中は溜めきり 2 × 真ん中の威力の倍率 1 の威力 2、外れは右の外れ (MissRight) の溜めきり 2 × 0.7 の威力 1.4
 
 namespace
@@ -948,18 +948,6 @@ namespace
             if (set.name == name)
             {
                 return &set;
-            }
-        }
-        return nullptr;
-    }
-
-    const NS::ActorAction* FindShippedAction(const ShippedActorFile& file, std::string_view name)
-    {
-        for (const NS::ActorAction& action : file.actions)
-        {
-            if (action.name == name)
-            {
-                return &action;
             }
         }
         return nullptr;
@@ -1018,47 +1006,8 @@ namespace
 
     using OwnerValues = std::map<std::string, float, std::less<>>;
 
-    constexpr NS::Curve::InterpMode k_Manual = NS::Curve::InterpMode::Manual;
     constexpr NS::Curve::InterpMode k_Auto = NS::Curve::InterpMode::AutoSmooth;
 } // namespace
-
-// 真ん中は当たる直前の動作で、触れる 6 フレーム前から突進の向きに縮み、触れた次のフレームの束でもっと深く潰れる。
-// 触れる 2 フレーム前から触れるまで自機以外を止める。外れには当たる直前の動作が無い
-TEST(ShippedHitReactions, CenterShrinksBeforeContactAndMissDoesNot)
-{
-    const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
-    const NS::ActorAction* before = FindShippedAction(player, "BeforeContactCenter");
-    ASSERT_NE(before, nullptr);
-    ASSERT_EQ(before->events.size(), 2u);
-    EXPECT_TRUE(before->sensors.empty());
-    // 動作のフレーム 0 が触れる 6 フレーム前、6 が検知のフレーム
-    const NS::ActorActionEvent& shrink = before->events[0];
-    ASSERT_TRUE(std::holds_alternative<NS::HitShapeItem>(shrink.item));
-    EXPECT_EQ(shrink.start, 0);
-    EXPECT_EQ(shrink.length, 7);
-    const NS::HitShapeItem& shape = std::get<NS::HitShapeItem>(shrink.item);
-    EXPECT_EQ(shape.along, CurveOf({{0.0f, 1.0f, k_Manual, 0.0f, 0.0f}, {6.0f, 0.85f, k_Manual, -0.05f, -0.15f}}));
-    EXPECT_EQ(shape.height,
-              CurveOf({{0.0f, 1.0f, k_Manual, 0.0f, 0.0f}, {6.0f, 1.05f, k_Manual, 0.016666667f, 0.05f}}));
-    EXPECT_EQ(shape.side, CurveOf({{0.0f, 1.0f}}));
-    // 初めはわずかで、触れる直前にぐっと縮む
-    EXPECT_LT(1.0f - shape.along.Evaluate(3.0f), (1.0f - shape.along.Evaluate(6.0f)) * 0.5f);
-    const NS::ActorActionEvent& others = before->events[1];
-    ASSERT_TRUE(std::holds_alternative<NS::HitOthersStopItem>(others.item));
-    EXPECT_EQ(others.start, 4);
-    EXPECT_EQ(others.length, 2);
-
-    const NS::HitReactionSet* center = FindShippedSet(player, "体当たり[真ん中]");
-    ASSERT_NE(center, nullptr);
-    const NS::HitReactionEntry* squash = FindEntry<NS::HitShapeItem>(*center);
-    ASSERT_NE(squash, nullptr);
-    EXPECT_LT(std::get<NS::HitShapeItem>(squash->item).along.Evaluate(0.0f), shape.along.Evaluate(6.0f));
-
-    EXPECT_EQ(FindShippedAction(player, "BeforeContactMiss"), nullptr);
-    // 当たる直前の動作は真ん中の 1 つだけ。残りはエアダッシュの長さを持つ動作
-    EXPECT_NE(FindShippedAction(player, "AirDash"), nullptr);
-    EXPECT_EQ(player.actions.size(), 2u);
-}
 
 // 紫で当てた時だけ、止めの明けに紫の明けの束で世界を遅くする。外れと赤の明けの束は世界の速さに触らない
 TEST(ShippedHitReactions, CenterSlowsTheWorldOnlyForPurple)

@@ -63,7 +63,6 @@ namespace GL
         void PlayerAppearance::AdvanceSpin(NS::Model* renderer,
                                            float dt,
                                            const PlayerMotion& motion,
-                                           const BodySlamStatus& slam,
                                            const ReboundStatus& rebound,
                                            const SkidStatus& skid,
                                            const GL::Level::ImpactAnswer& impact) noexcept
@@ -93,13 +92,6 @@ namespace GL
                 SetRollAxisToward(motion.velocity, m_spinAxis);
                 m_spinSpeed = motion.velocity.Length() * m_dashRollDegreesPerMeter;
             }
-            else if (motion.bodySlamming)
-            {
-                // 軸は水平の向きだけを見るので、突進の向きを使う。突進の速度の水平は向き ×
-                // 欄の速さで、速さが正なら同じ向き
-                SetRollAxisToward(slam.Direction(), m_spinAxis);
-                m_spinSpeed = slam.SpinSpeed();
-            }
             else if ((motion.rebounding || motion.skidding) && rebound.Tumble().has_value())
             {
                 float skidScale = 1.0f;
@@ -111,12 +103,11 @@ namespace GL
             }
             else if (motion.rebounding)
             {
-                // 弾かれた向きへ前転する。真正面の当たりでは突進と逆向きになる
-                // 反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
+                // 弾かれた向きへ前転する。反動の間は空中の操作で速度の向きが変わっても、弾かれた向きから取った軸のまま回す
                 SetRollAxisToward(rebound.Direction(), m_spinAxis);
                 m_spinSpeed = rebound.SpinSpeed();
             }
-            // 放した後の空中と、反動に入らずに突進が終わった後は、直前のフレームの軸と速さのまま回る
+            // ほかの間は、直前のフレームの軸と速さのまま回る
 
             const float degrees = m_spinSpeed * dt;
             const float radians = NS::ToRadians(NS::Degrees{degrees}).value;
@@ -190,13 +181,12 @@ namespace GL
         void PlayerAppearance::Update(NS::Model* renderer,
                                       float dt,
                                       const PlayerMotion& motion,
-                                      const BodySlamStatus& slam,
                                       const ReboundStatus& rebound,
                                       const SkidStatus& skid,
                                       const GL::Level::ImpactAnswer& impact)
         {
             NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
-            AdvanceSpin(renderer, dt, motion, slam, rebound, skid, impact);
+            AdvanceSpin(renderer, dt, motion, rebound, skid, impact);
             AdvanceLandingSquash(motion);
             WriteDrawScale(renderer);
         }

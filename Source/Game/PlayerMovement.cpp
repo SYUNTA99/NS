@@ -2,13 +2,16 @@
 
 #include "Game/Level/AirGravity.h"
 #include "Game/Level/ImpactOutcome.h"
+#include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerAcceleration.h"
+#include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
+#include "Game/Player/States/ReboundPlayerState.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
@@ -67,8 +70,6 @@ void PlayerActor::MoveBody(float dt) noexcept
     const NS::Vector3 delta = Root().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
-    AdvanceBodySlamTravel(delta);
-    m_slam.m_wasSlamming = IsBodySlamming();
     TryBeginTerrainRebound();
 }
 
@@ -98,8 +99,6 @@ void PlayerActor::RestoreOnLanding() noexcept
 void PlayerActor::RestoreWhileGrounded() noexcept
 {
     m_coyoteTimer = m_params->m_coyoteTime;
-    // 着地のフレームだけで戻すと、接地したまま走り抜けた突進の後に次が出せない
-    m_request.spent = false;
     m_airDash.m_remaining = 1;
 }
 
@@ -232,28 +231,6 @@ void PlayerActor::Gravity(float dt) noexcept
     body.Gravity(GL::Level::ChooseGravity(m_params->Gravity(), body.VerticalVelocity()), dt);
 }
 
-void PlayerActor::TapSlamGravity(float dt) noexcept
-{
-    // 進み切る前に着地すると残りを地面の上で滑り、走っていないのに動いて見える
-    // 滞空秒を踏み込みの秒へ合わせ、進み切った所で足が着くようにする
-    float airSeconds = 0.0f;
-    if (m_params->m_tapSlamSpeed > 0.0f)
-    {
-        airSeconds = m_params->m_tapSlamDistance / m_params->m_tapSlamSpeed;
-    }
-    // Inspector で 0 を置くと 0 除算で位置まで非有限値が伝わるため、距離か初速が 0 なら通常の重力へ戻す
-    if (!NS::HasPositiveMagnitude(airSeconds))
-    {
-        Gravity(dt);
-        return;
-    }
-
-    // 上下対称の弧なので、山の高さは tapSlamUpSpeed * airSeconds / 4 で決まる
-    // 高さを変えたい時に触るのは tapSlamUpSpeed で、ここは触らない
-    const float g = -2.0f * m_params->m_tapSlamUpSpeed / airSeconds;
-    m_body->Gravity(g, dt);
-}
-
 void PlayerActor::ReboundGravity(float dt) noexcept
 {
     // 上りだけ倍率付きの組を PlayerParams が持つ。選び方は普段の重力と同じ ChooseGravity 1 つ
@@ -294,24 +271,115 @@ bool PlayerActor::AdvanceSkid() noexcept
     return m_skid.m_elapsedSteps >= m_params->m_missSkidSteps;
 }
 
-void PlayerActor::UpdateBodySlam(float dt) noexcept
+namespace
 {
-    NS::Body& body = *m_body;
-    // 突進中に向きを変えられると当てる間合いを詰める意味が消えるので、水平は発動時の値で書き直す
-    // 書き手はここだけで、壁に押し付けられて潰れた水平も次のフレームで戻る
-    if (!m_slam.m_isTap)
+    [[nodiscard]] float SpinSpeedFor(float turns, float seconds) noexcept
     {
-        body.SetLateralVelocity(BodySlamVelocity());
+        if (!std::isfinite(seconds) || !NS::IsPositive(seconds))
+        {
+            return 0.0f;
+        }
+        return turns * 360.0f / seconds;
+    }
+} // namespace
+
+bool PlayerActor::BeginRebound(const GL::Player::ReboundArc& arc) noexcept
+{
+    // 曲線にならない反動で移すと、弾かれないまま速度が 0 に消える。移さずに偽を返し、速度は呼び手に任せる
+    const NS::Vector3 velocity = ReboundVelocityFor(arc);
+    if (!NS::IsPositive(velocity.y))
+    {
+        return false;
+    }
+    NS::Vector3 direction{};
+    if (!NS::TryNormalizeHorizontal(arc.direction, direction))
+    {
+        return false;
     }
 
-    if (m_slam.m_isTap)
+    m_rebound.m_direction = direction;
+    m_rebound.m_missTumble = arc.missTumble;
+    ++m_rebound.m_count;
+    m_rebound.m_spinSpeed = SpinSpeedFor(m_params->m_chargedReboundTurns,
+                                         GL::Level::LaunchArcFlightSeconds(m_params->ReboundLaunchArc(arc)));
+    m_body->SetVelocity(velocity);
+    StartAirControlReturn();
+    (void)m_states->Change<GL::Player::ReboundPlayerState>();
+    return true;
+}
+
+NS::Vector3 PlayerActor::ReboundVelocityFor(const GL::Player::ReboundArc& arc) const noexcept
+{
+    return GL::Level::LaunchArcInitialVelocity(m_params->ReboundLaunchArc(arc));
+}
+
+void PlayerActor::SetCurled(bool curled) noexcept
+{
+    // 掴まっている間に玉にすると縁を測り直す手の高さが下がり、押したフレームに縁を放して 0.5 m 落ちた
+    if (curled && (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>() ||
+                   m_states->IsCurrent<GL::Player::LedgeClimbingPlayerState>()))
     {
-        TapSlamGravity(dt);
+        return;
+    }
+    ChangeCurled(curled);
+}
+
+bool PlayerActor::IsCurled() const noexcept { return m_collider->IsSphereShape(); }
+
+void PlayerActor::ChangeCurled(bool curled) noexcept
+{
+    NS::Collider& collider = *m_collider;
+    if (curled == IsCurled())
+    {
+        return;
+    }
+    collider.SetSphereShape(curled);
+    if (curled)
+    {
+        m_appearance->Curl(m_model.get());
     }
     else
     {
-        Gravity(dt);
+        m_appearance->Uncurl(m_model.get());
     }
+    // 半長ぶん根を上げ下げして、立ち姿と玉の当たりの下端を揃える
+    float rise = collider.StandingHalfHeight();
+    if (curled)
+    {
+        rise = -rise;
+    }
+    // TODO: 低い天井で立ち姿へ戻す検査は無い。現在のコースでは次の接触解決に任せる
+    // 形の変更を動きとして補間しないよう、前フレームの位置もずらす
+    Root().ShiftPosition(NS::Vector3{0.0f, rise, 0.0f});
+}
+
+void PlayerActor::UncurlWhenSettled() noexcept
+{
+    NS::Body& body = *m_body;
+    if (!IsCurled())
+    {
+        return;
+    }
+    if (!body.IsGrounded())
+    {
+        return;
+    }
+    // 床の上でダッシュしても、床の上で返っても、その間は玉のまま
+    if (IsAirDashing() || IsDashRebounding())
+    {
+        return;
+    }
+    // 外れの着地からこすって止まる間は玉のまま地面をこする
+    if (IsSkidding())
+    {
+        return;
+    }
+    // 反動が明けたフレームは接地のフラグが残ったまま上向きの速度が入る。速度を見ないと宙へ出る前に解ける
+    if (body.VerticalVelocity() > 0.0f)
+    {
+        return;
+    }
+    ChangeCurled(false);
 }
 
 namespace
@@ -422,7 +490,7 @@ namespace
 bool PlayerActor::LedgeGrab() noexcept
 {
     NS::Body& body = *m_body;
-    if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity(), m_slam.m_wasSlamming))
+    if (!GL::Player::PlayerJudgeLedgeGrab::Judge(body.IsGrounded(), body.VerticalVelocity()))
     {
         return false;
     }
@@ -446,7 +514,7 @@ bool PlayerActor::LedgeGrab() noexcept
         return false;
     }
 
-    // 掴まりからは突進が出ないので、立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
+    // 立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
     // 置く前に解く。置いた後に解くと根が半長ぶん上がる
     ChangeCurled(false);
     Root().SetPosition(ledge.hangPos);

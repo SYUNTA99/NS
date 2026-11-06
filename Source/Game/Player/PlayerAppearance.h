@@ -20,7 +20,6 @@ namespace GL
 {
     namespace Player
     {
-        class BodySlamStatus;
         class ReboundStatus;
         class SkidStatus;
         struct MissTumble;
@@ -48,7 +47,6 @@ namespace GL
             void Update(NS::Model* renderer,
                         float dt,
                         const PlayerMotion& motion,
-                        const BodySlamStatus& slam,
                         const ReboundStatus& rebound,
                         const SkidStatus& skid,
                         const GL::Level::ImpactAnswer& impact);
@@ -88,7 +86,6 @@ namespace GL
             void AdvanceSpin(NS::Model* renderer,
                              float dt,
                              const PlayerMotion& motion,
-                             const BodySlamStatus& slam,
                              const ReboundStatus& rebound,
                              const SkidStatus& skid,
                              const GL::Level::ImpactAnswer& impact) noexcept;
