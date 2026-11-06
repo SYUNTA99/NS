@@ -16,16 +16,9 @@
 #include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
-#include <cmath>
 #include <optional>
 #include <string_view>
 #include <vector>
-
-namespace
-{
-    // 世界の速さの溜めが 1 に届いたと見なす余白
-    constexpr float k_WorldCarryTolerance = 1.0e-4f;
-} // namespace
 
 namespace NS
 {
@@ -40,11 +33,6 @@ namespace NS
     {
         // 下見のシーンは OnShutdown を呼ばずに壊す。メンバーが残っているうちにアクターの OnEndPlay を回し、図形も消す
         OnShutdown();
-    }
-
-    float Scene::WorldStepSeconds() const noexcept
-    {
-        return static_cast<float>(m_stepsOfWorldStep) * OS::FrameTimer::FixedDelta();
     }
 
     void Scene::StartPlay()
@@ -92,10 +80,6 @@ namespace NS
         m_simulationEnabled = enabled;
         m_simulationPaused = false;
         m_simulationStepFrames = 0;
-        // 遅い世界はプレイの中の状態なので、入れ直したプレイへ持ち越さない
-        m_worldSpeed = 1.0f;
-        m_worldCarry = 0.0f;
-        m_rampActive = false;
         CancelStopScene();
     }
 
@@ -103,17 +87,6 @@ namespace NS
     {
         m_simulationPaused = true;
         m_simulationStepFrames += 1;
-    }
-
-    void Scene::SetWorldSpeed(float speed) noexcept
-    {
-        // 非数は Clamp を素通りして溜めを壊すので受けない
-        if (!std::isfinite(speed))
-        {
-            return;
-        }
-        m_worldSpeed = Clamp(speed, 0.0f, 1.0f);
-        m_rampActive = false;
     }
 
     void Scene::RequestStopScene(const SceneActor* mover, int steps) noexcept
@@ -188,75 +161,13 @@ namespace NS
                actor->Id() == m_stopSceneRequesterId;
     }
 
-    void Scene::StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept
-    {
-        if (!std::isfinite(fromSpeed) || !std::isfinite(realSeconds))
-        {
-            return;
-        }
-        m_rampActive = false;
-        if (realSeconds <= 0.0f)
-        {
-            m_worldSpeed = 1.0f;
-            return;
-        }
-        m_worldSpeed = Clamp(fromSpeed, 0.0f, 1.0f);
-        m_rampActive = true;
-        m_rampFrom = m_worldSpeed;
-        m_rampSeconds = realSeconds;
-        m_rampElapsed = 0.0f;
-        m_rampShape = shape;
-    }
-
-    void Scene::AdvanceWorldSpeedRamp() noexcept
-    {
-        if (!m_rampActive)
-        {
-            return;
-        }
-        // 世界の時間で数えると、遅い分だけ戻るのが延びる
-        m_rampElapsed += OS::FrameTimer::FixedDelta();
-        const float ratio = m_rampElapsed / m_rampSeconds;
-        if (ratio >= 1.0f - k_WorldCarryTolerance)
-        {
-            m_worldSpeed = 1.0f;
-            m_rampActive = false;
-            return;
-        }
-        float recovered = ratio;
-        if (m_rampShape.count > 0)
-        {
-            recovered = Clamp(m_rampShape.Evaluate(ratio), 0.0f, 1.0f);
-        }
-        m_worldSpeed = m_rampFrom + (1.0f - m_rampFrom) * recovered;
-    }
-
     float Scene::RenderAlpha(float frameAlpha) const noexcept
     {
         if (!m_simulationEnabled || m_simulationPaused)
         {
             return 1.0f;
         }
-        if (m_worldSpeed >= 1.0f)
-        {
-            return frameAlpha;
-        }
-        return std::min(m_worldCarry + frameAlpha * m_worldSpeed, 1.0f);
-    }
-
-    bool Scene::AdvanceWorldClock() noexcept
-    {
-        m_worldCarry += m_worldSpeed;
-        m_stepsSinceWorldStep += 1;
-        // 0.2 を 5 回足しても 1 にわずかに届かない事がある
-        if (m_worldCarry < 1.0f - k_WorldCarryTolerance)
-        {
-            return false;
-        }
-        m_worldCarry = std::max(m_worldCarry - 1.0f, 0.0f);
-        m_stepsOfWorldStep = m_stepsSinceWorldStep;
-        m_stepsSinceWorldStep = 0;
-        return true;
+        return frameAlpha;
     }
 
     SceneActor* Scene::AdoptActor(std::unique_ptr<SceneActor> obj, std::string name)
@@ -499,30 +410,19 @@ namespace NS
                 m_actors.SyncCollisions();
                 return;
             }
-            // コマ送りは実時間の 1 歩。遅い世界では世界が進まない歩もある
+            // コマ送りは実時間の 1 歩
             m_simulationStepFrames -= 1;
         }
 
-        const bool worldStep = AdvanceWorldClock();
-        if (worldStep)
-        {
-            // 補間描画用。全アクターの根の Transform と Model の前の値を控える
-            // 世界を進めない歩に控えると previous == current になり、遅い世界の補間が止まる
-            m_actors.SnapshotActors();
+        // 補間描画用。全アクターの根の Transform と Model の前の値を控える
+        m_actors.SnapshotActors();
 #if !defined(NS_SHIPPING)
-            // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
-            Gfx::BeginDebugDrawStep();
+        // 描画 1 回ごとに捨てると、その間に進む固定ステップの回数で映る図形が変わる
+        Gfx::BeginDebugDrawStep();
 #endif
-        }
         // 歩の間はアクターを解放しない。後で呼ぶ予定のアクターの生ポインタが破棄済みにならない
         m_actors.BeginStep();
-        if (!worldStep)
-        {
-            StepRealTime();
-            // 振動の曲線は世界の歩で進むが、書かないフレームは Gamepad::Update が 0 にするので書き直す
-            m_padRumble.Rewrite();
-        }
-        else if (IsSceneStopped())
+        if (IsSceneStopped())
         {
             StepStopped();
         }
@@ -532,14 +432,11 @@ namespace NS
         }
         m_actors.EndStep();
         m_actors.RemoveDestroyed();
-        // 止めは世界を進めた歩で数える。遅い世界でも、止めた歩の数だけ止め始めたアクターが進む。
         // 歩の途中で CancelStopScene が解いた時は数えない
-        if (worldStep && m_stopSceneSteps > 0)
+        if (m_stopSceneSteps > 0)
         {
             m_stopSceneSteps -= 1;
         }
-        // この歩は始めた時の速さで回し、次の歩の速さを書く
-        AdvanceWorldSpeedRamp();
     }
 
     void Scene::StepWorld()
@@ -570,17 +467,12 @@ namespace NS
     {
         // 仮想カメラはアクターと StepGame が動かした後の相手を追い、続けて選び直す
         m_cameraManager.OnTick();
-        StepRealTime();
+        m_ui.OnTick();
+        m_fade.Advance(OS::FrameTimer::FixedDelta());
         // 画面の演出と振動は、アクターの PrepareRender の後に進める
         m_actors.PrepareRenderActors();
         m_hitScreen.OnTick();
         m_padRumble.OnTick();
-    }
-
-    void Scene::StepRealTime()
-    {
-        m_ui.OnTick();
-        m_fade.Advance(OS::FrameTimer::FixedDelta());
     }
 
     void Scene::OnShutdown()

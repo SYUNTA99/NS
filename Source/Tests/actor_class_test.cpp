@@ -125,8 +125,7 @@ TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
         {player->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::PlayerBody},
         {goal->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::Area},
     };
-    const GL::Level::SensorKind kinds[] = {
-        GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
+    const GL::Level::SensorKind kinds[] = {GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::Area};
     for (const BodyCase& body : cases)
     {
         ASSERT_NE(body.sensor, nullptr);
@@ -140,9 +139,9 @@ TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
 
 TEST(SensorKinds, NewSensorIsUnset)
 {
-    // 種類が未設定のセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
+    // 種類が未設定のセンサーはどの種類でもない。付け忘れたセンサーが黙って自機の体として扱われない
     NS::ShapeHitSensor sensor{
         nullptr, "Body", static_cast<NS::uint8>(GL::Level::SensorKind::Unset), NS::HitSensorShape::Sphere};
     EXPECT_EQ(sensor.Kind(), 0u);
-    EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::MapObjBody));
+    EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::PlayerBody));
 }

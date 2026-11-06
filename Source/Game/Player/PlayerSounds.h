@@ -18,7 +18,7 @@ namespace GL
         //! @brief 自機がどの出来事でどの音を鳴らすかを持つ部品
         //! @details 跳びと着地は出来事の受け手が頼み、閃光と同じ VisualStep の Update で鳴らす。
         //!          落下とゴールはその場で鳴らす。落下は消えた後に VisualStep が呼ばれず、ゴールは知らせが毎フレーム届くため。
-        //!          当たりと反動もその場で鳴らす。1 回の衝突に 1 回だけ呼ばれ、間引く物が無いため
+        //!          反動もその場で鳴らす。1 回の衝突に 1 回だけ呼ばれ、間引く物が無いため
         class PlayerSounds : public NS::Object
         {
         public:
@@ -28,7 +28,7 @@ namespace GL
             //! 跳んだフレームに呼ぶ。次の Update で跳ぶ音を鳴らす。次の着地の音も鳴らせるようにする
             void RequestJump() noexcept;
 
-            //! 足場を離れたフレームと、エアダッシュか体当たりを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
+            //! 足場を離れたフレームと、エアダッシュを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
             void AllowLand() noexcept;
 
             //! 着いたフレームに呼ぶ。Reset の後、まだ足場を離れていなければ頼まない。
@@ -41,10 +41,7 @@ namespace GL
             void PlayGoal(const NS::IGetAudio* audio) const;
             void PlayFall(const NS::IGetAudio* audio) const;
 
-            //! 体当たりが置物に触れたと分かったフレームに呼ぶ。当たりの状態へ入るのを待つと音が遅れて聞こえる
-            void PlayHit(const NS::IGetAudio* audio) const;
-
-            //! 反動で飛び出すフレームに呼ぶ。置物の反動と地形の反動の両方で鳴らす
+            //! 地形の反動で飛び出すフレームに呼ぶ
             void PlayRebound(const NS::IGetAudio* audio) const;
 
             //! 頼みを捨て、次に足場を離れるまで着地の音を鳴らさない。やり直しとコースの開始の直後の着地で鳴らさないため
@@ -66,8 +63,6 @@ namespace GL
             NS_FIELD(m_goalVolume, "ゴールの音の音量", NS::FieldRange::Unit())
             NS_FIELD(m_fallSound, "落下の音")
             NS_FIELD(m_fallVolume, "落下の音の音量", NS::FieldRange::Unit())
-            NS_FIELD(m_hitSound, "当たりの音")
-            NS_FIELD(m_hitVolume, "当たりの音の音量", NS::FieldRange::Unit())
             NS_FIELD(m_reboundSound, "反動の音")
             NS_FIELD(m_reboundVolume, "反動の音の音量", NS::FieldRange::Unit())
             NS_REFLECT_END()
@@ -82,8 +77,6 @@ namespace GL
             float m_goalVolume = 0.9f;
             NS::SoundName m_fallSound{"fall"};
             float m_fallVolume = 0.8f;
-            NS::SoundName m_hitSound{"hit"};
-            float m_hitVolume = 0.8f;
             NS::SoundName m_reboundSound{"rebound"};
             float m_reboundVolume = 0.7f;
 

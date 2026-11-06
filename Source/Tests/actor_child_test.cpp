@@ -390,7 +390,7 @@ TEST(ActorChild, SyncCollisionsReachesTheChildAndGrandchild)
     EXPECT_TRUE(HitsDownAt(scene, 6.0f));
 }
 
-TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
+TEST(ActorChild, AdvancesAfterTheParentDuringHitStop)
 {
     ChildCounts counts;
     NS::Scene scene;
@@ -404,11 +404,8 @@ TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
     scene.OnUpdate();
     EXPECT_EQ(counts.steps, 3);
     EXPECT_FLOAT_EQ(counts.parentX, 1.0f);
-    scene.SetWorldSpeed(0.5f);
-    for (int frame = 0; frame < 4; ++frame)
-    {
-        scene.OnUpdate();
-    }
+    scene.OnUpdate();
+    scene.OnUpdate();
     EXPECT_EQ(counts.steps, 5);
     EXPECT_FLOAT_EQ(counts.parentX, 3.0f);
 }

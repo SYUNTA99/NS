@@ -82,9 +82,6 @@ namespace
         pad.upLeft.keys[0] = NS::Curve::Key{0.0f, 0.8f};
         pad.downRight.count = 1;
         pad.downRight.keys[0] = NS::Curve::Key{2.0f, 0.3f};
-        NS::HitWorldSpeedItem speed;
-        speed.startSpeed = 0.2f;
-        speed.returnSeconds = 0.3f;
         NS::HitOwnerItem ghost;
         ghost.name = "Ghost";
         ghost.values = {{"離れの画素", 112.5f}, {"明けの残像のフレーム数", 0.0f}};
@@ -103,7 +100,6 @@ namespace
             {ring, 14},
             {wave, 20},
             {pad, 16},
-            {speed, 1},
             {NS::HitOthersStopItem{}, 2},
             {ghost, 12},
         };
@@ -138,7 +134,7 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     EXPECT_EQ(doc["stopFrames"].get<int>(), 12);
     ASSERT_EQ(doc["items"].size(), written.entries.size());
     EXPECT_EQ(doc["items"][0]["type"].get<std::string>(), "Shape");
-    EXPECT_EQ(doc["items"][15]["fields"]["値"]["離れの画素"].get<float>(), 112.5f);
+    EXPECT_EQ(doc["items"][14]["fields"]["値"]["離れの画素"].get<float>(), 112.5f);
 
     std::string error;
     const std::optional<NS::HitReactionSet> read = NS::ParseHitReactionSet(doc, error);
@@ -161,10 +157,10 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     const NS::HitZoomRollItem* zoom = std::get_if<NS::HitZoomRollItem>(&read->entries[5].item);
     ASSERT_NE(zoom, nullptr);
     EXPECT_EQ(zoom->delayFrames, 6);
-    const NS::HitOwnerItem* ghost = std::get_if<NS::HitOwnerItem>(&read->entries[15].item);
+    const NS::HitOwnerItem* ghost = std::get_if<NS::HitOwnerItem>(&read->entries[14].item);
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->name, "Ghost");
-    EXPECT_EQ(ghost->values, std::get<NS::HitOwnerItem>(written.entries[15].item).values);
+    EXPECT_EQ(ghost->values, std::get<NS::HitOwnerItem>(written.entries[14].item).values);
 }
 
 TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)

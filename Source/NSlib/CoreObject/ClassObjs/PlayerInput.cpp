@@ -74,7 +74,7 @@ namespace NS
             m_slamHeld = false;
             return;
         }
-        // 止めている間に世界が進まず Update が回らなかった時も、その間の押しを解いた後へ持ち越さない
+        // 入力を止めている間に Update が回らなかった時も、その間の押しを解いた後へ持ち越さない
         DiscardUnreadPresses();
     }
 
@@ -166,11 +166,11 @@ namespace NS
         m_respawnPressed =
             m_respawnPressed || (!wantKb && presses.WasPressed(OS::Key::R)) || presses.WasPressed(OS::GamepadButton::Back);
 
-        // 体当たりのマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
+        // 突進のマウス左は、ゲームがマウスのボタンを受け取っている間だけ数える
         const bool mouseLeftToGame = input.GameReceivesMouseButton(OS::MouseButton::Left);
         const bool slamHeld =
             (mouseLeftToGame && input.Mouse().IsHeld(OS::MouseButton::Left)) || pad.IsHeld(OS::GamepadButton::X);
-        // 前に読んだ後に押して放した分も押したと見せる。遅い世界の読まない固定フレームに押した突進を落とさない
+        // 前に読んだ後に押して放した分も押したと見せる。読む間に押して放した突進を落とさない
         const bool slamPressed = (mouseLeftToGame && presses.WasPressed(OS::MouseButton::Left)) ||
                                  presses.WasPressed(OS::GamepadButton::X);
         // 止めの間は状態の段が下ろさないので、ConsumePressed まで押したままに見せる

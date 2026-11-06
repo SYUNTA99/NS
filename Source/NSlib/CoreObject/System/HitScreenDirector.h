@@ -30,7 +30,7 @@ namespace NS
         int frames = 0;     // 出すフレーム数。0 以下なら出さない
     };
 
-    //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から世界の速さで進める
+    //! シーン共通の画面演出。開始した歩は初期状態を描き、次の更新から進める
     class HitScreenDirector final : public NonCopyable, public IOverlay
     {
     public:

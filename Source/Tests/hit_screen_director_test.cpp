@@ -82,7 +82,7 @@ TEST(HitScreenDirector, HitReactionStopsThroughTheDirector)
 }
 
 // シーンがアクターを組み直すと、前の世界で頼んだ白・床の波・振動を次の世界へ残さない。
-// 頼み手は、消える時に自分で止めない置物にする
+// 頼み手は、消える時に自分で止めないゴールにする
 TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 {
     NS::Scene scene;

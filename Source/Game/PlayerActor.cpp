@@ -17,6 +17,7 @@
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -157,7 +158,7 @@ void PlayerActor::Update(bool slamHeld)
 
 void PlayerActor::DecideStep()
 {
-    // 世界を進めた固定フレームにだけ回るので、世界を進めない固定フレームの押しもここで拾う
+    // 固定フレームごとに 1 回、前に読んだ後の押しをここで拾う
     if (!m_inputInjected)
     {
         m_input->Update(this);
@@ -237,8 +238,8 @@ void PlayerActor::VisualStep()
 #endif
     const GL::Player::PlayerMotion motion = Motion();
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
-    // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない実時間の秒で数える
-    m_playerSounds->Update(this, OwningScene()->WorldStepSeconds());
+    // 音を重ねない間隔なので、ヒットストップでも伸び縮みしない実時間の秒で数える
+    m_playerSounds->Update(this, NS::OS::FrameTimer::FixedDelta());
     DrawTerrainRebound();
 }
 

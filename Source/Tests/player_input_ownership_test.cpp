@@ -80,7 +80,7 @@ TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 
 TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
 {
-    // 遅い世界では自機が読まない固定フレームがある。その間に押して放した突進を、次に読む歩で 1 回押したと見せる
+    // 自機が読む歩の間に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
     PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
@@ -115,7 +115,7 @@ TEST(PlayerInputOwnership, JumpTappedBetweenPlayerUpdatesIsReadByTheNextUpdate)
 
 TEST(PlayerInputOwnership, PressDuringALockWithNoReadIsNotSeenAfterUnlock)
 {
-    // 止めている間に世界が進まず読まなかった押しも、止めを解いた後の跳びにしない
+    // 入力を止めている間 (SetLocked) は自機が読まない。その間に押して放した跳びを、止めを解いた後の跳びにしない
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
     PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");

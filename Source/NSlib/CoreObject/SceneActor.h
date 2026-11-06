@@ -417,7 +417,7 @@ namespace NS
     };
 
     //! 体の倍率を返す。1 が等速
-    //! 体の動きと見た目 (状態機械・自機の体・アニメ) だけに掛かる。シーン全体の止めと遅くは含めない
+    //! 体の動きと見た目 (状態機械・自機の体・アニメ) だけに掛かる。シーン全体の止めは含めない
     [[nodiscard]] float GetFrameRate(const SceneActor* actor) noexcept;
     //! 体の倍率を書く
     //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false

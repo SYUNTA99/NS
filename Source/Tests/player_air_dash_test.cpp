@@ -157,26 +157,6 @@ namespace
     }
 } // namespace
 
-// 遅い世界で、世界を進めない固定フレームの前に押して放したダッシュを、次に世界を進めた固定フレームで出す
-TEST(PlayerAirDashTest, PressBeforeASkippedSlowStepDashesOnTheNextWorldStep)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::OS::Input& input = NS::OS::Input::Get();
-    input.Keyboard().OnKeyDown(NS::OS::Key::D);
-    scene.SetWorldSpeed(0.5f);
-
-    input.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
-    input.Mouse().OnButtonUp(NS::OS::MouseButton::Left);
-    // 速さ 0.5 の 1 歩目は世界を進めない
-    scene.OnUpdate();
-    EXPECT_FALSE(player->IsAirDashing());
-    scene.OnUpdate();
-    EXPECT_TRUE(player->IsAirDashing());
-    input.Keyboard().OnKeyUp(NS::OS::Key::D);
-}
-
 TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
 {
     NS::Scene scene;
