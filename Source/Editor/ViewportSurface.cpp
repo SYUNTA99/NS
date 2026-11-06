@@ -118,15 +118,6 @@ namespace NS
             return SceneView{m_target.get(), pose};
         }
 
-        std::optional<SceneView> ViewportSurface::CurrentView(std::optional<CameraPose> pose) const noexcept
-        {
-            if (!m_visible || m_target == nullptr || !m_target->IsValid())
-            {
-                return std::nullopt;
-            }
-            return SceneView{m_target.get(), pose};
-        }
-
         void ViewportSurface::Release() noexcept
         {
             m_target.reset();

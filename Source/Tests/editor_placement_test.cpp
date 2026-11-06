@@ -4,7 +4,7 @@
 #include "Editor/PlacementCatalog.h"
 #include "Editor/StageBuildTool.h"
 #include "Game/Level/GameScene.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Keyboard.h"
@@ -33,7 +33,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
@@ -42,7 +42,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
     ASSERT_NE(id, NS::k_NoActorId);
     NS::SceneActor* placed = scene.Actors().FindByActorId(id);
     ASSERT_NE(placed, nullptr);
-    EXPECT_EQ(std::string_view{placed->ClassName()}, "PropActor");
+    EXPECT_EQ(std::string_view{placed->ClassName()}, "GoalActor");
 }
 
 TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
@@ -90,7 +90,7 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
     EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(bare).y, 1.0f);
     EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(bare).y, 0.0f);
 
-    nlohmann::json object = NS::Editor::MakePrototypeJson<GL::Level::PropActor>();
+    nlohmann::json object = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
     const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
     NS::Editor::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
     NS::Editor::SetActorJsonRotation(object, rotation);

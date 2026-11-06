@@ -41,17 +41,6 @@ namespace
         value = target + (gap + push) * decay;
     }
 
-    void CriticalSpringStep(NS::Vector3& value,
-                            NS::Vector3& velocity,
-                            const NS::Vector3& target,
-                            float omega,
-                            float dt) noexcept
-    {
-        CriticalSpringStep(value.x, velocity.x, target.x, omega, dt);
-        CriticalSpringStep(value.y, velocity.y, target.y, omega, dt);
-        CriticalSpringStep(value.z, velocity.z, target.z, omega, dt);
-    }
-
     void CriticalSpringStepHorizontal(NS::Vector3& value,
                                       NS::Vector3& velocity,
                                       const NS::Vector3& target,
@@ -130,11 +119,6 @@ namespace GL
 
         bool ThirdPersonFollow::SetFollowRebound(const FollowReboundDesc& desc) noexcept
         {
-            // 非数の向きを持つと、回す角度が非数になって向きごと壊れる
-            if (!NS::IsFinite(desc.slamDirection))
-            {
-                return false;
-            }
             // 非数の縦の向きは帯の中心を非数にし、注視点ごと壊す
             if (!std::isfinite(desc.verticalLean) || desc.verticalLean < -1.0f || desc.verticalLean > 1.0f)
             {
@@ -149,9 +133,6 @@ namespace GL
             m_rebound = FollowReboundDesc{};
             m_wasRebounding = false;
             m_reboundLagCap = 0.0f;
-            m_reboundLookHeld = false;
-            m_reboundTurnAngle = 0.0f;
-            m_reboundTurnFrame = 0;
             m_reboundPhase = ReboundPhase::None;
             m_reboundAnchor = NS::Vector3{0.0f, 0.0f, 0.0f};
             m_reboundAnchorVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
@@ -159,10 +140,6 @@ namespace GL
             m_reboundReturnFrame = 0;
             m_hasLook = false;
             m_reboundBaseDistance = 0.0f;
-            m_partnerLean = NS::Vector3{0.0f, 0.0f, 0.0f};
-            m_partnerLeanVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
-            m_partnerPull = 0.0f;
-            m_partnerPullVelocity = 0.0f;
             m_floorViewActive = false;
             m_floorViewStickUsed = false;
             m_floorOrbit = 0.0f;
@@ -173,52 +150,10 @@ namespace GL
             m_floorTiltGoal = 0.0f;
         }
 
-        void ThirdPersonFollow::UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept
-        {
-            // 空中の 1 発が当たって反動になり直した時も、その 1 発を出した向きで回し直す
-            if (began)
-            {
-                m_reboundLookHeld = rebound.holdLook;
-                m_reboundTurnAngle = 0.0f;
-                m_reboundTurnFrame = 0;
-                NS::Vector3 direction{};
-                if (NS::TryNormalizeHorizontal(rebound.slamDirection, direction))
-                {
-                    // 差を −π〜π へ丸めて近い側へ回す
-                    // 丸めないと、向きの角度が積もった分だけ余計に回る
-                    const float goal = std::atan2(direction.x, direction.z);
-                    m_reboundTurnAngle = std::remainder(goal - m_yaw, 2.0f * NS::k_Pi);
-                }
-                if (m_reboundTurnFrames <= 0)
-                {
-                    m_yaw += m_reboundTurnAngle;
-                    m_reboundTurnAngle = 0.0f;
-                }
-            }
-            else if (m_reboundLookHeld && !rebound.rebounding && (m_followGrounded || !m_hasFollowMotion))
-            {
-                // 反動の状態が外れても空中の間は受けない
-                // 空中の 1 発の後と縁を掴んだ後も、接地までは向きを変えない
-                m_reboundLookHeld = false;
-            }
-
-            // 回しは接地しても最後まで進める
-            // 途中で止めると、回る速さがそのフレームで 0 に落ちる
-            // 重みの差を足していくので、回す入力を受けるようになった後はその入力と重なる
-            if (m_reboundTurnAngle != 0.0f && m_reboundTurnFrame < m_reboundTurnFrames)
-            {
-                const float frames = static_cast<float>(m_reboundTurnFrames);
-                const float before = NS::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
-                ++m_reboundTurnFrame;
-                const float after = NS::SmoothStep(static_cast<float>(m_reboundTurnFrame) / frames);
-                m_yaw += m_reboundTurnAngle * (after - before);
-            }
-        }
-
         void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const NS::Vector3& head) noexcept
         {
             // 反動の状態になったフレームに、前のフレームに見ていた所から留める
-            // 空中で続けて当てた時も留め直す
+            // 反動の中からエアダッシュを出して地形に当て直した時も留め直す
             if (began)
             {
                 m_reboundPhase = ReboundPhase::Following;
@@ -234,7 +169,7 @@ namespace GL
             }
 
             // 反動の状態が外れたフレームから寄せ戻す
-            // 着地のほか、空中の 1 発と縁を掴んだ時も外れる
+            // 着地と落下へ移った時のほか、反動の中からエアダッシュを出した時も外れる
             if (m_reboundPhase == ReboundPhase::Following && !rebounding)
             {
                 if (m_reboundReturnFrames > 0 && m_hasLook)
@@ -256,37 +191,6 @@ namespace GL
             {
                 m_reboundPhase = ReboundPhase::None;
             }
-        }
-
-        void ThirdPersonFollow::UpdateReboundPartner(const FollowReboundDesc& rebound,
-                                                     const NS::Vector3& head,
-                                                     float dt) noexcept
-        {
-            NS::Vector3 leanTarget{0.0f, 0.0f, 0.0f};
-            float pullTarget = 0.0f;
-            const float release = std::max(m_reboundPartnerReleaseDistance, 0.0f);
-            if (m_reboundPhase == ReboundPhase::Following && rebound.partnerPosition.has_value() && release > 0.0f)
-            {
-                const NS::Vector3 gap = rebound.partnerPosition.value() - head;
-                const float distance = gap.Length();
-                // 見送った後は引きも戻す。目標は 0 へ跳ぶが、ばねがなめらかに戻す
-                if (std::isfinite(distance) && distance < release)
-                {
-                    const float weight = NS::Clamp(m_reboundPartnerWeight, 0.0f, 1.0f) * (1.0f - distance / release);
-                    leanTarget = gap * weight;
-                    pullTarget = NS::Clamp(m_reboundPullPerMeter * (distance - m_reboundPullStartDistance),
-                                           0.0f,
-                                           std::max(m_reboundPullMax, 0.0f));
-                }
-            }
-            // 差の半分まで詰める秒から角速度を出す
-            float omega = 0.0f;
-            if (m_reboundPartnerHalfSeconds > 0.0f)
-            {
-                omega = NS::k_CriticalSpringHalfOmegaTau / m_reboundPartnerHalfSeconds;
-            }
-            CriticalSpringStep(m_partnerLean, m_partnerLeanVelocity, leanTarget, omega, dt);
-            CriticalSpringStep(m_partnerPull, m_partnerPullVelocity, pullTarget, omega, dt);
         }
 
         NS::Vector3 ThirdPersonFollow::UpdateReboundLook(const NS::Vector3& head,
@@ -340,7 +244,7 @@ namespace GL
             {
                 m_reboundAnchor -= NS::HorizontalPart(away) * (lagAway - awayCap);
             }
-            m_look = m_reboundAnchor + m_partnerLean;
+            m_look = m_reboundAnchor;
 
             // 追う相手が画面の上下の帯を越えそうな時だけ、
             // 越えない所まで位置と注視点をカメラの上の向きへ動かす
@@ -569,8 +473,6 @@ namespace GL
             // 受けた反動の状態はこのフレームだけ使う。渡されなかったフレームは反動でないのと同じ
             const FollowReboundDesc rebound = m_rebound;
             m_rebound = FollowReboundDesc{};
-            const bool framingHeld = m_framingHeld;
-            m_framingHeld = false;
 
             const float dt = NS::OS::FrameTimer::FixedDelta();
             const NS::Transform* target = Target();
@@ -583,35 +485,32 @@ namespace GL
             }
 
             // 反動の状態になったフレーム
-            // 空中で続けて当てた時も、間に反動でないフレームを挟むのでここを通る
+            // 反動を立てるのは地形の反動 (DashRebound) だけ。反動の中からエアダッシュを出して当て直した時は、
+            // 間に反動でないフレームを 1 つでも挟んだ時だけここを通り、挟まなければ前の反動の注視点と距離のまま追う
             const bool reboundBegan = rebound.rebounding && !m_wasRebounding;
             m_wasRebounding = rebound.rebounding;
-            UpdateReboundTurn(reboundBegan, rebound);
 
             const float pitchBeforeInput = m_pitch;
-            // マウスと右スティックの手動回転。反動になってから接地するまでは受けない
-            if (!m_reboundLookHeld)
+            // マウスと右スティックの手動回転
+            NS::OS::Input& input = NS::OS::Input::Get();
+            const NS::OS::Mouse& mouse = input.Mouse();
+            float mxSign = 1.0f;
+            if (m_invertX)
             {
-                NS::OS::Input& input = NS::OS::Input::Get();
-                const NS::OS::Mouse& mouse = input.Mouse();
-                float mxSign = 1.0f;
-                if (m_invertX)
-                {
-                    mxSign = -1.0f;
-                }
-                float mySign = 1.0f;
-                if (m_invertY)
-                {
-                    mySign = -1.0f;
-                }
-                m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
-                m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
-
-                const NS::OS::Gamepad& pad = input.Gamepad();
-                const NS::OS::Stick rstick = pad.RightStick();
-                m_yaw += rstick.x * m_stickSensX * dt * mxSign;
-                m_pitch += rstick.y * m_stickSensY * dt * mySign;
+                mxSign = -1.0f;
             }
+            float mySign = 1.0f;
+            if (m_invertY)
+            {
+                mySign = -1.0f;
+            }
+            m_yaw += static_cast<float>(mouse.GetDeltaX()) * m_sensX * mxSign;
+            m_pitch += static_cast<float>(mouse.GetDeltaY()) * m_sensY * mySign;
+
+            const NS::OS::Gamepad& pad = input.Gamepad();
+            const NS::OS::Stick rstick = pad.RightStick();
+            m_yaw += rstick.x * m_stickSensX * dt * mxSign;
+            m_pitch += rstick.y * m_stickSensY * dt * mySign;
 
             // 上限や下限へ入力した時はクランプでピッチが変わらないので、クランプの前に見る
             const bool pitchInput = m_pitch != pitchBeforeInput;
@@ -620,36 +519,18 @@ namespace GL
             const NS::Vector3 root = target->Position();
             const NS::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};
             UpdateReboundPhase(reboundBegan, rebound.rebounding, head);
-            // 反動になったフレームは前の反動の寄せと引きを持ち越さない
-            if (reboundBegan)
-            {
-                m_partnerLean = NS::Vector3{0.0f, 0.0f, 0.0f};
-                m_partnerLeanVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
-                m_partnerPull = 0.0f;
-                m_partnerPullVelocity = 0.0f;
-            }
-            UpdateReboundPartner(rebound, head, dt);
 
-            // 反動の引きは現在の距離から測る。補間中の目標から測ると、見えている距離からずれる。
-            float desiredDistance = 0.0f;
+            // 反動の間の距離は現在の距離から取る。補間中の目標から取ると、見えている距離からずれる。
+            // 反動になったフレームは UpdateReboundPhase が段を Following にしているので、下の分岐で同じ距離を使う
             if (reboundBegan)
             {
                 m_reboundBaseDistance = m_distance;
-                if (rebound.pullBack)
-                {
-                    m_reboundBaseDistance += std::max(m_reboundPullBack, 0.0f);
-                }
-                desiredDistance = m_reboundBaseDistance + m_partnerPull;
             }
-            else if (m_reboundPhase == ReboundPhase::Following)
+            float desiredDistance = 0.0f;
+            if (m_reboundPhase == ReboundPhase::Following)
             {
-                // 反動の間は当たった瞬間に決めた距離に、相手を収める引きだけを足す
-                desiredDistance = m_reboundBaseDistance + m_partnerPull;
-            }
-            else if (framingHeld)
-            {
-                // 体当たりから止めの明けまでは今の距離のまま。突進で浮いても空中の距離へ引かない
-                desiredDistance = m_distance;
+                // 反動の間は反動になったフレームの距離のまま
+                desiredDistance = m_reboundBaseDistance;
             }
             else if (m_hasFollowMotion && !m_followGrounded)
             {

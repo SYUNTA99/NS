@@ -18,21 +18,21 @@ using NS::Editor::LevelEditorController;
 namespace
 {
 
-    // 当たりと赤の欄を持つ置物を 1 体置く。置いた物は選ばれる
-    void PlaceMapObj(LevelEditorController& editor)
+    // 範囲のセンサーを持つゴールを 1 体置く。置いた物は選ばれる
+    void PlaceGoal(LevelEditorController& editor)
     {
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
     }
 } // namespace
 
-// 世界が 1 歩も進まない間 (プレイに入った直後と一時停止中) も、描くたびに当たり線と正面の面が出る
+// 世界が 1 歩も進まない間 (プレイに入った直後と一時停止中) も、描くたびに当たり線が出る
 TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 {
     GL::Level::GameScene scene;
     LevelEditorController editor(scene);
-    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     editor.EnterPlay();
     NS::Gfx::ClearDebugDraw();
 
@@ -41,7 +41,6 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
     const std::size_t lines = shapes.VertexCount();
     const std::size_t faces = shapes.FaceVertexCount();
     EXPECT_GT(lines, std::size_t{0});
-    EXPECT_GT(faces, std::size_t{0});
 
     scene.SetSimulationPaused(true);
     for (int i = 0; i < 5; ++i)
@@ -61,7 +60,7 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     NS::Gfx::ClearDebugDraw();
 
     NS::Gfx::DebugShapes first;
@@ -84,9 +83,9 @@ TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     const NS::uint32 first = editor.SelectedActorId();
-    ASSERT_NO_FATAL_FAILURE(PlaceMapObj(editor));
+    ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     const NS::uint32 second = editor.SelectedActorId();
 
     const auto countLines = [&editor](std::vector<NS::uint32> ids) {

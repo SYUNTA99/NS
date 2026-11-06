@@ -46,18 +46,6 @@ namespace GL
             return NS::SendMsgToActor(MsgInputLock{locked}, receiver);
         }
 
-        bool SendMsgAskTackleTarget(NS::HitSensor* receiver, TackleTargetAnswer& outAnswer)
-        {
-            NS_ASSERT(Game, receiver != nullptr, "知らせの受け手が無い");
-            return NS::SendMsg(MsgAskTackleTarget{outAnswer}, receiver, nullptr);
-        }
-
-        bool SendMsgTackleHit(NS::HitSensor* receiver, NS::HitSensor* sender, const TackleHitDesc& desc)
-        {
-            NS_ASSERT(Game, receiver != nullptr && sender != nullptr, "知らせの受け手か送り手のセンサーが無い");
-            return NS::SendMsg(MsgTackleHit{desc}, receiver, sender);
-        }
-
         bool TackleGhostDesc::WriteTo(TackleGhost* ghost,
                                       int frame,
                                       const NS::Model* model,
@@ -104,43 +92,6 @@ namespace GL
                 return fallback;
             }
             return static_cast<int>(value);
-        }
-
-        std::string TackleSetName(std::string_view base, HitTier tier, std::string_view variant)
-        {
-            std::string_view label = "真ん中";
-            switch (tier)
-            {
-            case HitTier::Wide:
-                label = "外れ";
-                break;
-            case HitTier::Center:
-                break;
-            }
-            std::string name{base};
-            name += "[";
-            name += label;
-            name += variant;
-            name += "]";
-            return name;
-        }
-
-        std::string_view BeforeContactActionName(HitTier tier) noexcept
-        {
-            switch (tier)
-            {
-            case HitTier::Wide:
-                return "BeforeContactMiss";
-            case HitTier::Center:
-                break;
-            }
-            return "BeforeContactCenter";
-        }
-
-        bool SendMsgTackleRelease(NS::SceneActor* receiver, const TackleReleaseDesc& desc)
-        {
-            NS_ASSERT(Game, receiver != nullptr, "知らせの受け手が無い");
-            return NS::SendMsgToActor(MsgTackleRelease{desc}, receiver);
         }
     } // namespace Level
 } // namespace GL

@@ -62,11 +62,6 @@ namespace NS
             //! @return 可視だったフレームは {描画先, pose}。不可視やサイズ不足なら nullopt
             [[nodiscard]] std::optional<SceneView> CollectView(std::optional<CameraPose> pose) noexcept;
 
-            //! 貼り付け中の描画先をリサイズせず、pose とセットで返す
-            //! 画像の実描画前に使い、CollectView の前に使い終える
-            //! @return 可視かつ描画先が有効ならビュー、それ以外なら nullopt
-            [[nodiscard]] std::optional<SceneView> CurrentView(std::optional<CameraPose> pose) const noexcept;
-
             //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void Release() noexcept;
 

@@ -3,13 +3,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/GridMath.h"
-#include "Editor/HitZoneColors.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/HitZones.h"
-#include "Game/Level/ImpactResolver.h"
-#include "Game/Level/PropActor.h"
-#include "Game/Level/SlamAim.h"
-#include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
@@ -128,33 +122,6 @@ namespace NS
                 }
             }
 
-            // 正面の面の塗りの不透明度。外れの青に赤を重ねても、向こうの相手と床が透けて見える濃さ
-            constexpr float k_HitFaceAlpha = 0.35f;
-            // 直近の当たりの触れた点のマーカー。相手の表面に出るので、玉の模様を隠さない小ささ
-            constexpr float k_HitTouchMarkerRadius = 0.08f;
-
-            // 面の上の形を 1 つ描く。中心から縁の点へ扇に塗り、縁の点を線で結ぶ
-            // 形と縁の点と面の置き方は HitZones の関数が出す。判定と同じ値から描くので、色の境目が判定とずれない
-            void DrawHitFaceShape(Gfx::DebugShapes& shapes,
-                                  const GL::Level::HitFaceFrame& frame,
-                                  const GL::Level::HitFaceShape& shape) noexcept
-            {
-                const std::vector<Vector2> outline = GL::Level::HitFaceShapeOutline(shape);
-                const Color edgeColor = HitZoneColor(shape.tier);
-                Color fillColor = edgeColor;
-                fillColor.A(k_HitFaceAlpha);
-                const Vector3 center = GL::Level::HitFacePoint(frame, shape.centerU, shape.centerV);
-                for (std::size_t i = 0; i < outline.size(); ++i)
-                {
-                    const Vector2& from = outline[i];
-                    const Vector2& to = outline[(i + 1) % outline.size()];
-                    const Vector3 a = GL::Level::HitFacePoint(frame, from.x, from.y);
-                    const Vector3 b = GL::Level::HitFacePoint(frame, to.x, to.y);
-                    shapes.Triangle(center, a, b, fillColor);
-                    shapes.Line(a, b, edgeColor);
-                }
-            }
-
             // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugShapes に破線が無いので描画側で
             // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
             void DrawDashedLine(Gfx::DebugShapes& shapes,
@@ -226,7 +193,6 @@ namespace NS
             {
                 // 動いている形をそのまま追えるよう選択に関わらず全部出す
                 RenderCollisionWireframes(shapes, true);
-                RenderHitFaces(shapes);
                 return;
             }
 
@@ -243,7 +209,6 @@ namespace NS
             }
             RenderCameraGizmos(shapes, viewProjection, viewport);
             RenderCollisionWireframes(shapes, false);
-            RenderHitFaces(shapes);
             RenderSelectionOutlines(shapes);
         }
 
@@ -338,81 +303,6 @@ namespace NS
                     DrawSensorWireframe(shapes, *objPtr, sensorColor);
                 }
             }
-        }
-
-        void LevelEditorController::RenderHitFaces(Gfx::DebugShapes& shapes) noexcept
-        {
-            PlayerActor* player = FindPlayer(m_scene.Actors());
-            // 自機が居ない場面は半径 0 として、相手の輪郭の大きさで描く
-            float playerRadius = 0.0f;
-            Vector3 ballCenter{};
-            GL::Level::SlamLineTarget aim{};
-            bool aiming = false;
-            if (player != nullptr)
-            {
-                // 突進の玉は、狙う相手の探し方と同じ PlayerActor::SlamBallAt から引く
-                const Sphere ball = player->SlamBallAt(player->Root().Position());
-                ballCenter = ball.center;
-                playerRadius = ball.radius;
-                aiming = player->TryGetAimTarget(aim);
-            }
-            const Vector3 cameraPosition = m_editorCamera.Pose().position;
-
-            for (SceneActor* object : m_scene.Actors())
-            {
-                if (!object->IsAppeared())
-                {
-                    continue;
-                }
-                const GL::Level::PropActor* prop = Cast<GL::Level::PropActor>(object);
-                const HitSensorsObj* sensors = object->HitSensorsClassObj();
-                if (prop == nullptr || sensors == nullptr)
-                {
-                    continue;
-                }
-                const HitSensor* bodySensor = sensors->Find("Body");
-                if (bodySensor == nullptr)
-                {
-                    continue;
-                }
-                const GL::Level::HitZones& zones = prop->Zones();
-                // 調べる対象から外した体は、突進が当たらないので面も出さない
-                if (!bodySensor->IsValid())
-                {
-                    continue;
-                }
-                const SensorVolume body = bodySensor->WorldVolume(object->Root().WorldMatrix());
-                Vector3 direction = body.Center() - cameraPosition;
-                if (player != nullptr)
-                {
-                    direction = body.Center() - ballCenter;
-                }
-                if (aiming && aim.target == object)
-                {
-                    direction = aim.direction;
-                }
-                // 真上や真下から見て水平の向きが決まらない相手は描かない
-                GL::Level::HitFaceFrame frame;
-                if (!GL::Level::MakeHitFaceFrame(body, direction, playerRadius, frame))
-                {
-                    continue;
-                }
-                for (const GL::Level::HitFaceShape& shape : GL::Level::HitFaceShapes(zones.Face(), frame.bodyShape))
-                {
-                    DrawHitFaceShape(shapes, frame, shape);
-                }
-            }
-
-            if (player == nullptr)
-            {
-                return;
-            }
-            const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-            if (impact.sequence == 0)
-            {
-                return;
-            }
-            shapes.Sphere(Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, HitZoneColor(impact.tier));
         }
     } // namespace Editor
 } // namespace NS

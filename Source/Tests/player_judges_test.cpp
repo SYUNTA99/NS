@@ -51,32 +51,13 @@ TEST(PlayerJudges, JumpKeepsCoyoteBufferAndRemainingCountBoundaries)
     EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, std::numeric_limits<float>::quiet_NaN(), 1, true, 0.0f));
 }
 
-TEST(PlayerJudges, BodySlamRequiresFreshReservationAndLocomotion)
+TEST(PlayerJudges, LedgeEligibilityPreservesGroundAndUpwardExclusions)
 {
-    for (const bool spent : {false, true})
-    {
-        for (const bool wasSlamming : {false, true})
-        {
-            for (const bool locomotion : {false, true})
-            {
-                EXPECT_EQ(GL::Player::PlayerJudgeBodySlam::Judge(0.001f, spent, wasSlamming, locomotion),
-                          !spent && !wasSlamming && locomotion);
-            }
-        }
-    }
-    EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(0.0f, false, false, true));
-    EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(-0.001f, false, false, true));
-    EXPECT_FALSE(GL::Player::PlayerJudgeBodySlam::Judge(std::numeric_limits<float>::quiet_NaN(), false, false, true));
-}
-
-TEST(PlayerJudges, LedgeEligibilityPreservesGroundUpwardAndRecentImpactExclusions)
-{
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, 0.0f, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, -1.0f, false));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::Judge(true, -1.0f, false));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, 0.001f, false));
-    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, -1.0f, true));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, std::numeric_limits<float>::quiet_NaN(), false));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, 0.0f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, -1.0f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::Judge(true, -1.0f));
+    EXPECT_FALSE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, 0.001f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeLedgeGrab::Judge(false, std::numeric_limits<float>::quiet_NaN()));
 }
 
 TEST(PlayerJudges, LedgeBandIncludesItsEdgesWithoutPhysicsOrState)
@@ -109,13 +90,4 @@ TEST(PlayerJudges, FallAndLedgeChoicesFollowTheirOneSignal)
     EXPECT_FALSE(GL::Player::PlayerJudgeClimbLedge::Judge(std::numeric_limits<float>::quiet_NaN()));
     EXPECT_TRUE(GL::Player::PlayerJudgeDropLedge::Judge(true));
     EXPECT_FALSE(GL::Player::PlayerJudgeDropLedge::Judge(false));
-}
-
-TEST(PlayerJudges, LocomotionIsAnyOfIdleWalkFallRebound)
-{
-    EXPECT_FALSE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(true, false, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, true, false, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, true, false));
-    EXPECT_TRUE(GL::Player::PlayerJudgeLocomotion::Judge(false, false, false, true));
 }

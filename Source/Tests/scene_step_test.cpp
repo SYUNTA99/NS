@@ -1,5 +1,4 @@
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -19,7 +18,7 @@
 
 #include <optional>
 
-// 普段の歩・シーンが止まっている歩・世界を進めない歩で、Scene のメンバーのどれが回ったかを、メンバーの効果で見る
+// 普段の歩とシーンが止まっている歩で、Scene のメンバーのどれが回ったかを、メンバーの効果で見る
 // 物理の管理役は broadphase の木を組み直すだけで、問いの答えも body の位置も変えないので、ここでは見ない。
 // UI の管理役は開いている画面の OnTick を呼ぶだけなので、同じ実時間で進む暗転で見る
 
@@ -201,65 +200,6 @@ TEST(SceneStep, AStoppedStepAdvancesOnlyWhatShowsTheMover)
     EXPECT_EQ(after.sensorStays, before.sensorStays);
     EXPECT_LT(after.flashRemaining, before.flashRemaining);
     EXPECT_LT(after.padLeft, before.padLeft);
-}
-
-// 世界を進めない歩 (世界の速さ 0) は、実時間で進む暗転だけを進める
-TEST(SceneStep, AStepWithoutTheWorldAdvancesOnlyTheRealTimeMembers)
-{
-    StepScene world;
-    ASSERT_TRUE(world.IsValid());
-    ASSERT_NO_FATAL_FAILURE(world.Start());
-    world.Scene().SetWorldSpeed(0.0f);
-    const StepView before = world.View();
-    ASSERT_TRUE(before.effectExists);
-
-    world.Step(k_ObservedSteps);
-    const StepView after = world.View();
-
-    EXPECT_NEAR(after.fadeAlpha - before.fadeAlpha,
-                static_cast<float>(k_ObservedSteps) * NS::OS::FrameTimer::FixedDelta() / 10.0f,
-                1.0e-5f);
-    EXPECT_FLOAT_EQ(after.cameraX, before.cameraX);
-    EXPECT_TRUE(after.effectExists);
-    EXPECT_EQ(after.sensorStays, before.sensorStays);
-    EXPECT_EQ(after.flashRemaining, before.flashRemaining);
-    EXPECT_FLOAT_EQ(after.padLeft, before.padLeft);
-}
-
-// 書かれなかったフレームは Gamepad::Update が 0 にするので、世界を進めない歩も振動を書く
-TEST(SceneStep, AStepWithoutTheWorldKeepsThePadVibrating)
-{
-    StepScene world;
-    ASSERT_TRUE(world.IsValid());
-    ASSERT_NO_FATAL_FAILURE(world.Start());
-    world.Scene().SetWorldSpeed(0.0f);
-    NS::OS::Gamepad& pad = NS::OS::Input::Get().Gamepad();
-    pad.Update();
-    const float before = world.View().padLeft;
-    ASSERT_GT(before, 0.0f);
-
-    world.Step(1);
-    pad.Update();
-
-    // 世界が進まないので、曲線も進まず同じ速さを書く
-    EXPECT_FLOAT_EQ(world.View().padLeft, before);
-}
-
-// 世界の歩の実時間は、前の世界の歩から実際に回した固定フレーム数で決まる
-TEST(SceneStep, WorldStepSecondsCountsTheStepsSinceTheLastWorldStep)
-{
-    NS::Scene scene;
-    const float fixedDelta = NS::OS::FrameTimer::FixedDelta();
-    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta);
-    scene.SetWorldSpeed(0.25f);
-    for (int i = 0; i < 4; ++i)
-    {
-        scene.OnUpdate();
-    }
-    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta * 4.0f);
-    // 歩の途中で速さが変わっても、回した歩の実時間は変わらない
-    scene.SetWorldSpeed(0.05f);
-    EXPECT_FLOAT_EQ(scene.WorldStepSeconds(), fixedDelta * 4.0f);
 }
 
 // OnShutdown を通さずに壊すシーン (エディタの下見) も、図形を次の世界へ残さない

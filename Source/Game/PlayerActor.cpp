@@ -1,32 +1,23 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/GameScene.h"
-#include "Game/Level/ImpactOutcome.h"
-#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
-#include "Game/Level/TargetMarker.h"
-#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerClips.h"
-#include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
-#include "Game/Player/States/BeforeContactPlayerState.h"
 #include "Game/Player/States/DashReboundPlayerState.h"
-#include "Game/Player/States/BodySlamPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
-#include "Game/Player/States/ReboundPlayerState.h"
-#include "Game/Player/States/SkidPlayerState.h"
-#include "Game/Player/States/TackleHitPlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
@@ -54,10 +45,7 @@ NS_CLASSOBJ(m_collider, "Collider")
 NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_clips, "Clips")
-NS_CLASSOBJ(m_resolver, "ImpactResolver")
-NS_CLASSOBJ(m_targetMarker, "TargetMarker")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
-NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
 
@@ -83,15 +71,11 @@ void PlayerActor::OnInit()
     CreateClassObj(m_shadow);
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
     m_ghost = CreateChildActor<GL::Level::TackleGhost>();
-    CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
-    CreateClassObj(m_targetMarker);
-    NS::InitOverlay(this, m_targetMarker.get());
     CreateClassObj(m_reboundPreview);
     NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
-    CreateClassObj(m_impactEffects);
     CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
     // 跳びと着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep
@@ -105,12 +89,7 @@ void PlayerActor::OnInit()
                             GL::Player::FallPlayerState,
                             GL::Player::LedgeHangingPlayerState,
                             GL::Player::LedgeClimbingPlayerState,
-                            GL::Player::BodySlamPlayerState,
-                            GL::Player::BeforeContactPlayerState,
                             GL::Player::BrakePlayerState,
-                            GL::Player::TackleHitPlayerState,
-                            GL::Player::ReboundPlayerState,
-                            GL::Player::SkidPlayerState,
                             GL::Player::AirDashPlayerState,
                             GL::Player::DashReboundPlayerState>(this, m_states);
 }
@@ -123,39 +102,14 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     // 当たりの足元に立ち姿のカプセルを立てた時の中心を見る。玉の間は根が立ち姿の半長ぶん下がっているので、
     // 根を見ると押すたびに画面が 1 フレームで半長ぶん沈み、解けると跳ね上がる
     state.heightOffset = m_collider->StandingHalfHeight() - m_collider->CapsuleHalfHeight();
-    // 体当たりから止めの明けまで、カメラは距離を保つ。当たる瞬間に画面が引かない
-    state.framingHeld = IsBodySlamming() || IsHeldByTackleHit();
-    state.hasRebound = true;
     state.rebound = GL::Level::FollowReboundDesc{
-        .rebounding = IsRebounding(),
-        .slamDirection = BodySlamDirection(),
         .widenView = IsAirDashing() || IsDashRebounding(),
     };
-    // 地形の反動はカメラの向きを回さず、回す入力も止めない。スティックの基準がずれず、戻ったダッシュが思った向きへ出る
     // 帯の縦は表で丸めた向きから取るので、同じ当て方なら毎回同じ画面になる
     if (IsDashRebounding())
     {
         state.rebound.rebounding = true;
-        state.rebound.slamDirection = NS::Vector3{};
-        state.rebound.pullBack = false;
-        state.rebound.holdLook = false;
         state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
-    }
-    // 真ん中の反動は、飛んでいく相手を画面に残す。外れはいつもどおり自機だけを追う (外れのカメラは寄り無し)
-    const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
-    // 外れはカメラを突進の向きへ回り込ませない。回り込むと画面が振り回され、自機がどちらへ逸れたかも読めない
-    // 後ろへも下げない。下げるのは飛んでいく相手を画面に収めるためで、外れの相手はほとんど飛ばない
-    if (IsRebounding() && impact.tier == GL::Level::HitTier::Wide)
-    {
-        state.rebound.slamDirection = NS::Vector3{};
-        state.rebound.pullBack = false;
-    }
-    if (IsRebounding() && impact.tier == GL::Level::HitTier::Center)
-    {
-        if (const NS::SceneActor* partner = m_resolver->Answer().lastTarget)
-        {
-            state.rebound.partnerPosition = partner->Root().Position();
-        }
     }
     return state;
 }
@@ -166,14 +120,9 @@ void PlayerActor::WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const
     const GL::Player::CameraTargetState state = GetCameraTargetState();
     vcam->SetFollowMotion(state.grounded, state.velocity);
     vcam->SetTargetHeightOffset(state.heightOffset);
-    vcam->SetFollowFramingHeld(state.framingHeld);
-    if (state.hasRebound && !vcam->SetFollowRebound(state.rebound))
+    if (!vcam->SetFollowRebound(state.rebound))
     {
-        NS_LOG_WARN(Game,
-                    "突進の向きが壊れていて、反動をカメラへ渡さなかった: ({}, {}, {})",
-                    state.rebound.slamDirection.x,
-                    state.rebound.slamDirection.y,
-                    state.rebound.slamDirection.z);
+        NS_LOG_WARN(Game, "反動の縦の向きが壊れていて、反動をカメラへ渡さなかった: {}", state.rebound.verticalLean);
     }
 }
 
@@ -199,9 +148,9 @@ void PlayerActor::UpdateAnimation()
     animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
 }
 
-void PlayerActor::Update(bool chargeHeld)
+void PlayerActor::Update(bool slamHeld)
 {
-    m_input->SetSlamHeld(chargeHeld);
+    m_input->SetSlamHeld(slamHeld);
     m_inputInjected = true;
     NS::SceneActor::Update();
     m_inputInjected = false;
@@ -209,38 +158,21 @@ void PlayerActor::Update(bool chargeHeld)
 
 void PlayerActor::DecideStep()
 {
-    // 世界を進めた固定フレームにだけ回るので、世界を進めない固定フレームの押しもここで拾う
+    // 固定フレームごとに 1 回、前に読んだ後の押しをここで拾う
     if (!m_inputInjected)
     {
         m_input->Update(this);
     }
-    // 明けのフレームは、この後で当たりの状態を抜けるので、ここで読んでおく
-    const bool hitAtStepStart = IsHitStopping() || IsInTackleHit();
-    // 体当たりのボタンはエアダッシュに使う。押した瞬間に出すので、溜めには押しを渡さない
+    // 止めの間は、やり直しの押しを受け付けない
+    const bool hitAtStepStart = IsHitStopping();
+    // SlamHeld のボタンはエアダッシュに使う。押した瞬間に出す
     const bool pressHeld = m_input->SlamHeld();
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
     ObserveStick();
     ExtendReboundStop();
-    ObserveCharge(false);
-    m_resolver->ObserveImpact(SelfForImpact(), SlamMotion(), m_collider.get());
-
-    AdvanceCharge(NS::GetFrameDelta(this));
-    // 止めの後に初めて回るフレームが明け。状態の段より前に反動へ移すと、反動の 1 歩目が明けのフレームに回る
-    const bool releasing = IsInTackleHit() && !IsHitStopping();
-    m_resolver->StepState(
-        SelfForImpact(), SlamMotion(), m_params.get(), m_body.get(), m_collider.get(), HitReactionClassObj());
-    if (releasing)
-    {
-        ReleaseTackleHit();
-    }
-    ApplyImpactOrders(m_resolver->Answer());
-    DecideBeforeContact(m_resolver->Answer());
-    // 当たりの途中は受け付けない。相手だけが戻ると、明けの知らせが戻った相手を飛ばす。
-    // 当たりを検知した歩も断るので、検知の後で読む。
-    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る。明けのフレームも
-    // 当たりの途中なのでここでは受け付けず、同じフレームの状態機械の後か押しを下ろす所で消えて、明けの後へ持ち越さない
-    if (m_input->RespawnPressed() && !hitAtStepStart && !IsHeldByTackleHit())
+    // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る
+    if (m_input->RespawnPressed() && !hitAtStepStart)
     {
         if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
         {
@@ -265,12 +197,7 @@ bool PlayerActor::PrepareOrSkipStateStep()
     }
     // 体の段にも止まっている時の押下の消費を置くと、dt が 0 以下の時に 2 回走る。消費は冪等なのでここ 1 回にする
     DropPresses();
-    // 当たりの状態は体を動かさないので、突進の発動と丸まりの解除を通さずに状態機械だけを進める。
-    // 入る予約の確定 (段の束を始める) は止めの前のフレームに回る
-    if (!(IsInTackleHit() && dt > 0.0f))
-    {
-        SkipStateStep();
-    }
+    SkipStateStep();
     return false;
 }
 
@@ -278,54 +205,19 @@ void PlayerActor::AfterStateStep()
 {
     if (m_stateStepPrepared)
     {
-        FinishStateStep(NS::GetFrameDelta(this));
+        FinishStateStep();
     }
 }
 
-void PlayerActor::ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept
+void PlayerActor::ChangeToWalkOrFall() noexcept
 {
-    if (answer.cancelBodySlam)
+    if (m_body->IsGrounded())
     {
-        // 当たりの状態へ入るのは 1 フレーム以上後なので、音は触れたと分かったこのフレームに鳴らす
-        m_playerSounds->PlayHit(this);
-        // 新しい当たりは、前の当たりの束で走っている演出を打ち切る。当たる直前から続く当たりは入る時に打ち切り、
-        // 当たる直前の動作の形を検知のフレームまで描く
-        if (!ContinuesBeforeContact(answer))
-        {
-            StopTackleHitEffects();
-            if (NS::HitReaction* reaction = HitReactionClassObj())
-            {
-                reaction->Stop(this);
-            }
-        }
-        CancelBodySlam();
+        (void)m_states->Change<GL::Player::WalkPlayerState>();
     }
-    // 検知のフレームは歩きか落下の 1 歩を回し、次のフレームから止める
-    if (answer.beginHit)
+    else
     {
-        (void)m_states->Change<GL::Player::TackleHitPlayerState>();
-    }
-    if (!answer.releaseVelocity.has_value())
-    {
-        return;
-    }
-    if (answer.reboundArc.has_value())
-    {
-        if (BeginRebound(*answer.reboundArc))
-        {
-            return;
-        }
-        // 欄が曲線にならない値の時だけ通る。書かないと、止める前の最後のフレームの速度のまま動き出す
-        NS_LOG_WARN(Game,
-                    "反動が曲線にならず、自機を弾けなかった: 高さ {} 距離 {}",
-                    answer.reboundArc->apexHeight,
-                    answer.reboundArc->distance);
-    }
-    m_body->SetVelocity(*answer.releaseVelocity);
-    // 貫通と反動にならない明けは、当たりの状態を出て通常の移動へ戻る
-    if (IsInTackleHit())
-    {
-        ChangeToWalkOrFall();
+        (void)m_states->Change<GL::Player::FallPlayerState>();
     }
 }
 
@@ -341,25 +233,13 @@ void PlayerActor::BodyStep()
 void PlayerActor::VisualStep()
 {
     UpdateAnimation();
-    m_targetMarker->Update(m_charge);
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
 #endif
     const GL::Player::PlayerMotion motion = Motion();
-    const GL::Level::ImpactAnswer& impact = m_resolver->Answer();
-    // clang-format off
-    const NS::Vector3 release = ReleaseDirection();
-    const NS::Vector3 center = Root().Position();
-    m_appearance->Update(m_model.get(), NS::GetFrameDelta(this),
-                         motion, m_charge, m_slam, m_rebound, m_skid, release, impact);
-    m_impactEffects->UpdateSlam(this, center, m_slam, motion, impact);
-    m_impactEffects->Update(this, this, center, m_slam, motion, m_body.get(), m_collider.get(), impact.lastImpact);
-    // clang-format on
-    // 音を重ねない間隔なので、ヒットストップや遅い世界でも伸び縮みしない実時間の秒で数える
-    m_playerSounds->Update(this, OwningScene()->WorldStepSeconds());
-#if !defined(NS_SHIPPING)
-    DrawChargeRing();
-#endif
+    m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
+    // 音を重ねない間隔なので、ヒットストップでも伸び縮みしない実時間の秒で数える
+    m_playerSounds->Update(this, NS::OS::FrameTimer::FixedDelta());
     DrawTerrainRebound();
 }
 
@@ -431,7 +311,6 @@ void PlayerActor::OnAssetsLoaded()
     {
         m_appearance->Uncurl(m_model.get());
     }
-    m_impactEffects->Preload(this);
     m_playerSounds->Preload(this);
 }
 
@@ -440,7 +319,6 @@ void PlayerActor::OnEndPlay()
     // 戻す物はやり直しと同じ組。当たりの止めと状態と演出も捨て、止めが次のプレイへ残らない
     ResetState();
     NS::SceneActor::OnEndPlay();
-    NS::EndOverlay(this, m_targetMarker.get());
     NS::EndOverlay(this, m_reboundPreview.get());
 }
 
@@ -449,7 +327,6 @@ void PlayerActor::OnAppear()
     NS::SceneActor::OnAppear();
     if (IsAppeared())
     {
-        NS::ShowOverlay(this, m_targetMarker.get());
         NS::ShowOverlay(this, m_reboundPreview.get());
     }
 }
@@ -457,7 +334,6 @@ void PlayerActor::OnAppear()
 void PlayerActor::OnDisappear() noexcept
 {
     NS::SceneActor::OnDisappear();
-    NS::HideOverlay(this, m_targetMarker.get());
     NS::HideOverlay(this, m_reboundPreview.get());
 }
 
@@ -515,11 +391,6 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
     if (const GL::Level::MsgInputLock* lock = NS::MsgCast<GL::Level::MsgInputLock>(msg))
     {
         m_input->SetLocked(lock->Locked());
-        // 押しが偽になった歩を放したと読むと、溜めた突進が出る。止める時は放させずに溜めを捨てる
-        if (lock->Locked())
-        {
-            CancelCharge();
-        }
         return true;
     }
     return false;
@@ -560,56 +431,14 @@ int PlayerActor::Health() const noexcept { return m_health.Current(); }
 
 float PlayerActor::MaxSpeed() const noexcept
 {
-    const float capped = m_params->m_runSpeed * m_maxSpeedScale;
-    if (capped < 0.0f)
-    {
-        return 0.0f;
-    }
-    return capped;
-}
-
-void PlayerActor::SetMaxSpeedScale(float scale) noexcept
-{
-    // 非数を入れると MaxSpeed() との比較が偽になり、突進明けに水平の速さが切られない
-    if (!std::isfinite(scale))
-    {
-        return;
-    }
-    m_maxSpeedScale = scale;
+    return std::max(m_params->m_runSpeed, 0.0f);
 }
 
 float PlayerActor::RunSpeed() const noexcept { return m_params->m_runSpeed; }
 
-bool PlayerActor::IsBodySlamming() const noexcept
-{
-    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
-    return m_states != nullptr && (m_states->IsCurrent<GL::Player::BodySlamPlayerState>() ||
-                                   m_states->IsCurrent<GL::Player::BeforeContactPlayerState>());
-}
-
-bool PlayerActor::IsInBeforeContact() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::BeforeContactPlayerState>();
-}
-
-float PlayerActor::BodySlamProgress01() const noexcept
-{
-    if (!IsBodySlamming() || !NS::IsPositive(m_slam.m_distanceTarget))
-    {
-        return 0.0f;
-    }
-    return NS::Clamp(m_slam.m_travelled / m_slam.m_distanceTarget, 0.0f, 1.0f);
-}
-
-float PlayerActor::BodySlamDistance() const noexcept { return m_params->m_bodySlamDistance; }
-
-bool PlayerActor::IsRebounding() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::ReboundPlayerState>();
-}
-
 bool PlayerActor::IsAirDashing() const noexcept
 {
+    // 状態機械を組む前 (OnInit の前) はまだ預かっていないので nullptr を見る
     return m_states != nullptr && m_states->IsCurrent<GL::Player::AirDashPlayerState>();
 }
 
@@ -618,128 +447,9 @@ bool PlayerActor::IsDashRebounding() const noexcept
     return m_states != nullptr && m_states->IsCurrent<GL::Player::DashReboundPlayerState>();
 }
 
-bool PlayerActor::IsReboundLanded() const noexcept
-{
-    return IsRebounding() && GL::Player::PlayerJudgeLand::Judge(m_body->IsGrounded(), m_body->VerticalVelocity());
-}
-
-bool PlayerActor::IsSkidding() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::SkidPlayerState>();
-}
-
-bool PlayerActor::SkidsOnLanding() const noexcept
-{
-    return m_rebound.m_missTumble.has_value() && m_params->m_missSkidSteps > 0;
-}
-
-float PlayerActor::SkidSpeedScale() const noexcept
-{
-    if (!IsSkidding())
-    {
-        return 1.0f;
-    }
-    return m_skid.SpeedScale();
-}
-
 bool PlayerActor::CanMoveBody() const noexcept
 {
-    // 止めの残りは止めの最後のフレームの終わりで 0 になるので、明けて反動へ移るまでは当たりの状態も読む
-    return IsAppeared() && !IsHitStopping() && !IsInTackleHit();
-}
-
-bool PlayerActor::IsInTackleHit() const noexcept
-{
-    return m_states != nullptr && m_states->IsCurrent<GL::Player::TackleHitPlayerState>();
-}
-
-bool PlayerActor::IsHeldByTackleHit() const noexcept
-{
-    return m_resolver->IsHitAwaitingEntry() || IsInTackleHit();
-}
-
-NS::HitSensor* PlayerActor::LastTackleTargetSensor() const noexcept
-{
-    NS::SceneActor* target = m_resolver->Answer().lastTarget;
-    if (target == nullptr)
-    {
-        return nullptr;
-    }
-    return target->HitSensorsClassObj()->Find("Body");
-}
-
-void PlayerActor::BeginTackleHit() noexcept
-{
-    const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
-    NS::HitSensor* target = LastTackleTargetSensor();
-    NS::HitReaction* reaction = HitReactionClassObj();
-    if (target == nullptr || reaction == nullptr)
-    {
-        NS_LOG_WARN(Game, "当たりの相手か自機の当たりの演出が無いので、段の束を始めない: 相手 {}", impact.targetId);
-        return;
-    }
-    const std::vector<NS::HitOwnerRun> runs = StartHitReactionRuns(
-        GL::Level::TackleSetName("体当たり", impact.tier), impact.surfacePoint, m_bodyHitSensor, target);
-    GL::Level::TackleHitDesc hit{.tier = impact.tier, .contact = impact.surfacePoint, .impactDir = impact.impactDir};
-    if (impact.broke)
-    {
-        // 貫通は押し勝っている側なので形を変えず、止めは欄「貫通の止め秒」の長さにする
-        OverrideHitStop(impact.hitStopSteps);
-        ModelClassObj()->StopDrawShape();
-        hit.stopOverride = impact.hitStopSteps;
-    }
-    for (const NS::HitOwnerRun& run : runs)
-    {
-        if (run.item.name == "TackleGhost")
-        {
-            m_ghost->Start(run);
-        }
-        if (run.item.name == "HitEffect")
-        {
-            m_impactEffects->RequestHit();
-        }
-    }
-    (void)GL::Level::SendMsgTackleHit(target, m_bodyHitSensor, hit);
-}
-
-void PlayerActor::ReleaseTackleHit() noexcept
-{
-    const GL::Level::ImpactRecord& impact = m_resolver->Answer().lastImpact;
-    NS::HitSensor* target = LastTackleTargetSensor();
-    NS::HitReaction* reaction = HitReactionClassObj();
-    if (target != nullptr && reaction != nullptr)
-    {
-        // 束が足した持ち主へ渡す項目は、走っている項目の後ろに並ぶ
-        const std::size_t first = reaction->OwnerRuns().size();
-        (void)StartHitReaction(
-            GL::Level::TackleSetName("明け", impact.tier), impact.surfacePoint, m_bodyHitSensor, target);
-        // 紫で上がった威力を当たった結果で見せる遅さなので、赤で放した当たりには出さない
-        if (impact.gradualRelease)
-        {
-            m_slowedWorld = StartHitReaction(
-                GL::Level::TackleSetName("明け", impact.tier, "・紫"), impact.surfacePoint, m_bodyHitSensor, target);
-        }
-        for (const NS::HitOwnerRun& run : reaction->OwnerRunsSince(first))
-        {
-            if (run.item.name == "FlightEffect")
-            {
-                m_impactEffects->RequestFlight();
-            }
-        }
-    }
-    m_resolver->Release();
-}
-
-void PlayerActor::StartReboundReaction() noexcept
-{
-    // 相手が消えていても反動では飛ぶので、音は相手を探す前に鳴らす
-    m_playerSounds->PlayRebound(this);
-    NS::HitSensor* target = LastTackleTargetSensor();
-    if (target == nullptr)
-    {
-        return;
-    }
-    (void)StartHitReaction("反動", m_resolver->Answer().lastImpact.surfacePoint, m_bodyHitSensor, target);
+    return IsAppeared() && !IsHitStopping();
 }
 
 void PlayerActor::StopTackleHitEffects() noexcept
@@ -756,22 +466,11 @@ void PlayerActor::StopTackleHitEffects() noexcept
         reaction->StopDistortionRing(this);
     }
     m_ghost->Stop();
-    // 紫の明けの遅い世界は束より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
-    if (m_slowedWorld)
-    {
-        m_slowedWorld = false;
-        OwningScene()->SetWorldSpeed(1.0f);
-    }
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
 {
     return GL::Player::PlayerMotion{
-        .bodySlamming = IsBodySlamming(),
-        .beforeContact = IsInBeforeContact(),
-        .rebounding = IsRebounding(),
-        .reboundLanded = IsReboundLanded(),
-        .skidding = IsSkidding(),
         .curled = IsCurled(),
         .canMoveBody = CanMoveBody(),
         .airDashing = IsAirDashing(),
@@ -782,8 +481,6 @@ GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
 
 void PlayerActor::ResetState() noexcept
 {
-    // 状態機械を戻す前に読む。自機を止めていない時は、前の当たりの白・振動・カメラの返りの薄れを残す
-    const bool heldByHit = IsHeldByTackleHit();
     m_body->SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_input->ResetMovementInput();
     m_prevJumpHeld = false;
@@ -798,13 +495,6 @@ void PlayerActor::ResetState() noexcept
     m_ledgeMantleTimer = 0.0f;
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
-    m_request = BodySlamRequest{};
-    // 押したまま出直すと、次の押しのフレームから溜め直す。残すと、出直した後に放したフレームで前の溜めの突進が出る
-    CancelCharge();
-    m_impactEffects->Reset(this);
-    m_slam = GL::Player::BodySlamStatus{};
-    m_rebound.Reset();
-    m_skid = GL::Player::SkidStatus{};
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
     m_reboundPreview->Hide();
@@ -813,18 +503,12 @@ void PlayerActor::ResetState() noexcept
     m_collider->SetSphereShape(false);
     m_appearance->Uncurl(m_model.get());
     m_states->Reset();
-    // 止めの最中か明けを待つ間のやり直しで、出現位置で明けて弾かれないよう、止めと当たりの状態を捨てる。
+    // 止めの最中のやり直しで、出現位置で明けて弾かれないよう、止めを捨てる。
     // StateMachineOf::Reset は OnExit を呼ばないので、当たりの演出もここで止める
     OverrideHitStop(0);
-    m_resolver->CancelImpact();
     StopTackleHitEffects();
-    if (heldByHit && HitReactionClassObj() != nullptr)
-    {
-        HitReactionClassObj()->Stop(this);
-    }
-    // 当たる直前の動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
+    // 動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     ActionTimelineClassObj()->Stop();
-    m_beforeContact = BeforeContactEntry{};
     OwningScene()->RequestStopScene(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
@@ -847,42 +531,18 @@ void PlayerActor::DropPresses() noexcept
 
 void PlayerActor::PrepareStateStep()
 {
-    const bool locomotion = GL::Player::PlayerJudgeLocomotion::Judge(GL::Player::PlayerJudgeLocomotion::StateFlags{
-        .idle = m_states->IsCurrent<GL::Player::IdlePlayerState>(),
-        .walk = m_states->IsCurrent<GL::Player::WalkPlayerState>(),
-        .fall = m_states->IsCurrent<GL::Player::FallPlayerState>(),
-        .rebound = m_states->IsCurrent<GL::Player::ReboundPlayerState>(),
-    });
     // ここで始める動作は宙でも出せる。出現した後に一度も接地しないまま出しても、次の着地で着地の音を鳴らす
     if (CanStartAirDash() && BeginAirDash())
     {
         m_playerSounds->AllowLand();
-        return;
-    }
-    if (GL::Player::PlayerJudgeBodySlam::Judge(
-            m_request.bufferRemaining, m_request.spent, m_slam.m_wasSlamming, locomotion))
-    {
-        if (BodySlam())
-        {
-            m_request.bufferRemaining = 0.0f;
-            m_playerSounds->AllowLand();
-        }
     }
 }
 
-void PlayerActor::FinishStateStep(float dt)
+void PlayerActor::FinishStateStep()
 {
     UncurlWhenSettled();
     m_prevJumpHeld = m_input->JumpHeld();
     m_input->ConsumePressed();
-    if (m_request.bufferRemaining > 0.0f && !IsBodySlamming())
-    {
-        m_request.bufferRemaining = std::max(0.0f, m_request.bufferRemaining - dt);
-    }
-    if (m_request.aimAge < m_params->m_slamAimFadeTime)
-    {
-        m_request.aimAge += dt;
-    }
 }
 
 PlayerActor* FindPlayer(NS::ActorList& objects) noexcept

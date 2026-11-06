@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/TackleGhost.h"
 #include "Game/PlayerActor.h"
 #include "Tests/TestLogCapture.h"
@@ -391,7 +390,7 @@ TEST(ActorChild, SyncCollisionsReachesTheChildAndGrandchild)
     EXPECT_TRUE(HitsDownAt(scene, 6.0f));
 }
 
-TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
+TEST(ActorChild, AdvancesAfterTheParentDuringHitStop)
 {
     ChildCounts counts;
     NS::Scene scene;
@@ -405,11 +404,8 @@ TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
     scene.OnUpdate();
     EXPECT_EQ(counts.steps, 3);
     EXPECT_FLOAT_EQ(counts.parentX, 1.0f);
-    scene.SetWorldSpeed(0.5f);
-    for (int frame = 0; frame < 4; ++frame)
-    {
-        scene.OnUpdate();
-    }
+    scene.OnUpdate();
+    scene.OnUpdate();
     EXPECT_EQ(counts.steps, 5);
     EXPECT_FLOAT_EQ(counts.parentX, 3.0f);
 }
@@ -475,24 +471,17 @@ TEST(ActorChild, RefusesToDestroyAChildAloneAndKeepsItWithTheParent)
     EXPECT_EQ(CountSelfAndDescendants(parent), 2);
 }
 
-TEST(ActorChild, PlayerAndPropOwnATackleGhostThatDrawsTheirMainModel)
+TEST(ActorChild, PlayerOwnsATackleGhostThatDrawsItsMainModel)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
-    GL::Level::PropActor* prop = scene.SpawnActor<GL::Level::PropActor>("prop");
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(prop, nullptr);
     ASSERT_NE(player->Ghost(), nullptr);
-    ASSERT_NE(prop->Ghost(), nullptr);
     EXPECT_STREQ(player->Ghost()->ClassName(), "TackleGhost");
-    EXPECT_STREQ(prop->Ghost()->ClassName(), "TackleGhost");
     EXPECT_EQ(player->Ghost()->ParentActor(), player);
-    EXPECT_EQ(prop->Ghost()->ParentActor(), prop);
     EXPECT_EQ(CountSelfAndDescendants(player), 2);
-    EXPECT_EQ(CountSelfAndDescendants(prop), 2);
     EXPECT_EQ(player->Ghost()->ModelClassObj(), nullptr);
-    EXPECT_EQ(prop->Ghost()->ModelClassObj(), nullptr);
-    EXPECT_EQ(scene.Actors().ActorCount(), 2u);
+    EXPECT_EQ(scene.Actors().ActorCount(), 1u);
     NS::SceneRenderer* renderer = player->GetSceneRenderer();
     ASSERT_NE(renderer, nullptr);
     const std::size_t registered = renderer->RenderableCount();
@@ -506,7 +495,6 @@ TEST(ActorChild, PlayerAndPropOwnATackleGhostThatDrawsTheirMainModel)
     EXPECT_FLOAT_EQ(player->Ghost()->Spread().x, 0.3f);
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.4f);
     player->Destroy();
-    prop->Destroy();
     scene.OnUpdate();
     EXPECT_EQ(renderer->RenderableCount(), 0u);
 }
@@ -656,22 +644,13 @@ TEST(ActorChild, ResyncsTheLiveCopiesAfterTheParentMovesLaterInTheStep)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
-    GL::Level::PropActor* prop = scene.SpawnActor<GL::Level::PropActor>("prop");
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(prop, nullptr);
     scene.OnUpdate();
     player->Ghost()->CaptureAfterimage(player->ModelClassObj(), player->Root().WorldMatrix());
-    prop->Ghost()->CaptureAfterimage(prop->ModelClassObj(), prop->Root().WorldMatrix());
     const NS::Matrix playerCapture = player->Ghost()->AfterimageWorldMatrix();
-    const NS::Matrix propCapture = prop->Ghost()->AfterimageWorldMatrix();
     player->Root().ShiftPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
-    prop->Root().ShiftPosition(NS::Vector3{-10.0f, 0.0f, 0.0f});
     player->PrepareRender();
-    prop->PrepareRender();
     EXPECT_EQ(player->Ghost()->Root().WorldMatrix(), player->Root().WorldMatrix());
     EXPECT_EQ(player->Ghost()->Root().PreviousPosition(), player->Root().PreviousPosition());
-    EXPECT_EQ(prop->Ghost()->Root().WorldMatrix(), prop->Root().WorldMatrix());
-    EXPECT_EQ(prop->Ghost()->Root().PreviousPosition(), prop->Root().PreviousPosition());
     EXPECT_EQ(player->Ghost()->AfterimageWorldMatrix(), playerCapture);
-    EXPECT_EQ(prop->Ghost()->AfterimageWorldMatrix(), propCapture);
 }

@@ -681,9 +681,7 @@ project "Tests"
         -- Source/Game/Player/ 配下とは別物。SceneActor 派生の PlayerActor 本体
         "Source/Game/PlayerActor.cpp",
         "Source/Game/PlayerMovement.cpp",
-        "Source/Game/PlayerBodySlam.cpp",
         "Source/Game/PlayerAirDash.cpp",
-        "Source/Game/PlayerCharge.cpp",
         -- Game.cpp の Application と Window への依存は OnAttach / OnUpdate / OnRender の中だけなので、
         -- 開始シーンのパスの試験はそれらを呼ばずに済む。リンクは既に App を繋いでいる
         "Source/Game/Game.cpp",
@@ -722,16 +720,12 @@ project "Tests"
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",
-        "Source/Editor/HitZoneColors.cpp",
-        -- 当たりの下見は写しの場面を組んで進めるだけで、Application に触らない
-        "Source/Editor/HitPreview.cpp",
         "Source/Editor/ActionTimelineEdit.cpp",
         "Source/Editor/ActionTimelinePanel.cpp",
         -- 終了の確認の問いと保存を試す。Application に触るのは Render の中だけ
         "Source/Editor/QuitModal.cpp",
         "Source/Editor/Timeline.cpp",
         "Source/Editor/DockController.cpp",
-        "Source/Editor/TimelinePreview.cpp",
         "Source/Editor/GameViewPanel.cpp",
         "Source/Editor/ViewportSurface.cpp",
         "Source/Editor/Theme/**.cpp",

@@ -489,14 +489,6 @@ namespace NS
             }
         }
 
-        void operator()(const HitWorldSpeedItem& speed) const
-        {
-            if (Scene* scene = owner.actor->OwningScene())
-            {
-                scene->StartWorldSpeedRamp(speed.startSpeed, speed.returnSeconds, speed.shape);
-            }
-        }
-
         void operator()(const HitOthersStopItem&) const
         {
             if (Scene* scene = owner.actor->OwningScene())

@@ -12,7 +12,7 @@ namespace GL
 {
     namespace Level
     {
-        //! 体当たりの残像。親の Model を、左右の写しと明けの写しとして半透明で描く子アクター
+        //! エアダッシュの残像 (名前は前の体当たりの残像のまま)。親の Model を、左右の写しと明けの写しとして半透明で描く子アクター
         //! 親が OnInit の中で CreateChildActor で作る。自分の Model は持たず、親の Model を描く
         class TackleGhost final : public NS::SceneActor, public NS::IRenderable
         {

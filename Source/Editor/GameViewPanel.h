@@ -9,7 +9,6 @@ namespace NS
     {
         class LevelEditorController;
 
-        class TimelinePreview;
         //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
         class GameViewPanel : public NonCopyable
         {
@@ -34,10 +33,6 @@ namespace NS
             //! 描画先とゲーム視点のビューを返す
             //! @return 可視ならビュー、不可視なら nullopt
             [[nodiscard]] std::optional<SceneView> CollectView(LevelEditorController& editor) noexcept;
-
-            //! 貼り付け中の描画先へ、下見の現在のフレームを描く
-            //! @return 描画できた場合 true、それ以外の場合は false
-            bool RenderPreview(TimelinePreview& preview);
 
             //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void ReleaseTarget() noexcept { m_surface.Release(); }

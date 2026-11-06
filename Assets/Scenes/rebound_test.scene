@@ -39,15 +39,12 @@
         "Effect": {},
         "HitReaction": {},
         "HitSensors": {},
-        "ImpactEffects": {},
-        "ImpactResolver": {},
         "Input": {},
         "Model": {},
         "Movement": {},
         "Params": {},
         "Shadow": {},
         "StateMachine": {},
-        "TargetMarker": {},
         "Transform": {
           "位置": [
             0.0,

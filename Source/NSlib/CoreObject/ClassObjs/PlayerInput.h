@@ -32,9 +32,9 @@ namespace NS
         //! 移動・掴まり・跳びの入力を全て 0 と false に戻し、まだ読んでいない機器の押しも捨てる
         void ResetMovementInput() noexcept;
         //! 前に Update で読んでから後の機器の押しを、読まずに捨てる。読み取った値は残す
-        //! 世界を止めた後に動かし直す時に呼ぶ。止めている間の押しを、動かし直した世界へ渡さない
+        //! 入力の止めを解く時に呼ぶ。止めている間の押しを、解いた後へ渡さない
         void DiscardUnreadPresses() noexcept { m_reader.Discard(); }
-        //! 体当たりのボタンの押しを書く。試しが機器を通さずに押しを入れる時に使い、操作の停止は見ない
+        //! 突進のボタンの押しを書く。試しが機器を通さずに押しを入れる時に使い、操作の停止は見ない
         void SetSlamHeld(bool held) noexcept { m_slamHeld = held; }
         //! 入力を中立へ戻し、解除まで機器からの操作を無視する。直接値を設定する関数には影響しない
         void SetLocked(bool locked) noexcept;
@@ -51,14 +51,14 @@ namespace NS
         [[nodiscard]] bool JumpPressed() const noexcept { return m_jumpPressed; }
         [[nodiscard]] bool JumpHeld() const noexcept { return m_jumpHeld; }
         [[nodiscard]] bool ReleaseLedgePressed() const noexcept { return m_releaseLedgePressed; }
-        //! 体当たりのボタン (マウス左かゲームパッドの X) を押している場合 true、それ以外の場合は false
+        //! 突進のボタン (マウス左かゲームパッドの X) を押している場合 true、それ以外の場合は false
         [[nodiscard]] bool SlamHeld() const noexcept { return m_slamHeld; }
-        //! 置物の出し直しのボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
+        //! 自機以外のアクターを開始時の姿へ戻すボタン (R かゲームパッドの Back) を押した場合 true、それ以外の場合は false
         [[nodiscard]] bool RespawnPressed() const noexcept { return m_respawnPressed; }
 
         //! キーボードとゲームパッドから今の入力を読み、camera のシーンのカメラから水平の前を取る
-        //! 押した瞬間は、前に呼んだ時から後の押しを読む。持ち主は世界を進めた固定フレームに呼び、
-        //! 世界を進めない固定フレームの押しも次に呼んだ時に拾う
+        //! 押した瞬間 (跳び・突進・手放し) は、前に呼んだ時から後の押しを読む。描くフレームと固定フレームの数が
+        //! 揃わないので、読む間に押して放した分を落とさない
         void Update(const IGetCamera* camera);
 
         // 入力を渡すだけで保存する調整値は無い。型名だけ登録する

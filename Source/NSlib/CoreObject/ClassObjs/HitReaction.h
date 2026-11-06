@@ -273,23 +273,6 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 世界を遅くし、実時間で普段の速さへ戻す
-    struct HitWorldSpeedItem
-    {
-        std::string_view typeName = "WorldSpeed";
-        std::string_view label = "世界の速さ";
-
-        float startSpeed = 0.2f;    // 始まりの世界の速さ 0〜1
-        float returnSeconds = 0.3f; // 普段の速さへ戻るまでの実時間 (秒)
-        Curve shape{};              // 戻り方。横軸は 0〜1 の経過の割合、縦軸は 0〜1 の戻りの割合。点が無ければ直線
-
-        NS_REFLECT_BEGIN(HitWorldSpeedItem, void)
-        NS_FIELD(startSpeed, "始まりの速さ")
-        NS_FIELD(returnSeconds, "戻る秒")
-        NS_FIELD(shape, "戻り方")
-        NS_REFLECT_END_VALUE()
-    };
-
     //! 長さの間、持ち主以外の世界を止める (Scene::RequestStopScene)。始めた歩の次の歩から止まる
     struct HitOthersStopItem
     {
@@ -327,7 +310,6 @@ namespace NS
                                          HitDistortionRingItem,
                                          HitGroundWaveItem,
                                          HitPadVibrationItem,
-                                         HitWorldSpeedItem,
                                          HitOthersStopItem,
                                          HitOwnerItem>;
 
@@ -422,8 +404,8 @@ namespace NS
     class Model;
 
     //! 束か項目を始める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
-    //! 組む所は SceneActor・PropActor・ActionTimeline の 3 つ。ActionTimeline は ActionTimelineSelf の
-    //! const SceneActor* から写すので、SceneActor の関数 1 つには寄らない。項目を足す時は 3 か所を揃える
+    //! 組む所は SceneActor・ActionTimeline と、束を直に呼ぶ SceneActor の派生。ActionTimeline は ActionTimelineSelf の
+    //! const SceneActor* から写すので、SceneActor の関数 1 つには寄らない。項目を足す時は組む所を全部揃える
     struct HitReactionSelf
     {
         //! .actor の名前・カメラ・シーンを読み、管理クラスへの依頼の主にする。事前条件: nullptr でない

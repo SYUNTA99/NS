@@ -4,8 +4,6 @@
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
 
-#include <optional>
-
 namespace NS
 {
     class IGetCollision;
@@ -20,19 +18,9 @@ namespace GL
         class IGetCameraTarget;
 
         //! 追従カメラが 1 フレームぶん受ける反動の状態
-        //! 突進の向きは反動になったフレームにだけ読む
         struct FollowReboundDesc
         {
             bool rebounding = false; // 追う相手が反動の状態か
-            // 反動を起こした突進を出したフレームの向き。世界座標で、縦の成分は使わない
-            // 水平の長さが 0 なら回さない
-            NS::Vector3 slamDirection{};
-            // 反動の間に画面へ残したい相手の今の位置。世界座標。空なら追う相手だけを見る
-            std::optional<NS::Vector3> partnerPosition{};
-            // 反動になったフレームに、欄「反動の間に下げる距離」だけ後ろへ下げるか。反動になったフレームにだけ読む
-            bool pullBack = true;
-            // 反動になったフレームから接地まで、回す入力を止めるか。反動になったフレームにだけ読む
-            bool holdLook = true;
             // 反動の向きの縦の成分 (−1〜1)。正なら追う相手を画面の下寄りに、負なら上寄りに留め、進む側に空きを作る
             float verticalLean = 0.0f;
             // 速く動いている間か。真の間は視野角を欄「速い間に広げる視野角」へ寄せる
@@ -72,13 +60,8 @@ namespace GL
             //! ずれは補間しないため、根の移動は Transform::ShiftPosition で前後の値を揃える
             void SetTargetHeightOffset(float offset) noexcept;
 
-            //! 距離を次の更新で固定する
-            //! ヒットストップ中に画面が引くのを防ぐ。更新ごとに渡し、未指定なら固定しない
-            void SetFollowFramingHeld(bool held) noexcept { m_framingHeld = held; }
-
             //! 次の更新で使う反動の状態を受け取る
-            //! 未指定なら反動なし。反動開始時に突進方向へ回し、接地まで手動回転を止める
-            //! 接地が未入力なら反動終了時に回転を許可する。突進方向の非有限値と、−1〜1 の外か非数の縦の向きは拒否する
+            //! 未指定なら反動なし。−1〜1 の外か非数の縦の向きは拒否する
             //! @return 受け取った場合 true、壊れた値で何も変えなかった場合は false
             bool SetFollowRebound(const FollowReboundDesc& desc) noexcept;
 
@@ -141,14 +124,6 @@ namespace GL
             NS_FIELD(m_widenOmega, "視野角を寄せるバネ角速度")
             NS_FIELD(m_occlusionMargin, "遮った地形から離す距離")
             NS_FIELD(m_reboundReturnFrames, "反動の後に戻すフレーム数")
-            NS_FIELD(m_reboundTurnFrames, "反動の向きへ回すフレーム数")
-            NS_FIELD(m_reboundPullBack, "反動の間に下げる距離")
-            NS_FIELD(m_reboundPartnerWeight, "反動の間に相手を収める重み")
-            NS_FIELD(m_reboundPartnerReleaseDistance, "相手を見送る距離")
-            NS_FIELD(m_reboundPullStartDistance, "引き始めの二人の距離")
-            NS_FIELD(m_reboundPullPerMeter, "二人の距離 1 m あたりに引く距離")
-            NS_FIELD(m_reboundPullMax, "相手を収める引きの上限")
-            NS_FIELD(m_reboundPartnerHalfSeconds, "相手を収めるばねの半分の秒")
             NS_FIELD(m_floorViewOrbitMax, "足元を映す回り込みの上限")
             NS_FIELD(m_floorViewBottom, "足元を映す画面の位置")
             NS_FIELD(m_floorViewOmega, "足元を映すバネ角速度")
@@ -162,11 +137,6 @@ namespace GL
         private:
             // 距離と注視点を決める前に、反動の状態を更新する
             void UpdateReboundPhase(bool began, bool rebounding, const NS::Vector3& head) noexcept;
-
-            // 手動入力を適用する前に、反動の回転と入力制限を更新する
-            void UpdateReboundTurn(bool began, const FollowReboundDesc& rebound) noexcept;
-            // 反動の間に受けた相手の位置から、注視点の寄せと引きのばねを 1 フレーム進める。反動の間でなければ 0 へ戻す
-            void UpdateReboundPartner(const FollowReboundDesc& rebound, const NS::Vector3& head, float dt) noexcept;
 
             // ball を上下の帯に保つ注視点。通常時は head を返す。verticalLean で帯の中心を上下へずらす
             [[nodiscard]] NS::Vector3 UpdateReboundLook(const NS::Vector3& head,
@@ -218,7 +188,6 @@ namespace GL
             float m_followHorizontalSpeed = 0.0f; // 速度の向きは使わないので水平の大きさへ畳んで持つ
             float m_followVerticalSpeed = 0.0f;   // 負なら落ちている
             bool m_hasFollowMotion = false;
-            bool m_framingHeld = false;        // このフレームに距離を保つか。Advance が読んで偽へ戻す
             float m_targetHeightOffset = 0.0f; // 追う相手の根から注視の高さを測り始める所までの縦のずれ
 
             float m_yaw = 0.0f;       // 水平回転角
@@ -259,18 +228,6 @@ namespace GL
             float m_widenOmega = 8.0f;   // 足す視野角を寄せる・戻すバネ角速度 (1/秒)
             float m_occlusionMargin = 0.3f; // 遮った地形の面からカメラを手前へ離す距離 (m)。近面で壁を切らない
             int m_reboundReturnFrames = 20;    // 反動が外れてから普通の追い方へ寄せ戻すフレーム数
-            int m_reboundTurnFrames = 20;      // 反動になってから突進の向きへ回し終えるフレーム数
-            float m_reboundPullBack = 1.0f;    // 反動の間に当たった瞬間の距離より伸ばす距離 (m)
-            // 自機を中心に相手も画面に残し、離れるにつれて相手への重みを減らす
-            float m_reboundPartnerWeight = 0.3f;
-            // 相手がこれより遠くへ飛ぶと重みが 0 になり、自機だけを追う (m)。出発点で、値は撮って詰める
-            float m_reboundPartnerReleaseDistance = 30.0f;
-            // 二人がこれより離れた分に、1 m あたりの距離を掛けて引く。引きは上限で止まる (m)
-            float m_reboundPullStartDistance = 3.0f;
-            float m_reboundPullPerMeter = 0.3f;
-            float m_reboundPullMax = 4.0f;
-            // 寄せと引きのばねが差の半分まで追いつく秒
-            float m_reboundPartnerHalfSeconds = 0.15f;
             float m_floorViewOrbitMax = 10.0f; // 足元を映す時にカメラの位置を回す角度の上限 (度)
             float m_floorViewBottom = 0.9f;    // 真下の床を入れる位置。画面の中央が 0、下端が 1
             float m_floorViewOmega = 5.0f;     // 足す角度を増やす向きのバネ角速度 (1/秒)
@@ -280,20 +237,13 @@ namespace GL
 
             FollowReboundDesc m_rebound{};    // 次の Update で使う反動の状態
             bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
-            bool m_reboundLookHeld = false;   // 反動になってから接地するまで、回す入力を受けないか
-            float m_reboundTurnAngle = 0.0f;  // 反動になったフレームに決めた、回す角度 (ラジアン)
-            int m_reboundTurnFrame = 0;       // 回しの何フレーム目か。欄のフレーム数で回し終える
             ReboundPhase m_reboundPhase = ReboundPhase::None;
             NS::Vector3 m_reboundAnchor{};         // 横と前後を遅らせて追う注視点。高さは留める
             NS::Vector3 m_reboundAnchorVelocity{}; // 注視点の横と前後の速さ (m/秒)。縦は使わない
             float m_reboundLagCap = 0.0f;          // 反動の間の遅れの今の上限 (m)。欄の上限より下にはしない
             NS::Vector3 m_reboundReturnOffset{};   // 寄せ戻し始めの、注視点 − 追う相手の頭 (m)
             int m_reboundReturnFrame = 0;          // 寄せ戻しの何フレーム目か
-            float m_reboundBaseDistance = 0.0f;    // 反動になったフレームに決めた、相手を収める引きの前の距離 (m)
-            NS::Vector3 m_partnerLean{};           // 注視点を相手へ寄せている量 (m)
-            NS::Vector3 m_partnerLeanVelocity{};   // 寄せの速さ (m/秒)
-            float m_partnerPull = 0.0f;            // 相手を収めるために引いている距離 (m)
-            float m_partnerPullVelocity = 0.0f;    // 引きの速さ (m/秒)
+            float m_reboundBaseDistance = 0.0f;    // 反動になったフレームに決めた距離 (m)
             float m_widenNow = 0.0f;           // 今足している視野角 (度)
             // 遮りで縮めた距離の上限 (m)。遮られた時は面の手前まで一度に縮め、外れたら距離バネと同じ速さで戻す
             float m_occludedDistance = 0.0f;

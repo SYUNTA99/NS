@@ -104,14 +104,6 @@ namespace NS
         }
     }
 
-    void PadRumbleDirector::Rewrite()
-    {
-        if (m_running)
-        {
-            Write();
-        }
-    }
-
     void PadRumbleDirector::Write()
     {
         OS::GamepadVibration speed{};

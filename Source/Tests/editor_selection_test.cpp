@@ -9,7 +9,7 @@
 #include "Editor/QuitModal.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Types.h"
@@ -137,7 +137,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
@@ -163,7 +163,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -189,7 +189,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -221,7 +221,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -247,7 +247,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
 TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 {
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "GoalActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
     LevelEditorController editor(scene);
@@ -285,7 +285,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -426,7 +426,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 otherId = editor.SelectedActorId();
@@ -476,7 +476,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
@@ -630,7 +630,7 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 first = editor.SelectedActorId();
@@ -708,7 +708,7 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedActorId();
@@ -732,9 +732,9 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
 {
     NS::Scene scene;
-    (void)scene.SpawnActor<GL::Level::PropActor>("a");
-    (void)scene.SpawnActor<GL::Level::PropActor>("b");
-    (void)scene.SpawnActor<GL::Level::PropActor>("c");
+    (void)scene.SpawnActor<GL::Level::GoalActor>("a");
+    (void)scene.SpawnActor<GL::Level::GoalActor>("b");
+    (void)scene.SpawnActor<GL::Level::GoalActor>("c");
 
     const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Actors());
     ASSERT_EQ(placed.size(), 3u);
@@ -754,7 +754,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
     const NS::uint32 id = editor.SelectedActorId();
     const NS::Vector3 beforePosition = editor.SelectedActor()->Root().Position();
     const NS::Vector3 beforeScale = editor.SelectedActor()->Root().Scale();
@@ -825,7 +825,7 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 placed = editor.SelectedActorId();
@@ -862,7 +862,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
@@ -950,7 +950,7 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
+        const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("GoalActor");
         const std::optional<NS::Editor::PlacementItem> camera = NS::Editor::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(prop.has_value());
         ASSERT_TRUE(camera.has_value());

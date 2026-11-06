@@ -384,7 +384,7 @@ TEST_F(EditorAssetPreview, AssetsShowsMaterialsModelsAndTexturesBeforeSelection)
 
 TEST_F(EditorAssetPreview, ActorThumbnailsShowTheirColorsAndRefreshAfterEditing)
 {
-    const ScopedActorFileEdit color("PropActor", [](nlohmann::json& document) {
+    const ScopedActorFileEdit color("MapPartsActor", [](nlohmann::json& document) {
         NS::ActorJsonClassObjs(document)["Model"]["基本色"] = {1.0f, 0.0f, 0.0f, 1.0f};
     });
     (void)Frame(true);
@@ -401,11 +401,11 @@ TEST_F(EditorAssetPreview, ActorThumbnailsShowTheirColorsAndRefreshAfterEditing)
     }
     ASSERT_GT(thumbnails, 0);
     const std::vector<NS::uint8> red = Frame(true);
-    const nlohmann::json* original = NS::ActorFileLibrary::Get().Find("PropActor");
+    const nlohmann::json* original = NS::ActorFileLibrary::Get().Find("MapPartsActor");
     ASSERT_NE(original, nullptr);
     nlohmann::json edited = *original;
     NS::ActorJsonClassObjs(edited)["Model"]["基本色"] = {0.0f, 0.0f, 1.0f, 1.0f};
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", edited));
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("MapPartsActor", edited));
     const std::vector<NS::uint8> blue = Frame(true);
     ASSERT_EQ(red.size(), blue.size());
     int changed = 0;
@@ -420,7 +420,7 @@ TEST_F(EditorAssetPreview, ActorThumbnailsShowTheirColorsAndRefreshAfterEditing)
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/assets-actor-thumbnails.png"));
     m_assets.Clear();
     NS::ActorJsonClassObjs(edited)["Model"]["基本色"] = {1.0f, 0.0f, 0.0f, 1.0f};
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", std::move(edited)));
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("MapPartsActor", std::move(edited)));
     EXPECT_NE(Frame(true), blue);
     EXPECT_EQ(m_scene.Actors().ActorCount(), actorCount);
     EXPECT_TRUE(m_editor.SelectedAssetPath().empty());

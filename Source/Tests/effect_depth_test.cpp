@@ -405,7 +405,7 @@ TEST(EffectPlayback, NonFiniteChangesKeepTheCurrentInput)
     EXPECT_EQ(CaptureEffectPixels(actual), pixels);
 }
 
-TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerWorldStepDuringActorHitStop)
+TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "停止中の素材の時計", .size = {32, 32}, .visible = false});
     NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
@@ -433,16 +433,11 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerWorldStepDuringActorHitStop)
     for (int frame = 0; frame < 30; ++frame)
     {
         SCOPED_TRACE(frame);
-        if (frame == 12)
-        {
-            scene.SetWorldSpeed(0.5f);
-        }
         const int previousStep = player->GetEffect()->Step();
         scene.OnUpdate();
-        if (player->GetEffect()->Step() != previousStep)
-        {
-            expected.Update(1.0f / 60.0f);
-        }
+        // アクターのヒットストップの間も、シーンは効果を毎歩 1 つ進める
+        EXPECT_EQ(player->GetEffect()->Step(), previousStep + 1);
+        expected.Update(1.0f / 60.0f);
         if (frame < 10)
         {
             EXPECT_EQ(player->Root().Position(), position);

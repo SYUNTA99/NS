@@ -42,7 +42,7 @@ namespace NS
     class Scene;
     struct ActorInitInfo;
 
-    //! 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
+    //! 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / LightActor と、ゲームのアクターが派生する
     //! 所属シーンを持ち、IGet〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
     class SceneActor : public Object,
                        public IGetCamera,
@@ -417,7 +417,7 @@ namespace NS
     };
 
     //! 体の倍率を返す。1 が等速
-    //! 体の動きと見た目 (状態機械・自機の体・アニメ) だけに掛かる。シーン全体の止めと遅くは含めない
+    //! 体の動きと見た目 (状態機械・自機の体・アニメ) だけに掛かる。シーン全体の止めは含めない
     [[nodiscard]] float GetFrameRate(const SceneActor* actor) noexcept;
     //! 体の倍率を書く
     //! @return 書いた場合 true、非有限か 0 以下で断って前の値を残した場合は false

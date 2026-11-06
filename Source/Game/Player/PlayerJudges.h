@@ -20,30 +20,14 @@ namespace GL
             }
         };
 
-        //! 体当たりの発動の判定
-        class PlayerJudgeBodySlam
-        {
-        public:
-            //! 要求の猶予が残り、spent と wasSlamming が偽で locomotion が真かを返す
-            //! @param[in] locomotion 立ち・歩き・落ち・反動のどれかの状態か
-            //! @return 発動する場合 true、それ以外の場合は false
-            [[nodiscard]] static bool Judge(float bufferRemaining,
-                                            bool spent,
-                                            bool wasSlamming,
-                                            bool locomotion) noexcept
-            {
-                return bufferRemaining > 0.0f && !spent && !wasSlamming && locomotion;
-            }
-        };
-
         //! 縁を掴む判定
         class PlayerJudgeLedgeGrab
         {
         public:
-            //! 宙にいて上昇しておらず、突進中でない場合 true、それ以外の場合は false
-            [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity, bool wasSlamming) noexcept
+            //! 宙にいて上昇していない場合 true、それ以外の場合は false
+            [[nodiscard]] static bool Judge(bool grounded, float verticalVelocity) noexcept
             {
-                return !grounded && !NS::IsPositive(verticalVelocity) && !wasSlamming;
+                return !grounded && !NS::IsPositive(verticalVelocity);
             }
 
             //! 縁の上面の高さが、手の高さの帯に入っているかを返す
@@ -156,29 +140,6 @@ namespace GL
         {
         public:
             [[nodiscard]] static bool Judge(bool releasePressed) noexcept { return releasePressed; }
-        };
-
-        //! 通常移動の状態かの判定
-        class PlayerJudgeLocomotion
-        {
-        public:
-            struct StateFlags
-            {
-                bool idle = false;
-                bool walk = false;
-                bool fall = false;
-                bool rebound = false;
-            };
-
-            [[nodiscard]] static bool Judge(const StateFlags& flags) noexcept
-            {
-                return flags.idle || flags.walk || flags.fall || flags.rebound;
-            }
-
-            [[nodiscard]] static bool Judge(bool idle, bool walk, bool fall, bool rebound) noexcept
-            {
-                return Judge(StateFlags{idle, walk, fall, rebound});
-            }
         };
     } // namespace Player
 } // namespace GL

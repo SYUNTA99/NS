@@ -1,8 +1,6 @@
 #include "Editor/Timeline.h"
 
-#include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cmath>
 #include <cstdio>
 
 #include <imgui.h>
@@ -11,102 +9,9 @@ namespace NS
 {
     namespace Editor
     {
-        void TimelinePlayback::Tick(float seconds, TimelineFrameRange range) noexcept
-        {
-            if (!playing || range.last < range.first || !std::isfinite(seconds) || seconds < 0.0f ||
-                !std::isfinite(speed) || speed <= 0.0f || !std::isfinite(framesPerSecond) || framesPerSecond <= 0.0f)
-            {
-                return;
-            }
-            frame = std::clamp(frame, range.first, range.last);
-            const double advance = static_cast<double>(seconds) * framesPerSecond * speed + carry;
-            const double remaining = static_cast<double>(range.last) - frame;
-            if (advance + 1.0e-4 >= remaining)
-            {
-                frame = range.last;
-                playing = false;
-                carry = 0.0f;
-                return;
-            }
-            const int whole = static_cast<int>(advance + 1.0e-4);
-            frame += whole;
-            carry = std::max(static_cast<float>(advance - whole), 0.0f);
-        }
-
         void TimelinePlayback::Seek(int requestedFrame, TimelineFrameRange range) noexcept
         {
-            playing = false;
-            carry = 0.0f;
             frame = std::clamp(requestedFrame, range.first, std::max(range.first, range.last));
-        }
-
-        void TimelinePlayback::StepBy(int steps, TimelineFrameRange range) noexcept
-        {
-            const int64 requested = static_cast<int64>(frame) + steps;
-            Seek(static_cast<int>(std::clamp(requested,
-                                             static_cast<int64>(range.first),
-                                             static_cast<int64>(std::max(range.first, range.last)))),
-                 range);
-        }
-
-        void TimelinePlayback::Toggle(TimelineFrameRange range) noexcept
-        {
-            if (playing)
-            {
-                playing = false;
-                return;
-            }
-            if (range.last <= range.first)
-            {
-                Seek(range.first, range);
-                return;
-            }
-            if (frame >= range.last || frame < range.first)
-            {
-                Seek(range.first, range);
-            }
-            playing = true;
-        }
-
-        bool DrawTimelinePlayback(TimelinePlayback& playback, TimelineFrameRange range, bool enabled) noexcept
-        {
-            bool changed = false;
-            ImGui::BeginDisabled(!enabled);
-            if (ImGui::Button("|<"))
-            {
-                playback.Seek(range.first, range);
-                changed = true;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("<"))
-            {
-                playback.StepBy(-1, range);
-                changed = true;
-            }
-            ImGui::SameLine();
-            const char* label = "再生";
-            if (playback.playing)
-            {
-                label = "止める";
-            }
-            if (ImGui::Button(label))
-            {
-                playback.Toggle(range);
-                changed = true;
-            }
-            ImGui::SameLine();
-            if (ImGui::Button(">"))
-            {
-                playback.StepBy(1, range);
-                changed = true;
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::SetNextItemWidth(90.0f);
-            (void)ImGui::DragFloat("速さ", &playback.speed, 0.05f, 0.05f, 4.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
-            ImGui::SameLine();
-            ImGui::Text("フレーム %+d", playback.frame);
-            return changed;
         }
 
         bool DrawTimelineTracks(std::span<const TimelineTrack> tracks,
@@ -184,13 +89,6 @@ namespace NS
                     color = IM_COL32(240, 170, 60, 255);
                 }
                 draw->AddRectFilled(ImVec2{x0, origin.y + 2.0f}, ImVec2{x1, origin.y + rowHeight * 0.65f}, color, 2.0f);
-                for (const int clock : track.startedFrames)
-                {
-                    const float x = origin.x + static_cast<float>(clock - range.first) * frameWidth;
-                    draw->AddRectFilled(ImVec2{x, origin.y + rowHeight * 0.72f},
-                                        ImVec2{x + std::max(frameWidth, 3.0f), origin.y + rowHeight - 1.0f},
-                                        IM_COL32(250, 230, 90, 255));
-                }
                 ImGui::PopID();
             }
             if (extraRows)

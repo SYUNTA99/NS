@@ -1,7 +1,7 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/SensorKinds.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -44,6 +44,23 @@ namespace
         }
         return &player->Collider();
     }
+
+    // 球の当たりを持ち、体のセンサー "Body" はその球を毎回映す
+    class FollowSphereActor final : public NS::SceneActor
+    {
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj(m_hitSensors);
+            (void)m_hitSensors->AddFollow(
+                this, "Body", GL::Level::SensorKind::Area, [this](const NS::Matrix& rootWorld) {
+                    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(CollisionClassObj());
+                    const NS::Sphere world = sphere->WorldSphere(rootWorld);
+                    return NS::SensorVolume::Sphere(world.center, world.radius);
+                });
+            CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision);
+        }
+    };
 } // namespace
 
 TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
@@ -157,15 +174,13 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     EXPECT_FLOAT_EQ(volume.Center().y, player->Root().Position().y);
 }
 
-TEST(ColliderShape, MapObjBodySensorFollowsACollisionRadiusEdit)
+TEST(ColliderShape, FollowBodySensorFollowsACollisionRadiusEdit)
 {
-    // 置物の体のセンサーは当たりの球をその場で映す。配置の後に半径を変えても割れない
+    // 当たりの球を映す体のセンサーは、球をその場で映す。配置の後に半径を変えても割れない
     NS::Scene scene;
-    nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1, NS::Vector3{2.0f, 1.0f, 0.0f});
-    scene.ResetFromJson(doc);
-    NS::SceneActor* placed = scene.Actors().FindByActorId(1);
+    NS::SceneActor* placed = scene.SpawnActor<FollowSphereActor>("FollowSphereActor");
     ASSERT_NE(placed, nullptr);
+    placed->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
 
@@ -186,8 +201,8 @@ TEST(ColliderShape, FollowingBodySensorsShowNoFields)
     // 形の正は Collider と Collision。映すだけのセンサーに効かない欄を出さない
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
-    GL::Level::PropActor& obj = *objOwned;
+    const std::unique_ptr<FollowSphereActor> objOwned = NS::CreateActor<FollowSphereActor>();
+    FollowSphereActor& obj = *objOwned;
     ASSERT_NE(player.HitSensorsClassObj()->Find("Body"), nullptr);
     ASSERT_NE(obj.HitSensorsClassObj()->Find("Body"), nullptr);
     EXPECT_EQ(player.HitSensorsClassObj()->Find("Body")->GetReflection()->fieldCount, 0u);

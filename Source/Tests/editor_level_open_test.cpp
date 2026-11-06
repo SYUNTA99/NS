@@ -326,7 +326,7 @@ TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);

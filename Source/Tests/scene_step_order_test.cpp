@@ -1,17 +1,14 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Core/Windows/Clock.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
 #include <algorithm>
-#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -326,105 +323,13 @@ TEST(ActorFrame, AStoppedStepSkipsTheGameFlowButKeepsActorsAndUI)
     ui.Close();
 }
 
-TEST(WorldSpeed, SlowWorldStepsOnceInFiveAndRealTimeEveryStep)
-{
-    // 遅い世界は 1 歩の中身を変えず、世界を進める歩を間引く。UI は毎歩回る
-    std::vector<std::string> log;
-    CourseLogScene scene(log);
-    scene.SpawnActor<FrameLogActor>("Actor", log, "actor");
-    LoggingUI ui(log, "ui");
-    ui.Open(scene);
-    scene.SetWorldSpeed(0.2f);
-
-    for (int i = 0; i < 10; ++i)
-    {
-        scene.OnUpdate();
-    }
-
-    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"actor"}), 2);
-    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"course"}), 2);
-    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"actor:render-prep"}), 2);
-    EXPECT_EQ(std::count(log.begin(), log.end(), std::string{"ui"}), 10);
-    // 4 歩目までは UI だけ。5 歩目に初めて世界が進む
-    ASSERT_GE(log.size(), 5u);
-    EXPECT_EQ(log[3], std::string{"ui"});
-    EXPECT_EQ(log[4], std::string{"actor"});
-    ui.Close();
-}
-
-TEST(WorldSpeed, SlowWorldInterpolatesAcrossTheSkippedSteps)
-{
-    // 世界を進めない歩に前の値を控えると補間が止まる。割合は前に世界を進めてからの溜めで出す
-    NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
-    ASSERT_NE(drawn->ModelClassObj(), nullptr);
-    NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", drawn);
-    scene.SetWorldSpeed(0.5f);
-
-    scene.OnUpdate();
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 1.0f);
-    scene.OnUpdate();
-    // 世界を進めた歩。前の値は進める前の倍率
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
-    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.25f);
-    scene.OnUpdate();
-    // 世界を進めない歩でも前の値を取り直さない
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
-    EXPECT_FLOAT_EQ(scene.RenderAlpha(0.5f), 0.75f);
-}
-
-TEST(WorldSpeed, NormalSpeedKeepsTheFrameAlphaAndPauseHoldsAtOne)
+TEST(RenderAlpha, KeepsTheFrameAlphaAndPauseHoldsAtOne)
 {
     NS::Scene scene;
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
     scene.OnUpdate();
     EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 0.3f);
-    scene.SetWorldSpeed(2.0f);
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
-    scene.SetWorldSpeed(-1.0f);
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.0f);
     scene.SetSimulationPaused(true);
     EXPECT_FLOAT_EQ(scene.RenderAlpha(0.3f), 1.0f);
-    // プレイを入れ直すと普段の速さへ戻る
-    scene.SetSimulationEnabled(true);
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
-}
-
-TEST(WorldSpeed, RampReturnsToNormalSpeedInRealSeconds)
-{
-    // 段階的な明けは実時間で戻す。世界の時間で数えると、遅い分だけ戻るのが延びる
-    NS::Scene scene;
-    const float dt = NS::OS::FrameTimer::FixedDelta();
-    const int steps = static_cast<int>(std::ceil(0.3f / dt - 1.0e-3f));
-    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Curve{});
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.2f);
-    float previous = scene.WorldSpeed();
-    for (int i = 1; i < steps; ++i)
-    {
-        SCOPED_TRACE(i);
-        scene.OnUpdate();
-        EXPECT_GT(scene.WorldSpeed(), previous);
-        EXPECT_LT(scene.WorldSpeed(), 1.0f);
-        previous = scene.WorldSpeed();
-    }
-    scene.OnUpdate();
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
-}
-
-TEST(WorldSpeed, SettingTheSpeedStopsTheRamp)
-{
-    // 速さの持ち主は 1 つ。置き直した速さを戻りの曲線が上書きしない
-    NS::Scene scene;
-    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Curve{});
-    scene.SetWorldSpeed(0.5f);
-    scene.OnUpdate();
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 0.5f);
-    scene.StartWorldSpeedRamp(0.2f, 0.3f, NS::Curve{});
-    scene.SetSimulationEnabled(true);
-    scene.OnUpdate();
-    EXPECT_FLOAT_EQ(scene.WorldSpeed(), 1.0f);
 }
 
 // 局所の倍率は形の中心で掛かり、根の位置を動かさない。描く倍率の中心 (下端の真ん中) は倍率を掛けた形から測る

@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/IGet/IGetCollision.h"
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
-#include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -147,19 +146,8 @@ namespace NS
         //! 止めたまま次の固定ステップを 1 コマだけ進める。動いていればまず止める
         void StepSimulation() noexcept;
 
-        //! 世界の更新を間引いて減速する。0 で停止、1 で通常。StepRealTime の物は毎歩更新する
-        //! 非有限値は拒否し、0〜1 に収める。プレイ開始時に 1 へ戻す
-        void SetWorldSpeed(float speed) noexcept;
-        [[nodiscard]] float WorldSpeed() const noexcept { return m_worldSpeed; }
-        //! 前の世界の歩から今の世界の歩までの実時間の秒。遅い世界でも伸び縮みしない間隔を、世界の歩で数える時に足す
-        [[nodiscard]] float WorldStepSeconds() const noexcept;
-
-        //! fromSpeed 0〜1 から通常速度へ、実時間 realSeconds 秒で戻す。0 秒以下なら即時
-        //! shape は経過割合から復帰割合への曲線で、空なら直線。速度設定やシミュレーション切替で解除する
-        void StartWorldSpeedRamp(float fromSpeed, float realSeconds, const Curve& shape) noexcept;
-
         //! mover 以外のアクターを steps 歩止めるよう頼む。頼みを控えるだけで、呼んだ歩はそのまま最後まで進む。
-        //! 次の OnUpdate の始めに効き、そこから世界を進める歩を steps 歩数える。止まっている間も全部のアクターを
+        //! 次の OnUpdate の始めに効き、そこから steps 歩数える。止まっている間も全部のアクターを
         //! Update し、mover 以外は SceneActor::IsStopped が true になる。回す管理役は StepStopped が決める。
         //! 同じ mover の頼みは延長だけを受け、steps が 0 以下なら解く。止めている間と、同じ歩に先に止めを頼まれた間は、
         //! 先に頼んだアクターが止めを持ち、ほかのアクターの頼み (延長も解くのも) は受けない。mover は番地と id で
@@ -175,7 +163,7 @@ namespace NS
         //! actor が頼んだ止めが、次の歩の始めに効くのを待っているなら true。nullptr は false
         [[nodiscard]] bool IsStopSceneRequester(const SceneActor* actor) const noexcept;
 
-        //! 減速中の経過に合わせた補間割合 0〜1。停止中は絵の変動を避けるため 1
+        //! 描く補間の割合 0〜1。frameAlpha をそのまま返し、世界を回さない間と時間停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
         //! 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
@@ -215,8 +203,8 @@ namespace NS
         //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
         SceneActor* ReattachActor(DetachedActor detached);
 
-        //! 1 固定ステップを進める。始めに前の歩で頼まれた止めを効かせ、世界を進めない歩・シーンが止まっている歩・
-        //! 普段の歩で StepRealTime・StepStopped・StepWorld を呼び分ける。止まっているかはこの歩の間変えない。
+        //! 1 固定ステップを進める。始めに前の歩で頼まれた止めを効かせ、シーンが止まっている歩と普段の歩で
+        //! StepStopped・StepWorld を呼び分ける。止まっているかはこの歩の間変えない。
         //! 回している間はアクターを解放する口を断る。再入は禁止
         void OnUpdate();
 
@@ -229,12 +217,13 @@ namespace NS
         //! プレイ中のシーンを ResetFromJson が組み直す前に 1 回呼ぶ。派生はプレイの状態を戻す
         virtual void OnStopPlay() {}
 
-        //! 世界を進める歩の、当たりの判定の後に 1 回呼ぶ。シーンが止まっている歩と世界を進めない歩では呼ばない。
+        //! 普段の歩の、当たりの判定の後に 1 回呼ぶ。シーンが止まっている歩では呼ばない。
         //! 同じ歩のアクターとセンサーが書いた知らせを読める
         virtual void StepGame() {}
 
     private:
-        // 状態ごとの 1 歩。OnUpdate がどれか 1 つを選んで呼び、回す物と順番はこの 5 つが決める。中で止めを確かめない
+        // 状態ごとの 1 歩。OnUpdate が StepWorld か StepStopped を選んで呼び、回す物と順番はこの 4 つが決める。
+        // 中で止めを確かめない
 
         //! 普段の歩。アクター全部 → 物理 → 当たりの判定 → StepGame → StepView
         void StepWorld();
@@ -243,20 +232,12 @@ namespace NS
         void StepStopped();
         //! 普段の歩の見せる側。StepViewStopped → エフェクト
         void StepView();
-        //! 止めている間も回す見せる側。カメラ → StepRealTime → 描く支度 → 画面の演出 → 振動。
+        //! 止めている間も回す見せる側。カメラ → UI → 暗転 → 描く支度 → 画面の演出 → 振動。
         //! カメラまで止めると、進み続ける止め始めたアクターが画面の中で動いて見える
         void StepViewStopped();
-        //! 世界の速さに依らず毎歩回す物。UI → 暗転。遅い世界で世界を進めない歩はこれだけを呼ぶ
-        void StepRealTime();
 
         //! 古い世界のエフェクトを消し、時間を進めずに描画へ反映する
         void ClearEffects() noexcept;
-
-        //! 世界の速さを溜めに足し、1 に届いたら 1 引く。世界を進める歩の場合 true、それ以外の場合は false
-        bool AdvanceWorldClock() noexcept;
-
-        //! 戻りの曲線を実時間の 1 歩だけ進め、世界の速さを書く
-        void AdvanceWorldSpeedRamp() noexcept;
 
         //! 渡されたシーンの JSON 文書からアクターと当たりの body を組み直す
         void RebuildSceneFrom(const nlohmann::json& scene);
@@ -313,15 +294,6 @@ namespace NS
         bool m_simulationEnabled = true;       // 世界を回すか。エディタの編集モードだけが下ろす
         bool m_simulationPaused = false;       // 時間停止中か
         int32 m_simulationStepFrames = 0;      // コマ送り残り固定ステップ数。止めたままこの数だけ進める
-        float m_worldSpeed = 1.0f;             // 世界の速さ (0〜1)
-        float m_worldCarry = 0.0f;             // 前に世界を進めてから足した速さ。1 に届いたら世界を 1 歩進める
-        int m_stepsSinceWorldStep = 0;         // 前に世界を進めてから回した固定フレーム数
-        int m_stepsOfWorldStep = 1;            // 今の世界の歩までに回した固定フレーム数
-        bool m_rampActive = false;             // 世界の速さを戻している間か
-        float m_rampFrom = 1.0f;               // 戻りの始まりの速さ
-        float m_rampSeconds = 0.0f;            // 戻りの実時間の長さ (秒)
-        float m_rampElapsed = 0.0f;            // 戻りを始めてからの実時間 (秒)
-        Curve m_rampShape{};                   // 戻り方。点が無ければ直線
         int m_stopSceneSteps = 0;             // シーンを止める残りの歩数
         const SceneActor* m_stopSceneMover = nullptr; // 止め始めたアクター。消えた後もあり得るので比べるだけで読まない
         uint32 m_stopSceneMoverId = k_NoActorId; // 止め始めたアクターの id。m_stopSceneSteps が正の間だけ読む

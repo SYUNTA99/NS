@@ -157,26 +157,6 @@ namespace
     }
 } // namespace
 
-// 遅い世界で、世界を進めない固定フレームの前に押して放したダッシュを、次に世界を進めた固定フレームで出す
-TEST(PlayerAirDashTest, PressBeforeASkippedSlowStepDashesOnTheNextWorldStep)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::OS::Input& input = NS::OS::Input::Get();
-    input.Keyboard().OnKeyDown(NS::OS::Key::D);
-    scene.SetWorldSpeed(0.5f);
-
-    input.Mouse().OnButtonDown(NS::OS::MouseButton::Left);
-    input.Mouse().OnButtonUp(NS::OS::MouseButton::Left);
-    // 速さ 0.5 の 1 歩目は世界を進めない
-    scene.OnUpdate();
-    EXPECT_FALSE(player->IsAirDashing());
-    scene.OnUpdate();
-    EXPECT_TRUE(player->IsAirDashing());
-    input.Keyboard().OnKeyUp(NS::OS::Key::D);
-}
-
 TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
 {
     NS::Scene scene;
@@ -513,55 +493,6 @@ TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
     }
 }
 
-// エアダッシュを断ったフレームも、同じフレームに頼んだ体当たりは出る
-TEST(PlayerAirDashTest, ARefusedDashDoesNotSwallowTheBodySlam)
-{
-    const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
-        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-        for (NS::ActorAction& action : actions)
-        {
-            if (action.name == "AirDash")
-            {
-                action.length = 0;
-            }
-        }
-        NS::WriteActorActions(actorFile, actions);
-    });
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    const TestLogCapture log;
-    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    player->Update(true);
-    EXPECT_FALSE(player->IsAirDashing());
-    EXPECT_TRUE(player->IsBodySlamming());
-}
-
-// やり直しの後に一度も接地しないまま宙で体当たりしても、その後の着地の音は鳴る
-TEST(PlayerAirDashTest, BodySlamFromTheAirAllowsTheNextLandingSound)
-{
-    const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
-        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-        for (NS::ActorAction& action : actions)
-        {
-            if (action.name == "AirDash")
-            {
-                action.length = 0;
-            }
-        }
-        NS::WriteActorActions(actorFile, actions);
-    });
-    NS::Scene scene;
-    PlayerActor* player = PlaceFloatingPlayer(scene);
-    ASSERT_NE(player, nullptr);
-    const TestLogCapture log;
-    ASSERT_FALSE(player->Sounds().IsLandAllowed());
-    player->RequestBodySlam(0.0f, NS::Vector3{0.0f, 0.0f, 1.0f});
-    player->Update(true);
-    ASSERT_TRUE(player->IsBodySlamming());
-    EXPECT_TRUE(player->Sounds().IsLandAllowed());
-}
-
 // エアダッシュの状態に入っても動作を始められなければ、その場で普段の動きへ移る
 TEST(PlayerAirDashTest, TheDashEndsWhenItsActionCannotStart)
 {
@@ -819,8 +750,6 @@ TEST(PlayerAirDashTest, CameraStateDuringDashAndTerrainRebound)
     const GL::Player::CameraTargetState rebounding = player->GetCameraTargetState();
     EXPECT_TRUE(rebounding.rebound.rebounding);
     EXPECT_TRUE(rebounding.rebound.widenView);
-    EXPECT_FALSE(rebounding.rebound.holdLook);
-    EXPECT_FLOAT_EQ(rebounding.rebound.slamDirection.Length(), 0.0f);
     EXPECT_FLOAT_EQ(rebounding.rebound.verticalLean, player->AirDash().LastRebound().shifted.y);
 
     player->ResetState();

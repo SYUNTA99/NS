@@ -5,7 +5,6 @@
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
-#include "NSlib/App/Application.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Action/ActionTimeline.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -15,7 +14,6 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
-#include <cmath>
 #include <format>
 #include <functional>
 #include <span>
@@ -62,25 +60,7 @@ namespace NS
                 }
                 return actor->HitSensorsClassObj()->Sensors();
             }
-
-            // 再生の速さ。12 フレームの止めはそのままの速さだと 0.2 秒で目で追えないので、遅い方を既定にする
-            constexpr float k_QuarterSpeed = 0.25f;
-
-            constexpr int k_PreviewGraphCount = 4;
-            constexpr ImU32 k_GraphBackColor = IM_COL32(40, 40, 46, 255);
-            constexpr ImU32 k_GraphTraumaColor = IM_COL32(255, 170, 60, 255);
-            constexpr ImU32 k_GraphXColor = IM_COL32(240, 90, 90, 255);
-            constexpr ImU32 k_GraphYColor = IM_COL32(110, 220, 110, 255);
-            constexpr ImU32 k_GraphZColor = IM_COL32(110, 150, 255, 255);
-            constexpr ImU32 k_GraphSpeedColor = IM_COL32(200, 120, 255, 255);
         } // namespace
-
-        ActionTimelinePanel::ActionTimelinePanel()
-        {
-            m_playback.speed = k_QuarterSpeed;
-            // 開いた最初のフレームから、自機に一番近い相手への真ん中の当たりを見せる
-            m_needsRun = true;
-        }
 
         const ActorAction* ActionTimelinePanel::EditingAction() const noexcept
         {
@@ -106,8 +86,6 @@ namespace NS
             m_actions.clear();
             m_actionIndex = 0;
             m_selectedRow.reset();
-            // 帯の時計の 0 は開いた動作で決まるので、下見の場面の範囲から取り直す
-            m_needsRun = true;
             const nlohmann::json* document = ActorFileLibrary::Get().Find(m_actorFile);
             if (document == nullptr)
             {
@@ -165,7 +143,6 @@ namespace NS
                     actor->ActionTimelineClassObj()->ReloadActions(actor);
                 }
             }
-            m_needsRun = true;
         }
 
         bool ActionTimelinePanel::SaveAll() noexcept
@@ -207,230 +184,24 @@ namespace NS
             return true;
         }
 
-        int ActionTimelinePanel::PlaybackOrigin() const noexcept
-        {
-            if (const ActorAction* action = EditingAction())
-            {
-                if (const std::optional<int> origin = ActionOriginIndex(m_result, action->name))
-                {
-                    return *origin;
-                }
-            }
-            return m_result.detectionIndex;
-        }
-
-        TimelineFrameRange ActionTimelinePanel::PlaybackRange() const noexcept
-        {
-            if (!m_result.hit || m_result.frames.empty())
-            {
-                return TimelineFrameRange{0, -1};
-            }
-            const int origin = PlaybackOrigin();
-            return TimelineFrameRange{-origin, static_cast<int>(m_result.frames.size()) - 1 - origin};
-        }
-
-        void ActionTimelinePanel::RunPreview(LevelEditorController& editor)
-        {
-            m_needsRun = false;
-            m_snapshot = editor.SceneSnapshot();
-            HitPreviewWorld world;
-            if (Application* app = Application::Get())
-            {
-                world.device = &app->Device();
-            }
-            const bool wasHit = m_result.hit;
-            HitPreviewDesc desc = m_desc;
-            // 手入力の長さが過大でも、取り直しを無制限に回さないための上限
-            constexpr int k_MaxPreviewFrames = 10000;
-            for (const ActorAction& action : m_actions)
-            {
-                const int64 end = static_cast<int64>(std::max(ActionLength(action), action.length)) + desc.leadFrames +
-                                  desc.framesAfterRebound;
-                desc.maxFrames =
-                    std::max(desc.maxFrames, static_cast<int>(std::clamp(end, int64{0}, int64{k_MaxPreviewFrames})));
-            }
-            m_result = RunHitPreview(m_snapshot, desc, world);
-            m_desc.targetId = m_result.desc.targetId;
-            m_playback.playing = false;
-            m_playback.carry = 0.0f;
-            if (!m_result.hit || m_result.frames.empty())
-            {
-                m_preview.Clear();
-                return;
-            }
-            const TimelineFrameRange range = PlaybackRange();
-            if (!wasHit)
-            {
-                m_playback.Seek(0, range);
-            }
-            else
-            {
-                m_playback.Seek(m_playback.frame, range);
-            }
-            HitPreviewResult placement = m_result;
-            placement.frames.clear();
-            m_preview.Reset(
-                [snapshot = m_snapshot, placement, world] { return MakeHitPreviewScene(snapshot, placement, world); },
-                range);
-        }
-
-        void ActionTimelinePanel::ResetPreview() noexcept
-        {
-            m_preview.Clear();
-            m_playback.playing = false;
-            m_playback.carry = 0.0f;
-            m_needsRun = true;
-        }
-
-        TimelinePreview* ActionTimelinePanel::Preview(LevelEditorController& editor)
-        {
-            if (editor.CurrentMode() != LevelEditorController::Mode::Edit || !m_showPreview || !m_result.hit)
-            {
-                return nullptr;
-            }
-            if (m_preview.Seek(m_playback.frame) == nullptr)
-            {
-                return nullptr;
-            }
-            return &m_preview;
-        }
-
-        void ActionTimelinePanel::Tick(LevelEditorController& editor, float seconds)
-        {
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-            if (playMode)
-            {
-                ResetPreview();
-            }
-            else if (!ImGui::IsAnyItemActive() && (m_panelVisible || m_showPreview))
-            {
-                // 見えない間は場面を写して比べない。見える側へ戻れば、閉じていた間の変更を拾う
-                if (m_snapshot != editor.SceneSnapshot())
-                {
-                    m_needsRun = true;
-                }
-                if (m_needsRun)
-                {
-                    RunPreview(editor);
-                }
-            }
-            if (!playMode && m_result.hit && !m_needsRun)
-            {
-                m_playback.Tick(seconds, PlaybackRange());
-            }
-        }
-
         void ActionTimelinePanel::Render(LevelEditorController& editor) noexcept
         {
             const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
-            m_panelVisible = ImGui::Begin(k_PanelActionTimeline);
-            if (m_panelVisible)
+            if (ImGui::Begin(k_PanelActionTimeline))
             {
                 if (playMode)
                 {
-                    ImGui::TextUnformatted("プレイ中は下見しない。編集へ戻ると下見できる");
+                    ImGui::TextUnformatted("プレイ中は動作を直せない。編集へ戻ると直せる");
                 }
                 else
                 {
                     FollowSelection(editor);
-                    RenderConditions(editor);
-                    ImGui::Separator();
                     RenderActionButtons(editor);
-                    RenderPlayback();
                     RenderBands();
                     RenderSelectedRow(editor);
                 }
             }
             ImGui::End();
-        }
-
-        void ActionTimelinePanel::RenderConditions(LevelEditorController& editor) noexcept
-        {
-            ImGui::SeparatorText("当てる条件");
-            bool changed = false;
-
-            SceneActor* selected = editor.SelectedActor();
-            const bool selectable = selected != nullptr && !editor.SelectedIsPlayerActor() &&
-                                    selected->HitSensorsClassObj() != nullptr &&
-                                    selected->HitSensorsClassObj()->Find("Body") != nullptr;
-            if (m_desc.targetId == 0)
-            {
-                ImGui::TextUnformatted("相手: 自機に一番近いアクター");
-            }
-            else
-            {
-                ImGui::Text("相手: id %u", m_desc.targetId);
-            }
-            ImGui::SameLine();
-            ImGui::BeginDisabled(!selectable);
-            if (ImGui::SmallButton("選択中のアクターを相手にする"))
-            {
-                m_desc.targetId = selected->Id();
-                changed = true;
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            if (ImGui::SmallButton("一番近いアクターにする"))
-            {
-                m_desc.targetId = 0;
-                changed = true;
-            }
-
-            changed |= ImGui::SliderFloat("面の左右 (右が正)", &m_desc.faceU, -1.0f, 1.0f, "%.2f");
-            changed |= ImGui::SliderFloat("面の上下 (上が正)", &m_desc.faceV, -1.0f, 1.0f, "%.2f");
-            changed |= ImGui::SliderFloat("溜め (0 は通常突進)", &m_desc.charge01, 0.0f, 1.0f, "%.2f");
-            changed |= ImGui::SliderInt("検知までのフレーム", &m_desc.leadFrames, 1, 30);
-
-            struct Preset
-            {
-                const char* label;
-                float u;
-                float v;
-            };
-            constexpr Preset k_Presets[] = {
-                {"真ん中", 0.0f, 0.0f},
-                {"右の外れ", 0.9f, 0.0f},
-                {"左の外れ", -0.9f, 0.0f},
-                {"上の外れ", 0.0f, 0.9f},
-                {"下の外れ", 0.0f, -0.9f},
-            };
-            for (std::size_t i = 0; i < std::size(k_Presets); ++i)
-            {
-                if (i > 0)
-                {
-                    ImGui::SameLine();
-                }
-                if (ImGui::SmallButton(k_Presets[i].label))
-                {
-                    m_desc.faceU = k_Presets[i].u;
-                    m_desc.faceV = k_Presets[i].v;
-                    changed = true;
-                }
-            }
-            ImGui::SameLine();
-            if (ImGui::Button("下見し直す"))
-            {
-                changed = true;
-            }
-            if (changed)
-            {
-                m_needsRun = true;
-            }
-
-            if (m_result.hit)
-            {
-                const GL::Level::ImpactRecord& impact = m_result.impact;
-                ImGui::Text("当たった束: %s / 面の位置 (%.2f, %.2f) / 突進を出して %d フレーム目に検知 / 威力 %.2f",
-                            impact.setName.c_str(),
-                            impact.faceU,
-                            impact.faceV,
-                            m_result.detectionIndex,
-                            impact.power);
-            }
-            else if (!m_result.error.empty())
-            {
-                ImGui::TextColored(k_OverriddenFieldColor, "下見できない: %s", m_result.error.c_str());
-            }
         }
 
         void ActionTimelinePanel::RenderActionButtons(LevelEditorController& editor) noexcept
@@ -477,7 +248,6 @@ namespace NS
                     {
                         m_actionIndex = i;
                         m_selectedRow.reset();
-                        m_needsRun = true;
                     }
                 }
                 ImGui::EndCombo();
@@ -567,7 +337,6 @@ namespace NS
                 actionName = action->name;
             }
             LoadWorking(m_actorFile, actionName);
-            m_needsRun = true;
             if (failed.empty())
             {
                 m_status = "動作を最後に保存した中身へ戻した";
@@ -615,11 +384,7 @@ namespace NS
                 }
                 ImGui::EndCombo();
             }
-            int clock = 0;
-            if (m_result.hit)
-            {
-                clock = std::max(m_playback.frame, 0);
-            }
+            const int clock = std::max(m_playback.frame, 0);
             ImGui::SameLine();
             if (ImGui::Button("再生の位置に足す"))
             {
@@ -649,22 +414,6 @@ namespace NS
             ImGui::EndDisabled();
         }
 
-        void ActionTimelinePanel::RenderPlayback() noexcept
-        {
-            if (ImGui::Checkbox("Game に下見を表示", &m_showPreview) && m_showPreview)
-            {
-                ImGui::SetWindowFocus(k_PanelGame);
-            }
-            const bool ready = m_result.hit && !m_needsRun;
-            if (DrawTimelinePlayback(m_playback, PlaybackRange(), ready))
-            {
-                m_showPreview = true;
-                ImGui::SetWindowFocus(k_PanelGame);
-            }
-            ImGui::TextUnformatted(
-                "動作に入った歩を 0 としたフレーム。下見で動作が走らなければ検知が 0。Game ビューで動きを確認");
-        }
-
         void ActionTimelinePanel::RenderBands() noexcept
         {
             const ActorAction* action = EditingAction();
@@ -672,18 +421,10 @@ namespace NS
             {
                 return;
             }
-            const HitPreviewResult* preview = nullptr;
-            if (m_result.hit)
-            {
-                preview = &m_result;
-            }
-            TimelineFrameRange range = ActionFrameRange(*action, preview);
-            const TimelineFrameRange playback = PlaybackRange();
-            if (playback.first <= playback.last)
-            {
-                range.first = std::min(range.first, playback.first);
-                range.last = std::max(range.last, playback.last);
-            }
+            const TimelineFrameRange range = ActionFrameRange(*action);
+            // 動作を替えて範囲が縮んでも、足す位置を帯の中に置く
+            m_playback.Seek(m_playback.frame, range);
+            ImGui::Text("足す位置: 動作に入った歩を 0 としたフレーム %d。目盛りを押して動かす", m_playback.frame);
             std::vector<TimelineTrack> tracks;
             tracks.reserve(action->events.size() + action->sensors.size());
             for (std::size_t row = 0; row < action->events.size(); ++row)
@@ -693,10 +434,6 @@ namespace NS
                 track.label = std::string{HitReactionItemLabel(event.item)};
                 track.start = event.start;
                 track.length = event.length;
-                if (preview != nullptr)
-                {
-                    track.startedFrames = RowStartFrames(*preview, action->name, row);
-                }
                 tracks.push_back(std::move(track));
             }
             for (const ActionSensorEvent& sensor : action->sensors)
@@ -707,122 +444,7 @@ namespace NS
                 track.length = sensor.length;
                 tracks.push_back(std::move(track));
             }
-            float graphsHeight = 0.0f;
-            if (m_result.hit && !m_result.frames.empty())
-            {
-                graphsHeight = static_cast<float>(k_PreviewGraphCount) *
-                               (ImGui::GetFrameHeight() * 2.0f + ImGui::GetStyle().ItemSpacing.y);
-            }
-            const bool moved = DrawTimelineTracks(
-                tracks,
-                range,
-                m_playback,
-                m_selectedRow,
-                m_result.hit && !m_needsRun,
-                graphsHeight,
-                [this](const TimelineLayout& layout) {
-                    if (m_result.hit && !m_result.frames.empty())
-                    {
-                        RenderPreviewGraphs(*ImGui::GetWindowDrawList(), layout);
-                    }
-                },
-                playback);
-            if (moved)
-            {
-                m_showPreview = true;
-                ImGui::SetWindowFocus(k_PanelGame);
-            }
-        }
-
-        void ActionTimelinePanel::RenderPreviewGraphs(ImDrawList& draw, const TimelineLayout& layout) noexcept
-        {
-            const int firstClock = layout.firstFrame;
-            const float frameWidth = layout.frameWidth;
-            const float totalWidth = layout.totalWidth;
-            const float rowHeight = layout.rowHeight;
-            const std::vector<HitPreviewFrame>& frames = m_result.frames;
-            float largestAngle = 0.0f;
-            float largestSink = 0.0f;
-            for (const HitPreviewFrame& frame : frames)
-            {
-                largestAngle = std::max({largestAngle,
-                                         std::fabs(frame.shakeAngles.x),
-                                         std::fabs(frame.shakeAngles.y),
-                                         std::fabs(frame.shakeAngles.z)});
-                largestSink = std::max(largestSink, std::fabs(frame.sinkPixels));
-            }
-            if (largestSink <= 0.0f)
-            {
-                largestSink = 1.0f;
-            }
-            if (largestAngle <= 0.0f)
-            {
-                largestAngle = 1.0f;
-            }
-            const float graphHeight = rowHeight * 2.0f;
-            const int origin = PlaybackOrigin();
-            // value は 0〜1 (centered が真なら -1〜1) に正規化した値を返す
-            const auto drawLine = [&](const ImVec2& at,
-                                      ImU32 color,
-                                      bool centered,
-                                      const std::function<float(const HitPreviewFrame&)>& value) {
-                ImVec2 previous{};
-                for (std::size_t i = 0; i < frames.size(); ++i)
-                {
-                    const int clock = static_cast<int>(i) - origin;
-                    const float x = at.x + (static_cast<float>(clock - firstClock) + 0.5f) * frameWidth;
-                    float ratio = value(frames[i]);
-                    if (centered)
-                    {
-                        ratio = ratio * 0.5f + 0.5f;
-                    }
-                    const float y = at.y + graphHeight - 2.0f - std::clamp(ratio, 0.0f, 1.0f) * (graphHeight - 4.0f);
-                    const ImVec2 point{x, y};
-                    if (i > 0)
-                    {
-                        draw.AddLine(previous, point, color, 1.5f);
-                    }
-                    previous = point;
-                }
-            };
-            const auto graphRow = [&](const char* label,
-                                      const char* tooltip,
-                                      const std::function<void(const ImVec2&)>& body) {
-                ImGui::TextUnformatted(label);
-                ImGui::SetItemTooltip("%s", tooltip);
-                ImGui::SameLine(layout.labelWidth, 0.0f);
-                const ImVec2 at = ImGui::GetCursorScreenPos();
-                ImGui::Dummy(ImVec2{totalWidth, graphHeight});
-                draw.AddRectFilled(at, ImVec2{at.x + totalWidth, at.y + graphHeight}, k_GraphBackColor);
-                body(at);
-            };
-            graphRow("トラウマ", "カメラのトラウマ。下が 0、上が 1", [&](const ImVec2& at) {
-                drawLine(at, k_GraphTraumaColor, false, [](const HitPreviewFrame& frame) { return frame.trauma; });
-            });
-            graphRow("揺れの角度",
-                     "トラウマの揺れの角度。赤が横の首振り、緑が縦の首振り、青が傾き。真ん中が 0 "
-                     "で、一番大きい所で縦を合わせる",
-                     [&](const ImVec2& at) {
-                         drawLine(at, k_GraphXColor, true, [largestAngle](const HitPreviewFrame& frame) {
-                             return frame.shakeAngles.x / largestAngle;
-                         });
-                         drawLine(at, k_GraphYColor, true, [largestAngle](const HitPreviewFrame& frame) {
-                             return frame.shakeAngles.y / largestAngle;
-                         });
-                         drawLine(at, k_GraphZColor, true, [largestAngle](const HitPreviewFrame& frame) {
-                             return frame.shakeAngles.z / largestAngle;
-                         });
-                     });
-            graphRow("沈む揺れ",
-                     "沈む揺れの画面の縦のずれ。真ん中が 0 で下が沈み、一番大きい所で縦を合わせる",
-                     [&](const ImVec2& at) {
-                         drawLine(at, k_GraphYColor, true, [largestSink](const HitPreviewFrame& frame) {
-                             return frame.sinkPixels / largestSink;
-                         });
-                     });
-            graphRow("世界の速さ", "世界の速さ。下が 0、上が普段の速さ 1", [&](const ImVec2& at) {
-                drawLine(at, k_GraphSpeedColor, false, [](const HitPreviewFrame& frame) { return frame.worldSpeed; });
-            });
+            DrawTimelineTracks(tracks, range, m_playback, m_selectedRow, true);
         }
 
         namespace

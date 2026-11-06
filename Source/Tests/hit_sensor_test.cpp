@@ -195,16 +195,16 @@ TEST(HitSensorDirector, TickTellsEveryOverlappingPairWhateverTheKinds)
     NS::Scene scene;
     SensorProbeActor* area = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 1.0f);
     SensorProbeActor* body = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Unset, 0.5f);
     body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
-    rock->Root().SetPosition(Vector3{0.5f, 0.0f, 0.0f});
+    other->Root().SetPosition(Vector3{0.5f, 0.0f, 0.0f});
 
     scene.HitSensors().OnTick();
 
     // 3 つとも重なっている。種類は見ないので、どれも残りの 2 つの始まりを登録順に聞く
-    EXPECT_EQ(area->entered, (std::vector<NS::HitSensor*>{body->m_sensor, rock->m_sensor}));
-    EXPECT_EQ(body->entered, (std::vector<NS::HitSensor*>{area->m_sensor, rock->m_sensor}));
-    EXPECT_EQ(rock->entered, (std::vector<NS::HitSensor*>{area->m_sensor, body->m_sensor}));
+    EXPECT_EQ(area->entered, (std::vector<NS::HitSensor*>{body->m_sensor, other->m_sensor}));
+    EXPECT_EQ(body->entered, (std::vector<NS::HitSensor*>{area->m_sensor, other->m_sensor}));
+    EXPECT_EQ(other->entered, (std::vector<NS::HitSensor*>{area->m_sensor, body->m_sensor}));
 }
 
 // 重なる → 2 固定フレーム続く → 離れる で、始まり 1・続き 2・終わり 1。離れた後は何も届かない
@@ -415,35 +415,35 @@ TEST(HitSensorDirector, BothOwnersHearAnOverlap)
     EXPECT_EQ(body->entered[0], area->m_sensor);
 }
 
-// ゴールは自機の体にだけ、触れ始めた時に 1 回知らせる。岩の体が範囲に重なっても知らせは出ない
-TEST(GoalActor, IgnoresARockBody)
+// ゴールは自機の体にだけ、触れ始めた時に 1 回知らせる。自機の体でないセンサーが範囲に重なっても知らせは出ない
+TEST(GoalActor, IgnoresASensorThatIsNotThePlayerBody)
 {
     NS::Scene scene;
     (void)scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Unset, 0.5f);
     SensorProbeActor* body = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
 
     scene.HitSensors().OnTick();
     scene.HitSensors().OnTick();
 
-    EXPECT_TRUE(rock->received.empty());
+    EXPECT_TRUE(other->received.empty());
     // 同じ所の自機の体には届く。照合が相手の種類を見ている証し
     ASSERT_EQ(body->received.size(), 1u);
     EXPECT_EQ(body->received[0], GL::Level::MsgGoal::StaticKind());
 }
 
 // 落下死の範囲も自機の体にだけ、入った時に 1 回知らせる
-TEST(DeathZoneActor, IgnoresARockBody)
+TEST(DeathZoneActor, IgnoresASensorThatIsNotThePlayerBody)
 {
     NS::Scene scene;
     (void)scene.SpawnActor<GL::Level::DeathZoneActor>("DeathZoneActor");
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Unset, 0.5f);
     SensorProbeActor* body = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
 
     scene.HitSensors().OnTick();
     scene.HitSensors().OnTick();
 
-    EXPECT_TRUE(rock->received.empty());
+    EXPECT_TRUE(other->received.empty());
     ASSERT_EQ(body->received.size(), 1u);
     EXPECT_EQ(body->received[0], GL::Level::MsgInstantDeath::StaticKind());
 }
@@ -452,24 +452,24 @@ TEST(DeathZoneActor, IgnoresARockBody)
 TEST(HitSensorDirector, FindOverlapsReturnsValidSensorsAndSkipsTheIgnoredOwner)
 {
     NS::Scene scene;
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
     SensorProbeActor* area = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::Area, 0.5f);
     const NS::SensorVolume probe = NS::SensorVolume::Sphere(Vector3{0.0f, 0.0f, 0.0f}, 0.5f);
 
     EXPECT_EQ(scene.HitSensors().FindOverlaps(probe, nullptr),
-              (std::vector<NS::HitSensor*>{rock->m_sensor, area->m_sensor}));
-    EXPECT_EQ(scene.HitSensors().FindOverlaps(probe, rock), (std::vector<NS::HitSensor*>{area->m_sensor}));
+              (std::vector<NS::HitSensor*>{other->m_sensor, area->m_sensor}));
+    EXPECT_EQ(scene.HitSensors().FindOverlaps(probe, other), (std::vector<NS::HitSensor*>{area->m_sensor}));
     area->m_sensor->Invalidate();
-    EXPECT_TRUE(scene.HitSensors().FindOverlaps(probe, rock).empty());
+    EXPECT_TRUE(scene.HitSensors().FindOverlaps(probe, other).empty());
 }
 
 TEST(HitSensorDirector, SensorLeavesDirectorWhenDestroyed)
 {
     NS::Scene scene;
     const std::size_t before = scene.HitSensors().Sensors().size();
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before + 1);
-    rock->OnEndPlay();
+    other->OnEndPlay();
     EXPECT_EQ(scene.HitSensors().Sensors().size(), before);
 }
 
@@ -477,12 +477,12 @@ TEST(HitSensorDirector, SensorLeavesDirectorWhenDestroyed)
 TEST(HitSensorDirector, SensorRejoinsAfterTheDirectorDroppedIt)
 {
     NS::Scene scene;
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
     const std::size_t joined = scene.HitSensors().Sensors().size();
-    scene.HitSensors().Unregister(rock->m_sensor);
+    scene.HitSensors().Unregister(other->m_sensor);
     ASSERT_EQ(scene.HitSensors().Sensors().size(), joined - 1);
-    scene.HitSensors().Register(rock->m_sensor);
-    scene.HitSensors().Register(rock->m_sensor);
+    scene.HitSensors().Register(other->m_sensor);
+    scene.HitSensors().Register(other->m_sensor);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), joined);
 }
 
@@ -500,11 +500,11 @@ TEST(HitSensor, ValidOnlyWhileEnabledAndNotInvalidated)
     EXPECT_FALSE(loose.IsValid());
 
     NS::Scene scene;
-    SensorProbeActor* rock = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::MapObjBody, 0.5f);
-    ASSERT_TRUE(rock->IsAppeared());
-    ASSERT_TRUE(rock->m_sensor->IsValid());
-    NS::DisableHitSensor(rock->m_sensor);
-    EXPECT_FALSE(rock->m_sensor->IsValid());
+    SensorProbeActor* other = scene.SpawnActor<SensorProbeActor>("SensorProbeActor", SensorKind::PlayerBody, 0.5f);
+    ASSERT_TRUE(other->IsAppeared());
+    ASSERT_TRUE(other->m_sensor->IsValid());
+    NS::DisableHitSensor(other->m_sensor);
+    EXPECT_FALSE(other->m_sensor->IsValid());
 }
 
 TEST(Message, KindsAreDistinctPerType)

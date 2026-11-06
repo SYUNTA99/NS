@@ -30,7 +30,7 @@ TEST(ActorRegistry, PlaceableClassesHaveLabels)
 {
     // 置ける SceneActor はどれも表示名を持つ
     const std::vector<std::string_view> expected{
-        "MapPartsActor", "PropActor", "GoalActor", "DeathZoneActor", "WaterActor", "FollowCameraActor", "LightActor"};
+        "MapPartsActor", "RuinDecorationActor", "GoalActor", "DeathZoneActor", "WaterActor", "FollowCameraActor", "LightActor"};
     for (const std::string_view className : expected)
     {
         const NS::TypeRegistry::Entry* entry = FindPlaceable(className);
@@ -72,9 +72,9 @@ TEST(ActorRegistry, CreatedActorReportsItsClassName)
 
 TEST(ActorRegistry, CreateActorOfClassUsesClass)
 {
-    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("PropActor");
+    const std::unique_ptr<NS::SceneActor> actor = NS::CreateActorOfClass("GoalActor");
     ASSERT_NE(actor, nullptr);
-    EXPECT_EQ(std::string_view{actor->ClassName()}, "PropActor");
+    EXPECT_EQ(std::string_view{actor->ClassName()}, "GoalActor");
 }
 
 // 登録の無いクラスには .actor が無いので作らない

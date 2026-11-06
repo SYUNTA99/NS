@@ -1,5 +1,5 @@
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/PropActor.h"
+#include "Game/Level/GoalActor.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -326,9 +326,9 @@ TEST(FixedParts, MemberTypeCanOwnADerivedPartWithoutASlot)
     EXPECT_EQ(PartAt(actor.get(), "Shape"), actor->shape.get());
 }
 
-TEST(FixedParts, MapObjCreatesShadowBeforeActorFileIsApplied)
+TEST(FixedParts, PlayerCreatesShadowBeforeActorFileIsApplied)
 {
-    const std::unique_ptr<GL::Level::PropActor> actor = NS::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<PlayerActor> actor = NS::CreateActor<PlayerActor>();
     ASSERT_NE(actor->ShadowClassObj(), nullptr);
     EXPECT_EQ(PartAt(actor.get(), "Shadow"), actor->ShadowClassObj());
 }
@@ -421,12 +421,12 @@ TEST(FixedParts, SensorsLiveInOneSensorsPartByName)
 TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 {
     const std::unique_ptr<PlayerActor> ownedPlayer = NS::CreateActor<PlayerActor>();
-    const std::unique_ptr<GL::Level::PropActor> ownedRock = NS::CreateActor<GL::Level::PropActor>();
+    const std::unique_ptr<GL::Level::GoalActor> ownedGoal = NS::CreateActor<GL::Level::GoalActor>();
     const std::unique_ptr<GL::Level::FollowCameraActor> ownedCamera = NS::CreateActor<GL::Level::FollowCameraActor>();
     const std::unique_ptr<NS::LightActor> ownedLight = NS::CreateActor<NS::LightActor>();
     const std::unique_ptr<NS::MapPartsActor> ownedTerrain = NS::CreateActor<NS::MapPartsActor>();
     PlayerActor& player = *ownedPlayer;
-    GL::Level::PropActor& rock = *ownedRock;
+    GL::Level::GoalActor& goal = *ownedGoal;
     GL::Level::FollowCameraActor& camera = *ownedCamera;
     NS::LightActor& light = *ownedLight;
     NS::MapPartsActor& terrain = *ownedTerrain;
@@ -435,10 +435,9 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
     EXPECT_NE(PartAt(&player, "Params"), nullptr);
     EXPECT_NE(player.ModelClassObj(), nullptr);
     EXPECT_NE(player.HitSensorsClassObj()->Find("Body"), nullptr);
-    EXPECT_NE(rock.ModelClassObj(), nullptr);
-    EXPECT_NE(rock.CollisionClassObj(), nullptr);
-    EXPECT_NE(PartAt(&rock, "Params"), nullptr);
-    EXPECT_NE(PartAt(&rock, "LaunchEffects"), nullptr);
+    EXPECT_NE(goal.ModelClassObj(), nullptr);
+    EXPECT_NE(goal.HitSensorsClassObj()->Find("Body"), nullptr);
+    EXPECT_EQ(PartAt(&goal, "Params"), &goal.Params());
     EXPECT_EQ(PartAt(&camera, "Vcam"), &camera.Vcam());
     EXPECT_NE(PartAt(&light, "DirectionalLight"), nullptr);
     EXPECT_NE(terrain.ModelClassObj(), nullptr);
@@ -447,7 +446,7 @@ TEST(FixedParts, ConcreteActorsExposeTheirOwnedRoles)
 
 TEST(FixedParts, SavedActorsUseRoleKeysAndDirectFields)
 {
-    const nlohmann::json source = {{"actor", "PropActor"}, {"id", 7u}, {"classObjs", {{"Shadow", {{"基本直径", 2.0f}}}}}};
+    const nlohmann::json source = {{"actor", "PlayerActor"}, {"id", 7u}, {"classObjs", {{"Shadow", {{"基本直径", 2.0f}}}}}};
     NS::Scene scene;
     std::unique_ptr<NS::SceneActor> actor = NS::ActorFromJson(source, scene);
     ASSERT_NE(actor, nullptr);
@@ -467,8 +466,8 @@ TEST(FixedParts, FileReferencesUseNamesAndClonesRemapIds)
 {
     nlohmann::json scene = NS::MakeSceneJson();
     NS::SceneJsonActors(scene) = {
-        {{"actor", "PropActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
-        {{"actor", "PropActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
+        {{"actor", "GoalActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
+        {{"actor", "GoalActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
     const std::string text = NS::SerializeSceneToJson(scene);
     const nlohmann::json file = nlohmann::json::parse(text);
     EXPECT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");

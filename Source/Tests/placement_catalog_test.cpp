@@ -36,21 +36,21 @@ TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
 TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
 {
     // クラスと違う名前の .actor も、敷いた後の一覧に並ぶ
-    const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("HeavyProp");
+    const ScopedActorFile wide{"WideGoal", CodeValuesActorFile("GoalActor")};
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("WideGoal");
     ASSERT_TRUE(item.has_value());
-    EXPECT_EQ(NS::ActorJsonFile(item->prototype), "HeavyProp");
+    EXPECT_EQ(NS::ActorJsonFile(item->prototype), "WideGoal");
 }
 
 TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
 {
     // 引いた物は、後で .actor が増えて一覧が組み直されても、引いた時の中身のまま読める
-    const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("PropActor");
-    ASSERT_TRUE(prop.has_value());
-    const ScopedActorFile heavy{"HeavyProp", CodeValuesActorFile("PropActor")};
-    ASSERT_TRUE(NS::Editor::FindPlacementItem("HeavyProp").has_value());
-    EXPECT_EQ(prop->label, "PropActor");
-    EXPECT_EQ(NS::ActorJsonFile(prop->prototype), "PropActor");
+    const std::optional<NS::Editor::PlacementItem> goal = NS::Editor::FindPlacementItem("GoalActor");
+    ASSERT_TRUE(goal.has_value());
+    const ScopedActorFile wide{"WideGoal", CodeValuesActorFile("GoalActor")};
+    ASSERT_TRUE(NS::Editor::FindPlacementItem("WideGoal").has_value());
+    EXPECT_EQ(goal->label, "GoalActor");
+    EXPECT_EQ(NS::ActorJsonFile(goal->prototype), "GoalActor");
 }
 
 TEST(PlacementCatalog, MapPartsIsSplitByMesh)

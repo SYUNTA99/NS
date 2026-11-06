@@ -7,7 +7,6 @@ namespace GL
     namespace Level
     {
         //! 空中の重力の組。上りと下りで強さを分け、頂点付近を弱める
-        //! 自機の移動・突進の予測・飛ばされて曲がった後の置物が、同じ ChooseGravity で重力を選ぶ
         struct AirGravity
         {
             float rise = 0.0f;      // 上向きの間の重力 (m/s²)。下向きが負

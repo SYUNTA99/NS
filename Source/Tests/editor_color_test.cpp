@@ -131,7 +131,6 @@ namespace
         }
         const std::string className = NS::ActorFileLibrary::Get().ClassNameOf(actorFileName);
         const std::map<std::string, NS::Vector3> classColors{
-            {"PropActor", NS::Vector3{0.72f, 0.70f, 0.66f}},
             {"PlayerActor", NS::Vector3{0.5f, 0.5f, 0.5f}},
             {"MapPartsActor", NS::Vector3{0.70f, 0.70f, 0.75f}},
         };

@@ -5,7 +5,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <vector>
 
 namespace NS
 {
@@ -18,20 +17,13 @@ namespace NS
             int last = 0;
         };
 
-        //! 事象に依存しない再生時計。画面と下見が同じ frame を読む
+        //! 目盛りで動かす位置。事象に依存しない
         struct TimelinePlayback
         {
             int frame = 0;
-            bool playing = false;
-            float speed = 1.0f;
-            float framesPerSecond = 60.0f; // 速さ 1 の時に 1 秒で進むフレーム数
-            float carry = 0.0f;            // 1 フレームに届いていない進み
 
-            void Tick(float seconds, TimelineFrameRange range) noexcept;
+            //! requestedFrame を range の中に収めて frame にする
             void Seek(int requestedFrame, TimelineFrameRange range) noexcept;
-            void StepBy(int steps, TimelineFrameRange range) noexcept;
-            //! 末尾か範囲の外で止まっている時は、先頭へ戻してから再生する
-            void Toggle(TimelineFrameRange range) noexcept;
         };
 
         //! 帯に表示する 1 行。事象の値と適用処理は用途側が持つ
@@ -40,7 +32,6 @@ namespace NS
             std::string label;
             int start = 0;
             int length = 1;
-            std::vector<int> startedFrames; // 実際に始まったフレーム
         };
 
         //! 追加の折れ線を帯と同じ目盛りに合わせる寸法
@@ -53,9 +44,6 @@ namespace NS
             float rowHeight = 0.0f;
         };
 
-        //! 再生・停止・コマ送り・速さの操作を描く
-        //! @return 操作が押された場合 true、それ以外の場合は false
-        bool DrawTimelinePlayback(TimelinePlayback& playback, TimelineFrameRange range, bool enabled = true) noexcept;
         //! 目盛り・帯・選択・再生位置を描く
         //! extraRows は同じ区画へ追加の行を描く
         //! seekRange は目盛りで移動できる範囲で、nullopt なら range

@@ -2,10 +2,6 @@
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"
-#include "Game/Level/ImpactResolver.h"
-#include "Game/Level/LaunchArc.h"
-#include "Game/Level/LaunchEffects.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
@@ -38,26 +34,6 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
     EXPECT_NE(NS::Cast<NS::MeshCollision>(parts.CollisionClassObj()), nullptr);
     EXPECT_EQ(NS::Cast<NS::BoxCollision>(parts.CollisionClassObj()), nullptr);
     EXPECT_EQ(NS::Cast<NS::SphereCollision>(parts.CollisionClassObj()), nullptr);
-}
-
-TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
-{
-    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
-    GL::Level::PropActor& obj = *objOwned;
-    EXPECT_NE(obj.ModelClassObj(), nullptr);
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.CollisionClassObj()), nullptr);
-    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&obj);
-    EXPECT_EQ(NS::ClassObjFields(prototype, "Breakable"), nullptr);
-    EXPECT_EQ(NS::ClassObjFields(prototype, "LaunchedBody"), nullptr);
-    EXPECT_NE(obj.ShadowClassObj(), nullptr);
-    // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
-    const NS::HitSensor* sensor = obj.HitSensorsClassObj()->Find("Body");
-    ASSERT_NE(sensor, nullptr);
-    EXPECT_TRUE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::MapObjBody));
-    EXPECT_EQ(NS::ClassObjFields(prototype, "TackleReaction"), nullptr);
-    EXPECT_NE(NS::ClassObjFields(prototype, "LaunchEffects"), nullptr);
-    EXPECT_NE(obj.GetStateMachine(), nullptr);
-    EXPECT_FALSE(obj.IsFlying());
 }
 
 TEST(ActorClass, GoalHasMarkerAndArea)
@@ -121,7 +97,7 @@ TEST(ActorClass, LightShinesAlongItsRotation)
 
 TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 {
-    // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
+    // 以前はシーンのデータが足していた当たりの部品も、クラスが組み立てる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&player);
@@ -129,7 +105,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
-    EXPECT_NE(NS::ClassObjFields(prototype, "ImpactResolver"), nullptr);
     EXPECT_NE(player.HitReactionClassObj(), nullptr);
     const NS::HitSensor* body = player.HitSensorsClassObj()->Find("Body");
     ASSERT_NE(body, nullptr);
@@ -138,9 +113,8 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 
 TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
 {
-    // 自機・置物・ゴールの体のセンサーは、宣言した種類にだけ真で、他の種類と未設定には偽
+    // 自機・ゴールの体のセンサーは、宣言した種類にだけ真で、他の種類と未設定には偽
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     const std::unique_ptr<GL::Level::GoalActor> goal = NS::CreateActor<GL::Level::GoalActor>();
     struct BodyCase
     {
@@ -149,11 +123,9 @@ TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
     };
     const BodyCase cases[] = {
         {player->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::PlayerBody},
-        {prop->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::MapObjBody},
         {goal->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::Area},
     };
-    const GL::Level::SensorKind kinds[] = {
-        GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::MapObjBody, GL::Level::SensorKind::Area};
+    const GL::Level::SensorKind kinds[] = {GL::Level::SensorKind::PlayerBody, GL::Level::SensorKind::Area};
     for (const BodyCase& body : cases)
     {
         ASSERT_NE(body.sensor, nullptr);
@@ -167,9 +139,9 @@ TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
 
 TEST(SensorKinds, NewSensorIsUnset)
 {
-    // 種類が未設定のセンサーはどの種類でもない。付け忘れたセンサーが黙って体当たりの相手にならない
+    // 種類が未設定のセンサーはどの種類でもない。付け忘れたセンサーが黙って自機の体として扱われない
     NS::ShapeHitSensor sensor{
         nullptr, "Body", static_cast<NS::uint8>(GL::Level::SensorKind::Unset), NS::HitSensorShape::Sphere};
     EXPECT_EQ(sensor.Kind(), 0u);
-    EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::MapObjBody));
+    EXPECT_FALSE(GL::Level::IsSensorKind(&sensor, GL::Level::SensorKind::PlayerBody));
 }
