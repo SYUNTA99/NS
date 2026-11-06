@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "Tests/TestSceneSetup.h"
 #include <filesystem>
 #include <iterator>
 #include <map>
@@ -856,7 +857,7 @@ TEST(ActorFile, ActorFileScaleReachesOnlyActorsThatDoNotOverrideIt)
     EXPECT_EQ(reached->Root().Scale(), (NS::Vector3{2.0f, 2.0f, 2.0f}));
 }
 
-// new_scene の 8 体は、直す前と同じ姿勢で立つ。回転とスケールは既定と違う物だけをシーンに書く
+// new_scene の 4 体は、直す前と同じ姿勢で立つ。回転とスケールは既定と違う物だけをシーンに書く
 TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDifferFromTheDefault)
 {
     using NS::OS::FileSystem;
@@ -869,7 +870,7 @@ TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDiff
 
     struct Expected
     {
-        NS::uint32 id;
+        std::string_view name;
         NS::Vector3 position;
         NS::Quaternion rotation;
         NS::Vector3 scale;
@@ -877,22 +878,26 @@ TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDiff
     const NS::Quaternion none = NS::Quaternion::Identity;
     const NS::Vector3 one{1.0f, 1.0f, 1.0f};
     const Expected expected[] = {
-        {1, {16.999433517456055f, 0.0f, 0.0f}, none, {50.0f, 1.0f, 50.0f}},
-        {2, {23.228139877319336f, 1.649999976158142f, -2.528921604156494f}, none, one},
-        {3, {23.228139877319336f, 4.144098281860352f, -7.358550071716309f}, none, one},
-        {4, {0.0f, 0.0f, 0.0f}, {0.7382549047470093f, -0.2214764654636383f, 0.0f, 0.6371247172355652f}, one},
+        {"Object", {16.999433517456055f, 0.0f, 0.0f}, none, {50.0f, 1.0f, 50.0f}},
+        {"Object_1", {23.228139877319336f, 1.649999976158142f, -2.528921604156494f}, none, one},
+        {"Player Camera", {23.228139877319336f, 4.144098281860352f, -7.358550071716309f}, none, one},
+        {"Object_2",
+         {0.0f, 0.0f, 0.0f},
+         {0.7382549047470093f, -0.2214764654636383f, 0.0f, 0.6371247172355652f},
+         one},
     };
     ASSERT_EQ(NS::SceneJsonActors(doc).size(), std::size(expected));
     for (const Expected& e : expected)
     {
-        SCOPED_TRACE(e.id);
-        const NS::SceneActor* actor = scene.Actors().FindByActorId(e.id);
+        SCOPED_TRACE(e.name);
+        const NS::uint32 id = ActorIdByName(doc, e.name);
+        const NS::SceneActor* actor = scene.Actors().FindByActorId(id);
         ASSERT_NE(actor, nullptr);
         EXPECT_EQ(actor->Root().Position(), e.position);
         EXPECT_EQ(actor->Root().Rotation(), e.rotation);
         EXPECT_EQ(actor->Root().Scale(), e.scale);
 
-        const nlohmann::json& entry = NS::SceneJsonActors(doc)[NS::FindActorIndexById(doc, e.id)];
+        const nlohmann::json& entry = NS::SceneJsonActors(doc)[NS::FindActorIndexById(doc, id)];
         const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");
         ASSERT_NE(transform, nullptr);
         EXPECT_TRUE(NS::HasField(*transform, NS::k_PositionFieldName));

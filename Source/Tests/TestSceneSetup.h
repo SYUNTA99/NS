@@ -10,6 +10,20 @@
 #include <string_view>
 #include <utility>
 
+//! doc の中で名前が name のアクターの id。ファイルから読んだ id は並び順で振り直されるので、置いた物は名前で探す
+//! 居なければ k_NoActorId
+inline NS::uint32 ActorIdByName(const nlohmann::json& doc, std::string_view name)
+{
+    for (const nlohmann::json& actor : NS::SceneJsonActors(doc))
+    {
+        if (NS::ActorJsonName(actor) == name)
+        {
+            return NS::ActorJsonId(actor);
+        }
+    }
+    return NS::k_NoActorId;
+}
+
 //! .actor の名前と id だけを持つアクターを doc へ足す
 inline void AddActorJson(nlohmann::json& doc, std::string_view actorFile, NS::uint32 id)
 {

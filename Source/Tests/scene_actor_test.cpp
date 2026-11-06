@@ -152,6 +152,103 @@ TEST(SceneActor, FileTextRoundTripKeepsClass)
     EXPECT_EQ(NS::ActorJsonFile(objects[NS::FindActorIndexById(back, 2)]), "GoalActor");
 }
 
+// ファイルの中の配置物は名前で見分ける。番号を書くと、配置物を足し引きするたびに関わらない行まで差分に出る
+TEST(SceneJson, FileHasNoActorNumbers)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "MapPartsActor", 5);
+    AddActorJson(doc, "GoalActor", 9);
+    NS::SetSceneJsonNextActorId(doc, 10);
+
+    const nlohmann::json file = nlohmann::json::parse(NS::SerializeSceneToJson(doc));
+
+    EXPECT_FALSE(file.contains("nextObjectId"));
+    ASSERT_EQ(NS::SceneJsonActors(file).size(), 2u);
+    for (const nlohmann::json& actor : NS::SceneJsonActors(file))
+    {
+        EXPECT_FALSE(actor.contains("id")) << actor.dump();
+    }
+}
+
+// 名前が空か重なる相手への参照も名前で書く。番号で書くと、読み込みで番号を振り直した後に違う相手を指す
+TEST(SceneJson, RefsToUnnamedOrSharedNamesComeBackToTheSameActor)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "MapPartsActor", 4);
+    AddActorJson(doc, "MapPartsActor", 2);
+    AddActorJson(doc, "MapPartsActor", 7);
+    AddActorJson(doc, "PropActor", 1);
+    nlohmann::json& objects = NS::SceneJsonActors(doc);
+    NS::SetActorJsonName(objects[0], "箱");
+    NS::SetActorJsonName(objects[1], "箱");
+    nlohmann::json& follow = NS::ActorJsonClassObjs(objects[3])["Follow"];
+    follow["重なる名前"] = NS::MakeRefValue(NS::ActorRef{2});
+    follow["名前なし"] = NS::MakeRefValue(NS::ActorRef{7});
+    follow["居ない相手"] = NS::MakeRefValue(NS::ActorRef{99});
+
+    const std::string text = NS::SerializeSceneToJson(doc);
+    const nlohmann::json file = nlohmann::json::parse(text);
+    const nlohmann::json& written = NS::ActorJsonClassObjs(NS::SceneJsonActors(file)[3])["Follow"];
+    EXPECT_TRUE(written["重なる名前"]["ref"].is_string()) << written.dump();
+    EXPECT_TRUE(written["名前なし"]["ref"].is_string()) << written.dump();
+    EXPECT_EQ(written["居ない相手"]["ref"], "") << written.dump();
+
+    const TestLogCapture log;
+    nlohmann::json back;
+    ASSERT_TRUE(NS::DeserializeSceneFromJson(back, text));
+    const nlohmann::json& actors = NS::SceneJsonActors(back);
+    const nlohmann::json& read = NS::ActorJsonClassObjs(actors[3])["Follow"];
+    NS::ActorRef shared{};
+    NS::ActorRef unnamed{};
+    NS::ActorRef missing{};
+    ASSERT_TRUE(NS::ReadRefValue(read["重なる名前"], shared));
+    ASSERT_TRUE(NS::ReadRefValue(read["名前なし"], unnamed));
+    ASSERT_TRUE(NS::ReadRefValue(read["居ない相手"], missing));
+    EXPECT_EQ(shared.id, NS::ActorJsonId(actors[1]));
+    EXPECT_EQ(unnamed.id, NS::ActorJsonId(actors[2]));
+    EXPECT_EQ(missing.id, NS::k_NoActorId);
+    EXPECT_EQ(log.WarningCount(), 0);
+}
+
+// ファイルの番号は読まない。手で書いたファイルの欠けた番号・重なる番号・数値の参照は、読み込みの入口で決まった形に直す
+TEST(SceneJson, LoadNumbersActorsInOrderAndDropsNumericRefs)
+{
+    const nlohmann::json file = {
+        {"version", 9},
+        {"nextObjectId", 50},
+        {"objects",
+         nlohmann::json::array(
+             {{{"id", 7}, {"actor", "MapPartsActor"}, {"name", "床"}},
+              {{"actor", "MapPartsActor"}, {"name", "台"}},
+              {{"id", 7},
+               {"actor", "PropActor"},
+               {"name", "箱"},
+               {"classObjs",
+                {{"Follow", {{"数値", {{"ref", 1}}}, {"居ない名前", {{"ref", "無い"}}}, {"名前", {{"ref", "台"}}}}}}}}})}};
+
+    const TestLogCapture log;
+    nlohmann::json back;
+    ASSERT_TRUE(NS::DeserializeSceneFromJson(back, file.dump()));
+
+    const nlohmann::json& actors = NS::SceneJsonActors(back);
+    ASSERT_EQ(actors.size(), 3u);
+    EXPECT_EQ(NS::ActorJsonId(actors[0]), 1u);
+    EXPECT_EQ(NS::ActorJsonId(actors[1]), 2u);
+    EXPECT_EQ(NS::ActorJsonId(actors[2]), 3u);
+    EXPECT_EQ(NS::NextFreeActorId(back), 4u);
+    const nlohmann::json& read = NS::ActorJsonClassObjs(actors[2])["Follow"];
+    NS::ActorRef numeric{};
+    NS::ActorRef missing{};
+    NS::ActorRef named{};
+    ASSERT_TRUE(NS::ReadRefValue(read["数値"], numeric));
+    ASSERT_TRUE(NS::ReadRefValue(read["居ない名前"], missing));
+    ASSERT_TRUE(NS::ReadRefValue(read["名前"], named));
+    EXPECT_EQ(numeric.id, NS::k_NoActorId);
+    EXPECT_EQ(missing.id, NS::k_NoActorId);
+    EXPECT_EQ(named.id, 2u);
+    EXPECT_EQ(log.WarningCount(), 1);
+}
+
 // 書く途中で失敗しても前の .scene を壊さない。壊れると、そのシーンに置いた全部のアクターを失う
 TEST(SceneJson, SaveThatCannotFinishLeavesTheFileAsItWas)
 {

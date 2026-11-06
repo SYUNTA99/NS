@@ -4,7 +4,6 @@
     "musicVolume": 0.5,
     "skybox": "Assets/Skybox/blue-sky/"
   },
-  "nextObjectId": 94,
   "objects": [
     {
       "actor": "MapPartsActor",
@@ -26,7 +25,6 @@
           ]
         }
       },
-      "id": 1,
       "name": "Object"
     },
     {
@@ -52,7 +50,6 @@
           ]
         }
       },
-      "id": 2,
       "name": "Object_1"
     },
     {
@@ -71,7 +68,6 @@
           }
         }
       },
-      "id": 3,
       "name": "Player Camera"
     },
     {
@@ -92,7 +88,6 @@
           ]
         }
       },
-      "id": 4,
       "name": "Object_2"
     }
   ],

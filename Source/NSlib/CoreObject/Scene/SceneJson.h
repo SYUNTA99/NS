@@ -15,12 +15,13 @@
 #include <string_view>
 #include <unordered_set>
 
-// 保存・プレイ開始時の控えに使うシーン文書。参照はメモリ上で id、ファイル上で名前を使う
+// 保存・プレイ開始時の控えに使うシーン文書。メモリの文書はアクターを id で見分け、参照も id で書く
+// ファイルはアクターを名前で見分け、id と nextObjectId を書かない。参照は相手の名前で書く
 // キーを辞書順で書くため、同じ文書を保存した結果はバイト単位で一致する
 
 namespace NS
 {
-    //! 既定の空文書を作る。nextObjectId は単調増加し、削除済み id を再利用しない
+    //! 既定の空のメモリの文書を作る。nextObjectId は単調増加し、削除済み id を再利用しない
     [[nodiscard]] nlohmann::json MakeSceneJson();
 
     //! アクターの JSON の配列。無いか壊れていれば空の配列
@@ -32,8 +33,8 @@ namespace NS
     [[nodiscard]] uint32 SceneJsonNextActorId(const nlohmann::json& scene) noexcept;
     void SetSceneJsonNextActorId(nlohmann::json& scene, uint32 nextObjectId);
 
-    //! 次に置くアクターの id。nextObjectId と、アクターの最大の id の次の大きい方
-    //! 手編集で nextObjectId がアクターの id より小さいファイルもある。1 より小さくならない
+    //! 次に置くアクターの id。メモリの中のシーンの nextObjectId と、アクターの最大の id の次の大きい方。
+    //! 1 より小さくならない (ファイルは nextObjectId を持たない)
     [[nodiscard]] uint32 NextFreeActorId(const nlohmann::json& scene) noexcept;
 
     //! シーンの environment の欄。リフレクションの欄の名前を JSON の鍵に使う
@@ -73,15 +74,17 @@ namespace NS
     //! 未割当と重複には新 id を振り、nextObjectId を既存最大 id より先へ進める。重複は先勝ち
     void EnsureUniqueActorIds(nlohmann::json& scene);
 
-    //! 未使用の名前を返す。空なら Object、重複したら _1、_2 と番号を付ける
+    //! 未使用の名前を返す。空なら Actor、重複したら _1、_2 と番号を付ける
     [[nodiscard]] std::string MakeUniqueActorName(std::string_view base, const std::unordered_set<std::string>& used);
 
-    //! シーン文書をファイルの JSON 文字列へ直列化する。参照は名前へ直して書く
+    //! シーン文書をファイルの JSON 文字列へ直列化する。id と nextObjectId は書かず、参照は相手の名前で書く
+    //! 空と重なる名前はファイルの中だけで一意にし、scene の名前は変えない。未設定と居ない相手への参照は "" で書く
     [[nodiscard]] std::string SerializeSceneToJson(const nlohmann::json& scene);
 
     //! ファイルの JSON 文字列をシーン文書へ復元する
     //! parse 失敗・version 不一致・上限超過で false、outScene は空の文書へ戻す
-    //! 成功時は id と名前の一意化、名前で書かれた参照の id への変換、宙に浮いた参照と辿れない親の除去まで済ませる
+    //! ファイルの id と nextObjectId は読まず、id は並び順に 1 から振る。名前を一意にしてから、名前で書かれた参照を id へ直す
+    //! 数値で書かれた参照と居ない名前の参照は未設定に戻し、戻した件数を NS_LOG_WARN で 1 回出す
     [[nodiscard]] bool DeserializeSceneFromJson(nlohmann::json& outScene, std::string_view jsonText);
 
     //! シーン文書をファイルへ書く。要素数 / 出力 size が上限超過なら false + NS_LOG_ERROR

@@ -88,7 +88,6 @@ namespace NS
     nlohmann::json MakeActorJson()
     {
         nlohmann::json object = nlohmann::json::object();
-        object["id"] = 0u;
         object["classObjs"] = nlohmann::json::object();
         return object;
     }
@@ -100,7 +99,7 @@ namespace NS
 
     void SetActorJsonId(nlohmann::json& actorJson, uint32 id)
     {
-        WriteOrErase(actorJson, "id", false, id);
+        WriteOrErase(actorJson, "id", id == k_NoActorId, id);
     }
 
     std::string_view ActorJsonFile(const nlohmann::json& actorJson) noexcept

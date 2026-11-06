@@ -28,9 +28,9 @@ namespace NS
     //! アクターの保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
     [[nodiscard]] nlohmann::json MakeActorJson();
 
-    //! アクターの永続 id。未採番と壊れた形は 0
+    //! アクターのメモリの中の id (ファイルには書かず、読み込みのたびに並び順で振り直す)。未採番と壊れた形は 0
     [[nodiscard]] uint32 ActorJsonId(const nlohmann::json& actorJson) noexcept;
-    //! アクターの永続 id を書く
+    //! アクターのメモリの中の id を書く。未採番の k_NoActorId は欄を消す
     void SetActorJsonId(nlohmann::json& actorJson, uint32 id);
 
     //! アクターが敷く .actor の名前。作るクラスはその .actor の中の class。無ければ空

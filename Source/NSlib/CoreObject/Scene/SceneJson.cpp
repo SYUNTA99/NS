@@ -51,43 +51,36 @@ namespace NS
             return object;
         }
 
-        // ファイルの参照は相手の名前で書く。空と重複した名前は相手が 1 つに決まらないので id のまま残す
+        // ファイルの参照は相手の名前で書く。呼ぶ前に名前を一意にしておく。未設定と、一覧に居ない相手は "" で書く
         void WriteRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonActors(scene);
-            std::unordered_map<std::string, int> counts;
             std::unordered_map<uint32, std::string> names;
             for (const nlohmann::json& object : objects)
             {
-                ++counts[std::string{ActorJsonName(object)}];
-            }
-            for (const nlohmann::json& object : objects)
-            {
-                const std::string name{ActorJsonName(object)};
-                if (!name.empty() && counts[name] == 1)
-                {
-                    names.emplace(ActorJsonId(object), name);
-                }
+                names.emplace(ActorJsonId(object), std::string{ActorJsonName(object)});
             }
             for (nlohmann::json& object : objects)
             {
                 ForEachRefValue(object, [&names](nlohmann::json& ref) {
-                    if (!ref.is_number_unsigned())
+                    std::string name;
+                    if (ref.is_number_unsigned() && ref.get<uint32>() != k_NoActorId)
                     {
-                        return;
+                        const std::unordered_map<uint32, std::string>::const_iterator found =
+                            names.find(ref.get<uint32>());
+                        if (found != names.end())
+                        {
+                            name = found->second;
+                        }
                     }
-                    const std::unordered_map<uint32, std::string>::const_iterator found =
-                        names.find(ref.get<uint32>());
-                    if (found != names.end())
-                    {
-                        ref = found->second;
-                    }
+                    ref = std::move(name);
                 });
             }
         }
 
-        // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
-        void ReadRefsByName(nlohmann::json& scene)
+        // ファイルの参照は相手の名前で書かれている。番号を振った後で id へ直し、辿れない参照は未設定に戻す。
+        // 戻した件数を返す。"" と 0 は元から未設定なので数えない
+        std::size_t ReadRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_map<std::string, uint32> ids;
@@ -95,25 +88,33 @@ namespace NS
             {
                 ids.emplace(std::string{ActorJsonName(object)}, ActorJsonId(object));
             }
+            std::size_t lost = 0;
             for (nlohmann::json& object : objects)
             {
-                ForEachRefValue(object, [&ids](nlohmann::json& ref) {
-                    if (!ref.is_string())
+                ForEachRefValue(object, [&ids, &lost](nlohmann::json& ref) {
+                    uint32 id = k_NoActorId;
+                    if (ref.is_string() && !ref.get_ref<const std::string&>().empty())
                     {
-                        return;
+                        const std::unordered_map<std::string, uint32>::const_iterator found =
+                            ids.find(ref.get<std::string>());
+                        if (found == ids.end())
+                        {
+                            ++lost;
+                        }
+                        else
+                        {
+                            id = found->second;
+                        }
                     }
-                    const std::unordered_map<std::string, uint32>::const_iterator found =
-                        ids.find(ref.get<std::string>());
-                    if (found == ids.end())
+                    // 数値は番号を書いていた頃の参照。番号は読み込みで振り直すので、相手を決められない
+                    else if (ref.is_number() && !(ref.is_number_unsigned() && ref.get<uint32>() == k_NoActorId))
                     {
-                        ref = 0u;
+                        ++lost;
                     }
-                    else
-                    {
-                        ref = found->second;
-                    }
+                    ref = id;
                 });
             }
+            return lost;
         }
 
     } // namespace
@@ -256,35 +257,6 @@ namespace NS
             }
         }
 
-        // 存在しない object を指す参照を 0 へ戻した件数を返す。0 は元から未設定なので数えない
-        std::size_t PruneDanglingActorRefs(nlohmann::json& scene)
-        {
-            nlohmann::json& objects = SceneJsonActors(scene);
-            std::unordered_set<uint32> ids;
-            for (const nlohmann::json& object : objects)
-            {
-                ids.insert(ActorJsonId(object));
-            }
-            std::size_t pruned = 0;
-            for (nlohmann::json& object : objects)
-            {
-                ForEachRefValue(object, [&ids, &pruned](nlohmann::json& ref) {
-                    if (!ref.is_number_unsigned())
-                    {
-                        return;
-                    }
-                    const uint32 id = ref.get<uint32>();
-                    if (id == 0 || ids.contains(id))
-                    {
-                        return;
-                    }
-                    ref = 0u;
-                    ++pruned;
-                });
-            }
-            return pruned;
-        }
-
     } // namespace
 
     void EnsureUniqueActorIds(nlohmann::json& scene)
@@ -329,11 +301,18 @@ namespace NS
 
     std::string SerializeSceneToJson(const nlohmann::json& scene)
     {
+        // ファイルの中の配置物は名前で見分ける。番号は読み込みのたびに振り直すので書かない。
+        // 名前を一意にするのはファイルの中だけで、メモリの名前は変えない
         nlohmann::json out = MakeSceneJson();
         WriteSceneEnvironment(out, ReadSceneEnvironment(scene));
-        SetSceneJsonNextActorId(out, SceneJsonNextActorId(scene));
         out["objects"] = SceneJsonActors(scene);
+        EnsureUniqueActorNames(out);
         WriteRefsByName(out);
+        for (nlohmann::json& object : SceneJsonActors(out))
+        {
+            SetActorJsonId(object, k_NoActorId);
+        }
+        out.erase("nextObjectId");
 
         // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ
         return out.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
@@ -370,25 +349,24 @@ namespace NS
                 Scene, "DeserializeSceneFromJson: object 数 {} が上限 {} を超過", objects.size(), k_MaxActorCount);
             return false;
         }
+        // 番号を書いていた頃のファイルの "id" と nextObjectId は読まない。番号は並び順に 1 から振り直す
         nlohmann::json& outObjects = SceneJsonActors(outScene);
         for (const nlohmann::json& objectJson : objects)
         {
-            outObjects.push_back(NormalizeActorJson(objectJson));
+            nlohmann::json object = NormalizeActorJson(objectJson);
+            SetActorJsonId(object, k_NoActorId);
+            outObjects.push_back(std::move(object));
         }
 
         // environment の知らない欄は読み飛ばす。旧形式の照明の欄は DirectionalLight へ移った
         WriteSceneEnvironment(outScene, ReadSceneEnvironment(root));
-        SetSceneJsonNextActorId(outScene, SceneJsonNextActorId(root));
 
-        // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
+        // 番号と名前を一意にしてから、名前で書かれた参照を番号へ直す。以降の経路は番号を信頼できる
         EnsureUniqueActorIds(outScene);
-        ReadRefsByName(outScene);
-
-        // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
-        const std::size_t prunedRefs = PruneDanglingActorRefs(outScene);
-        if (prunedRefs > 0)
+        const std::size_t lostRefs = ReadRefsByName(outScene);
+        if (lostRefs > 0)
         {
-            NS_LOG_WARN(Scene, "存在しない object を指す参照を {} 件未設定に戻した", prunedRefs);
+            NS_LOG_WARN(Scene, "相手へ辿れない参照を {} 件未設定に戻した", lostRefs);
         }
 
         return true;
