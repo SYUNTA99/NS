@@ -1,3 +1,4 @@
+#include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -316,6 +317,78 @@ TEST(ActorChild, EveryChildAndGrandchildFollowsTheParent)
     {
         EXPECT_EQ(node->ended, 1);
     }
+}
+
+namespace
+{
+    //! 置く当たりの箱を持つ節。withChild なら作る時に同じ形の子を 1 体作る
+    class BoxNode final : public NS::SceneActor
+    {
+    public:
+        explicit BoxNode(bool withChild) : m_withChild(withChild) {}
+        NS_REFLECT_NONE(BoxNode, NS::SceneActor)
+
+        BoxNode* Child() noexcept { return m_child; }
+
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj<NS::Collision, NS::BoxCollision>(m_collision);
+            if (m_withChild)
+            {
+                m_child = CreateChildActor<BoxNode>(false);
+            }
+        }
+
+    private:
+        bool m_withChild = false;
+        BoxNode* m_child = nullptr;
+    };
+
+    //! 当たりを持たず、当たりの箱を持つ子 (その子が孫を持つ) を 1 体持つ親
+    class BoxParent final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_NONE(BoxParent, NS::SceneActor)
+
+        BoxNode* Child() noexcept { return m_child; }
+
+    protected:
+        void OnInit() override { m_child = CreateChildActor<BoxNode>(true); }
+
+    private:
+        BoxNode* m_child = nullptr;
+    };
+
+    bool HitsDownAt(const NS::Scene& scene, float x)
+    {
+        float distance = 0.0f;
+        return scene.Physics().Raycast({x, 2.0f, 0.0f}, -NS::Vector3::UnitY, 4.0f, distance);
+    }
+} // namespace
+
+// 一覧が当たりをそろえる時、親の一覧に入っていない子と孫の当たりもそろえる
+TEST(ActorChild, SyncCollisionsReachesTheChildAndGrandchild)
+{
+    NS::Scene scene;
+    BoxParent* parent = scene.SpawnActor<BoxParent>("parent");
+    ASSERT_NE(parent, nullptr);
+    BoxNode* child = parent->Child();
+    ASSERT_NE(child, nullptr);
+    BoxNode* grandchild = child->Child();
+    ASSERT_NE(grandchild, nullptr);
+    ASSERT_NE(child->CollisionClassObj(), nullptr);
+    ASSERT_NE(grandchild->CollisionClassObj(), nullptr);
+
+    child->Root().SetPosition(NS::Vector3{3.0f, 0.0f, 0.0f});
+    grandchild->Root().SetPosition(NS::Vector3{6.0f, 0.0f, 0.0f});
+    // 根を動かしただけでは、物理シーンの箱は元の所に残る
+    EXPECT_FALSE(HitsDownAt(scene, 3.0f));
+    EXPECT_FALSE(HitsDownAt(scene, 6.0f));
+
+    scene.Actors().SyncCollisions();
+    EXPECT_TRUE(HitsDownAt(scene, 3.0f));
+    EXPECT_TRUE(HitsDownAt(scene, 6.0f));
 }
 
 TEST(ActorChild, AdvancesAfterTheParentDuringHitStopAndSharesWorldSpeed)
