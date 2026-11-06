@@ -87,7 +87,8 @@ namespace NS
         }
 
         // ファイルの参照は相手の名前で書かれている。名前を一意にした後で id へ直す。旧形式の数値はそのまま通す
-        void ReadRefsByName(nlohmann::json& scene)
+        // 相手の名前が居ない参照は未設定に戻し、その件数を返す
+        [[nodiscard]] std::size_t ReadRefsByName(nlohmann::json& scene)
         {
             nlohmann::json& objects = SceneJsonActors(scene);
             std::unordered_map<std::string, uint32> ids;
@@ -95,9 +96,10 @@ namespace NS
             {
                 ids.emplace(std::string{ActorJsonName(object)}, ActorJsonId(object));
             }
+            std::size_t missing = 0;
             for (nlohmann::json& object : objects)
             {
-                ForEachRefValue(object, [&ids](nlohmann::json& ref) {
+                ForEachRefValue(object, [&ids, &missing](nlohmann::json& ref) {
                     if (!ref.is_string())
                     {
                         return;
@@ -107,6 +109,7 @@ namespace NS
                     if (found == ids.end())
                     {
                         ref = 0u;
+                        ++missing;
                     }
                     else
                     {
@@ -114,6 +117,7 @@ namespace NS
                     }
                 });
             }
+            return missing;
         }
 
     } // namespace
@@ -382,7 +386,11 @@ namespace NS
 
         // 手編集ファイルは id 未割当・重複があり得る。読込直後に必ず一意化し、以降の経路は id を信頼できる
         EnsureUniqueActorIds(outScene);
-        ReadRefsByName(outScene);
+        const std::size_t missingNames = ReadRefsByName(outScene);
+        if (missingNames > 0)
+        {
+            NS_LOG_WARN(Scene, "居ない名前を指す参照を {} 件未設定に戻した", missingNames);
+        }
 
         // 手編集や参照先削除で宙に浮いた参照は入口で未設定へ戻す。実行時は id 照合の失敗を考えずに済む
         const std::size_t prunedRefs = PruneDanglingActorRefs(outScene);

@@ -323,6 +323,25 @@ TEST(SceneJson, RefValueRoundTripsAndRejectsOtherShapes)
     EXPECT_EQ(untouched.id, 3u);
 }
 
+// 名前で書かれた参照の相手が手編集で消えた・改名されたファイルは、読み込みで警告を出して参照を未設定に戻す
+TEST(SceneJson, ReadingARefToAMissingNameWarnsAndClearsTheRef)
+{
+    nlohmann::json scene = NS::MakeSceneJson();
+    NS::SceneJsonActors(scene) = {
+        {{"actor", "GoalActor"}, {"id", 1u}, {"name", "target"}, {"classObjs", {{"Model", nlohmann::json::object()}}}},
+        {{"actor", "GoalActor"}, {"id", 2u}, {"classObjs", {{"Model", {{"reference", {{"ref", 1u}}}}}}}}};
+    nlohmann::json file = nlohmann::json::parse(NS::SerializeSceneToJson(scene));
+    ASSERT_EQ(file["objects"][1]["classObjs"]["Model"]["reference"]["ref"], "target");
+    file["objects"][1]["classObjs"]["Model"]["reference"]["ref"] = "renamed";
+
+    const TestLogCapture log;
+    nlohmann::json restored;
+    ASSERT_TRUE(NS::DeserializeSceneFromJson(restored, file.dump()));
+    EXPECT_EQ(NS::SceneJsonActors(restored)[1]["classObjs"]["Model"]["reference"], (nlohmann::json{{"ref", 0u}}));
+    ASSERT_EQ(log.WarningCount(), 1);
+    EXPECT_NE(log.Warnings()[0].find("1 件"), std::string::npos) << log.Warnings()[0];
+}
+
 TEST(SceneJson, ActorHeaderRoundTrips)
 {
     nlohmann::json object = NS::MakeActorJson();
