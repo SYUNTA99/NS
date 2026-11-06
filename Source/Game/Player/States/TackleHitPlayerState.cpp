@@ -9,7 +9,7 @@ namespace GL
         void TackleHitPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            player->BeginTackleHit();
+            (void)player;
         }
     } // namespace Player
 } // namespace GL

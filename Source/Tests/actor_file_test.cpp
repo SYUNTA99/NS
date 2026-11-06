@@ -5,7 +5,6 @@
 #include "Editor/LevelEditorController.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/MapObjParams.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
@@ -407,16 +406,9 @@ namespace
     }
 } // namespace
 
-// グローバルの項目は、置き場所ごとに変える見た目の 3 つと、地形の形を置き場所ごとに分けるメッシュの欄。
-// 置物の質量と耐久は種類の性質なので、派生ごとに揃えるプロテクトの項目
-TEST(ActorFile, GlobalFieldsAreTheFourLooksAndMassAndToughnessAreProtected)
+// グローバルの項目は、置き場所ごとに変える見た目の 3 つと、地形の形を置き場所ごとに分けるメッシュの欄
+TEST(ActorFile, GlobalFieldsAreTheFourLooks)
 {
-    const NS::ReflectionInfo* params = GL::Level::MapObjParams::StaticReflection();
-    EXPECT_TRUE(HasScope(params, "耐久", NS::FieldScope::Protected));
-    EXPECT_TRUE(HasScope(params, "質量", NS::FieldScope::Protected));
-    EXPECT_EQ(ScopeCount(params, NS::FieldScope::Protected), 2);
-    EXPECT_EQ(ScopeCount(params, NS::FieldScope::Global), 0);
-
     const NS::ReflectionInfo* model = NS::Model::StaticReflection();
     EXPECT_TRUE(HasScope(model, "基本色", NS::FieldScope::Global));
     EXPECT_TRUE(HasScope(model, "マテリアル", NS::FieldScope::Global));

@@ -1,7 +1,5 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/Health.h"
-#include "Game/Level/ImpactResolver.h"
-#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
@@ -102,7 +100,6 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"よじ登りの所要時間", 0.25f},
                                      {"縁の横移動速度", 2.0f},
                                      {"振り向きの速さ", 970.0f},
-                                     {"チャージ突進の速度", 20.0f},
                                      {"放つ角度の上限", 40.0f},
                                      {"反動の上りの重力倍率", 0.5f},
                                      {"反動中の空中の加速度", 2.0f}};
@@ -193,41 +190,8 @@ TEST(PlayerParams, ImpactDefaultsKeepGameOwnedDisplayNamesAndValues)
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json fields = NS::SerializeClassObjFields(&player.Params());
-    const nlohmann::json play = {{"反動の高さ", 1.15f},
-                                 {"反動の距離", 0.575f},
-                                 {"中心近くの当たりの反動の距離の倍率", 4.5f},
-                                 {"中心近くの当たりの反動の高さの倍率", 0.6f},
-                                 {"押し飛ばしの距離", 29.0f},
-                                 {"押し飛ばしの質量指数", 0.35f},
-                                 {"中心近くの当たりのヒットストップ倍率", 2.0f},
-                                 {"ヒットストップの上限秒", 12.0f / 60.0f},
-                                 {"破壊を許可", false},
-                                 {"貫通時の減速倍率", 0.75f},
-                                 {"貫通の止め秒", 4.0f / 60.0f}};
+    const nlohmann::json play = {{"反動の高さ", 1.15f}, {"反動の距離", 0.575f}};
     ExpectClassObjFields(&player.Params(), play);
-    // 相手の飛び方は MapObjParams の欄。自機の欄に置くと相手ごとに変えられない
-    ExpectNotInParams(&player,
-                      {{"押し飛ばしの高さ", 0},
-                       {"押し飛ばしの上昇重力", 0},
-                       {"下りの速さの倍率", 0},
-                       {"頂点の帯の縦速度", 0},
-                       {"頂点の帯の重力倍率", 0},
-                       {"外れで飛ばす相手の弧の高さの割合", 0},
-                       {"外れで飛ばす相手の距離の割合", 0}});
-    const nlohmann::json expected = {{"輪をカメラへ起こす割合", 1.0f}};
-    // カメラに対する輪の向きはGameが持ち、粒や光の調整値は素材が持つ
-    ExpectClassObjFields(&player.ImpactVisuals(), expected);
-    ExpectNotInParams(&player, expected);
-    const nlohmann::json effectFields = NS::SerializeClassObjFields(&player.ImpactVisuals());
-    EXPECT_FALSE(effectFields.contains("核の出始めの大きさ"));
-    EXPECT_FALSE(effectFields.contains("外れの光の面積の落ち先"));
-    EXPECT_FALSE(effectFields.contains("外れの光の面積の減衰"));
-    EXPECT_FALSE(effectFields.contains("光条の細りきった太さ"));
-    EXPECT_FALSE(effectFields.contains("輪の出始めの半径"));
-    EXPECT_FALSE(effectFields.contains("照りが減り始めるフレーム"));
-    EXPECT_FALSE(effectFields.contains("照りの山の前の面積の割合"));
-    EXPECT_FALSE(effectFields.contains("輪が広がり切るフレーム"));
-    EXPECT_FALSE(effectFields.contains("核の脈の倍率"));
     // 惜しいの段は消した。惜しいだけの演出の欄が戻ると、段の無い当たりの調整値が保存に載る
     // 当たりの返りの時間と形はタイムラインへ移した。欄が戻ると、同じ返りの値の出所が 2 つになる
     for (const char* removed : {"惜しい当たりの返りの割合",
@@ -257,47 +221,6 @@ TEST(PlayerParams, ImpactDefaultsKeepGameOwnedDisplayNamesAndValues)
     {
         EXPECT_FALSE(fields.contains(removed)) << removed;
     }
-    EXPECT_TRUE(NS::SerializeClassObjFields(&player.Resolver()).empty());
-}
-
-
-TEST(PlayerParams, ImpactShapeTakesTheLookFromOneRowPerTier)
-{
-    using GL::Level::HitTier;
-    using GL::Player::ImpactShape;
-    using GL::Player::SparkHeading;
-    NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
-    ASSERT_NE(spawned, nullptr);
-    PlayerActor& player = *spawned;
-    GL::Level::ImpactRecord impact{};
-    impact.power = 1.0f;
-    impact.hitStopSteps = 8;
-    impact.targetPlaced = true;
-    impact.tier = HitTier::Center;
-    const ImpactShape center = player.ImpactVisuals().ShapeFor(impact);
-    impact.tier = HitTier::Wide;
-    const ImpactShape wide = player.ImpactVisuals().ShapeFor(impact);
-
-    EXPECT_EQ(center.coreInput, 0u);
-    EXPECT_EQ(center.sparkHeading, SparkHeading::Launch);
-    EXPECT_TRUE(center.centerLayers);
-    EXPECT_TRUE(center.groundLight);
-    EXPECT_FALSE(center.coreCut);
-
-    EXPECT_EQ(wide.coreInput, 2u);
-    EXPECT_EQ(wide.sparkHeading, SparkHeading::Scrape);
-    EXPECT_FALSE(wide.centerLayers);
-    EXPECT_FALSE(wide.groundLight);
-    EXPECT_TRUE(wide.coreCut);
-
-    // 番号から作った段の外の値は、行を混ぜずに大きな外れの行で出す。中心近くの層は 1 つも足さない
-    impact.tier = static_cast<HitTier>(3);
-    const ImpactShape unknown = player.ImpactVisuals().ShapeFor(impact);
-    EXPECT_EQ(unknown.coreInput, wide.coreInput);
-    EXPECT_EQ(unknown.holdLastFrame, wide.holdLastFrame);
-    EXPECT_EQ(unknown.sparkHeading, wide.sparkHeading);
-    EXPECT_FALSE(unknown.centerLayers);
 }
 
 // 欄を別の部品へ移した後も、同梱の .actor と場面の値は読まれる。古い部品の下に残った鍵はどの欄にも

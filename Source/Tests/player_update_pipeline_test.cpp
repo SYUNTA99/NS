@@ -1,8 +1,6 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/GameScene.h"
-#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Level/MapObjParams.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -81,50 +79,6 @@ namespace
         EXPECT_NEAR(actual.x, expected.x, 0.00001f);
         EXPECT_NEAR(actual.y, expected.y, 0.00001f);
         EXPECT_NEAR(actual.z, expected.z, 0.00001f);
-    }
-
-    // 移す前の式が出した止めの長さ stopSteps の当たりを写した段の束。形は止めの間潰れ、明けに伸びて戻る
-    NS::HitReactionSet MakeLegacyHitSet(std::string name, int stopSteps)
-    {
-        const float n = static_cast<float>(stopSteps);
-        NS::HitShapeItem shape;
-        shape.along.count = 3;
-        shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
-        shape.along.keys[1] = NS::Curve::Key{n - 1.0f, 0.7f};
-        shape.along.keys[2] = NS::Curve::Key{n, 1.0f};
-        shape.height.count = 5;
-        shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
-        shape.height.keys[1] = NS::Curve::Key{n - 1.0f, 1.1f};
-        shape.height.keys[2] = NS::Curve::Key{n, 1.2f};
-        shape.height.keys[3] = NS::Curve::Key{n + 3.0f, 0.9f};
-        shape.height.keys[4] = NS::Curve::Key{n + 6.0f, 1.0f};
-        NS::HitReactionSet set;
-        set.name = std::move(name);
-        set.stopFrames = stopSteps;
-        set.entries.push_back(NS::HitReactionEntry{.item = shape, .length = stopSteps + 6});
-        return set;
-    }
-
-    // 自機の .actor の段の束 2 つを MakeLegacyHitSet に替え、当たる直前の動作を外す (予測の線を引かない)
-    void UseLegacyHitSets(nlohmann::json& actorFile, int stopSteps)
-    {
-        std::vector<NS::HitReactionSet> sets = NS::ReadHitReactionSets("PlayerActor", actorFile);
-        for (const GL::Level::HitTier tier : {GL::Level::HitTier::Center, GL::Level::HitTier::Wide})
-        {
-            const std::string name = GL::Level::TackleSetName("体当たり", tier);
-            bool replaced = false;
-            for (NS::HitReactionSet& set : sets)
-            {
-                if (set.name == name)
-                {
-                    set = MakeLegacyHitSet(name, stopSteps);
-                    replaced = true;
-                }
-            }
-            EXPECT_TRUE(replaced) << name;
-        }
-        NS::WriteHitReactionSets(actorFile, sets);
-        NS::WriteActorActions(actorFile, {});
     }
 } // namespace
 

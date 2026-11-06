@@ -3,10 +3,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/GridMath.h"
-#include "Editor/HitZoneColors.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/ImpactResolver.h"
-#include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
@@ -125,9 +122,6 @@ namespace NS
                 }
             }
 
-            // 直近の当たりの触れた点のマーカー。相手の表面に出るので、玉の模様を隠さない小ささ
-            constexpr float k_HitTouchMarkerRadius = 0.08f;
-
             // a→b を 0.5m を目安に等分し 1 区間おきに線を引いて点線にする。DebugShapes に破線が無いので描画側で
             // 間引く。辺長からセグメント数を出すので、長い辺でも刻みが粗くならない
             void DrawDashedLine(Gfx::DebugShapes& shapes,
@@ -199,7 +193,6 @@ namespace NS
             {
                 // 動いている形をそのまま追えるよう選択に関わらず全部出す
                 RenderCollisionWireframes(shapes, true);
-                RenderHitFaces(shapes);
                 return;
             }
 
@@ -216,7 +209,6 @@ namespace NS
             }
             RenderCameraGizmos(shapes, viewProjection, viewport);
             RenderCollisionWireframes(shapes, false);
-            RenderHitFaces(shapes);
             RenderSelectionOutlines(shapes);
         }
 
@@ -311,21 +303,6 @@ namespace NS
                     DrawSensorWireframe(shapes, *objPtr, sensorColor);
                 }
             }
-        }
-
-        void LevelEditorController::RenderHitFaces(Gfx::DebugShapes& shapes) noexcept
-        {
-            PlayerActor* player = FindPlayer(m_scene.Actors());
-            if (player == nullptr)
-            {
-                return;
-            }
-            const GL::Level::ImpactRecord& impact = player->Resolver().Answer().lastImpact;
-            if (impact.sequence == 0)
-            {
-                return;
-            }
-            shapes.Sphere(Sphere{impact.surfacePoint, k_HitTouchMarkerRadius}, HitZoneColor(impact.tier));
         }
     } // namespace Editor
 } // namespace NS

@@ -1,4 +1,3 @@
-#include "Game/Player/ImpactEffects.h"
 #include "Game/PlayerActor.h"
 #include "Editor/EditorActors.h"
 #include "NSlib/CoreObject/ActorJson.h"
@@ -13,7 +12,6 @@ TEST(EffectAssetMigration, PlayerDoesNotOwnTheObsoleteChargeRuntime)
     const nlohmann::json actor = NS::Editor::MakePrototypeJson<PlayerActor>();
     const nlohmann::json& parts = NS::ActorJsonClassObjs(actor);
     EXPECT_FALSE(parts.contains("ChargeEffects"));
-    EXPECT_TRUE(parts.contains("ImpactEffects"));
 }
 
 TEST(EffectNaming, ResourceAndClassObjKeepDifferentReflectionIdentities)
@@ -34,12 +32,7 @@ TEST(EffectAssetMigration, PlayerEffectObjectsOnlyKeepPlaybackState)
 
 TEST(EffectAssetMigration, GamePartsReferenceEffectsDirectly)
 {
-    const NS::FieldDesc* field = NS::FindField(GL::Player::ImpactEffects::StaticReflection(), "核の資産");
-    ASSERT_NE(field, nullptr);
-    EXPECT_EQ(field->type, NS::FieldType::Asset);
-    EXPECT_EQ(field->assetKind, NS::AssetKind::Effect);
     EXPECT_EQ(NS::FindField(NS::EffectObj::StaticReflection(), "演出セット"), nullptr);
-    EXPECT_EQ(NS::FindField(GL::Player::ImpactEffects::StaticReflection(), "核の直径の基準"), nullptr);
 }
 
 TEST(EffectAssetMigration, EveryShippedEffectHasAnAssetDefinition)

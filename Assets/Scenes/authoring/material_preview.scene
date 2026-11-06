@@ -40,8 +40,6 @@
         "Effect": {},
         "HitReaction": {},
         "HitSensors": {},
-        "ImpactEffects": {},
-        "ImpactResolver": {},
         "Input": {},
         "Model": {},
         "Movement": {},

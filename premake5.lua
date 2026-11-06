@@ -720,7 +720,6 @@ project "Tests"
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",
-        "Source/Editor/HitZoneColors.cpp",
         "Source/Editor/ActionTimelineEdit.cpp",
         "Source/Editor/ActionTimelinePanel.cpp",
         -- 終了の確認の問いと保存を試す。Application に触るのは Render の中だけ

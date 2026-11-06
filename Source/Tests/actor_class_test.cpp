@@ -2,7 +2,6 @@
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"
-#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/ThirdPersonFollow.h"
@@ -99,7 +98,7 @@ TEST(ActorClass, LightShinesAlongItsRotation)
 
 TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 {
-    // 以前はシーンのデータが足していた体当たりと当たりの部品も、クラスが組み立てる
+    // 以前はシーンのデータが足していた当たりの部品も、クラスが組み立てる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
     const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&player);
@@ -107,7 +106,6 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);
     EXPECT_NE(player.GetStateMachine(), nullptr);
-    EXPECT_NE(NS::ClassObjFields(prototype, "ImpactResolver"), nullptr);
     EXPECT_NE(player.HitReactionClassObj(), nullptr);
     const NS::HitSensor* body = player.HitSensorsClassObj()->Find("Body");
     ASSERT_NE(body, nullptr);

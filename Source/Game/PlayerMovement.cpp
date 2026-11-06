@@ -1,7 +1,6 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/AirGravity.h"
-#include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerAppearance.h"
@@ -28,6 +27,24 @@ namespace
         const float c = std::cos(radians);
         const float s = std::sin(radians);
         return NS::Vector3{from.x * c + from.z * s, 0.0f, -from.x * s + from.z * c};
+    }
+
+    // 外れの着地からこすって止まる間の、着いた水平の速さに掛ける倍率 (1 − elapsedSteps ÷ totalSteps)^exponent
+    // 着いた速さに依らず totalSteps フレームで 0 になる。totalSteps が 0 以下なら着いたフレームから 0。
+    // exponent が有限の正でなければ 1 (直線) とみなす
+    float MissSkidSpeedScale(int elapsedSteps, int totalSteps, float exponent) noexcept
+    {
+        if (totalSteps <= 0 || elapsedSteps >= totalSteps)
+        {
+            return 0.0f;
+        }
+        float c = exponent;
+        if (!std::isfinite(c) || !NS::IsPositive(c))
+        {
+            c = 1.0f;
+        }
+        const float left = 1.0f - static_cast<float>(std::max(elapsedSteps, 0)) / static_cast<float>(totalSteps);
+        return std::pow(left, c);
     }
 
     NS::Vector3 TurnHorizontalToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept
@@ -258,7 +275,7 @@ void PlayerActor::BeginSkid() noexcept
 {
     m_skid.m_landingVelocity = m_body->LateralVelocity();
     m_skid.m_elapsedSteps = 0;
-    m_skid.m_speedScale = GL::Level::MissSkidSpeedScale(0, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+    m_skid.m_speedScale = MissSkidSpeedScale(0,m_params->m_missSkidSteps, m_params->m_missSkidExponent);
 }
 
 bool PlayerActor::AdvanceSkid() noexcept
@@ -266,7 +283,7 @@ bool PlayerActor::AdvanceSkid() noexcept
     ++m_skid.m_elapsedSteps;
     // 着いた速さに依らず同じフレーム数で止まりきり、操作が戻る
     m_skid.m_speedScale =
-        GL::Level::MissSkidSpeedScale(m_skid.m_elapsedSteps, m_params->m_missSkidSteps, m_params->m_missSkidExponent);
+        MissSkidSpeedScale(m_skid.m_elapsedSteps,m_params->m_missSkidSteps, m_params->m_missSkidExponent);
     m_body->SetLateralVelocity(m_skid.m_landingVelocity * m_skid.m_speedScale);
     return m_skid.m_elapsedSteps >= m_params->m_missSkidSteps;
 }

@@ -1,6 +1,5 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
-#include "Game/Level/ImpactResolver.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"

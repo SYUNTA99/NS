@@ -10,14 +10,6 @@
 
 namespace GL
 {
-    namespace Level
-    {
-        struct ImpactAnswer;
-    } // namespace Level
-} // namespace GL
-
-namespace GL
-{
     namespace Player
     {
         class ReboundStatus;
@@ -43,13 +35,11 @@ namespace GL
 
             //! 丸まりに合わせて玉を回し、回転と描く形の倍率を renderer へ書く。持ち主の見た目の段が呼ぶ
             //! @param[in] dt 持ち主の 1 フレームの秒。玉を回す角度と外れのぶれの位相に掛ける
-            //! @param[in] impact 当たりの裁定の答え。何回目の当たりかを読む
             void Update(NS::Model* renderer,
                         float dt,
                         const PlayerMotion& motion,
                         const ReboundStatus& rebound,
-                        const SkidStatus& skid,
-                        const GL::Level::ImpactAnswer& impact);
+                        const SkidStatus& skid);
 
             //! renderer (持ち主の Model) の描く倍率を補間なしで (1, 1, 1) へ戻し、着地の潰れを捨てる
             //! やり直しとプレイの終わりで持ち主が呼ぶ。次の Update からはその時の着地の潰れで組み直す
@@ -87,14 +77,12 @@ namespace GL
                              float dt,
                              const PlayerMotion& motion,
                              const ReboundStatus& rebound,
-                             const SkidStatus& skid,
-                             const GL::Level::ImpactAnswer& impact) noexcept;
+                             const SkidStatus& skid) noexcept;
             // skidScale はこすって止まる間の身体の速さの倍率。こすっていない間は 1
             void AdvanceMissTumble(float dt,
                                    const MissTumble& tumble,
                                    const ReboundStatus& rebound,
-                                   float skidScale,
-                                   const GL::Level::ImpactAnswer& impact) noexcept;
+                                   float skidScale) noexcept;
             // 反動の着地で縦の潰れを始めるか、潰れを 1 フレーム戻す。書くのは WriteDrawScale
             void AdvanceLandingSquash(const PlayerMotion& motion) noexcept;
             // 着地の潰れを、描く時だけの倍率に控える

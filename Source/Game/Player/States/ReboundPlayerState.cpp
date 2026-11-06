@@ -11,8 +11,6 @@ namespace GL
         void ReboundPlayerState::OnEnter(::PlayerActor* player)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            // 沈みの跳ね返りは反動に入るフレームに始まる (束「反動」)
-            player->StartReboundReaction();
             StartCoroutine(Run(player));
         }
 

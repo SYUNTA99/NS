@@ -42,7 +42,6 @@ namespace GL
         class PlayerParams;
         class PlayerClips;
         class PlayerAppearance;
-        class ImpactEffects;
         class PlayerSounds;
     } // namespace Player
 } // namespace GL
@@ -51,16 +50,12 @@ namespace GL
 {
     namespace Level
     {
-        class ImpactResolver;
         class ReboundPreview;
-        struct ImpactAnswer;
-        struct ImpactRecord;
-        struct ImpactSelf;
     } // namespace Level
 } // namespace GL
 
 //! 固定の部品を OnInit で組むプレイヤー
-//! 衝突の観測・裁定を身体の移動より先に行う。死とゴールは持ち主の GameScene に通知する
+//! 死とゴールは持ち主の GameScene に通知する
 class PlayerActor : public NS::SceneActor, public GL::Level::IGetCameraTarget
 {
 public:
@@ -87,10 +82,8 @@ public:
     // =========================================================================
     // 当たり・演出サブシステムの参照
     // =========================================================================
-    [[nodiscard]] GL::Level::ImpactResolver& Resolver() noexcept { return *m_resolver; }
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
-    [[nodiscard]] GL::Player::ImpactEffects& ImpactVisuals() noexcept { return *m_impactEffects; }
     //! 体当たりの残像の子。OnInit で作り、自機と一緒に終わる
     [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost; }
     [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost; }
@@ -141,10 +134,6 @@ public:
     //! 出ていて、当たりの止めの外で、当たりの状態に居ないか
     [[nodiscard]] bool CanMoveBody() const noexcept;
     [[nodiscard]] bool IsInTackleHit() const noexcept;
-    //! 段の束を触れた点と 2 つのセンサーで始め、相手へ当たったを知らせる
-    void BeginTackleHit() noexcept;
-    //! 束「反動」を最後の当たりの触れた点と 2 つのセンサーで始める
-    void StartReboundReaction() noexcept;
     //! 最後に始めた反動の正規化済みの水平の向き。反動を始める前と ResetState の後はゼロ
     [[nodiscard]] NS::Vector3 ReboundDirection() const noexcept { return m_rebound.Direction(); }
     //! 最後に始めた反動の角速度 (度/秒)。開始前と ResetState 後は 0
@@ -207,9 +196,8 @@ public:
     void DropLedge() noexcept;
 
     // =========================================================================
-    // 当たりの裁定・反動軌道
+    // 反動軌道
     // =========================================================================
-    [[nodiscard]] GL::Level::ImpactSelf SelfForImpact() const noexcept;
     //! 反動の初速を与え、反動状態へ移る。無効な軌道なら false で何も変えない
     [[nodiscard]] bool BeginRebound(const GL::Player::ReboundArc& arc) noexcept;
     //! 反動軌道の初速 (m/s) を求める。曲線を組めなければゼロ
@@ -314,13 +302,9 @@ private:
     void DrawTerrainRebound() const;
     void DropPresses() noexcept;
     // =========================================================================
-    // 内部ヘルパー：衝突裁定・命中反応・丸まり切り替え
+    // 内部ヘルパー：命中反応・丸まり切り替え
     // =========================================================================
-    void ApplyImpactOrders(const GL::Level::ImpactAnswer& answer) noexcept;
-    void ReleaseTackleHit() noexcept;
     void StopTackleHitEffects() noexcept;
-    [[nodiscard]] bool IsHeldByTackleHit() const noexcept;
-    [[nodiscard]] NS::HitSensor* LastTackleTargetSensor() const noexcept;
     void ChangeCurled(bool curled) noexcept;
     void UncurlWhenSettled() noexcept;
     //! 左スティックをデッドゾーンより倒していれば、その水平の向き (正規化済み) を outDirection に書いて true
@@ -350,11 +334,8 @@ private:
     std::unique_ptr<NS::Body> m_body;
     std::unique_ptr<NS::Collider> m_collider;
     std::unique_ptr<GL::Player::PlayerAppearance> m_appearance;
-    std::unique_ptr<GL::Level::ImpactResolver> m_resolver;
     std::unique_ptr<GL::Level::ReboundPreview> m_reboundPreview;
-    std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
-    bool m_slowedWorld = false;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
     GL::Level::TackleGhost* m_ghost = nullptr; // 子として基底が所有する

@@ -1,6 +1,5 @@
 #include "Game/Player/PlayerAppearance.h"
 
-#include "Game/Level/ImpactResolver.h"
 #include "Game/Player/PlayerStatus.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
@@ -64,8 +63,7 @@ namespace GL
                                            float dt,
                                            const PlayerMotion& motion,
                                            const ReboundStatus& rebound,
-                                           const SkidStatus& skid,
-                                           const GL::Level::ImpactAnswer& impact) noexcept
+                                           const SkidStatus& skid) noexcept
         {
             m_spinDegreesThisFrame = 0.0f;
 
@@ -99,7 +97,7 @@ namespace GL
                 {
                     skidScale = skid.SpeedScale();
                 }
-                AdvanceMissTumble(dt, *rebound.Tumble(), rebound, skidScale, impact);
+                AdvanceMissTumble(dt, *rebound.Tumble(), rebound, skidScale);
             }
             else if (motion.rebounding)
             {
@@ -123,8 +121,7 @@ namespace GL
         void PlayerAppearance::AdvanceMissTumble(float dt,
                                                  const MissTumble& tumble,
                                                  const ReboundStatus& rebound,
-                                                 float skidScale,
-                                                 const GL::Level::ImpactAnswer& impact) noexcept
+                                                 float skidScale) noexcept
         {
             // 新しい反動の最初のフレームに、その時の回転を寄せ始めの回転として控える
             if (m_tumbleReboundCount != rebound.Count())
@@ -132,10 +129,9 @@ namespace GL
                 m_tumbleReboundCount = rebound.Count();
                 m_tumbleStartSpin = m_spinAxis * m_spinSpeed;
                 m_tumbleSteps = 0;
-                // 種は何回目の当たりか。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
+                // 種は何回目の反動か。黄金角ずつずらし、続けて外しても始まりの向きが重ならない。同じ入力の再生では同じ
                 const float goldenAngle = static_cast<float>(std::acos(-1.0) * (3.0 - std::sqrt(5.0)));
-                m_tumbleWobblePhase =
-                    std::fmod(static_cast<float>(impact.lastImpact.sequence) * goldenAngle, 2.0f * NS::k_Pi);
+                m_tumbleWobblePhase = std::fmod(static_cast<float>(rebound.Count()) * goldenAngle, 2.0f * NS::k_Pi);
             }
             ++m_tumbleSteps;
 
@@ -182,11 +178,10 @@ namespace GL
                                       float dt,
                                       const PlayerMotion& motion,
                                       const ReboundStatus& rebound,
-                                      const SkidStatus& skid,
-                                      const GL::Level::ImpactAnswer& impact)
+                                      const SkidStatus& skid)
         {
             NS_ASSERT(Game, renderer != nullptr, "PlayerAppearance::Update: 姿を書く Model が空");
-            AdvanceSpin(renderer, dt, motion, rebound, skid, impact);
+            AdvanceSpin(renderer, dt, motion, rebound, skid);
             AdvanceLandingSquash(motion);
             WriteDrawScale(renderer);
         }

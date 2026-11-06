@@ -355,9 +355,6 @@ namespace NS
             //! 当たり形状を積む。all が true なら全アクター、false なら選択分だけ
             void RenderCollisionWireframes(Gfx::DebugShapes& shapes, bool all) noexcept;
 
-            //! 自機の直近の当たりの触れた点を描く。自機が無いか、まだ当たっていなければ何も描かない
-            void RenderHitFaces(Gfx::DebugShapes& shapes) noexcept;
-
             //! 主対象以外の選択物を枠で見せる。ギズモは 1 体にしか出ないので、選んだ範囲を目で追えるようにする
             void RenderSelectionOutlines(Gfx::DebugShapes& shapes) noexcept;
             void ResolveSelectionFromId() noexcept;
