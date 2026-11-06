@@ -2,8 +2,6 @@
 #include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/LaunchEffects.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
@@ -56,33 +54,6 @@ TEST(GameTuning, EffectHistoryRetentionBelongsToEachKeeper)
     }
     EXPECT_TRUE(shortHistory.Records().empty());
     EXPECT_EQ(longHistory.Records().size(), 1u);
-}
-
-TEST(GameTuning, LaunchDustLifetimeReadsItsOwnClassObj)
-{
-    NS::Scene scene;
-    GL::Level::PropActor* rock = scene.SpawnActor<GL::Level::PropActor>("PropActor");
-    ASSERT_NE(rock, nullptr);
-    GL::Level::LaunchEffects* effects = &rock->Effects();
-
-    ASSERT_EQ(NS::ApplyJsonFields(effects, {{"着地の粉の寿命フレーム", 2}}), 0u);
-    const NS::SphereCollision* sphere = NS::Cast<NS::SphereCollision>(rock->CollisionClassObj());
-    ASSERT_NE(sphere, nullptr);
-    effects->BeginTrail(rock,
-                        GL::Level::TackleReleaseDesc{},
-                        rock->Flight(),
-                        &rock->Params(),
-                        sphere->WorldSphere(rock->Root().WorldMatrix()));
-    effects->NotifyLanding(rock, {}, {0.0f, 1.0f, 0.0f});
-    NS::EffectObj* effect = rock->GetEffect();
-    ASSERT_NE(effect, nullptr);
-    effect->BeginStep(rock->GetEffectScene());
-    effect->BeginStep(rock->GetEffectScene());
-    ASSERT_FALSE(effect->Records().empty());
-    const NS::EffectRecord& dust = effect->Records().back();
-    EXPECT_EQ(dust.name, "launch.landDust");
-    ASSERT_TRUE(dust.endStep.has_value());
-    EXPECT_EQ(*dust.endStep - dust.startStep, 2);
 }
 
 TEST(GameTuning, EditedTrailAngleKeepsTheOutputFinite)

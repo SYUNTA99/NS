@@ -12,7 +12,6 @@
 #include "Editor/Undo/CompositeCommand.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/HitZones.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"

@@ -6,7 +6,6 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Audio/AudioDevice.h"
@@ -29,6 +28,8 @@
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
+
+#include <optional>
 
 // 落下死とゴールがメッセージで伝わり、GameScene がコースの流れを進めることを縛る
 
@@ -87,6 +88,45 @@ namespace
         NS::SceneJsonActors(doc).push_back(std::move(goal));
         NS::EnsureUniqueActorIds(doc);
         return doc;
+    }
+
+    // コースの始めの位置を MsgCourseStart で控え、MsgCourseRestart でそこへ戻る
+    class CourseReturnActor final : public NS::SceneActor
+    {
+    protected:
+        bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override
+        {
+            if (NS::IsMsg<GL::Level::MsgCourseStart>(msg))
+            {
+                m_start = Root().Position();
+                return true;
+            }
+            if (NS::IsMsg<GL::Level::MsgCourseRestart>(msg))
+            {
+                // コースが始まった後に置かれた物は、戻る先を持たない
+                if (!m_start.has_value())
+                {
+                    return false;
+                }
+                Root().SetPosition(*m_start);
+                return true;
+            }
+            return NS::SceneActor::ReceiveMsg(msg, sender, receiver);
+        }
+
+    private:
+        std::optional<NS::Vector3> m_start;
+    };
+
+    // 組み直した後のシーンに、x=5 の CourseReturnActor を 1 体置く。StartPlay の前に呼ぶ
+    NS::SceneActor* PlaceCourseReturnActor(NS::Scene& scene)
+    {
+        CourseReturnActor* placed = scene.SpawnActor<CourseReturnActor>("CourseReturnActor");
+        if (placed != nullptr)
+        {
+            placed->Root().SetPosition(NS::Vector3{5.0f, 1.0f, 0.0f});
+        }
+        return placed;
     }
 } // namespace
 
@@ -220,25 +260,11 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
 
 TEST(GameScene, RestartReturnsActorsToTheirStart)
 {
-    nlohmann::json doc = CourseWithPlayer();
-    nlohmann::json rock = NS::MakeActorJson();
-    NS::SetActorJsonFile(rock, "PropActor");
-    NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
-    NS::SceneJsonActors(doc).push_back(std::move(rock));
-    NS::EnsureUniqueActorIds(doc);
-
     GL::Level::GameScene scene;
-    scene.ResetFromJson(doc);
-    scene.StartPlay();
-    NS::SceneActor* placed = nullptr;
-    for (NS::SceneActor* actor : scene.Actors())
-    {
-        if (std::string_view{actor->ClassName()} == "PropActor")
-        {
-            placed = actor;
-        }
-    }
+    scene.ResetFromJson(CourseWithPlayer());
+    NS::SceneActor* placed = PlaceCourseReturnActor(scene);
     ASSERT_NE(placed, nullptr);
+    scene.StartPlay();
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
     scene.RestartCourse();
@@ -377,45 +403,19 @@ TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
     EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
 }
 
-namespace
-{
-    // 自機と落下死の範囲に、x=5 の置物を足したシーン文書
-    nlohmann::json CourseWithProp(nlohmann::json doc)
-    {
-        nlohmann::json rock = NS::MakeActorJson();
-        NS::SetActorJsonFile(rock, "PropActor");
-        NS::Editor::SetActorJsonPosition(rock, NS::Vector3{5.0f, 1.0f, 0.0f});
-        NS::SceneJsonActors(doc).push_back(std::move(rock));
-        NS::EnsureUniqueActorIds(doc);
-        return doc;
-    }
-
-    NS::SceneActor* FindProp(NS::Scene& scene)
-    {
-        for (NS::SceneActor* actor : scene.Actors())
-        {
-            if (std::string_view{actor->ClassName()} == "PropActor")
-            {
-                return actor;
-            }
-        }
-        return nullptr;
-    }
-} // namespace
-
 // 以下は知らせを歩 (scene.OnUpdate) の中で届かせ、その歩が終わった後のアクターの姿を見る。
 // 流れを直に進めず歩で回すので、流れを進める置き場所が変わっても期待の値は変わらない
 
 TEST(GameScene, DeathInAStepRestartsTheCourseBeforeTheNextStep)
 {
-    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    const nlohmann::json doc = CourseWithPlayer();
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
+    NS::SceneActor* placed = PlaceCourseReturnActor(scene);
+    ASSERT_NE(placed, nullptr);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* placed = FindProp(scene);
-    ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     // 落下死の範囲 (上面 y=-50) の中へ置く
     player->Root().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
@@ -431,16 +431,16 @@ TEST(GameScene, DeathInAStepRestartsTheCourseBeforeTheNextStep)
     EXPECT_FALSE(scene.IsClearing());
 }
 
-TEST(GameScene, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
+TEST(GameScene, RespawnButtonInAStepReturnsOtherActorsBeforeTheNextStep)
 {
-    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    const nlohmann::json doc = CourseWithPlayer();
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
+    NS::SceneActor* placed = PlaceCourseReturnActor(scene);
+    ASSERT_NE(placed, nullptr);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* placed = FindProp(scene);
-    ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     const NS::Vector3 spawn = SpawnOf(doc);
     const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
@@ -460,14 +460,14 @@ TEST(GameScene, RespawnButtonInAStepReturnsPropsBeforeTheNextStep)
 
 TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
 {
-    const nlohmann::json doc = CourseWithProp(CourseWithPlayerOnGoal());
+    const nlohmann::json doc = CourseWithPlayerOnGoal();
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
+    NS::SceneActor* placed = PlaceCourseReturnActor(scene);
+    ASSERT_NE(placed, nullptr);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* placed = FindProp(scene);
-    ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
     scene.OnUpdate();
@@ -494,7 +494,7 @@ TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
 // 組み直しで前のプレイの知らせが残ると、次のプレイの始めに頼んでいないやり直しやクリアが起きる
 TEST(GameScene, RebuildingTheWorldDropsNoticesOfThePlay)
 {
-    const nlohmann::json doc = CourseWithProp(CourseWithPlayer());
+    const nlohmann::json doc = CourseWithPlayer();
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
     scene.StartPlay();
@@ -505,11 +505,11 @@ TEST(GameScene, RebuildingTheWorldDropsNoticesOfThePlay)
 
     // 歩を回さずに組み直し、もう一度始める。前のプレイの知らせを戻すのは ResetFromJson
     scene.ResetFromJson(doc);
+    NS::SceneActor* placed = PlaceCourseReturnActor(scene);
+    ASSERT_NE(placed, nullptr);
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* placed = FindProp(scene);
-    ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     const NS::Vector3 spawn = SpawnOf(doc);
     const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};

@@ -1,6 +1,4 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/LevelMessages.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Animation/AnimClip.h"
@@ -23,10 +21,22 @@
 
 namespace
 {
+    // 身体の段ごとに、自分の体の秒 (GetFrameDelta) × 一定の速さだけ +x へ進む
+    class ConstantSpeedActor final : public NS::SceneActor
+    {
+    public:
+        static constexpr float k_Speed = 6.0f;
+
+    protected:
+        void BodyStep() override
+        {
+            Root().ShiftPosition(NS::Vector3{k_Speed * NS::GetFrameDelta(this), 0.0f, 0.0f});
+        }
+    };
+
     void PlaceBodies(NS::Scene& scene, bool withPlayer)
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        AddActorJson(doc, "PropActor", 1, NS::Vector3{0.0f, 0.5f, 20.0f});
         if (withPlayer)
         {
             AddActorJson(doc, "PlayerActor", 2, NS::Vector3{0.0f, 1.0f, 0.0f});
@@ -36,23 +46,9 @@ namespace
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
     }
 
-    GL::Level::PropActor* RockOf(NS::Scene& scene)
-    {
-        return NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
-    }
-
     PlayerActor* PlayerOf(NS::Scene& scene)
     {
         return NS::Cast<PlayerActor>(scene.Actors().FindByActorId(2));
-    }
-
-    void ReleaseRock(GL::Level::PropActor* rock)
-    {
-        NS_ASSERT(Game, rock != nullptr, "ReleaseRock: 渡したアクターか部品が無い");
-        GL::Level::TackleReleaseDesc release;
-        release.arc.distance = 5.0f;
-        release.arc.apexHeight = 1.0f;
-        ASSERT_TRUE(GL::Level::SendMsgTackleRelease(rock, release));
     }
 } // namespace
 
@@ -63,33 +59,31 @@ TEST(ActorBodyTime, ScaleOneGivesTheFixedStep)
     EXPECT_EQ(NS::GetFrameDelta(&actor), NS::OS::FrameTimer::FixedDelta());
 }
 
-TEST(ActorBodyTime, RockAtScaleTwoFliesTwoStepsInOne)
+TEST(ActorBodyTime, ActorAtScaleTwoMovesTwoStepsInOne)
 {
     NS::Scene normal;
     NS::Scene fast;
     PlaceBodies(normal, false);
     PlaceBodies(fast, true);
-    GL::Level::PropActor* slowRock = RockOf(normal);
-    GL::Level::PropActor* fastRock = RockOf(fast);
+    ConstantSpeedActor* slowActor = normal.SpawnActor<ConstantSpeedActor>("ConstantSpeedActor");
+    ConstantSpeedActor* fastActor = fast.SpawnActor<ConstantSpeedActor>("ConstantSpeedActor");
     PlayerActor* player = PlayerOf(fast);
-    ASSERT_NE(slowRock, nullptr);
-    ASSERT_NE(fastRock, nullptr);
+    ASSERT_NE(slowActor, nullptr);
+    ASSERT_NE(fastActor, nullptr);
     ASSERT_NE(player, nullptr);
-    ASSERT_TRUE(NS::SetFrameRate(fastRock, 2.0f));
-    ReleaseRock(slowRock);
-    ReleaseRock(fastRock);
+    ASSERT_TRUE(NS::SetFrameRate(fastActor, 2.0f));
     for (int step = 0; step < 4; ++step)
     {
-        slowRock->Update();
-        slowRock->Update();
-        fastRock->Update();
-        const NS::Vector3 slow = slowRock->Root().Position();
-        const NS::Vector3 fastPosition = fastRock->Root().Position();
+        slowActor->Update();
+        slowActor->Update();
+        fastActor->Update();
+        const NS::Vector3 slow = slowActor->Root().Position();
+        const NS::Vector3 fastPosition = fastActor->Root().Position();
         EXPECT_NEAR(fastPosition.x, slow.x, 1.0e-3f) << step;
         EXPECT_NEAR(fastPosition.y, slow.y, 1.0e-3f) << step;
         EXPECT_NEAR(fastPosition.z, slow.z, 1.0e-3f) << step;
     }
-    EXPECT_GT(slowRock->Root().Position().x, 0.5f);
+    EXPECT_GT(slowActor->Root().Position().x, 0.5f);
     EXPECT_EQ(NS::GetFrameDelta(player), NS::OS::FrameTimer::FixedDelta());
 }
 

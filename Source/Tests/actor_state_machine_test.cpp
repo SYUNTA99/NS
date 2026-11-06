@@ -1,5 +1,4 @@
 #include "Editor/EditorActors.h"
-#include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/StateMachine.h"
 #include "NSlib/CoreObject/IGet/IGetState.h"
@@ -75,6 +74,17 @@ namespace
             NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
             (void)BuildStateMachine<NS::SceneActor, OwnedState>(this, machine);
             return machine;
+        }
+    };
+
+    // 自機でないアクターが、自分の OnInit で状態機械を組む
+    class InitMachineActor final : public NS::SceneActor
+    {
+    protected:
+        void OnInit() override
+        {
+            NS::StateMachineOf<NS::SceneActor>* machine = nullptr;
+            (void)BuildStateMachine<NS::SceneActor, OwnedState>(this, machine);
         }
     };
 
@@ -196,12 +206,12 @@ TEST(ActorStateMachine, MachineIsListedAsTheStateMachineClassObj)
     ASSERT_NE(player->GetStateMachine(), nullptr);
     EXPECT_EQ(playerPart->Machine(), player->GetStateMachine());
 
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    EXPECT_EQ(CountClassObjKey(prop.get(), "StateMachine"), 1);
-    const NS::StateMachine* propPart = NS::Cast<NS::StateMachine>(ListedClassObj(prop.get(), "StateMachine"));
-    ASSERT_NE(propPart, nullptr);
-    ASSERT_NE(prop->GetStateMachine(), nullptr);
-    EXPECT_EQ(propPart->Machine(), prop->GetStateMachine());
+    const std::unique_ptr<InitMachineActor> other = NS::CreateActor<InitMachineActor>();
+    EXPECT_EQ(CountClassObjKey(other.get(), "StateMachine"), 1);
+    const NS::StateMachine* otherPart = NS::Cast<NS::StateMachine>(ListedClassObj(other.get(), "StateMachine"));
+    ASSERT_NE(otherPart, nullptr);
+    ASSERT_NE(other->GetStateMachine(), nullptr);
+    EXPECT_EQ(otherPart->Machine(), other->GetStateMachine());
 }
 
 TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
@@ -210,9 +220,8 @@ TEST(ActorStateMachine, SavedJsonGainsNoStateMachineFields)
     ExpectNoStateMachineFields(NS::ActorToJson(player.get()));
     ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PlayerActor"));
 
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
-    ExpectNoStateMachineFields(NS::ActorToJson(prop.get()));
-    ExpectNoStateMachineFields(*NS::ActorFileLibrary::Get().Values("PropActor"));
+    const std::unique_ptr<InitMachineActor> other = NS::CreateActor<InitMachineActor>();
+    ExpectNoStateMachineFields(NS::ActorToJson(other.get()));
 }
 
 TEST(ActorStateMachine, SecondBuildFailsAndKeepsTheFirstMachine)

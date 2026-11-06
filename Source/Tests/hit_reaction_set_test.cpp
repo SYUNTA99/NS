@@ -1,3 +1,4 @@
+#include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -20,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <initializer_list>
+#include <limits>
 #include <map>
 #include <optional>
 #include <string>
@@ -909,7 +911,7 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
               nullptr);
 }
 
-// 出荷の束と動作 (自機と置物の .actor)。沈みの深さと震えの幅・トラウマの量は威力に依らない固定の値で、
+// 出荷の束と動作 (自機の .actor)。沈みの深さと震えの幅・トラウマの量は威力に依らない固定の値で、
 // 溜めきりの体当たりの当たりの威力を、威力を掛ける式に入れた値と同じ。
 // 真ん中は溜めきり 2 × 真ん中の威力の倍率 1 の威力 2、外れは右の外れ (MissRight) の溜めきり 2 × 0.7 の威力 1.4
 
@@ -1292,67 +1294,24 @@ TEST(ShippedHitReactions, PlayerReleaseSetsCarryTheReleaseRows)
     }
 }
 
-// 置物の受けた束と明けの束は、前の行の相手の分 (食い込みと潰れ・横揺れ・残像・震え) を持つ。長さは止めの長さ
-TEST(ShippedHitReactions, PropSetsCarryTheTargetRows)
+// 束の値をフレーム数に読む時、非数・無限・負・int に入らない値は WARN を出して既定の数にする。
+// 小数は 0 の側へ切り捨てる
+TEST(HitOwnerFrames, ValuesOutsideTheFrameRangeFallBack)
 {
-    const ShippedActorFile prop = ReadShippedActorFile("PropActor");
-    EXPECT_EQ(prop.sets.size(), 4u);
-    EXPECT_TRUE(prop.actions.empty());
-    struct Tier
+    NS::HitOwnerItem item;
+    item.name = "TackleGhost";
+    item.values = {{"half", 2.7f},
+                   {"nan", std::numeric_limits<float>::quiet_NaN()},
+                   {"inf", std::numeric_limits<float>::infinity()},
+                   {"negative", -1.0f},
+                   {"over", 2147483648.0f}};
+    const TestLogCapture log;
+    EXPECT_EQ(GL::Level::HitOwnerFrames(item, "half", 5), 2);
+    EXPECT_EQ(log.WarningCount(), 0);
+    for (const char* name : {"nan", "inf", "negative", "over"})
     {
-        const char* hit;
-        const char* release;
-        int stopFrames;
-        float shakePixels;
-        int flipFrames;
-        bool ghost;
-        float tremorPixels;
-    };
-    const Tier tiers[] = {{"受け[真ん中]", "明け[真ん中]", 12, 45.0f, 2, true, 10.0f},
-                          {"受け[外れ]", "明け[外れ]", 4, 6.0f, 1, false, 1.5f}};
-    for (const Tier& tier : tiers)
-    {
-        SCOPED_TRACE(tier.hit);
-        const NS::HitReactionSet* hit = FindShippedSet(prop, tier.hit);
-        ASSERT_NE(hit, nullptr);
-        EXPECT_EQ(hit->stopFrames, tier.stopFrames);
-        const NS::HitReactionEntry* freeze = FindOwnerEntry(*hit, "TackleFreeze");
-        ASSERT_NE(freeze, nullptr);
-        EXPECT_EQ(freeze->length, tier.stopFrames);
-        const OwnerValues freezeValues{{"食い込み距離", 0.06f}, {"潰れの厚み", 0.7f}, {"潰れの伸び上がり", 1.1f}};
-        EXPECT_EQ(std::get<NS::HitOwnerItem>(freeze->item).values, freezeValues);
-        const NS::HitReactionEntry* shake = FindEntry<NS::HitBodyShakeItem>(*hit);
-        ASSERT_NE(shake, nullptr);
-        EXPECT_EQ(shake->length, tier.stopFrames);
-        EXPECT_FLOAT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).amplitudePixels, tier.shakePixels);
-        EXPECT_EQ(std::get<NS::HitBodyShakeItem>(shake->item).flipFrames, tier.flipFrames);
-        const NS::HitReactionEntry* ghost = FindOwnerEntry(*hit, "TackleGhost");
-        if (tier.ghost)
-        {
-            ASSERT_NE(ghost, nullptr);
-            EXPECT_EQ(ghost->length, tier.stopFrames);
-            const OwnerValues ghostValues{{"離れのピクセル", 112.5f},
-                                          {"左右の残像の不透明度", 0.45f},
-                                          {"明けの残像のフレーム数", 0.0f},
-                                          {"明けの残像の不透明度", 0.45f}};
-            EXPECT_EQ(std::get<NS::HitOwnerItem>(ghost->item).values, ghostValues);
-            EXPECT_EQ(hit->entries.size(), 3u);
-        }
-        else
-        {
-            EXPECT_EQ(ghost, nullptr);
-            EXPECT_EQ(hit->entries.size(), 2u);
-        }
-
-        const NS::HitReactionSet* release = FindShippedSet(prop, tier.release);
-        ASSERT_NE(release, nullptr);
-        EXPECT_EQ(release->stopFrames, 0);
-        ASSERT_EQ(release->entries.size(), 1u);
-        const NS::HitBodyTremorItem* tremor = std::get_if<NS::HitBodyTremorItem>(&release->entries[0].item);
-        ASSERT_NE(tremor, nullptr);
-        EXPECT_EQ(release->entries[0].length, tier.stopFrames);
-        EXPECT_FLOAT_EQ(tremor->amplitudePixels, tier.tremorPixels);
-        EXPECT_EQ(tremor->reachFrames, 6);
-        EXPECT_FLOAT_EQ(tremor->radiusRatio, 0.0f);
+        SCOPED_TRACE(name);
+        EXPECT_EQ(GL::Level::HitOwnerFrames(item, name, 5), 5);
     }
+    EXPECT_EQ(log.WarningCount(), 4);
 }

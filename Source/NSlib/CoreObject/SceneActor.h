@@ -42,7 +42,7 @@ namespace NS
     class Scene;
     struct ActorInitInfo;
 
-    //! 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / PropActor / PlayerActor などが派生する
+    //! 世界に置く物の基底。Transform と部品を持ち、MapPartsActor / LightActor と、ゲームのアクターが派生する
     //! 所属シーンを持ち、IGet〜 の問いを居るシーンへ繋ぐ。シーンに居ない間の問いは nullptr を返す
     class SceneActor : public Object,
                        public IGetCamera,

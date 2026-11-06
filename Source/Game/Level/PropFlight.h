@@ -6,8 +6,7 @@ namespace GL
 {
     namespace Level
     {
-        //! 置物が今どう飛んでいるか
-        //! PropActor::Flight が呼ばれた時の状態機械から組む。状態は状態の段の途中で変わるので、控えて持たない
+        //! 置物が今どう飛んでいるか。LaunchEffects の尾の向きと出す所を決める
         struct PropFlight
         {
             NS::Vector3 position{}; // 根の位置。世界座標

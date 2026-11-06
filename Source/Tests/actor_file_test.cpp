@@ -889,10 +889,6 @@ TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDiff
         {2, {23.228139877319336f, 1.649999976158142f, -2.528921604156494f}, none, one},
         {3, {23.228139877319336f, 4.144098281860352f, -7.358550071716309f}, none, one},
         {4, {0.0f, 0.0f, 0.0f}, {0.7382549047470093f, -0.2214764654636383f, 0.0f, 0.6371247172355652f}, one},
-        {35, {18.0f, 1.0f, -7.5f}, none, one},
-        {41, {18.08530616760254f, 1.25f, -2.7366538047790527f}, none, {1.5f, 1.5f, 1.5f}},
-        {47, {18.0f, 1.5f, 2.5f}, none, {2.0f, 2.0f, 2.0f}},
-        {53, {18.0f, 2.0f, 7.5f}, none, {3.0f, 3.0f, 3.0f}},
     };
     ASSERT_EQ(NS::SceneJsonActors(doc).size(), std::size(expected));
     for (const Expected& e : expected)

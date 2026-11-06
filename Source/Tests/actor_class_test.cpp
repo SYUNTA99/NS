@@ -4,8 +4,6 @@
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LaunchArc.h"
-#include "Game/Level/LaunchEffects.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
@@ -38,26 +36,6 @@ TEST(ActorClass, MapPartsCollidesWithItsMesh)
     EXPECT_NE(NS::Cast<NS::MeshCollision>(parts.CollisionClassObj()), nullptr);
     EXPECT_EQ(NS::Cast<NS::BoxCollision>(parts.CollisionClassObj()), nullptr);
     EXPECT_EQ(NS::Cast<NS::SphereCollision>(parts.CollisionClassObj()), nullptr);
-}
-
-TEST(ActorClass, MapObjOwnsMotionAndStaticCollision)
-{
-    const std::unique_ptr<GL::Level::PropActor> objOwned = NS::CreateActor<GL::Level::PropActor>();
-    GL::Level::PropActor& obj = *objOwned;
-    EXPECT_NE(obj.ModelClassObj(), nullptr);
-    EXPECT_NE(NS::Cast<NS::SphereCollision>(obj.CollisionClassObj()), nullptr);
-    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&obj);
-    EXPECT_EQ(NS::ClassObjFields(prototype, "Breakable"), nullptr);
-    EXPECT_EQ(NS::ClassObjFields(prototype, "LaunchedBody"), nullptr);
-    EXPECT_NE(obj.ShadowClassObj(), nullptr);
-    // 体当たりは物の体のセンサーで調べられ、受け方と尾は自分で持つ
-    const NS::HitSensor* sensor = obj.HitSensorsClassObj()->Find("Body");
-    ASSERT_NE(sensor, nullptr);
-    EXPECT_TRUE(GL::Level::IsSensorKind(sensor, GL::Level::SensorKind::MapObjBody));
-    EXPECT_EQ(NS::ClassObjFields(prototype, "TackleReaction"), nullptr);
-    EXPECT_NE(NS::ClassObjFields(prototype, "LaunchEffects"), nullptr);
-    EXPECT_NE(obj.GetStateMachine(), nullptr);
-    EXPECT_FALSE(obj.IsFlying());
 }
 
 TEST(ActorClass, GoalHasMarkerAndArea)
@@ -138,9 +116,8 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
 
 TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
 {
-    // 自機・置物・ゴールの体のセンサーは、宣言した種類にだけ真で、他の種類と未設定には偽
+    // 自機・ゴールの体のセンサーは、宣言した種類にだけ真で、他の種類と未設定には偽
     const std::unique_ptr<PlayerActor> player = NS::CreateActor<PlayerActor>();
-    const std::unique_ptr<GL::Level::PropActor> prop = NS::CreateActor<GL::Level::PropActor>();
     const std::unique_ptr<GL::Level::GoalActor> goal = NS::CreateActor<GL::Level::GoalActor>();
     struct BodyCase
     {
@@ -149,7 +126,6 @@ TEST(SensorKinds, EachBodySensorIsOnlyItsOwnKind)
     };
     const BodyCase cases[] = {
         {player->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::PlayerBody},
-        {prop->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::MapObjBody},
         {goal->HitSensorsClassObj()->Find("Body"), GL::Level::SensorKind::Area},
     };
     const GL::Level::SensorKind kinds[] = {

@@ -4,8 +4,9 @@
 #include "Editor/QuitModal.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
-#include "Game/Level/PropActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -588,6 +589,45 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
     EXPECT_NE(applied->ActionTimelineClassObj()->FindAction("試しの動作"), nullptr);
 }
 
+namespace
+{
+    // エフェクトの資産の欄を 1 つだけ持つ部品
+    class EffectFieldPart final : public NS::Object
+    {
+    public:
+        NS::Effect* asset = nullptr;
+        NS_REFLECT_BEGIN(EffectFieldPart, NS::Object)
+        NS_FIELD(asset, "資産")
+        NS_REFLECT_END()
+    };
+
+    // 部品 EffectFieldPart の資産を、素材を読み終えた時に先に読む
+    class EffectFieldActor final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_BEGIN(EffectFieldActor, NS::SceneActor)
+        NS_CLASSOBJ(part, "EffectFieldPart")
+        NS_REFLECT_END()
+
+        std::unique_ptr<EffectFieldPart> part;
+
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj(m_effect);
+            CreateClassObj(part);
+        }
+
+        void OnAssetsLoaded() override
+        {
+            NS::SceneActor::OnAssetsLoaded();
+            NS::PreloadEffects(this, {part->asset});
+        }
+    };
+} // namespace
+
+NS_CLASS(EffectFieldActor)
+
 TEST(SceneActor, SnapshotReloadsEffectPreload)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "控えのエフェクトの試し", .size = {32, 32}, .visible = false});
@@ -595,11 +635,12 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
     ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
-    nlohmann::json sparkFile = CodeValuesActorFile("PropActor");
-    NS::ActorJsonClassObjs(sparkFile)["LaunchEffects"]["飛び出しの尾の資産"] = "6e4f2fccb9df5a339885b53d42fafd45";
+    const ScopedActorFile plain{"EffectFieldActor", CodeValuesActorFile("EffectFieldActor")};
+    nlohmann::json sparkFile = CodeValuesActorFile("EffectFieldActor");
+    NS::ActorJsonClassObjs(sparkFile)["EffectFieldPart"]["資産"] = "6e4f2fccb9df5a339885b53d42fafd45";
     const ScopedActorFile spark{"SparkRock", std::move(sparkFile)};
     nlohmann::json doc = NS::MakeSceneJson();
-    AddActorJson(doc, "PropActor", 1);
+    AddActorJson(doc, "EffectFieldActor", 1);
     NS::Scene scene;
     scene.GetSceneRenderer()->SetDevice(&device);
     scene.ResetFromJson(doc);
@@ -762,7 +803,7 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     ASSERT_TRUE(device.IsValid());
     NS::AssetManager assets(NS::OS::FileSystem::ContentRoot());
     const NS::AssetManagerScope useAssets{assets};
-    nlohmann::json actorFile = CodeValuesActorFile("PropActor");
+    nlohmann::json actorFile = CodeValuesActorFile("EffectFieldActor");
     const ScopedActorFile actorDefinition{"EffectEditorRock", std::move(actorFile)};
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "EffectEditorRock", 1);
@@ -774,13 +815,13 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     ASSERT_NE(effects, nullptr);
     const NS::Effect* core = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
     ASSERT_FALSE(effects->Play(core->Resource(), {}).IsValid());
-    GL::Level::PropActor* rock = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(1));
+    EffectFieldActor* rock = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(rock, nullptr);
-    const NS::FieldDesc* field = NS::FindField(rock->Effects().GetReflection(), "飛び出しの尾の資産");
+    const NS::FieldDesc* field = NS::FindField(rock->part->GetReflection(), "資産");
     ASSERT_NE(field, nullptr);
     const NS::ClassObjInfo* row = nullptr;
     NS::ForEachReflectedClassObj(rock, [&](const NS::ClassObjInfo& candidate, NS::Object* part) {
-        if (part == &rock->Effects())
+        if (part == rock->part.get())
         {
             row = &candidate;
         }
@@ -791,7 +832,7 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     controller.SelectActorById(1);
     const std::size_t undoBefore = controller.Editor().Undo().UndoSize();
     controller.BeginClassObjEdit();
-    ASSERT_EQ(NS::ApplyJsonFields(&rock->Effects(), {{"飛び出しの尾の資産", core->Id()}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(rock->part.get(), {{"資産", core->Id()}}), 0u);
     controller.FinishFieldWrite(rock, field->type);
     controller.NoteFieldEdit(rock, *row, field->name);
     controller.CommitClassObjEdit();
@@ -799,19 +840,19 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
     for (const NS::uint32 id : {1u, 2u})
     {
-        const GL::Level::PropActor* instance = NS::Cast<GL::Level::PropActor>(scene.Actors().FindByActorId(id));
+        const EffectFieldActor* instance = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(id));
         ASSERT_NE(instance, nullptr);
-        EXPECT_EQ(NS::SerializeClassObjFields(&instance->Effects())["飛び出しの尾の資産"], core->Id());
+        EXPECT_EQ(NS::SerializeClassObjFields(instance->part.get())["資産"], core->Id());
     }
     ASSERT_TRUE(controller.Editor().PerformUndo());
     EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("EffectEditorRock"), before);
-    EXPECT_EQ(NS::SerializeClassObjFields(&rock->Effects())["飛び出しの尾の資産"], "");
+    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], "");
     ASSERT_TRUE(controller.Editor().PerformRedo());
-    EXPECT_EQ(NS::SerializeClassObjFields(&rock->Effects())["飛び出しの尾の資産"], core->Id());
+    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], core->Id());
     const std::optional<nlohmann::json> written = NS::ReadActorFileAt(
         NS::OS::FileSystem::Combine(directory.Path(), "EffectEditorRock.actor"));
     ASSERT_TRUE(written.has_value());
-    EXPECT_EQ(NS::ActorJsonClassObjs(*written)["LaunchEffects"]["飛び出しの尾の資産"], core->Id());
+    EXPECT_EQ(NS::ActorJsonClassObjs(*written)["EffectFieldPart"]["資産"], core->Id());
 }
 
 // インスペクターの欄の編集は編集するたびに書く。外で変わったファイルには書かず、未保存のまま残す

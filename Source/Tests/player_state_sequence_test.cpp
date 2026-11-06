@@ -3,7 +3,6 @@
 #include "Game/Level/ImpactOutcome.h"
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
@@ -34,7 +33,6 @@
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestSceneSetup.h"
-#include "Tests/TestTackleScene.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>

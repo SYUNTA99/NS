@@ -408,26 +408,6 @@ namespace
         return nullptr;
     }
 
-    // 持ち主へ渡す項目の値。束・項目・値のどれかが無ければ -1
-    float OwnerValueOf(const NS::HitReactionSet* set, std::size_t entry, std::string_view valueName)
-    {
-        if (set == nullptr || entry >= set->entries.size())
-        {
-            return -1.0f;
-        }
-        const NS::HitOwnerItem* owner = std::get_if<NS::HitOwnerItem>(&set->entries[entry].item);
-        if (owner == nullptr)
-        {
-            return -1.0f;
-        }
-        const std::map<std::string, float, std::less<>>::const_iterator it = owner->values.find(valueName);
-        if (it == owner->values.end())
-        {
-            return -1.0f;
-        }
-        return it->second;
-    }
-
     // インスペクタを描く ImGui の場。束の欄が全部入る高さの窓にする
     class InspectorFrame
     {
@@ -467,15 +447,6 @@ namespace
                 return 0;
             }
             return path(ImHashStr("##hitReactions", 0, window->ID));
-        }
-
-        // 識別番号 id の木を開いたままにする。束の項目の見出しは最初は閉じている
-        void Open(ImGuiID id)
-        {
-            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
-            ASSERT_NE(window, nullptr);
-            window->StateStorage.SetInt(id, 1);
-            (void)Draw();
         }
 
         // 欄 id に text を打って確定する。欄が無く打てなかった場合 false
@@ -555,19 +526,30 @@ namespace
     {
         return ImHashData(&index, sizeof(index), seed);
     }
+
+    // 球の当たりだけを持つ、エディタで置けるアクター。半径の既定は 0.5
+    class SphereProbeActor final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_NONE(SphereProbeActor, NS::SceneActor)
+
+    protected:
+        void OnInit() override { CreateClassObj<NS::Collision, NS::SphereCollision>(m_collision); }
+    };
 } // namespace
+
+NS_PLACEABLE(SphereProbeActor, "試しの球")
 
 // インスペクタで当たりの形の欄を変えると、世界を止めた歩の後の当たりがその形になる
 TEST(EditorInspector, FieldChangeReachesTheCollision)
 {
-    // 半径はシーンで上書きできない欄で、確定すると .actor へ書く。出荷のファイルを書かないよう試しの置き場へ敷く
-    const nlohmann::json shipped = ShippedActorFile("PropActor");
+    // 半径はシーンで上書きできない欄で、確定すると .actor へ書く。試しの置き場へ敷いた .actor に書く
     const ScopedActorFileDirectory scope("InspectorFieldChange");
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("SphereProbeActor", CodeValuesActorFile("SphereProbeActor")));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("PropActor"));
+    editor.PlaceItem(*NS::Editor::FindPlacementItem("SphereProbeActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
@@ -693,13 +675,12 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 // シーンで上書きできない欄を直し終えて .actor へ書くと、同じ .actor のほかのアクターの、世界を止めた歩の後の当たりも直した形になる
 TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 {
-    const nlohmann::json shipped = ShippedActorFile("PropActor");
     const ScopedActorFileDirectory scope("InspectorActorFileFollowers");
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
+    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("SphereProbeActor", CodeValuesActorFile("SphereProbeActor")));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
+    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("SphereProbeActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     NS::SceneActor* source = editor.SelectedActor();
@@ -914,47 +895,4 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
         scene.Actors().FindByActorId(selected)->HitReactionClassObj()->FindSet(first.name);
     ASSERT_NE(live, nullptr);
     EXPECT_EQ(live->stopFrames, first.stopFrames);
-}
-
-// 素材の窓で選んだ .actor でも束の欄が出る。持ち主へ渡す項目の値を直すと、シーンのアクターの束と .actor に書く
-TEST(EditorInspector, ActorFileSelectedInTheAssetWindowEditsTheOwnerItemValues)
-{
-    const nlohmann::json shipped = ShippedActorFile("PropActor");
-    const ScopedActorFileDirectory scope("InspectorOwnerValues");
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PropActor", shipped));
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PropActor");
-    ASSERT_TRUE(item.has_value());
-    editor.PlaceItem(*item);
-    const NS::uint32 placed = editor.SelectedActorId();
-    editor.SelectAsset(NS::OS::FileSystem::Combine(scope.Path(), "PropActor.actor"));
-    ASSERT_NE(NS::Cast<NS::SceneActor>(editor.SelectedAsset()), nullptr);
-
-    // 受けの束の頭の項目は、置物の食い込みと潰れを持ち主へ渡す項目
-    const std::vector<NS::HitReactionSet> before = NS::ReadHitReactionSets("PropActor", shipped);
-    ASSERT_FALSE(before.empty());
-    const std::string setName = before.front().name;
-    ASSERT_GT(OwnerValueOf(&before.front(), 0, "食い込み距離"), 0.0f);
-
-    InspectorFrame inspector(editor);
-    (void)inspector.Draw();
-    const std::string text = inspector.Draw();
-    EXPECT_NE(text.find(setName), std::string::npos) << text;
-    EXPECT_NE(text.find("食い込み距離"), std::string::npos) << text;
-
-    // 頭の項目の見出しを開いてから、値の表の欄を打つ
-    inspector.Open(
-        inspector.FieldId([](ImGuiID seed) { return ImHashStr("##entry", 0, HashIndex(0, HashIndex(0, seed))); }));
-    const ImGuiID valueId = inspector.FieldId([](ImGuiID seed) {
-        const ImGuiID table = ImHashStr("##ownerValues", 0, HashIndex(0, HashIndex(0, seed)));
-        return ImHashStr("##ownerValue", 0, ImHashStr("食い込み距離", 0, table));
-    });
-    ASSERT_TRUE(inspector.Type(valueId, "0.25"));
-
-    const NS::HitReaction* reaction = scene.Actors().FindByActorId(placed)->HitReactionClassObj();
-    ASSERT_NE(reaction, nullptr);
-    EXPECT_FLOAT_EQ(OwnerValueOf(reaction->FindSet(setName), 0, "食い込み距離"), 0.25f);
-    const std::vector<NS::HitReactionSet> saved = SavedSets(scope.Path(), "PropActor");
-    EXPECT_FLOAT_EQ(OwnerValueOf(FindSetIn(saved, setName), 0, "食い込み距離"), 0.25f);
 }

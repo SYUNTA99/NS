@@ -3,7 +3,6 @@
 #include "Game/Level/ImpactResolver.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/MapObjParams.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/States/BrakePlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
@@ -36,18 +35,10 @@
 
 namespace
 {
-    // 裁定の観測を、自機の DecideStep と同じ引数 (突進の外の値) で単独に呼ぶ。答えにある自機を動かす事はしない
-    void ObserveImpact(PlayerActor* player)
-    {
-        NS_ASSERT(Game, player != nullptr, "ObserveImpact: 渡したアクターか部品が無い");
-        player->Resolver().ObserveImpact(player->SelfForImpact(), GL::Level::BodySlamMotion{}, &player->Collider());
-    }
-
-    PlayerActor* PlacePipelinePlayer(NS::Scene& scene, float targetX = 0.0f, float targetZ = 3.0f)
+    PlayerActor* PlacePipelinePlayer(NS::Scene& scene)
     {
         nlohmann::json doc = NS::MakeSceneJson();
         AddActorJson(doc, "PlayerActor", 1, NS::Vector3{0.0f, 1.0f, 0.0f});
-        AddActorJson(doc, "PropActor", 2, NS::Vector3{targetX, 0.5f, targetZ});
         scene.ResetFromJson(doc);
         AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
         PlaceViewCamera(scene, NS::Vector3{}, NS::Vector3{0.0f, 0.0f, 1.0f});
@@ -136,20 +127,6 @@ namespace
         NS::WriteActorActions(actorFile, {});
     }
 } // namespace
-
-TEST(PlayerUpdatePipeline, ImpactObservationDoesNotJudgeOrMoveThePlayer)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePipelinePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
-    const NS::Vector3 position = player->Root().Position();
-    const NS::Vector3 velocity = player->Body().Velocity();
-    ObserveImpact(player);
-    EXPECT_EQ(player->Resolver().Answer().lastImpact.sequence, 0u);
-    ExpectSameVector(player->Root().Position(), position);
-    ExpectSameVector(player->Body().Velocity(), velocity);
-}
 
 // 編集の休止の持ち主は世界の駆動だけ。身体と入力の部品を起こしたままでも、止めた世界では自機が動かない
 TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)

@@ -1,7 +1,6 @@
 #include "Editor/EditorActors.h"
 #include "Game/Level/Health.h"
 #include "Game/Level/ImpactResolver.h"
-#include "Game/Level/PropActor.h"
 #include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
