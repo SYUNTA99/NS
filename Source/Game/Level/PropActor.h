@@ -38,7 +38,6 @@ namespace GL
             //! 基底の作る物に続けて、尾と粉の絵を先に読む。.actor が替わって絵の名前が替わった時も読む
             void OnAssetsLoaded() override;
             void OnEndPlay() override;
-            void PrepareRender() override;
             //! 体当たりの止めの最中の場合 true、それ以外の場合は false
             [[nodiscard]] bool IsFrozen() const noexcept;
             //! 押し飛ばされて曲線か転がりの最中かを返す
@@ -59,22 +58,9 @@ namespace GL
             [[nodiscard]] const LaunchEffects& Effects() const noexcept { return *m_effects; }
             [[nodiscard]] ImpactMarks& Marks() noexcept { return *m_marks; }
             [[nodiscard]] const ImpactMarks& Marks() const noexcept { return *m_marks; }
-            [[nodiscard]] TackleGhost* Ghost() noexcept
-            {
-                if (ChildActor() == nullptr)
-                {
-                    return nullptr;
-                }
-                return &m_ghost;
-            }
-            [[nodiscard]] const TackleGhost* Ghost() const noexcept
-            {
-                if (ChildActor() == nullptr)
-                {
-                    return nullptr;
-                }
-                return &m_ghost;
-            }
+            //! 体当たりの残像の子。OnInit で作り、置物と一緒に終わる
+            [[nodiscard]] TackleGhost* Ghost() noexcept { return m_ghost; }
+            [[nodiscard]] const TackleGhost* Ghost() const noexcept { return m_ghost; }
 
         protected:
             //! 体当たりの問い・止め・明けと、コースのやり直しに応じる
@@ -84,7 +70,7 @@ namespace GL
             void OnInit() override;
             void OnAppear() override;
             void OnDisappear() noexcept override;
-            //! 発光の層・残像・当たりの跡を進める
+            //! 発光の層と当たりの跡を進める
             void VisualStep() override;
 
         private:
@@ -94,7 +80,7 @@ namespace GL
             class ArcState;
             class RollingState;
 
-            TackleGhost m_ghost;
+            TackleGhost* m_ghost = nullptr; // 子として基底が所有する
 
             // 受けた状態の頭の形と動き
             struct TackleFreezeDesc

@@ -1,5 +1,4 @@
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ChildActorObj.h"
 
 #include "Game/Level/GameScene.h"
 #include "Game/Level/ImpactOutcome.h"
@@ -83,9 +82,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_clips);
     CreateClassObj(m_shadow);
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
-    NS::ChildActorObj* child = CreateChildActor<NS::ChildActorObj>();
-    child->UseParentModel();
-    child->SetModelSortPriority(-1);
+    m_ghost = CreateChildActor<GL::Level::TackleGhost>();
     CreateClassObj(m_resolver);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actionTimeline);
@@ -343,7 +340,6 @@ void PlayerActor::BodyStep()
 
 void PlayerActor::VisualStep()
 {
-    m_ghost.Advance(this);
     UpdateAnimation();
     m_targetMarker->Update(m_charge);
 #if !defined(NS_SHIPPING)
@@ -365,15 +361,6 @@ void PlayerActor::VisualStep()
     DrawChargeRing();
 #endif
     DrawTerrainRebound();
-}
-
-void PlayerActor::PrepareRender()
-{
-    if (ChildActor() != nullptr && ChildActor()->IsAppeared())
-    {
-        ChildActor()->Root().CopyFrom(Root());
-    }
-    NS::SceneActor::PrepareRender();
 }
 
 const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
@@ -703,9 +690,9 @@ void PlayerActor::BeginTackleHit() noexcept
     }
     for (const NS::HitOwnerRun& run : runs)
     {
-        if (run.item.name == "TackleGhost" && Ghost() != nullptr)
+        if (run.item.name == "TackleGhost")
         {
-            Ghost()->Start(run, this);
+            m_ghost->Start(run);
         }
         if (run.item.name == "HitEffect")
         {
@@ -768,10 +755,7 @@ void PlayerActor::StopTackleHitEffects() noexcept
         reaction->StopGroundWave(this);
         reaction->StopDistortionRing(this);
     }
-    if (Ghost() != nullptr)
-    {
-        Ghost()->Stop(this);
-    }
+    m_ghost->Stop();
     // 紫の明けの遅い世界は束より長く続く。打ち切る当たりが遅くした世界を普段の速さへ戻す
     if (m_slowedWorld)
     {

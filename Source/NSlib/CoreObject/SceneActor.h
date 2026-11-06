@@ -29,7 +29,6 @@ namespace NS
 {
     class HitSensor;
     class Model;
-    class ChildActorObj;
     class Animation;
     class Shadow;
     class Collision;
@@ -83,6 +82,7 @@ namespace NS
         //! 世界から外し、その歩を回し終えた後に解放させる。2 回目からは何もしない
         //! その場では解放しないので、同じ歩の中では指したまま読める。やり直しの知らせは
         //! 届かず戻らないので、戻す物は Disappear を使う
+        //! 子は親と一緒に終わるので、子に呼ぶと ERROR を出して何もしない。親が持つ子の番地を古くしないため
         void Destroy() noexcept;
         //! このアクターがシーンに出ているか
         [[nodiscard]] bool IsAppeared() const noexcept { return m_presence == Presence::Appeared; }
@@ -95,8 +95,15 @@ namespace NS
         //! コードで作る子は親が所有し、シーンの配置一覧や独立した保存項目には入らない
         [[nodiscard]] SceneActor* ParentActor() noexcept { return m_parent; }
         [[nodiscard]] const SceneActor* ParentActor() const noexcept { return m_parent; }
-        [[nodiscard]] ChildActorObj* ChildActor() noexcept { return m_child.get(); }
-        [[nodiscard]] const ChildActorObj* ChildActor() const noexcept { return m_child.get(); }
+        //! 自分と子孫の全部に fn を 1 回ずつ呼ぶ。親を子より先に、子は作った順に呼ぶ
+        template <class F> void VisitSelfAndDescendants(F&& fn)
+        {
+            fn(this);
+            for (const std::unique_ptr<SceneActor>& child : m_children)
+            {
+                child->VisitSelfAndDescendants(fn);
+            }
+        }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -123,9 +130,6 @@ namespace NS
 
         [[nodiscard]] Model* ModelClassObj() noexcept { return m_model.get(); }
         [[nodiscard]] const Model* ModelClassObj() const noexcept { return m_model.get(); }
-        //! 描画に使うModel。親の参照を使う子でも、所有するModelClassObjとは区別する
-        //! 自分にも参照元にもModelが無ければnullptr
-        [[nodiscard]] virtual const Model* ModelSource() const noexcept;
         [[nodiscard]] Animation* AnimationClassObj() noexcept { return m_animation.get(); }
         [[nodiscard]] const Animation* AnimationClassObj() const noexcept { return m_animation.get(); }
         [[nodiscard]] Shadow* ShadowClassObj() noexcept { return m_shadow.get(); }
@@ -233,13 +237,14 @@ namespace NS
         void ReloadAssets();
 
     protected:
-        //! OnInitで子を1体作る。作成済みか開始後なら変更せずnullptr
-        //! 子のTransformは世界座標のまま。親の姿勢を使う子はParentActorから取得する
+        //! OnInit で子を作る。何体でも作れ、子の OnInit からは孫を作れる。開始後なら作らずに nullptr
+        //! 子は親と一緒に始まり、出入りし、更新され、終わる。子だけを Destroy では消せない
+        //! 子の Transform は世界座標のまま。親の姿勢を使う子は ParentActor から取得する
         template <class T, class... TArgs>
-            requires std::derived_from<T, ChildActorObj>
+            requires std::derived_from<T, SceneActor>
         T* CreateChildActor(TArgs&&... args)
         {
-            if (m_child != nullptr || m_started)
+            if (m_started)
             {
                 return nullptr;
             }
@@ -339,8 +344,7 @@ namespace NS
         //! OnInit で部品とセンサーを作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
-        void InitChild(std::unique_ptr<ChildActorObj> child);
-        void RemoveDestroyedChildren();
+        void InitChild(std::unique_ptr<SceneActor> child);
         //! 補間の前の値として、根の Transform と Model の今の値を控える
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
@@ -409,7 +413,7 @@ namespace NS
         bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
         bool m_started = false;
         SceneActor* m_parent = nullptr;
-        std::unique_ptr<ChildActorObj> m_child; // 親の部品より先に壊すので最後に置く
+        std::vector<std::unique_ptr<SceneActor>> m_children; // 親の部品より先に壊すので最後に置く
     };
 
     //! 体の倍率を返す。1 が等速

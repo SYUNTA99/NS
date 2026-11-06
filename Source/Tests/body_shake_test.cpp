@@ -19,10 +19,14 @@ namespace
     class ModelActor final : public NS::SceneActor
     {
     public:
-        GL::Level::TackleGhost ghost;
+        GL::Level::TackleGhost* ghost = nullptr;
 
     protected:
-        void OnInit() override { CreateClassObj(m_model); }
+        void OnInit() override
+        {
+            CreateClassObj(m_model);
+            ghost = CreateChildActor<GL::Level::TackleGhost>();
+        }
     };
 
     NS::DrawShakeDesc SideShakeOf(int length)
@@ -212,15 +216,15 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
     model->StartDrawShake(SideShakeOf(6));
     model->AdvanceDraw(actor, actor->Root().Position());
     ASSERT_NE(model->GetDrawOffset().x, 0.0f);
-    ASSERT_TRUE(actor->ghost.SetSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
-    const NS::Matrix plus = actor->ghost.SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, 1.0f);
-    const NS::Matrix minus = actor->ghost.SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, -1.0f);
+    ASSERT_TRUE(actor->ghost->SetSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
+    const NS::Matrix plus = actor->ghost->SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, 1.0f);
+    const NS::Matrix minus = actor->ghost->SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, -1.0f);
     EXPECT_NEAR(plus._41 - root._41, 0.3f, 1.0e-5f);
     EXPECT_NEAR(plus._43 - root._43, -0.2f, 1.0e-5f);
     EXPECT_NEAR(minus._41 - root._41, -0.3f, 1.0e-5f);
     EXPECT_NEAR(minus._43 - root._43, 0.2f, 1.0e-5f);
-    EXPECT_FALSE(actor->ghost.SetSpread(NS::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
-    EXPECT_FLOAT_EQ(actor->ghost.Spread().x, 0.3f);
+    EXPECT_FALSE(actor->ghost->SetSpread(NS::Vector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}));
+    EXPECT_FLOAT_EQ(actor->ghost->Spread().x, 0.3f);
 }
 
 // 奥揺れは押し直すたびに弱まりながら押しては戻し、止めの最後のフレームまで揺れる
