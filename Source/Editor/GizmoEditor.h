@@ -21,6 +21,10 @@ namespace NS
 {
     class Transform;
     class ActorList;
+    namespace Phys
+    {
+        struct MeshShape;
+    }
 } // namespace NS
 
 namespace NS
@@ -128,14 +132,16 @@ namespace NS
 
             [[nodiscard]] bool IsDragging() const noexcept { return m_dragging; }
 
-            //! 視線レイをアクターの OBB へ当て、最も手前の添字を返す
+            //! 候補の箱で絞り、三角形が渡された物は実際の面に当たる距離で選ぶ
             //! @param[in] localBounds worldMatrices と同じ添字の判定箱。行列のローカル空間で、中心は原点でなくてよい
             //! @param[in] pickMask 0 の添字を飛ばす。空なら全部を見る
+            //! @param[in] localMeshes 同じ添字の局所三角形。指定なし・nullptr は箱で判定する
             //! @return ヒットした場合はそのインデックス、ヒットしなかった場合は -1
             [[nodiscard]] static int PickNearestOBB(const Ray& ray,
                                                     std::span<const Matrix> worldMatrices,
                                                     std::span<const AABB> localBounds,
-                                                    std::span<const uint8> pickMask = {}) noexcept;
+                                                    std::span<const uint8> pickMask = {},
+                                                    std::span<const Phys::MeshShape* const> localMeshes = {}) noexcept;
 
             //! 指定されたギズモ軸に沿った移動後の新しいワールド座標を計算する
             [[nodiscard]] static Vector3 ComputeAxisMove(const Vector3& startPos,

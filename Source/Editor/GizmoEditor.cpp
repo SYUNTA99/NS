@@ -4,13 +4,17 @@
 #include "Editor/EditorActors.h"
 #include "Editor/GridMath.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
+#include "NSlib/Phys/MeshShape.h"
 
+#include <cmath>
 #include <limits>
 
 #include <imgui.h>
@@ -456,23 +460,32 @@ namespace NS
             std::vector<Matrix> worldMatrices;
             std::vector<AABB> localBounds;
             std::vector<uint8> visible;
+            std::vector<const Phys::MeshShape*> localMeshes;
             worldMatrices.reserve(candidates.size());
             localBounds.reserve(candidates.size());
             visible.reserve(candidates.size());
+            localMeshes.reserve(candidates.size());
             // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
             // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
             for (const SceneActor* obj : candidates)
             {
                 worldMatrices.push_back(obj->Root().WorldMatrix());
                 localBounds.push_back(PickLocalBounds(obj));
-                visible.push_back(static_cast<uint8>(obj->ModelClassObj() != nullptr));
+                const Model* model = obj->ModelClassObj();
+                visible.push_back(static_cast<uint8>(model != nullptr));
+                const Phys::MeshShape* mesh = nullptr;
+                if (model != nullptr && model->GetMesh() != nullptr)
+                {
+                    mesh = model->GetMesh()->Collision();
+                }
+                localMeshes.push_back(mesh);
             }
 
             // Model を持つアクターを優先して判定し、ヒットしなければ見えないカメラなども含めて再判定する
-            int hit = PickNearestOBB(ray, worldMatrices, localBounds, visible);
+            int hit = PickNearestOBB(ray, worldMatrices, localBounds, visible, localMeshes);
             if (hit < 0)
             {
-                hit = PickNearestOBB(ray, worldMatrices, localBounds);
+                hit = PickNearestOBB(ray, worldMatrices, localBounds, {}, localMeshes);
             }
 
             if (hit >= 0)
@@ -653,7 +666,8 @@ namespace NS
         int GizmoEditor::PickNearestOBB(const Ray& ray,
                                         std::span<const Matrix> worldMatrices,
                                         std::span<const AABB> localBounds,
-                                        std::span<const uint8> pickMask) noexcept
+                                        std::span<const uint8> pickMask,
+                                        std::span<const Phys::MeshShape* const> localMeshes) noexcept
         {
             const std::size_t count = std::min(worldMatrices.size(), localBounds.size());
             int best = -1;
@@ -667,11 +681,40 @@ namespace NS
 
                 const Matrix inv = worldMatrices[i].Invert();
                 const Vector3 boxCenter{localBounds[i].Center};
-                const Vector3 localOrigin = Vector3::Transform(ray.position, inv) - boxCenter;
+                const Vector3 meshOrigin = Vector3::Transform(ray.position, inv);
+                const Vector3 localOrigin = meshOrigin - boxCenter;
                 const Vector3 localDir = Vector3::TransformNormal(ray.direction, inv);
                 float t = 0.0f;
                 const Vector3 halfExtents{localBounds[i].Extents};
-                if (IntersectRayCenteredAABB(localOrigin, localDir, halfExtents, t) && (best < 0 || t < bestT))
+                if (!IntersectRayCenteredAABB(localOrigin, localDir, halfExtents, t))
+                {
+                    continue;
+                }
+                if (i < localMeshes.size() && localMeshes[i] != nullptr)
+                {
+                    const float directionLength = localDir.Length();
+                    if (!std::isfinite(directionLength) || directionLength <= 0.0f)
+                    {
+                        continue;
+                    }
+                    const Ray localRay{meshOrigin, localDir / directionLength};
+                    float nearest = std::numeric_limits<float>::infinity();
+                    for (const Phys::Triangle& triangle : localMeshes[i]->triangles)
+                    {
+                        float distance = 0.0f;
+                        if (localRay.Intersects(triangle.v0, triangle.v1, triangle.v2, distance))
+                        {
+                            nearest = std::min(nearest, distance);
+                        }
+                    }
+                    if (!std::isfinite(nearest))
+                    {
+                        continue;
+                    }
+                    // 局所の視線を正規化した距離は、拡縮の違う物どうしでそのまま比べられない
+                    t = nearest / directionLength;
+                }
+                if (best < 0 || t < bestT)
                 {
                     best = static_cast<int>(i);
                     bestT = t;
