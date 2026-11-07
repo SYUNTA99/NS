@@ -3,13 +3,15 @@
 #include "Editor/EditorAppearance.h"
 #include "Editor/InspectorReflection.h"
 #include "Editor/LevelEditorController.h"
-#include "Game/Level/GameScene.h"
 #include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/GameScene.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/CoreObject/Action/ActorActionInfo.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -17,9 +19,9 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
-#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -27,8 +29,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/Core/Windows/StringUtils.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 #include "TestRegistrations.h"
@@ -50,7 +50,8 @@
 
 using NS::Editor::LevelEditorController;
 
-// 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄) と、差分の保存と、エディタの書く先を縛る
+// 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄)
+// と、差分の保存と、エディタの書く先を縛る
 
 namespace
 {
@@ -426,7 +427,8 @@ TEST(ActorFile, GlobalFieldsAreTheFourLooks)
 TEST(ActorFile, PlacementWithAFieldTheSceneCannotWriteIsKeptAsJson)
 {
     const ScopedActorFileDirectory scope("PlacementRefused");
-    ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f))));
+    ASSERT_TRUE(
+        NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f))));
 
     nlohmann::json allowed = PlayerJson(1);
     NS::ActorJsonClassObjs(allowed)["Shadow"] = DiameterEntry(8.0f);
@@ -718,7 +720,7 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
     const NS::SceneActor& player = *playerOwned;
     nlohmann::json base = nlohmann::json::object();
     NS::ActorJsonClassObjs(base) = {{"Shadow", {{"基本直径", 1.0f}, {"最大投影距離", 12.0f}}},
-                                     {"Collider", {{"半径", 0.5f}}}};
+                                    {"Collider", {{"半径", 0.5f}}}};
 
     const auto layer = [](nlohmann::json classObjs) {
         nlohmann::json written = nlohmann::json::object();
@@ -748,8 +750,9 @@ TEST(ActorFile, MergeLayerOverlaysWrittenFieldsAndRejectsFieldsTheLayerCannotWri
     }
     {
         const TestLogCapture log;
-        EXPECT_FALSE(NS::MergeLayer(base, layer({{"無い部品", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, &player)
-                         .has_value());
+        EXPECT_FALSE(
+            NS::MergeLayer(base, layer({{"無い部品", {{"基本直径", 0.5f}}}}), NS::FieldDestination::Scene, &player)
+                .has_value());
         EXPECT_FALSE(NS::MergeLayer(base, layer({{"Params", {{"無い欄", 0.5f}}}}), NS::FieldDestination::Scene, &player)
                          .has_value());
         EXPECT_EQ(log.ErrorCount(), 2);
@@ -935,7 +938,8 @@ TEST(ActorFile, SaveThatCannotFinishLeavesTheFileAsItWas)
         const TestLogCapture log;
         EXPECT_FALSE(library.Save("HeavyRock"));
     }
-    const std::optional<std::string> text = FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor"));
+    const std::optional<std::string> text =
+        FileSystem::ReadAllText(FileSystem::Combine(scope.Path(), "HeavyRock.actor"));
     ASSERT_TRUE(text.has_value());
     EXPECT_EQ(*text, original);
 
@@ -1004,7 +1008,8 @@ namespace
     }
 } // namespace
 
-// シーンで上書きできない欄を直し終えると .actor のファイルへ書き、同じ .actor のアクターの全部に効く。戻すと全部が前の値へ戻る
+// シーンで上書きできない欄を直し終えると .actor のファイルへ書き、同じ .actor
+// のアクターの全部に効く。戻すと全部が前の値へ戻る
 TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
 {
     const ScopedActorFileDirectory scope("EditorWritesActorFile");
@@ -1109,7 +1114,8 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
     EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), otherDiameter + 3.0f);
 }
 
-// プレイ中にシーンで上書きできない欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN は出ない
+// プレイ中にシーンで上書きできない欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN
+// は出ない
 TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit)
 {
     const ScopedActorFileDirectory scope("PlayEditActorFile");
@@ -1151,7 +1157,8 @@ namespace
         return NS::Cast<NS::SceneActor>(editor.SelectedAsset());
     }
 
-    // インスペクタと同じ順で、素材の窓で選んだ .actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
+    // インスペクタと同じ順で、素材の窓で選んだ .actor の part の欄 fieldName を直し終える。値は呼ぶ前に part
+    // へ書いておく
     void EditActorFileField(LevelEditorController& editor,
                             const NS::SceneActor* actorFile,
                             const NS::Object* part,
@@ -1196,7 +1203,8 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     EXPECT_FLOAT_EQ(RadiusOf(again), 2.0f);
 }
 
-// 素材の窓ではシーンで上書きできる欄の .actor の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
+// 素材の窓ではシーンで上書きできる欄の .actor
+// の値も直せる。上書きの無いアクターは付いて来て、上書きのあるアクターは残る
 TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
 {
     const ScopedActorFileDirectory scope("AssetWindowMarkedField");
@@ -1450,7 +1458,8 @@ TEST(ActorFile, DerivedActorFileOverlaysItsBase)
     ASSERT_NE(values, nullptr);
     EXPECT_EQ(FlagOf(*values, "Params", "反動の線を描く"), false);
     EXPECT_FLOAT_EQ(ValueOf(*values, "Collider", "半径"), 2.0f);
-    EXPECT_FLOAT_EQ(ValueOf(*values, "Params", "歩き速度"), ValueOf(*library.Values("PlayerActor"), "Params", "歩き速度"));
+    EXPECT_FLOAT_EQ(ValueOf(*values, "Params", "歩き速度"),
+                    ValueOf(*library.Values("PlayerActor"), "Params", "歩き速度"));
 
     const std::unique_ptr<NS::SceneActor> player =
         NS::CreateActorOfClass("PlayerActor", NS::ActorInitInfo{.actorFile = "HeavyRock"});
@@ -1478,7 +1487,8 @@ TEST(ActorFile, SettingTheBaseChangesTheDerivedValues)
 TEST(ActorFile, DerivedActorFileThatCannotOverlayItsBaseIsNotRead)
 {
     const ScopedActorFileDirectory scope("DerivedRefused");
-    WriteActorFile(scope.Path(), "PlayerActor", ActorFileWith("PlayerActor", "Params", nlohmann::json::object()).dump());
+    WriteActorFile(
+        scope.Path(), "PlayerActor", ActorFileWith("PlayerActor", "Params", nlohmann::json::object()).dump());
     WriteActorFile(scope.Path(), "HeavyRock", DerivedActorFileWith("PlayerActor", "Params", LinesEntry(false)).dump());
     WriteActorFile(scope.Path(), "WideRock", DerivedActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f)).dump());
     WriteActorFile(scope.Path(), "LostRock", DerivedActorFileWith("NoSuchActor", "Params", LinesEntry(false)).dump());
@@ -1700,7 +1710,8 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     EXPECT_EQ(log.WarningCount(), 4);
 }
 
-// base の打ち間違いで全部の値を作れない .actor はライブラリに入らない。同じ名前で派生を作っても、手で直せるファイルを上書きしない
+// base の打ち間違いで全部の値を作れない .actor
+// はライブラリに入らない。同じ名前で派生を作っても、手で直せるファイルを上書きしない
 TEST(ActorFile, CreatingADerivedActorFileKeepsAFileTheLibraryDidNotLoad)
 {
     const ScopedActorFileDirectory scope("CreateDerivedKeepsFile");

@@ -1,9 +1,12 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/ActorInitInfo.h"
+#include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
@@ -14,17 +17,17 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
-#include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Phys/PhysicsScene.h"
-#include "NSlib/Core/Windows/Clock.h"
 
 #include <algorithm>
 #include <cmath>
 #include <optional>
+#include <variant>
 
 namespace NS
 {
@@ -39,6 +42,7 @@ namespace NS
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effect, "Effect")
     NS_CLASSOBJ(m_sound, "Sound")
+    // 保存のキーは改名の前の名前のまま。変えると、今ある .actor とシーンのファイルの部品の行が読めなくなる
     NS_CLASSOBJ(m_actorAction, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
@@ -50,9 +54,15 @@ namespace NS
         Appear();
     }
 
-    Transform& SceneActor::Root() noexcept { return *m_transform; }
+    Transform& SceneActor::Root() noexcept
+    {
+        return *m_transform;
+    }
 
-    const Transform& SceneActor::Root() const noexcept { return *m_transform; }
+    const Transform& SceneActor::Root() const noexcept
+    {
+        return *m_transform;
+    }
 
     const ClassObjInfo* SceneActor::FindReflectedMember(const void* member) const
     {
@@ -147,7 +157,8 @@ namespace NS
     {
         if (m_parent != nullptr)
         {
-            NS_LOG_ERROR(Scene, "子の {} は親と一緒に終わるので、単独では消さない。外すなら Disappear を使う", ClassName());
+            NS_LOG_ERROR(
+                Scene, "子の {} は親と一緒に終わるので、単独では消さない。外すなら Disappear を使う", ClassName());
             return;
         }
         Disappear();
@@ -208,7 +219,10 @@ namespace NS
         return m_scene->GetSceneRenderer();
     }
 
-    Vector3 SceneActor::GravityDirection() const noexcept { return Phys::k_GravityDirection; }
+    Vector3 SceneActor::GravityDirection() const noexcept
+    {
+        return Phys::k_GravityDirection;
+    }
 
     void SceneActor::AddGravity(Vector3& velocity, float strength, float dt) const noexcept
     {
@@ -307,10 +321,18 @@ namespace NS
     void SceneActor::ReloadActorFileOnlyValues()
     {
         ReloadActorFileOnlyValuesExceptActions();
-        if (m_actorAction)
+        ReloadActions();
+    }
+
+    void SceneActor::ReloadActions()
+    {
+        if (!m_actorAction)
         {
-            m_actorAction->ReloadActions(this);
+            return;
         }
+        m_actorAction->ReloadActions(ActorFileName());
+        RunActionOutputs();
+        PreloadActionSounds();
     }
 
     void SceneActor::ReloadActorFileOnlyValuesExceptActions()
@@ -319,6 +341,7 @@ namespace NS
         if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
         // clang-format on
+        PreloadHitReactionSounds();
     }
 
     void SceneActor::ReloadAssets()
@@ -414,16 +437,93 @@ namespace NS
         {
             return;
         }
-        // 描く物・センサー・当たりの body は壊さずに残す。消えている間、描く物は組が無効で、センサーは IsValid が偽になり、
-        // 当たりの body は物理シーンの外に出る
+        // 描く物・センサー・当たりの body は壊さずに残す。消えている間、描く物は組が無効で、センサーは IsValid
+        // が偽になり、 当たりの body は物理シーンの外に出る
         // clang-format off
         if (m_model) { HideModel(this, m_model.get()); }
         if (m_shadow) { HideModel(this, m_shadow.get()); }
+        // 動作は外す前に止める。入り切りの途中のセンサーを戻す頼みが、外したセンサーを開け直さないため
+        if (m_actorAction) { StopAction(); }
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
-        if (m_actorAction) { m_actorAction->Stop(); }
         if (m_hitReaction) { m_hitReaction->StopAll(this); }
     }
+
+    namespace
+    {
+        // 動作の項目 1 つを、持ち主の部品と場面の管理クラスへ頼む
+        struct ActionItemRunner
+        {
+            SceneActor& actor;
+            int length = 0; // 項目の長さ (フレーム数)
+
+            void operator()(const ActionAnimItem& anim) const
+            {
+                Animation* animation = actor.AnimationClassObj();
+                if (animation == nullptr || anim.clip == nullptr || anim.clip->Clip() == nullptr)
+                {
+                    return;
+                }
+                animation->SetLooping(anim.looping);
+                animation->Play(anim.clip->Clip(), anim.blendSeconds);
+            }
+
+            void operator()(const ActionSoundItem& sound) const { PlaySound(&actor, sound.sound, sound.volume); }
+
+            void operator()(const ActionEffectItem& effect) const
+            {
+                EffectObj* effects = actor.GetEffect();
+                if (effects == nullptr || effect.effect == nullptr)
+                {
+                    return;
+                }
+                Gfx::EffectPlayDesc desc;
+                desc.position = actor.Root().Position();
+                (void)effects->Play(actor.GetEffectScene(), effect.effect, desc);
+            }
+
+            void operator()(const ActionPadItem& pad) const
+            {
+                Scene* scene = actor.OwningScene();
+                if (scene == nullptr)
+                {
+                    return;
+                }
+                const PadRumbleDesc vibration{.left = pad.left, .right = pad.right, .frames = length};
+                if (pad.layered)
+                {
+                    scene->PadRumble().Blend(&actor, vibration);
+                    return;
+                }
+                scene->PadRumble().Start(&actor, vibration);
+            }
+
+            void operator()(const ActionCameraItem& camera) const
+            {
+                // カメラの無い場面 (試しの台) では揺らす先が無い
+                if (actor.GetCameraManager() == nullptr)
+                {
+                    return;
+                }
+                CameraTraumaDesc desc;
+                desc.trauma = camera.trauma;
+                if (!AddCameraTrauma(&actor, desc))
+                {
+                    NS_LOG_WARN(Scene, "動作のカメラの揺れのトラウマ {} が壊れていて、揺らさなかった", camera.trauma);
+                }
+            }
+
+            void operator()(const ActionScreenItem& screen) const
+            {
+                Scene* scene = actor.OwningScene();
+                if (scene == nullptr)
+                {
+                    return;
+                }
+                scene->HitScreen().StartFlash(&actor, length, screen.alpha);
+            }
+        };
+    } // namespace
 
     void SceneActor::RequestHitStop(int frames) noexcept { m_hitStopFrames = std::max(m_hitStopFrames, frames); }
 
@@ -466,12 +566,141 @@ namespace NS
         return m_hitReaction->OwnerRunsSince(first);
     }
 
-    ActorActionSelf SceneActor::ActorActionSelfOf() noexcept
+    bool SceneActor::StartAction(std::string_view name)
     {
-        return ActorActionSelf{.actor = this,
-                                  .reaction = m_hitReaction.get(),
-                                  .model = m_model.get(),
-                                  .sensors = m_hitSensors.get()};
+        if (!m_actorAction)
+        {
+            NS_LOG_WARN(Scene, "{} は ActorAction を持たないので、動作 {} を始めなかった", ClassName(), name);
+            return false;
+        }
+        if (!m_actorAction->Start(name))
+        {
+            NS_LOG_WARN(Scene, ".actor {} に動作 {} が無いので、始めなかった", ActorFileName(), name);
+            return false;
+        }
+        // 次の Update まで待つと、フレーム 0 のクリップの切り替えが 1 フレーム遅れる
+        AdvanceAction(0.0f);
+        return true;
+    }
+
+    bool SceneActor::StartStateAction(std::string_view name)
+    {
+        const IStateMachine* machine = GetStateMachine();
+        if (!m_actorAction || machine == nullptr)
+        {
+            NS_LOG_WARN(
+                Scene, "{} は ActorAction か状態機械を持たないので、動作 {} を始めなかった", ClassName(), name);
+            return false;
+        }
+        if (!m_actorAction->StartWithState(name, *machine))
+        {
+            NS_LOG_WARN(Scene, ".actor {} に動作 {} が無いので、始めなかった", ActorFileName(), name);
+            return false;
+        }
+        return true;
+    }
+
+    void SceneActor::StopAction()
+    {
+        if (!m_actorAction)
+        {
+            return;
+        }
+        m_actorAction->Stop();
+        RunActionOutputs();
+    }
+
+    void SceneActor::AdvanceAction(float playbackSeconds)
+    {
+        m_actorAction->Advance(ActionClock{.machine = GetStateMachine(), .playbackSeconds = playbackSeconds});
+        RunActionOutputs();
+    }
+
+    float SceneActor::ActionPlaybackSeconds() const noexcept
+    {
+        // 次の描画でアニメーションが進む秒と同じ。Animation を持たない時は 1 フレームの秒で進める
+        const float dt = GetFrameDelta(this);
+        if (m_animation)
+        {
+            return dt * m_animation->Speed();
+        }
+        return dt;
+    }
+
+    void SceneActor::PreloadActionSounds()
+    {
+        if (!m_sound)
+        {
+            return;
+        }
+        for (const ActorActionInfo& action : m_actorAction->Actions())
+        {
+            for (const ActorActionEvent& event : action.events)
+            {
+                if (const ActionSoundItem* sound = std::get_if<ActionSoundItem>(&event.item))
+                {
+                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
+                }
+            }
+        }
+    }
+
+    void SceneActor::PreloadHitReactionSounds()
+    {
+        if (!m_sound || !m_hitReaction)
+        {
+            return;
+        }
+        for (const HitReactionSet& set : m_hitReaction->Sets())
+        {
+            for (const HitReactionEntry& entry : set.entries)
+            {
+                if (const HitSoundItem* sound = std::get_if<HitSoundItem>(&entry.item))
+                {
+                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
+                }
+            }
+        }
+    }
+
+    void SceneActor::RunActionOutputs()
+    {
+        // 入り切りは名前でセンサーを引く。持たないセンサーは .actor の誤りなので知らせて飛ばす
+        for (const ActionSensorChange& change : m_actorAction->TakeSensorChanges())
+        {
+            HitSensor* sensor = nullptr;
+            if (m_hitSensors)
+            {
+                sensor = m_hitSensors->Find(change.sensor);
+            }
+            if (sensor == nullptr)
+            {
+                NS_LOG_WARN(Scene,
+                            ".actor {} の動作は、{} が持たないセンサー {} を指すので、切り替えなかった",
+                            ActorFileName(),
+                            ClassName(),
+                            change.sensor);
+                continue;
+            }
+            if (change.valid)
+            {
+                sensor->Validate();
+            }
+            else
+            {
+                sensor->Invalidate();
+            }
+        }
+        const ActorActionInfo* action = m_actorAction->CurrentAction();
+        if (action == nullptr)
+        {
+            return;
+        }
+        for (const std::size_t index : m_actorAction->StartedEvents())
+        {
+            const ActorActionEvent& event = action->events[index];
+            std::visit(ActionItemRunner{.actor = *this, .length = event.length}, event.item);
+        }
     }
 
     bool SceneActor::IsStopped() const noexcept
@@ -497,7 +726,7 @@ namespace NS
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
             if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
-            if (m_actorAction) { m_actorAction->Advance(ActorActionSelfOf()); }
+            if (m_actorAction) { AdvanceAction(ActionPlaybackSeconds()); }
             // clang-format on
             AfterStateStep();
         }

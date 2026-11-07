@@ -1,17 +1,22 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Audio/AudioDevice.h"
+#include "NSlib/Core/Windows/FileSystem.h"
+#include "NSlib/Core/Windows/Input.h"
 #include "NSlib/CoreObject/Action/ActorActionInfo.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
-#include "NSlib/Core/Windows/FileSystem.h"
-#include "NSlib/Core/Windows/Input.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 #include "TestViewCamera.h"
@@ -65,7 +70,7 @@ namespace
         lurch.distance.count = 2;
         lurch.distance.keys[0] = NS::Curve::Key{0.0f, 0.3f};
         lurch.distance.keys[1] = NS::Curve::Key{8.0f, 0.0f};
-        NS::HitCameraReboundSwayItem sway;
+        NS::HitCameraAwaySwayItem sway;
         sway.distance.count = 1;
         sway.distance.keys[0] = NS::Curve::Key{0.0f, -0.5f};
         NS::HitFlashItem flash;
@@ -76,7 +81,7 @@ namespace
         wave.radius.count = 2;
         wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.5f};
         wave.radius.keys[1] = NS::Curve::Key{10.0f, 6.0f};
-        NS::HitPadVibrationItem pad;
+        NS::HitPadItem pad;
         pad.byDirection = true;
         pad.upLeft.count = 1;
         pad.upLeft.keys[0] = NS::Curve::Key{0.0f, 0.8f};
@@ -85,6 +90,9 @@ namespace
         NS::HitOwnerItem ghost;
         ghost.name = "Ghost";
         ghost.values = {{"離れの画素", 112.5f}, {"明けの残像のフレーム数", 0.0f}};
+        NS::HitSoundItem sound;
+        sound.sound.name = "Player/Hit";
+        sound.volume = 0.4f;
 
         set.entries = {
             {shape, 18},
@@ -102,6 +110,8 @@ namespace
             {pad, 16},
             {NS::HitOthersStopItem{}, 2},
             {ghost, 12},
+            {sound, 1},
+            {NS::HitEffectItem{}, 1},
         };
         return set;
     }
@@ -135,6 +145,11 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     ASSERT_EQ(doc["items"].size(), written.entries.size());
     EXPECT_EQ(doc["items"][0]["type"].get<std::string>(), "Shape");
     EXPECT_EQ(doc["items"][14]["fields"]["値"]["離れの画素"].get<float>(), 112.5f);
+    // 種類の名前に遊びの言葉を使わない
+    EXPECT_EQ(doc["items"][8]["type"].get<std::string>(), "CameraAwaySway");
+    EXPECT_EQ(doc["items"][12]["type"].get<std::string>(), "Pad");
+    EXPECT_EQ(doc["items"][15]["type"].get<std::string>(), "Sound");
+    EXPECT_EQ(doc["items"][16]["type"].get<std::string>(), "Effect");
 
     std::string error;
     const std::optional<NS::HitReactionSet> read = NS::ParseHitReactionSet(doc, error);
@@ -150,10 +165,10 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     }
     EXPECT_EQ(NS::HitReactionSetToJson(*read), doc);
 
-    const NS::HitPadVibrationItem* pad = std::get_if<NS::HitPadVibrationItem>(&read->entries[12].item);
+    const NS::HitPadItem* pad = std::get_if<NS::HitPadItem>(&read->entries[12].item);
     ASSERT_NE(pad, nullptr);
     EXPECT_TRUE(pad->byDirection);
-    EXPECT_EQ(pad->upLeft, std::get<NS::HitPadVibrationItem>(written.entries[12].item).upLeft);
+    EXPECT_EQ(pad->upLeft, std::get<NS::HitPadItem>(written.entries[12].item).upLeft);
     const NS::HitZoomRollItem* zoom = std::get_if<NS::HitZoomRollItem>(&read->entries[5].item);
     ASSERT_NE(zoom, nullptr);
     EXPECT_EQ(zoom->delayFrames, 6);
@@ -161,11 +176,16 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->name, "Ghost");
     EXPECT_EQ(ghost->values, std::get<NS::HitOwnerItem>(written.entries[14].item).values);
+    const NS::HitSoundItem* sound = std::get_if<NS::HitSoundItem>(&read->entries[15].item);
+    ASSERT_NE(sound, nullptr);
+    EXPECT_EQ(sound->sound.name, "Player/Hit");
+    EXPECT_FLOAT_EQ(sound->volume, 0.4f);
 }
 
 TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 {
-    const nlohmann::json doc = nlohmann::json::parse(R"({"name": "TackleMiss", "stopFrames": 4, "古い欄": 1, "items": [
+    const nlohmann::json doc =
+        nlohmann::json::parse(R"({"name": "TackleMiss", "stopFrames": 4, "古い欄": 1, "items": [
         {"type": "Flash", "length": 2, "fields": {"濃さ": 0.3, "消した欄": 2}},
         {"type": "ZoomRoll", "length": 7},
         {"type": "Owner", "length": 1, "fields": {"名前": "HitEffect"}}
@@ -267,13 +287,13 @@ TEST(HitReactionSet, FrameCountsOutsideIntAreRejected)
         "below": -2147483649
     })");
     int frames = 7;
-    EXPECT_TRUE(NS::ReadHitReactionFrames(row, "max", frames));
+    EXPECT_TRUE(NS::ReadActorFileFrames(row, "max", frames));
     EXPECT_EQ(frames, 2147483647);
     for (const char* key : {"over", "wrapsToOne", "huge", "below"})
     {
         SCOPED_TRACE(key);
         frames = 7;
-        EXPECT_FALSE(NS::ReadHitReactionFrames(row, key, frames));
+        EXPECT_FALSE(NS::ReadActorFileFrames(row, key, frames));
         EXPECT_EQ(frames, 7);
     }
 }
@@ -288,7 +308,7 @@ TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
     NS::WriteHitReactionSets(actorFile, {MakeEveryKindSet()});
     NS::ActorActionInfo action;
     action.name = "BeforeContact";
-    action.events = {{NS::HitOthersStopItem{}, 4, 2}, {NS::HitFlashItem{}, 0, 6}};
+    action.events = {{NS::ActionCameraItem{}, 4, 2}, {NS::ActionScreenItem{}, 0, 6}};
     NS::WriteActorActions(actorFile, {action});
     const std::string text = actorFile.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
 
@@ -354,9 +374,12 @@ namespace
         {
             CreateClassObj(m_model);
             CreateClassObj(m_hitSensors);
-            m_bodySensor = m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
+            m_bodySensor =
+                m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
+            CreateClassObj(m_sound);
+            CreateClassObj(m_effect);
         }
         void AfterStateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
@@ -427,7 +450,8 @@ namespace
             {
                 partner = other;
             }
-            return owner->StartHitReaction(name, position, owner->HitSensorsClassObj()->Find("Body"), partner->HitSensorsClassObj()->Find("Body"));
+            return owner->StartHitReaction(
+                name, position, owner->HitSensorsClassObj()->Find("Body"), partner->HitSensorsClassObj()->Find("Body"));
         }
 
         // 1 固定フレーム。本番と同じ Scene::OnUpdate の 1 歩で、前の歩で頼まれた止めもこの歩の始めに効く
@@ -471,7 +495,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
 {
     NS::HitFlashItem flash;
     flash.alpha = 0.6f;
-    NS::HitPadVibrationItem pad;
+    NS::HitPadItem pad;
     pad.left = ConstantCurve(0.5f);
     NS::HitZoomRollItem zoom;
     zoom.zoom = 1.2f;
@@ -486,10 +510,9 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     NS::HitOwnerItem spark;
     spark.name = "Spark";
     spark.values = {{"大きさ", 2.0f}};
-    ProbeScene probes({SetOf("Hit",
-                             0,
-                             {{flash, 3}, {pad, 4}, {zoom, 4}, {lurch, 5}, {sink, 20}, {trauma, 1}, {spark, 2}})},
-                      NS::Vector3{0.0f, 1.0f, 4.0f});
+    ProbeScene probes(
+        {SetOf("Hit", 0, {{flash, 3}, {pad, 4}, {zoom, 4}, {lurch, 5}, {sink, 20}, {trauma, 1}, {spark, 2}})},
+        NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     const NS::Vector3 contact{0.0f, 1.0f, 3.5f};
     ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
@@ -500,8 +523,7 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.6f);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
-    EXPECT_NE(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)),
-              nullptr);
+    EXPECT_NE(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)), nullptr);
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
     EXPECT_FLOAT_EQ(probes.Cameras().Trauma(), 0.3f);
     const NS::HitOwnerRun* run = FindOwnerRun(probes.self->HitReactionClassObj(), "Spark");
@@ -515,6 +537,47 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     const TestLogCapture log;
     EXPECT_FALSE(probes.Start(probes.self, "Nothing", contact));
     EXPECT_EQ(log.WarningCount(), 1);
+}
+
+// 効果音とエフェクトの項目は、持ち主の部品 Sound と EffectObj へ頼む。効果音は束を読んだ時に Sound へ先に読む
+TEST(HitReactionStart, SoundAndEffectItemsAskTheOwnersParts)
+{
+    NS::Audio::AudioDevice device(false);
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    assets.SetAudioDevice(&device);
+    const NS::AssetManagerScope scope{assets};
+    NS::HitSoundItem sound;
+    sound.sound.name = "missing";
+    NS::HitEffectItem effect;
+    effect.effect = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
+    ASSERT_NE(effect.effect, nullptr);
+    const TestLogCapture log;
+    ProbeScene probes({SetOf("Hit", 0, {{sound, 1}, {effect, 1}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    // 無い音を先に読もうとして、AssetManager が ERROR を出す
+    EXPECT_GE(log.ErrorCount(), 1);
+    probes.scene.SetAudioDevice(&device);
+    const int warnings = log.WarningCount();
+
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
+    // 先に読んだ名前なので、Sound::Play は「読んでいない音」の WARN を出さない
+    EXPECT_EQ(log.WarningCount(), warnings);
+    const std::vector<NS::EffectRecord>& records = probes.self->GetEffect()->Records();
+    ASSERT_EQ(records.size(), 1u);
+    EXPECT_EQ(records[0].assetId, "6e4f2fccb9df5a339885b53d42fafd45");
+}
+
+// 重ねる振動の項目は、走っている振動を始め直さずに足す
+TEST(HitReactionStart, LayeredPadItemAddsToTheRunningVibration)
+{
+    NS::HitPadItem layered;
+    layered.layered = true;
+    layered.left = ConstantCurve(0.25f);
+    ProbeScene probes({SetOf("Layer", 0, {{layered, 2}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    probes.scene.PadRumble().Start(probes.self, NS::PadRumbleDesc{.left = ConstantCurve(0.5f), .frames = 4});
+    ASSERT_TRUE(probes.Start(probes.self, "Layer", NS::Vector3{}));
+    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 }
 
 // 束の止めの長さの間は、持ち主の状態と体の段が進まない。白と描く揺れは係と模型の歩で進む
@@ -576,7 +639,8 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
     EXPECT_EQ(FindOwnerRun(&reaction, "Long")->frame, 5);
 }
 
-// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームの CameraManager::OnTick は、始めたフレームの仮想カメラを追わせる
+// 寄りは始めるまでのフレーム数を数えてから寄せる。束を始めたフレームの CameraManager::OnTick
+// は、始めたフレームの仮想カメラを追わせる
 TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 {
     NS::HitZoomRollItem zoom;
@@ -597,13 +661,13 @@ TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
 }
 
-// つんのめり・反動の揺れ・寄りの傾き・横揺れの最初の振れは、自機のセンサーから相手のセンサーへの向きで決まる
+// つんのめり・離れる向きの揺れ・寄りの傾き・横揺れの最初の振れは、自機のセンサーから相手のセンサーへの向きで決まる
 // 震えと歪みの輪の中心は渡した位置
 TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
 {
     NS::HitCameraLurchItem lurch;
     lurch.distance = ConstantCurve(0.3f);
-    NS::HitCameraReboundSwayItem sway;
+    NS::HitCameraAwaySwayItem sway;
     sway.distance = ConstantCurve(0.3f);
     NS::HitZoomRollItem zoom;
     zoom.zoom = 1.1f;
@@ -647,7 +711,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
 // 向き別の振動は、自機から見た相手の向きの角度で隣り合う 2 本を混ぜる。右上 45 度なら右と上を半分ずつ
 TEST(HitReactionStart, DirectedVibrationBlendsTheTwoNeighborsTowardTheOther)
 {
-    NS::HitPadVibrationItem pad;
+    NS::HitPadItem pad;
     pad.byDirection = true;
     pad.rightLeft = ConstantCurve(1.0f);
     pad.leftLeft = ConstantCurve(0.6f);
@@ -841,7 +905,8 @@ TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
     EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
 }
 
-// 床の波は項目の長さだけ、渡した位置の真下を中心に、始めたフレームを 0 にした曲線の半径と強さで広がり、長さの終わりで消える
+// 床の波は項目の長さだけ、渡した位置の真下を中心に、始めたフレームを 0
+// にした曲線の半径と強さで広がり、長さの終わりで消える
 TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
 {
     NS::HitGroundWaveItem wave;
@@ -903,8 +968,7 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
     ASSERT_TRUE(probes.Start(probes.other, "Lurch", NS::Vector3{}));
     probes.other->Disappear();
     EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
-    EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)),
-              nullptr);
+    EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)), nullptr);
 }
 
 // 出荷の束と動作 (自機の .actor)
@@ -921,9 +985,9 @@ namespace
     ShippedActorFile ReadShippedActorFile(std::string_view name)
     {
         using NS::OS::FileSystem;
-        const std::string path = FileSystem::Combine(
-            FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "Actors"),
-            std::string{name} + ".actor");
+        const std::string path =
+            FileSystem::Combine(FileSystem::Combine(FileSystem::Combine(FileSystem::ContentRoot(), "Assets"), "Actors"),
+                                std::string{name} + ".actor");
         const std::optional<std::string> text = FileSystem::ReadAllText(path);
         if (!text.has_value())
         {
@@ -993,9 +1057,9 @@ TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
     ASSERT_NE(terrainShift, nullptr);
     EXPECT_EQ(terrainShift->stopFrames, 0);
     ASSERT_EQ(terrainShift->entries.size(), 1u);
-    const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadVibrationItem>(*terrainShift);
+    const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadItem>(*terrainShift);
     ASSERT_NE(shiftPad, nullptr);
-    EXPECT_TRUE(std::get<NS::HitPadVibrationItem>(shiftPad->item).layered);
+    EXPECT_TRUE(std::get<NS::HitPadItem>(shiftPad->item).layered);
 }
 
 // 束の値をフレーム数に読む時、非数・無限・負・int に入らない値は WARN を出して既定の数にする。

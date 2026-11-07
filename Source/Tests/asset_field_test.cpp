@@ -1,6 +1,7 @@
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerClips.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
@@ -15,16 +16,17 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
 
+#include <cstddef>
+#include <iterator>
 #include <memory>
 #include <string>
 
@@ -162,21 +164,28 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     EXPECT_EQ(NS::ApplyJsonFields(&animation, model), 0u);
     EXPECT_EQ(NS::SerializeClassObjFields(&animation)["モデル"], model["モデル"]);
 
-    const nlohmann::json clips{{"立ちのクリップ", "Assets/Models/__ns_missing_clip__.glb"},
-                               {"走りのクリップ", "Assets/Models/Xbot.glb#__ns_missing__"},
-                               {"跳ぶクリップ", "../__ns_outside__.glb"}};
-    GL::Player::PlayerClips playerClips;
-    EXPECT_EQ(NS::ApplyJsonFields(&playerClips, clips), 0u);
-    const nlohmann::json saved = NS::SerializeClassObjFields(&playerClips);
-    EXPECT_EQ(saved["立ちのクリップ"], clips["立ちのクリップ"]);
-    EXPECT_EQ(saved["走りのクリップ"], clips["走りのクリップ"]);
-    EXPECT_EQ(saved["跳ぶクリップ"], clips["跳ぶクリップ"]);
-    EXPECT_EQ(saved["歩きのクリップ"], nlohmann::json(""));
+    // 動作のアニメーションの項目のクリップの欄も、読めない道を保ったまま .actor の形へ書く
+    const char* const clipPaths[] = {
+        "Assets/Models/__ns_missing_clip__.glb", "Assets/Models/Xbot.glb#__ns_missing__", "../__ns_outside__.glb"};
+    NS::ActorActionInfo action;
+    action.name = "Wait";
+    for (const char* path : clipPaths)
+    {
+        NS::ActionAnimItem item;
+        NS::LoadAssetField(item.clip, path);
+        action.events.push_back(NS::ActorActionEvent{.item = item, .start = 0, .length = 1});
+    }
+    const nlohmann::json saved = NS::ActorActionInfoToJson(action);
+    ASSERT_EQ(saved["events"].size(), std::size(clipPaths));
+    for (std::size_t i = 0; i < std::size(clipPaths); ++i)
+    {
+        EXPECT_EQ(saved["events"][i]["fields"]["クリップ"], nlohmann::json(clipPaths[i])) << i;
+    }
 
     const NS::FieldDesc* modelField = NS::FindField(NS::Animation::StaticReflection(), "モデル");
     ASSERT_NE(modelField, nullptr);
     EXPECT_EQ(modelField->assetKind, NS::AssetKind::Model);
-    const NS::FieldDesc* clipField = NS::FindField(GL::Player::PlayerClips::StaticReflection(), "立ちのクリップ");
+    const NS::FieldDesc* clipField = NS::FindField(NS::ActionAnimItem::StaticReflection(), "クリップ");
     ASSERT_NE(clipField, nullptr);
     EXPECT_EQ(clipField->type, NS::FieldType::Asset);
     EXPECT_EQ(clipField->assetKind, NS::AssetKind::Animation);

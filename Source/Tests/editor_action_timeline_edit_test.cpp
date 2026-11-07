@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelineEdit.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
-#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/Reflection/ItemVariant.h"
 
 #include <gtest/gtest.h>
 
@@ -13,7 +13,7 @@ namespace
     {
         NS::ActorActionInfo action;
         action.name = "Test";
-        action.events = {{NS::HitOthersStopItem{}, 0, 12}, {NS::HitFlashItem{}, 13, 1}};
+        action.events = {{NS::ActionPadItem{}, 0, 12}, {NS::ActionScreenItem{}, 13, 1}};
         return action;
     }
 } // namespace
@@ -22,13 +22,13 @@ namespace
 TEST(EditorActionTimelineEdit, AddsAtThePlayheadAndStartsNoEarlierThanTheEntry)
 {
     NS::ActorActionInfo action = MakeTwoEvents();
-    const std::size_t flash = NS::Editor::AddActionEvent(action, *NS::MakeHitReactionItem("Flash"), 5);
-    ASSERT_EQ(flash, 2u);
+    const std::size_t screen = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionItem>("Screen"), 5);
+    ASSERT_EQ(screen, 2u);
     EXPECT_EQ(action.events[2].start, 5);
     EXPECT_EQ(action.events[2].length, 1);
-    EXPECT_EQ(NS::HitReactionItemTypeName(action.events[2].item), "Flash");
+    EXPECT_EQ(NS::ItemTypeName(action.events[2].item), "Screen");
 
-    const std::size_t early = NS::Editor::AddActionEvent(action, *NS::MakeHitReactionItem("Shape"), -3);
+    const std::size_t early = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionItem>("Sound"), -3);
     EXPECT_EQ(action.events[early].start, 0);
 }
 
@@ -39,7 +39,7 @@ TEST(EditorActionTimelineEdit, RemovesARow)
     EXPECT_FALSE(NS::Editor::RemoveActionEvent(action, 5));
     ASSERT_TRUE(NS::Editor::RemoveActionEvent(action, 0));
     ASSERT_EQ(action.events.size(), 1u);
-    EXPECT_EQ(NS::HitReactionItemTypeName(action.events[0].item), "Flash");
+    EXPECT_EQ(NS::ItemTypeName(action.events[0].item), "Screen");
 }
 
 // 帯の範囲は、事象の始まりと終わりを全部含む

@@ -1,9 +1,9 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/Object.h"
 
 #include "NSlib/Core/Types.h"
 #include <string>
@@ -15,7 +15,8 @@ namespace GL
         struct PlayerMotion;
 
         //! 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
-        //! 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*) に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
+        //! 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*)
+        //! に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
         // TODO: 部分的な JSON 適用では Model の undo を再反映できない。ResetFromJson で直る
         class PlayerAppearance : public NS::Object
         {
@@ -45,6 +46,11 @@ namespace GL
             //! @return 直前の Update で回した軸。止めの間は止まる前の軸、立ち姿では (1, 0, 0)
             [[nodiscard]] NS::Vector3 SpinAxis() const noexcept { return m_spinAxis; }
 
+            //! 水平の速さが最大の速さのこの比以上なら、歩きでなく走りの動作を流す
+            [[nodiscard]] float RunBlendRatio() const noexcept { return m_runBlendRatio; }
+            //! 歩きと走りの動作の再生速度の下限
+            [[nodiscard]] float MinPlaybackSpeed() const noexcept { return m_minPlaybackSpeed; }
+
             NS_REFLECT_BEGIN(PlayerAppearance, NS::Object)
             NS_GROUP("姿")
             NS_FIELD(m_standingMesh, "立ち姿のメッシュ")
@@ -53,10 +59,14 @@ namespace GL
             NS_FIELD(m_ballScale, "玉の倍率")
             NS_GROUP("エアダッシュの転がり")
             NS_FIELD(m_dashRollDegreesPerMeter, "エアダッシュの 1 m で回る角度")
+            NS_GROUP("歩きと走り")
+            NS_FIELD(m_runBlendRatio, "走りへ移る速さの比")
+            NS_FIELD(m_minPlaybackSpeed, "再生速度の下限")
             NS_REFLECT_END()
 
         private:
-            // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く。読めていない姿は Model の今のメッシュを残す
+            // 姿のメッシュを Model へ差し、姿の倍率を Model の局所の倍率へ書く
+            // 読めていない姿は、Model の今のメッシュを残す
             void ShowLook(NS::Model* renderer, NS::Mesh* mesh, const NS::Vector3& scale) noexcept;
 
             // 素材は AssetManager が持つ。欄は nullptr にならない
@@ -75,6 +85,11 @@ namespace GL
 
             // エアダッシュと地形の反動の間、1 m 進むごとに玉が回る角度 (度/m)。回る速さは今の速さに掛ける
             float m_dashRollDegreesPerMeter = 88.0f;
+
+            // 歩きと走りの動作は、再生速度を水平の速さ ÷
+            // 最大の速さにする。止まりかけで足が止まって見えないよう下限で止める
+            float m_runBlendRatio = 0.4f;
+            float m_minPlaybackSpeed = 0.5f;
         };
     } // namespace Player
 } // namespace GL

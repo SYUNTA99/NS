@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/ItemVariant.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
@@ -30,12 +31,12 @@ namespace NS
     {
         namespace
         {
-            // 事象の種類の並び。HitReactionItem の選択肢の順で、種類を足すとここにも出る
-            const std::vector<HitReactionItem>& ItemTypes()
+            // 項目の種類の並び。ActionItem の選択肢の順で、種類を足すとここにも出る
+            const std::vector<ActionItem>& ItemTypes()
             {
-                static const std::vector<HitReactionItem> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
-                    return std::vector<HitReactionItem>{HitReactionItem{std::in_place_index<I>}...};
-                }(std::make_index_sequence<std::variant_size_v<HitReactionItem>>{});
+                static const std::vector<ActionItem> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
+                    return std::vector<ActionItem>{ActionItem{std::in_place_index<I>}...};
+                }(std::make_index_sequence<std::variant_size_v<ActionItem>>{});
                 return s_types;
             }
 
@@ -137,10 +138,10 @@ namespace NS
             // 動作は作る時に .actor から写すので、この .actor と派生のアクターに読み直させてプレイにも効かせる
             for (SceneActor* actor : editor.Actors())
             {
-                if (ActorFileToWrite(actor, FieldDestination::ActorFile) == m_actorFile &&
-                    actor->ActorActionClassObj() != nullptr)
+                // 動作の部品が無いアクターでは ReloadActions が何もしない
+                if (ActorFileToWrite(actor, FieldDestination::ActorFile) == m_actorFile)
                 {
-                    actor->ActorActionClassObj()->ReloadActions(actor);
+                    actor->ReloadActions();
                 }
             }
         }
@@ -262,7 +263,9 @@ namespace NS
                     working->length = std::max(length, 0);
                     ApplyWorking(editor);
                 }
-                ImGui::SetItemTooltip("%s", "状態の中で進める Step の回数。この回数だけ OnStep が進んだ次の OnStep で IsStateEnd が真になる。0 は長さを決めていない");
+                ImGui::SetItemTooltip("%s",
+                                      "状態の中で進める Step の回数。この回数だけ OnStep が進んだ次の OnStep で "
+                                      "IsStateEnd が真になる。0 は長さを決めていない");
             }
             ImGui::SetNextItemWidth(160.0f);
             ImGui::InputTextWithHint("##new-name", "新しい動作の名前", m_newName, sizeof(m_newName));
@@ -270,12 +273,14 @@ namespace NS
             if (ImGui::Button("動作を足す"))
             {
                 const std::string newName{m_newName};
-                const bool taken = std::any_of(m_actions.begin(), m_actions.end(), [&newName](const ActorActionInfo& other) {
-                    return other.name == newName;
-                });
+                const bool taken =
+                    std::any_of(m_actions.begin(), m_actions.end(), [&newName](const ActorActionInfo& other) {
+                        return other.name == newName;
+                    });
                 if (newName.empty() || taken)
                 {
-                    m_status = std::format("足せない名前: \"{}\"。空の名前と、同じ .actor にある名前は使えない", newName);
+                    m_status =
+                        std::format("足せない名前: \"{}\"。空の名前と、同じ .actor にある名前は使えない", newName);
                 }
                 else
                 {
@@ -324,10 +329,9 @@ namespace NS
                 for (SceneActor* actor : editor.Actors())
                 {
                     // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
-                    if (ActorFileToWrite(actor, FieldDestination::ActorFile) == name &&
-                        actor->ActorActionClassObj() != nullptr)
+                    if (ActorFileToWrite(actor, FieldDestination::ActorFile) == name)
                     {
-                        actor->ActorActionClassObj()->ReloadActions(actor);
+                        actor->ReloadActions();
                     }
                 }
             }
@@ -368,15 +372,15 @@ namespace NS
         void ActionTimelinePanel::RenderAddButtons(LevelEditorController& editor) noexcept
         {
             ImGui::BeginDisabled(EditingAction() == nullptr);
-            const std::vector<HitReactionItem>& types = ItemTypes();
+            const std::vector<ActionItem>& types = ItemTypes();
             m_addType = std::clamp(m_addType, 0, static_cast<int>(types.size()) - 1);
             ImGui::SetNextItemWidth(160.0f);
-            const std::string currentLabel{HitReactionItemLabel(types[static_cast<std::size_t>(m_addType)])};
+            const std::string currentLabel{ItemLabel(types[static_cast<std::size_t>(m_addType)])};
             if (ImGui::BeginCombo("##add-type", currentLabel.c_str()))
             {
                 for (std::size_t i = 0; i < types.size(); ++i)
                 {
-                    const std::string label{HitReactionItemLabel(types[i])};
+                    const std::string label{ItemLabel(types[i])};
                     if (ImGui::Selectable(label.c_str(), static_cast<int>(i) == m_addType))
                     {
                         m_addType = static_cast<int>(i);
@@ -395,7 +399,8 @@ namespace NS
                 }
             }
             ImGui::SameLine();
-            // 入り切りはセンサーを名前で指す。名前を持たない入り切りは .actor に書けないので、選んだアクターの最初の物を入れる
+            // 入り切りはセンサーを名前で指す。名前を持たない入り切りは .actor
+            // に書けないので、選んだアクターの最初の物を入れる
             const std::span<HitSensor* const> sensors = SensorsOf(editor.SelectedActor(), m_actorFile);
             ImGui::BeginDisabled(sensors.empty());
             if (ImGui::Button("入り切りを足す"))
@@ -431,7 +436,7 @@ namespace NS
             {
                 const ActorActionEvent& event = action->events[row];
                 TimelineTrack track;
-                track.label = std::string{HitReactionItemLabel(event.item)};
+                track.label = std::string{ItemLabel(event.item)};
                 track.start = event.start;
                 track.length = event.length;
                 tracks.push_back(std::move(track));
@@ -467,11 +472,8 @@ namespace NS
                 }
             }
 
-            void DrawBoolComboRow(const char* label,
-                                  const char* id,
-                                  bool& flag,
-                                  const char* items,
-                                  bool& changed) noexcept
+            void DrawBoolComboRow(
+                const char* label, const char* id, bool& flag, const char* items, bool& changed) noexcept
             {
                 FieldRow(label);
                 int index = 0;
@@ -489,16 +491,16 @@ namespace NS
 
         void ActionTimelinePanel::RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept
         {
-            const std::string title{HitReactionItemLabel(event.item)};
+            const std::string title{ItemLabel(event.item)};
             ImGui::SeparatorText(title.c_str());
             if (BeginFieldTable("##event-row"))
             {
                 DrawFrameSpanRows(event.start, event.length, changed);
                 EndFieldTable();
             }
-            if (const ReflectionInfo* info = HitReactionItemReflection(event.item))
+            if (const ReflectionInfo* info = ItemReflection(event.item))
             {
-                const ValueEditResult fields = DrawReflectedValue(HitReactionItemFields(event.item), *info);
+                const ValueEditResult fields = DrawReflectedValue(ItemFields(event.item), *info);
                 changed |= fields.changed;
             }
         }

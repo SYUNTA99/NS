@@ -46,6 +46,10 @@ namespace NS
     //! .actor の文書へ動作の並び actions を書く。空の並びなら鍵ごと消す
     void SetActorFileActions(nlohmann::json& actorFile, nlohmann::json list);
 
+    //! row の鍵 key の値を 0 以上の整数のフレーム数として out へ読む。無い・整数でない・負・int に入らない場合は
+    //! false で、out は変えない。束と動作の長さ・始まりを読む
+    [[nodiscard]] bool ReadActorFileFrames(const nlohmann::json& row, std::string_view key, int& out);
+
     //! path の .actor を読み、参照の欄を落とした文書を返す
     //! 開けない・大きすぎる・JSON でない・知らない頭の鍵・class が無いか登録されていない物は ERROR で std::nullopt
     [[nodiscard]] std::optional<nlohmann::json> ReadActorFileAt(const std::string& path);
@@ -118,10 +122,10 @@ namespace NS
         // name のファイルが外で変更されていなければ document を書き、書いた中身を m_fileTexts に持つ
         [[nodiscard]] bool WriteIfNotChangedOutside(std::string_view name, const nlohmann::json& document);
 
-        std::string m_directory;                                                     // 空なら既定のディレクトリ
-        std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;             // 名前から .actor の文書
-        std::map<std::string, nlohmann::json, std::less<>> m_mergedValues;           // 名前から全部の値
-        std::map<std::string, std::string, std::less<>> m_fileTexts;                 // 名前から、読んだか書いた時のファイルの中身
+        std::string m_directory;                                           // 空なら既定のディレクトリ
+        std::map<std::string, nlohmann::json, std::less<>> m_actorFiles;   // 名前から .actor の文書
+        std::map<std::string, nlohmann::json, std::less<>> m_mergedValues; // 名前から全部の値
+        std::map<std::string, std::string, std::less<>> m_fileTexts;       // 名前から、読んだか書いた時のファイルの中身
         bool m_loaded = false;
     };
 

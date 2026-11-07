@@ -1,24 +1,24 @@
+#include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorActors.h"
 #include "Editor/LevelEditorController.h"
-#include "Editor/ActionTimelinePanel.h"
 #include "Editor/QuitModal.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
-#include "NSlib/CoreObject/IGet/IGetEffect.h"
-#include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Core/Windows/Window.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Effect.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -891,8 +891,8 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], "");
     ASSERT_TRUE(controller.Editor().PerformRedo());
     EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], core->Id());
-    const std::optional<nlohmann::json> written = NS::ReadActorFileAt(
-        NS::OS::FileSystem::Combine(directory.Path(), "EffectEditorRock.actor"));
+    const std::optional<nlohmann::json> written =
+        NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "EffectEditorRock.actor"));
     ASSERT_TRUE(written.has_value());
     EXPECT_EQ(NS::ActorJsonClassObjs(*written)["EffectFieldPart"]["資産"], core->Id());
 }
@@ -972,8 +972,8 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingAfterTheSceneHistoryIsCleared)
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
     EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-    const std::optional<nlohmann::json> beforeRetry = NS::ReadActorFileAt(
-        NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
+    const std::optional<nlohmann::json> beforeRetry =
+        NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(beforeRetry.has_value());
     EXPECT_FLOAT_EQ(NS::ActorJsonClassObjs(*beforeRetry)["Params"]["クリアの暗転秒"].get<float>(), 0.4f);
     std::error_code error;
@@ -981,8 +981,8 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingAfterTheSceneHistoryIsCleared)
     EXPECT_FALSE(error);
     EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
     EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
-    const std::optional<nlohmann::json> afterRetry = NS::ReadActorFileAt(
-        NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
+    const std::optional<nlohmann::json> afterRetry =
+        NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(afterRetry.has_value());
     EXPECT_FLOAT_EQ(NS::ActorJsonClassObjs(*afterRetry)["Params"]["クリアの暗転秒"].get<float>(), 0.8f);
 }

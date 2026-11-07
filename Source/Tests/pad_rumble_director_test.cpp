@@ -27,9 +27,9 @@ namespace
         return NS::OS::Input::Get().Gamepad().Vibration().left;
     }
 
-    NS::HitPadVibration FadingLeft(float start, int frames)
+    NS::PadRumbleDesc FadingLeft(float start, int frames)
     {
-        NS::HitPadVibration pad;
+        NS::PadRumbleDesc pad;
         pad.left.count = 2;
         pad.left.keys[0] = NS::Curve::Key{0.0f, start};
         pad.left.keys[1] = NS::Curve::Key{static_cast<float>(frames), 0.0f};
@@ -47,8 +47,8 @@ TEST(PadRumbleDirector, BlendedVibrationsAddAndEndOnTheirOwnLength)
     NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(pad, nullptr);
 
-    const NS::HitPadVibration first = FadingLeft(0.5f, 4);
-    const NS::HitPadVibration second = FadingLeft(0.25f, 2);
+    const NS::PadRumbleDesc first = FadingLeft(0.5f, 4);
+    const NS::PadRumbleDesc second = FadingLeft(0.25f, 2);
     pad->Start(player, first);
     pad->Blend(player, second);
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);

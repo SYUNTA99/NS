@@ -2,13 +2,14 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
-#include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/detail/ActorFileItems.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -30,26 +31,6 @@ namespace NS
 {
     namespace
     {
-        template <class Kind>
-        concept HasReflectedFields = requires { Kind::StaticReflection(); };
-
-        template <class Kind> void TryMakeItem(std::string_view name, std::optional<HitReactionItem>& result)
-        {
-            if (!result.has_value() && name == Kind{}.typeName)
-            {
-                result.emplace(std::in_place_type<Kind>);
-            }
-        }
-
-        template <class... Kinds>
-        [[nodiscard]] std::optional<HitReactionItem> MakeByName(std::string_view name,
-                                                                std::type_identity<std::variant<Kinds...>>)
-        {
-            std::optional<HitReactionItem> result;
-            (TryMakeItem<Kinds>(name, result), ...);
-            return result;
-        }
-
         // 持ち主へ渡す項目の値を書く欄の鍵。リフレクションの欄の表に無いので、欄を当てる前に外す
         constexpr const char* k_OwnerValuesKey = "値";
 
@@ -71,38 +52,42 @@ namespace NS
             return true;
         }
 
-        // 欄 fields を item へ当てる。壊れていれば error に理由を書いて false
-        [[nodiscard]] bool ApplyItemFields(HitReactionItem& item, const nlohmann::json& fields, std::string& error)
+        // 持ち主へ渡す項目の値は欄の表に無いので、欄を当てる前に fields から読んで外す。壊れていれば error
+        // に理由を書いて false
+        [[nodiscard]] bool ReadOwnerFields(HitReactionItem& item, nlohmann::json& fields, std::string& error)
         {
-            if (!fields.is_object())
+            HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item);
+            if (owner == nullptr)
             {
-                error = "欄 fields が object でない";
+                return true;
+            }
+            const nlohmann::json::const_iterator values = fields.find(k_OwnerValuesKey);
+            if (values == fields.end())
+            {
+                return true;
+            }
+            if (!ReadOwnerValues(*values, owner->values))
+            {
+                error = std::format("欄 {} が名前から数への object でない", k_OwnerValuesKey);
                 return false;
             }
-            nlohmann::json reflected = fields;
-            if (HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item))
-            {
-                const nlohmann::json::const_iterator values = fields.find(k_OwnerValuesKey);
-                if (values != fields.end())
-                {
-                    if (!ReadOwnerValues(*values, owner->values))
-                    {
-                        error = std::format("欄 {} が名前から数への object でない", k_OwnerValuesKey);
-                        return false;
-                    }
-                    reflected.erase(k_OwnerValuesKey);
-                }
-            }
-            const ReflectionInfo* info = HitReactionItemReflection(item);
-            if (info != nullptr)
-            {
-                (void)ApplyReflectedFields(HitReactionItemFields(item), *info, reflected);
-            }
-            else if (!reflected.empty())
-            {
-                NS_LOG_WARN(Scene, "種類 {} は欄を持たないので、欄を読まない", HitReactionItemTypeName(item));
-            }
+            fields.erase(k_OwnerValuesKey);
             return true;
+        }
+
+        // item の種類 type と欄 fields を row へ書く。持ち主へ渡す項目は値も欄に書く
+        void WriteItem(const HitReactionItem& item, nlohmann::json& row)
+        {
+            detail::WriteItemRow(item, row);
+            if (const HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item))
+            {
+                nlohmann::json values = nlohmann::json::object();
+                for (const std::pair<const std::string, float>& value : owner->values)
+                {
+                    values[value.first] = value.second;
+                }
+                row["fields"][k_OwnerValuesKey] = std::move(values);
+            }
         }
 
         // doc の鍵のうち known に無い物を WARN で知らせる。読まずに飛ばす
@@ -125,14 +110,15 @@ namespace NS
                                                                  std::string& error)
         {
             std::string reason;
-            std::optional<HitReactionItem> item = ParseHitReactionItem(row, {"length"}, reason);
+            std::optional<HitReactionItem> item =
+                detail::ParseItemRow<HitReactionItem>(row, {"length"}, reason, &ReadOwnerFields);
             if (!item.has_value())
             {
                 error = std::format("{} 番目の項目: {}", index, reason);
                 return std::nullopt;
             }
             HitReactionEntry entry{.item = std::move(*item)};
-            if (!ReadHitReactionFrames(row, "length", entry.length))
+            if (!ReadActorFileFrames(row, "length", entry.length))
             {
                 error = std::format("{} 番目の項目の長さ length が 0 以上の整数でない", index);
                 return std::nullopt;
@@ -254,7 +240,6 @@ namespace NS
         const HitReactionSelf& owner;
         const HitStartContext& context;
         int length;
-        int shapeFrame = 0; // 形を描き始めるフレーム
 
         void operator()(const HitShapeItem& shape) const
         {
@@ -273,8 +258,7 @@ namespace NS
                                                 .height = shape.height,
                                                 .side = shape.side,
                                                 .alongDirection = alongDirection,
-                                                .length = length,
-                                                .firstFrame = shapeFrame});
+                                                .length = length});
         }
 
         void operator()(const HitBodyShakeItem& shake) const
@@ -296,14 +280,14 @@ namespace NS
             {
                 firstSign = -1.0f;
             }
-            model->StartDrawShake(DrawShakeDesc{
-                .shape = DrawShakeShape::Side,
-                .axis = context.cameraRight,
-                .amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, actor->Root().Position()),
-                .length = length,
-                .seed = context.seed,
-                .firstSign = firstSign,
-                .flipFrames = shake.flipFrames});
+            model->StartDrawShake(
+                DrawShakeDesc{.shape = DrawShakeShape::Side,
+                              .axis = context.cameraRight,
+                              .amplitude = ScreenPixelsToMeters(shake.amplitudePixels, *pose, actor->Root().Position()),
+                              .length = length,
+                              .seed = context.seed,
+                              .firstSign = firstSign,
+                              .flipFrames = shake.flipFrames});
         }
 
         void operator()(const HitBodyTremorItem& tremor) const
@@ -386,24 +370,22 @@ namespace NS
             {
                 return;
             }
-            (void)reaction.StartNudge(owner.actor,
-                                      CameraNudgeDesc{.direction = context.towardOther,
-                                                      .distance = lurch.distance,
-                                                      .frames = length,
-                                                      .onScreen = false});
+            (void)reaction.StartNudge(
+                owner.actor,
+                CameraNudgeDesc{
+                    .direction = context.towardOther, .distance = lurch.distance, .frames = length, .onScreen = false});
         }
 
-        void operator()(const HitCameraReboundSwayItem& sway) const
+        void operator()(const HitCameraAwaySwayItem& sway) const
         {
             if (!context.hasToward)
             {
                 return;
             }
-            (void)reaction.StartNudge(owner.actor,
-                                      CameraNudgeDesc{.direction = -context.towardOther,
-                                                      .distance = sway.distance,
-                                                      .frames = length,
-                                                      .onScreen = true});
+            (void)reaction.StartNudge(
+                owner.actor,
+                CameraNudgeDesc{
+                    .direction = -context.towardOther, .distance = sway.distance, .frames = length, .onScreen = true});
         }
 
         void operator()(const HitFlashItem& flash) const
@@ -439,7 +421,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitPadVibrationItem& pad) const
+        void operator()(const HitPadItem& pad) const
         {
             PadRumbleDirector* rumble = PadRumbleOf(owner.actor);
             if (rumble == nullptr)
@@ -448,7 +430,7 @@ namespace NS
             }
             if (!pad.byDirection)
             {
-                const HitPadVibration vibration{.left = pad.left, .right = pad.right, .frames = length};
+                const PadRumbleDesc vibration{.left = pad.left, .right = pad.right, .frames = length};
                 if (pad.layered)
                 {
                     rumble->Blend(owner.actor, vibration);
@@ -476,7 +458,7 @@ namespace NS
                 {
                     continue;
                 }
-                const HitPadVibration vibration{.left = direction.left->Scaled(direction.weight),
+                const PadRumbleDesc vibration{.left = direction.left->Scaled(direction.weight),
                                                 .right = direction.right->Scaled(direction.weight),
                                                 .frames = length};
                 if (started)
@@ -501,6 +483,20 @@ namespace NS
         {
             reaction.m_ownerRuns.push_back(
                 HitOwnerRun{.item = ownerItem, .length = length, .frame = 0, .position = context.position});
+        }
+
+        void operator()(const HitSoundItem& sound) const { PlaySound(owner.actor, sound.sound, sound.volume); }
+
+        void operator()(const HitEffectItem& effect) const
+        {
+            EffectObj* effects = owner.actor->GetEffect();
+            if (effects == nullptr || effect.effect == nullptr)
+            {
+                return;
+            }
+            Gfx::EffectPlayDesc desc;
+            desc.position = context.position;
+            (void)effects->Play(owner.actor->GetEffectScene(), effect.effect, desc);
         }
     };
 
@@ -574,25 +570,6 @@ namespace NS
                        entry.item);
         }
         return set->stopFrames;
-    }
-
-    void HitReaction::StartItem(const HitReactionSelf& owner,
-                                const HitReactionItem& item,
-                                int length,
-                                const Vector3& position,
-                                const HitSensor* self,
-                                const HitSensor* other,
-                                int shapeFrame)
-    {
-        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::StartItem: 持ち主が null");
-        NS_ASSERT(Scene, shapeFrame >= 0, "HitReaction::StartItem: 形を描き始めるフレーム {} が負", shapeFrame);
-        NS_ASSERT(Scene, self != nullptr && other != nullptr, "HitReaction::StartItem: センサーが null");
-        ++m_startCount;
-        const HitStartContext context = MakeStartContext(owner.actor, m_startCount, position, *self, *other);
-        std::visit(
-            ItemStarter{
-                .reaction = *this, .owner = owner, .context = context, .length = length, .shapeFrame = shapeFrame},
-            item);
     }
 
     void HitReaction::AdvanceOwnerRuns() noexcept
@@ -764,135 +741,6 @@ namespace NS
         }
     }
 
-    std::string_view HitReactionItemTypeName(const HitReactionItem& item) noexcept
-    {
-        return std::visit([]<class Kind>(const Kind& value) -> std::string_view { return value.typeName; }, item);
-    }
-
-    std::string_view HitReactionItemLabel(const HitReactionItem& item) noexcept
-    {
-        return std::visit([]<class Kind>(const Kind& value) -> std::string_view { return value.label; }, item);
-    }
-
-    std::optional<HitReactionItem> MakeHitReactionItem(std::string_view typeName)
-    {
-        return MakeByName(typeName, std::type_identity<HitReactionItem>{});
-    }
-
-    const ReflectionInfo* HitReactionItemReflection(const HitReactionItem& item) noexcept
-    {
-        return std::visit(
-            []<class Kind>(const Kind&) -> const ReflectionInfo* {
-                if constexpr (HasReflectedFields<Kind>)
-                {
-                    return Kind::StaticReflection();
-                }
-                else
-                {
-                    return nullptr;
-                }
-            },
-            item);
-    }
-
-    void* HitReactionItemFields(HitReactionItem& item) noexcept
-    {
-        return std::visit([]<class Kind>(Kind& value) -> void* { return &value; }, item);
-    }
-
-    const void* HitReactionItemFields(const HitReactionItem& item) noexcept
-    {
-        return std::visit([]<class Kind>(const Kind& value) -> const void* { return &value; }, item);
-    }
-
-    bool ReadHitReactionFrames(const nlohmann::json& row, std::string_view key, int& out)
-    {
-        const nlohmann::json::const_iterator value = row.find(key);
-        // 1.5 のような整数でない数を断る
-        if (value == row.end() || !value->is_number_integer())
-        {
-            return false;
-        }
-        // int へ写す前に範囲を見る。写してから比べると、int の外の数が切り詰められて別の長さで通る
-        if (value->is_number_unsigned())
-        {
-            const std::uint64_t frames = value->get<std::uint64_t>();
-            if (frames > static_cast<std::uint64_t>(std::numeric_limits<int>::max()))
-            {
-                return false;
-            }
-            out = static_cast<int>(frames);
-            return true;
-        }
-        const std::int64_t frames = value->get<std::int64_t>();
-        if (frames < 0 || frames > std::numeric_limits<int>::max())
-        {
-            return false;
-        }
-        out = static_cast<int>(frames);
-        return true;
-    }
-
-    std::optional<HitReactionItem> ParseHitReactionItem(const nlohmann::json& row,
-                                                        std::initializer_list<std::string_view> rowKeys,
-                                                        std::string& error)
-    {
-        if (!row.is_object())
-        {
-            error = "行が object でない";
-            return std::nullopt;
-        }
-        const nlohmann::json::const_iterator type = row.find("type");
-        if (type == row.end() || !type->is_string())
-        {
-            error = "種類 type が無い";
-            return std::nullopt;
-        }
-        std::optional<HitReactionItem> item = MakeHitReactionItem(type->get<std::string>());
-        if (!item.has_value())
-        {
-            error = std::format("種類 {} を知らない", type->get<std::string>());
-            return std::nullopt;
-        }
-        for (nlohmann::json::const_iterator entry = row.begin(); entry != row.end(); ++entry)
-        {
-            const bool known = entry.key() == "type" || entry.key() == "fields" ||
-                               std::find(rowKeys.begin(), rowKeys.end(), entry.key()) != rowKeys.end();
-            if (!known)
-            {
-                NS_LOG_WARN(
-                    Scene, "種類 {} の行に読み手のいない欄 {} があり、読まない", type->get<std::string>(), entry.key());
-            }
-        }
-        const nlohmann::json::const_iterator fields = row.find("fields");
-        if (fields != row.end() && !ApplyItemFields(*item, *fields, error))
-        {
-            return std::nullopt;
-        }
-        return item;
-    }
-
-    void WriteHitReactionItem(const HitReactionItem& item, nlohmann::json& row)
-    {
-        row["type"] = HitReactionItemTypeName(item);
-        nlohmann::json fields = nlohmann::json::object();
-        const ReflectionInfo* info = HitReactionItemReflection(item);
-        if (info != nullptr)
-        {
-            fields = SerializeReflectedFields(HitReactionItemFields(item), *info);
-        }
-        if (const HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item))
-        {
-            nlohmann::json values = nlohmann::json::object();
-            for (const std::pair<const std::string, float>& value : owner->values)
-            {
-                values[value.first] = value.second;
-            }
-            fields[k_OwnerValuesKey] = std::move(values);
-        }
-        row["fields"] = std::move(fields);
-    }
-
     std::optional<HitReactionSet> ParseHitReactionSet(const nlohmann::json& doc, std::string& error)
     {
         if (!doc.is_object())
@@ -908,7 +756,7 @@ namespace NS
             return std::nullopt;
         }
         set.name = name->get<std::string>();
-        if (doc.contains("stopFrames") && !ReadHitReactionFrames(doc, "stopFrames", set.stopFrames))
+        if (doc.contains("stopFrames") && !ReadActorFileFrames(doc, "stopFrames", set.stopFrames))
         {
             error = std::format("束 {} の止めの長さ stopFrames が 0 以上の整数でない", set.name);
             return std::nullopt;
@@ -942,7 +790,7 @@ namespace NS
         for (const HitReactionEntry& entry : set.entries)
         {
             nlohmann::json row;
-            WriteHitReactionItem(entry.item, row);
+            WriteItem(entry.item, row);
             row["length"] = entry.length;
             items.push_back(std::move(row));
         }

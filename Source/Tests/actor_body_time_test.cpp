@@ -2,13 +2,13 @@
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Core/Windows/Clock.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
 #include "Tests/TestSceneSetup.h"
@@ -28,10 +28,7 @@ namespace
         static constexpr float k_Speed = 6.0f;
 
     protected:
-        void BodyStep() override
-        {
-            Root().ShiftPosition(NS::Vector3{k_Speed * NS::GetFrameDelta(this), 0.0f, 0.0f});
-        }
+        void BodyStep() override { Root().ShiftPosition(NS::Vector3{k_Speed * NS::GetFrameDelta(this), 0.0f, 0.0f}); }
     };
 
     void PlaceBodies(NS::Scene& scene, bool withPlayer)
@@ -93,13 +90,13 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
     for (int index = 0; index < 2; ++index)
     {
         // 回ごとにシーンを分け、前の回の自機の状態を持ち越さない
+        const ScopedPlayerActionClips clips({{"Run", "Assets/Models/Xbot.glb#run"}});
         NS::Scene scene;
         PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
         ASSERT_NE(spawned, nullptr);
         PlayerActor& player = *spawned;
         NS::Animation* animation = player.AnimationClassObj();
         ASSERT_NE(animation, nullptr);
-        ASSERT_EQ(UseTestClips(&player, {{"走りのクリップ", "Assets/Models/Xbot.glb#run"}}), 0u);
         ASSERT_TRUE(NS::SetFrameRate(&player, static_cast<float>(index + 1)));
         player.Body().SetGrounded(true);
         player.Body().SetLateralVelocity(NS::Vector3{4.0f, 0.0f, 0.0f});

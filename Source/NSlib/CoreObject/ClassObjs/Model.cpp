@@ -132,7 +132,7 @@ namespace NS
 
     void Model::StartDrawShape(const DrawShapeDesc& desc) noexcept
     {
-        m_shape = ShapeRun{.desc = desc, .frame = std::max(desc.firstFrame, 0) - 1, .active = true};
+        m_shape = ShapeRun{.desc = desc, .frame = -1, .active = true};
     }
 
     void Model::StopDrawShape() noexcept

@@ -2,8 +2,10 @@
 
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
+#include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 
@@ -22,7 +24,7 @@
 
 namespace NS
 {
-    // 名前の束と動作のタイムラインが使う項目の型。曲線の横軸は項目が始まったフレームを 0 にしたフレーム数。
+    // 名前の束が使う項目の型。曲線の横軸は項目が始まったフレームを 0 にしたフレーム数。
     // 向きを使う項目は、束を始める時に渡す 2 つのセンサーの位置から向きを出す
 
     //! 持ち主の描く形の倍率。縮み・潰れ・伸びを 1 本の流れで持つ
@@ -49,7 +51,8 @@ namespace NS
         std::string_view typeName = "BodyShake";
         std::string_view label = "横揺れ";
 
-        //! 最初の振れ幅。高さ 720 ピクセルの画面の上のピクセル数で持ち、始めたフレームにカメラとの距離からゲームの中の距離を出す
+        //! 最初の振れ幅。高さ 720 ピクセルの画面の上のピクセル数で持つ
+        //! 始めたフレームに、カメラとの距離からゲームの中の距離を出す
         float amplitudePixels = 10.0f;
         int flipFrames = 1; // 左右を入れ替えるフレーム数。1 未満は 1
 
@@ -179,14 +182,14 @@ namespace NS
 
     //! カメラの位置と注視点を、相手から離れる向きの画面方向へ曲線の距離だけずらす
     //! 奥行きの成分は捨て、画面方向が無ければ揺らさない。向きと地平線は変えない
-    struct HitCameraReboundSwayItem
+    struct HitCameraAwaySwayItem
     {
-        std::string_view typeName = "CameraReboundSway";
-        std::string_view label = "反動の揺れ";
+        std::string_view typeName = "CameraAwaySway";
+        std::string_view label = "離れる向きの揺れ";
 
         Curve distance{}; // ずらす距離 (m)。負は相手へ向かう向き
 
-        NS_REFLECT_BEGIN(HitCameraReboundSwayItem, void)
+        NS_REFLECT_BEGIN(HitCameraAwaySwayItem, void)
         NS_FIELD(distance, "ずらす距離")
         NS_REFLECT_END_VALUE()
     };
@@ -239,9 +242,9 @@ namespace NS
     //! パッドの振動。左右のモーターの速さの曲線で、長さの間だけ書く
     //! 向き別の時は、持ち主から見た相手の向きの角度で隣り合う 2 つの向きの曲線を混ぜる。
     //! 向きは右・左・上・下で、向き無しの曲線は使わない
-    struct HitPadVibrationItem
+    struct HitPadItem
     {
-        std::string_view typeName = "PadVibration";
+        std::string_view typeName = "Pad";
         std::string_view label = "パッドの振動";
 
         bool byDirection = false; // 向き別の 4 組を使う場合 true。偽なら向き無しの 1 組
@@ -257,7 +260,7 @@ namespace NS
         Curve downLeft{}; // 相手が下の時の左のモーター
         Curve downRight{};
 
-        NS_REFLECT_BEGIN(HitPadVibrationItem, void)
+        NS_REFLECT_BEGIN(HitPadItem, void)
         NS_FIELD(byDirection, "向き別")
         NS_FIELD(layered, "前の振動に重ねる")
         NS_FIELD(left, "左の速さ")
@@ -296,6 +299,34 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
+    //! 持ち主の Sound で効果音を鳴らす。動作の項目 ActionSoundItem と同じ頼む先
+    struct HitSoundItem
+    {
+        std::string_view typeName = "Sound";
+        std::string_view label = "効果音";
+
+        SoundName sound{};   // 鳴らす音
+        float volume = 1.0f; // 音量 0〜1
+
+        NS_REFLECT_BEGIN(HitSoundItem, void)
+        NS_FIELD(sound, "音")
+        NS_FIELD(volume, "音量")
+        NS_REFLECT_END_VALUE()
+    };
+
+    //! 持ち主の EffectObj で、束を始めた位置にエフェクトを出す。動作の項目 ActionEffectItem と同じ頼む先
+    struct HitEffectItem
+    {
+        std::string_view typeName = "Effect";
+        std::string_view label = "エフェクト";
+
+        Effect* effect = nullptr; // 出すエフェクト
+
+        NS_REFLECT_BEGIN(HitEffectItem, void)
+        NS_FIELD(effect, "エフェクト")
+        NS_REFLECT_END_VALUE()
+    };
+
     //! 項目の種類ごとの値。種類を足す時はここへ型を足す
     using HitReactionItem = std::variant<HitShapeItem,
                                          HitBodyShakeItem,
@@ -305,13 +336,15 @@ namespace NS
                                          HitZoomRollItem,
                                          HitCameraTraumaItem,
                                          HitCameraLurchItem,
-                                         HitCameraReboundSwayItem,
+                                         HitCameraAwaySwayItem,
                                          HitFlashItem,
                                          HitDistortionRingItem,
                                          HitGroundWaveItem,
-                                         HitPadVibrationItem,
+                                         HitPadItem,
                                          HitOthersStopItem,
-                                         HitOwnerItem>;
+                                         HitOwnerItem,
+                                         HitSoundItem,
+                                         HitEffectItem>;
 
     //! 束の 1 項目。束を始めたフレームに始まり、長さのフレーム数だけ続く
     struct HitReactionEntry
@@ -328,36 +361,6 @@ namespace NS
         int stopFrames = 0; // 持ち主の止めのフレーム数。0 以上
         std::vector<HitReactionEntry> entries;
     };
-
-    [[nodiscard]] std::string_view HitReactionItemTypeName(const HitReactionItem& item) noexcept;
-
-    [[nodiscard]] std::string_view HitReactionItemLabel(const HitReactionItem& item) noexcept;
-
-    //! 種類の名前から、欄が全部既定値のその種類の値を作る
-    //! @return 知らない名前の場合は std::nullopt
-    [[nodiscard]] std::optional<HitReactionItem> MakeHitReactionItem(std::string_view typeName);
-
-    //! item の種類のリフレクション。欄の無い種類は nullptr
-    [[nodiscard]] const ReflectionInfo* HitReactionItemReflection(const HitReactionItem& item) noexcept;
-
-    //! item の今の種類の値を指す番地。HitReactionItemReflection の欄を読み書きする時に渡す
-    [[nodiscard]] void* HitReactionItemFields(HitReactionItem& item) noexcept;
-    [[nodiscard]] const void* HitReactionItemFields(const HitReactionItem& item) noexcept;
-
-    //! row の鍵 key の値を 0 以上の整数のフレーム数として out へ読む。無い・整数でない・負・int に入らない場合は
-    //! false で、out は変えない
-    [[nodiscard]] bool ReadHitReactionFrames(const nlohmann::json& row, std::string_view key, int& out);
-
-    //! 1 行の JSON から項目の種類 type と欄 fields を読む
-    //! 欠けた欄は既定のまま、知らない欄と、type・fields・rowKeys の外の行の鍵は WARN を出して飛ばす
-    //! @param[in] rowKeys 呼び手が同じ行から読む鍵 (長さ・始まりなど)
-    //! @return 種類を知らない・欄の形が壊れている場合は std::nullopt で、error に理由を書く
-    [[nodiscard]] std::optional<HitReactionItem> ParseHitReactionItem(const nlohmann::json& row,
-                                                                      std::initializer_list<std::string_view> rowKeys,
-                                                                      std::string& error);
-
-    //! item の種類 type と欄 fields を row へ書く
-    void WriteHitReactionItem(const HitReactionItem& item, nlohmann::json& row);
 
     //! 束 1 つを JSON の形 {"name", "stopFrames", "items": [{"type", "length", "fields"}]} から読む
     //! 欠けた欄は既定のまま、知らない欄は WARN を出して飛ばす
@@ -404,8 +407,7 @@ namespace NS
     class Model;
 
     //! 束か項目を始める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
-    //! 組む所は SceneActor・ActorAction と、束を直に呼ぶ SceneActor の派生。ActorAction は ActionTimelineSelf の
-    //! const SceneActor* から写すので、SceneActor の関数 1 つには寄らない。項目を足す時は組む所を全部揃える
+    //! 組む所は SceneActor と、束を直に呼ぶ SceneActor の派生。項目を足す時は組む所を全部揃える
     struct HitReactionSelf
     {
         //! .actor の名前・カメラ・シーンを読み、管理クラスへの依頼の主にする。事前条件: nullptr でない
@@ -415,7 +417,8 @@ namespace NS
 
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
     //! 揺れと寄りは CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れ・形・震えは持ち主の Model が進める。止めの長さは Start が返し、持ち主の SceneActor が数える。
+    //! 描く揺れ・形・震えは持ち主の Model、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
+    //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
     {
@@ -438,19 +441,8 @@ namespace NS
                                                const HitSensor* self,
                                                const HitSensor* other);
 
-        //! 項目を 1 つ、長さ length で始める。動作のタイムラインが事象の始まりのフレームに呼ぶ
-        //! 向きと位置は Start と同じく self・other・position から出す。持ち主の止めには触らない
-        //! @param[in] self 持ち主のセンサー。事前条件: nullptr でない
-        //! @param[in] other 相手のセンサー。事前条件: nullptr でない
-        //! @param[in] shapeFrame 形の項目を何フレーム目の姿から描くか。途中のフレームから入った動作の形に使い、
-        //! ほかの項目は読まない。事前条件: 0 以上
-        void StartItem(const HitReactionSelf& owner,
-                       const HitReactionItem& item,
-                       int length,
-                       const Vector3& position,
-                       const HitSensor* self,
-                       const HitSensor* other,
-                       int shapeFrame = 0);
+        //! 持ち主の .actor の束の並び
+        [[nodiscard]] const std::vector<HitReactionSet>& Sets() const noexcept { return m_sets; }
 
         //! 持ち主の .actor の名前の束。無ければ nullptr
         [[nodiscard]] const HitReactionSet* FindSet(std::string_view name) const noexcept;
@@ -520,8 +512,8 @@ namespace NS
     private:
         struct ItemStarter;
 
-        std::vector<HitReactionSet> m_sets;     // 持ち主の .actor の束
-        std::vector<HitOwnerRun> m_ownerRuns;   // 進めている持ち主へ渡す項目
-        uint32 m_startCount = 0;                // 束か項目を始めた回数。揺れの種に混ぜる
+        std::vector<HitReactionSet> m_sets;   // 持ち主の .actor の束
+        std::vector<HitOwnerRun> m_ownerRuns; // 進めている持ち主へ渡す項目
+        uint32 m_startCount = 0;              // 束か項目を始めた回数。揺れの種に混ぜる
     };
 } // namespace NS

@@ -103,7 +103,7 @@ namespace
 
             m_scene.HitScreen().StartFlash(holder, 1000, 1.0f);
 
-            NS::HitPadVibration vibration;
+            NS::PadRumbleDesc vibration;
             vibration.left.count = 2;
             vibration.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
             vibration.left.keys[1] = NS::Curve::Key{1000.0f, 0.0f};

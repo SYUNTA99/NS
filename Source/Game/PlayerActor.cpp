@@ -5,12 +5,11 @@
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Level/SensorKinds.h"
 #include "Game/Player/PlayerAppearance.h"
-#include "Game/Player/PlayerClips.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
-#include "Game/Player/States/DashReboundPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
+#include "Game/Player/States/DashReboundPlayerState.h"
 #include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/LedgeClimbingPlayerState.h"
@@ -18,9 +17,9 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Clock.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -37,6 +36,70 @@
 
 #include <algorithm>
 #include <cmath>
+#include <initializer_list>
+#include <string_view>
+#include <variant>
+
+namespace
+{
+    // 自機の動きの動作の名前。PlayerActor.actor の動作の名前と合わせる
+    constexpr std::string_view k_WaitAction = "Wait";
+    constexpr std::string_view k_WalkAction = "Walk";
+    constexpr std::string_view k_RunAction = "Run";
+    constexpr std::string_view k_JumpAction = "Jump";
+    constexpr std::string_view k_FallAction = "Fall";
+    constexpr std::string_view k_LedgeHangAction = "LedgeHang";
+
+    // 状態と速さで選ぶ動きの動作の場合 true。状態に結んだ動作 (エアダッシュなど) は入らない
+    bool IsMovementAction(std::string_view name) noexcept
+    {
+        for (const std::string_view movement :
+             {k_WaitAction, k_WalkAction, k_RunAction, k_JumpAction, k_FallAction, k_LedgeHangAction})
+        {
+            if (name == movement)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // actions の name の動作の、最初のアニメーションの項目のクリップ。動作か項目が無ければ nullptr
+    const NS::AnimClip* ActionClip(const NS::ActorAction* actions, std::string_view name) noexcept
+    {
+        if (actions == nullptr)
+        {
+            return nullptr;
+        }
+        const NS::ActorActionInfo* action = actions->FindAction(name);
+        if (action == nullptr)
+        {
+            return nullptr;
+        }
+        for (const NS::ActorActionEvent& event : action->events)
+        {
+            if (const NS::ActionAnimItem* anim = std::get_if<NS::ActionAnimItem>(&event.item))
+            {
+                return anim->clip;
+            }
+        }
+        return nullptr;
+    }
+
+    // name の動作のアニメーションの項目に、クリップの道を書いてある場合 true。読めるかは見ない
+    bool HasActionClip(const NS::ActorAction* actions, std::string_view name) noexcept
+    {
+        const NS::AnimClip* clip = ActionClip(actions, name);
+        return clip != nullptr && !clip->Path().empty();
+    }
+
+    // name の動作のアニメーションの項目のクリップを読めていて、流せる場合 true
+    bool CanPlayAction(const NS::ActorAction* actions, std::string_view name) noexcept
+    {
+        const NS::AnimClip* clip = ActionClip(actions, name);
+        return clip != nullptr && clip->Clip() != nullptr;
+    }
+} // namespace
 
 NS_REFLECT_BEGIN_IMPL(PlayerActor, NS::SceneActor)
 NS_CLASSOBJ(m_appearance, "Appearance")
@@ -44,7 +107,6 @@ NS_CLASSOBJ(m_body, "Movement")
 NS_CLASSOBJ(m_collider, "Collider")
 NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
-NS_CLASSOBJ(m_clips, "Clips")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
@@ -57,8 +119,10 @@ PlayerActor::~PlayerActor() = default;
 void PlayerActor::OnInit()
 {
     CreateClassObj(m_hitSensors);
-    m_bodyHitSensor = m_hitSensors->AddFollow(this, "Body", GL::Level::SensorKind::PlayerBody,
-                                              [this](const NS::Matrix& rootWorld) { return BodySensorVolume(rootWorld); });
+    m_bodyHitSensor =
+        m_hitSensors->AddFollow(this, "Body", GL::Level::SensorKind::PlayerBody, [this](const NS::Matrix& rootWorld) {
+            return BodySensorVolume(rootWorld);
+        });
     CreateClassObj(m_model);
     NS::InitDraw(this, m_model.get(), &Root());
     CreateClassObj(m_appearance);
@@ -67,7 +131,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_collider, GetPhysicsScene(), &Root());
     CreateClassObj(m_input);
     CreateClassObj(m_params);
-    CreateClassObj(m_clips);
     CreateClassObj(m_shadow);
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
     m_ghost = CreateChildActor<GL::Level::TackleGhost>();
@@ -129,23 +192,25 @@ void PlayerActor::WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const
 void PlayerActor::UpdateAnimation()
 {
     NS::Animation* animation = AnimationClassObj();
-    if (animation == nullptr)
+    const NS::ActorAction* actions = ActorActionClassObj();
+    if (animation == nullptr || actions == nullptr)
     {
         return;
     }
 
     const float lateralSpeed = m_body->LateralVelocity().Length();
-    const NS::Anim::AnimClip* clip = ChooseClip(lateralSpeed)->Clip();
-    if (clip == nullptr)
+    // 状態に結んだ動作は、止めると残りの事象とセンサーの入り切りが起きなくなるので、終わるまで任せる
+    if (!actions->IsRunning() || IsMovementAction(actions->CurrentName()))
     {
-        clip = m_clips->m_idleClip->Clip();
-    }
-    if (clip != nullptr)
-    {
-        animation->Play(clip, m_clips->m_blendSeconds);
+        const std::string_view chosen = ChooseMovementAction(lateralSpeed);
+        // 同じ動作を始め直すとクリップの時刻が頭へ戻るので、名前が変わった時だけ始める
+        if (chosen != actions->CurrentName() && actions->FindAction(chosen) != nullptr)
+        {
+            (void)StartAction(chosen);
+        }
     }
 
-    animation->SetSpeed(ChoosePlaybackSpeed(animation->CurrentClip(), lateralSpeed));
+    animation->SetSpeed(ChoosePlaybackSpeed(actions->CurrentName(), lateralSpeed));
 }
 
 void PlayerActor::Update(bool slamHeld)
@@ -243,50 +308,52 @@ void PlayerActor::VisualStep()
     DrawTerrainRebound();
 }
 
-const NS::AnimClip* PlayerActor::ChooseClip(float lateralSpeed) const noexcept
+std::string_view PlayerActor::ChooseMovementAction(float lateralSpeed) const noexcept
 {
+    // 選ぶのはクリップの道を書いた動作。道はあるが読めないクリップの動作は、立ちの動作で代える
+    const NS::ActorAction* actions = ActorActionClassObj();
+    std::string_view chosen = k_WaitAction;
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
-        if (!m_clips->m_ledgeHangClip->Path().empty())
+        if (HasActionClip(actions, k_LedgeHangAction))
         {
-            return m_clips->m_ledgeHangClip;
+            chosen = k_LedgeHangAction;
         }
-        return m_clips->m_idleClip;
     }
-
-    if (!m_body->IsGrounded())
+    else if (!m_body->IsGrounded())
     {
-        if (m_body->VerticalVelocity() > 0.0f && !m_clips->m_jumpClip->Path().empty())
+        if (m_body->VerticalVelocity() > 0.0f && HasActionClip(actions, k_JumpAction))
         {
-            return m_clips->m_jumpClip;
+            chosen = k_JumpAction;
         }
-        if (m_body->VerticalVelocity() <= 0.0f && !m_clips->m_fallClip->Path().empty())
+        if (m_body->VerticalVelocity() <= 0.0f && HasActionClip(actions, k_FallAction))
         {
-            return m_clips->m_fallClip;
+            chosen = k_FallAction;
         }
-        return m_clips->m_idleClip;
     }
-
-    if (NS::IsNearlyZero(lateralSpeed))
+    else if (!NS::IsNearlyZero(lateralSpeed))
     {
-        return m_clips->m_idleClip;
+        const float maxSpeed = MaxSpeed();
+        if (HasActionClip(actions, k_WalkAction))
+        {
+            chosen = k_WalkAction;
+        }
+        if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_appearance->RunBlendRatio() &&
+            HasActionClip(actions, k_RunAction))
+        {
+            chosen = k_RunAction;
+        }
     }
-
-    const float maxSpeed = MaxSpeed();
-    if (maxSpeed > 0.0f && lateralSpeed >= maxSpeed * m_clips->m_runBlendRatio && !m_clips->m_runClip->Path().empty())
+    if (!CanPlayAction(actions, chosen))
     {
-        return m_clips->m_runClip;
+        return k_WaitAction;
     }
-    if (!m_clips->m_walkClip->Path().empty())
-    {
-        return m_clips->m_walkClip;
-    }
-    return m_clips->m_idleClip;
+    return chosen;
 }
 
-float PlayerActor::ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept
+float PlayerActor::ChoosePlaybackSpeed(std::string_view action, float lateralSpeed) const noexcept
 {
-    if (clip == nullptr || (clip != m_clips->m_walkClip->Clip() && clip != m_clips->m_runClip->Clip()))
+    if (action != k_WalkAction && action != k_RunAction)
     {
         return 1.0f;
     }
@@ -296,7 +363,7 @@ float PlayerActor::ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lat
     {
         return 1.0f;
     }
-    return std::max(m_clips->m_minPlaybackSpeed, lateralSpeed / maxSpeed);
+    return std::max(m_appearance->MinPlaybackSpeed(), lateralSpeed / maxSpeed);
 }
 
 void PlayerActor::OnAssetsLoaded()
@@ -425,16 +492,25 @@ void PlayerActor::ResetHealth() noexcept
     m_health.Reset();
 }
 
-bool PlayerActor::IsDead() const noexcept { return m_health.IsDead(); }
+bool PlayerActor::IsDead() const noexcept
+{
+    return m_health.IsDead();
+}
 
-int PlayerActor::Health() const noexcept { return m_health.Current(); }
+int PlayerActor::Health() const noexcept
+{
+    return m_health.Current();
+}
 
 float PlayerActor::MaxSpeed() const noexcept
 {
     return std::max(m_params->m_runSpeed, 0.0f);
 }
 
-float PlayerActor::RunSpeed() const noexcept { return m_params->m_runSpeed; }
+float PlayerActor::RunSpeed() const noexcept
+{
+    return m_params->m_runSpeed;
+}
 
 bool PlayerActor::IsAirDashing() const noexcept
 {
@@ -508,16 +584,22 @@ void PlayerActor::ResetState() noexcept
     OverrideHitStop(0);
     StopTackleHitEffects();
     // 動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
-    ActorActionClassObj()->Stop();
+    StopAction();
     OwningScene()->RequestStopScene(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());
     // 状態機械は立ちへ戻したので、立ちのクリップを前の姿勢から混ぜずに頭から流す。
-    // やり直しは StepGame からアクターの Update より後に届くので、外したままにすると、次の VisualStep までの描画が骨格の初期の姿勢になる
+    // やり直しは StepGame からアクターの Update より後に届くので、外したままにすると、次の VisualStep
+    // までの描画が骨格の初期の姿勢になる
     if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);
-        animation->Play(m_clips->m_idleClip->Clip());
+        // OnEndPlay からも呼ばれるので、動作は始めずクリップだけを流す。立ちの動作の効果音や振動を、終わる時に起こさない。
+        // 次の VisualStep が立ちの動作を始め、同じクリップなので頭から流し直さない
+        if (CanPlayAction(ActorActionClassObj(), k_WaitAction))
+        {
+            animation->Play(ActionClip(ActorActionClassObj(), k_WaitAction)->Clip());
+        }
     }
     // 次に足場を離れるまで着地の音を鳴らさない。出現位置へ着いた最初の着地で鳴らさないため
     m_playerSounds->Reset();
@@ -556,4 +638,3 @@ PlayerActor* FindPlayer(NS::ActorList& objects) noexcept
     }
     return nullptr;
 }
-

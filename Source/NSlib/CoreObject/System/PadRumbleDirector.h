@@ -10,7 +10,7 @@ namespace NS
     class SceneActor;
 
     //! パッドの振動 1 回。左右のモーターの速さを始めてからのフレーム数の曲線で決め、書くフレーム数で切る
-    struct HitPadVibration
+    struct PadRumbleDesc
     {
         Curve left{};   // 左のモーターの速さ 0〜1。横軸は始めたフレームを 0 にしたフレーム数。点が無ければ 0
         Curve right{};  // 右のモーターの速さ 0〜1。横軸は left と同じ
@@ -30,10 +30,10 @@ namespace NS
         //! 振動を始める。前の振動が残っていても、重ねた分も含めて始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
         //! @param[in] pad 振動の設定
-        void Start(const SceneActor* requester, const HitPadVibration& pad);
+        void Start(const SceneActor* requester, const PadRumbleDesc& pad);
         //! requester の振動を重ねる。振動していなければ Start と同じ
         //! 重ねたフレームを 0 として pad を進め、値を足す。pad の長さを過ぎたら 0 を足す
-        void Blend(const SceneActor* requester, const HitPadVibration& pad);
+        void Blend(const SceneActor* requester, const PadRumbleDesc& pad);
 
         //! requester が頼んだ振動を外して書き直す。残りが無ければ 0 を書いて止める
         void Stop(const SceneActor* requester);
@@ -53,7 +53,7 @@ namespace NS
         // 重ねた振動 1 つ。重ねたフレームの m_elapsed から進める。頼んだ物は見分けるだけで、指す先は読まない
         struct Layer
         {
-            HitPadVibration pad;
+            PadRumbleDesc pad;
             int startElapsed = 0;
             const SceneActor* requester = nullptr;
             float scale = 1.0f; // 曲線の速さに掛ける倍率

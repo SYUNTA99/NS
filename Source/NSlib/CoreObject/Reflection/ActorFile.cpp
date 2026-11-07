@@ -2,6 +2,8 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
@@ -9,10 +11,10 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Core/Windows/Filesystem.h"
 
 #include <cstddef>
 #include <format>
+#include <limits>
 #include <optional>
 #include <set>
 #include <span>
@@ -55,7 +57,8 @@ namespace NS
 
         // クラス名を書く .actor の頭の鍵。シーンのファイルのアクターは .actor の名前だけを書き、この鍵を持たない
         constexpr const char* k_ClassKey = "class";
-        // 名前の束と動作の並びの鍵。シーンのファイルのアクターと派生は持たず、元の .actor だけに書く。派生は元の物を使う
+        // 名前の束と動作の並びの鍵。シーンのファイルのアクターと派生は持たず、元の .actor
+        // だけに書く。派生は元の物を使う
         constexpr const char* k_HitReactionsKey = "hitReactions";
         constexpr const char* k_ActionsKey = "actions";
         // センサーの名前ごとの大きさの鍵。束と同じく元の .actor だけに書く
@@ -103,7 +106,8 @@ namespace NS
         }
 
         // root を .actor として持てない理由。持てるなら空
-        // 外から読む Reload と文書を入れる Set が同じ決まりで断る。Set だけが通すと、Save で書いた物を次の起動で読めない
+        // 外から読む Reload と文書を入れる Set が同じ決まりで断る。Set だけが通すと、Save
+        // で書いた物を次の起動で読めない
         [[nodiscard]] std::string FindActorFileProblem(const nlohmann::json& root)
         {
             if (!root.is_object())
@@ -377,6 +381,34 @@ namespace NS
         SetTopList(actorFile, k_ActionsKey, std::move(list));
     }
 
+    bool ReadActorFileFrames(const nlohmann::json& row, std::string_view key, int& out)
+    {
+        const nlohmann::json::const_iterator value = row.find(key);
+        // 1.5 のような整数でない数を断る
+        if (value == row.end() || !value->is_number_integer())
+        {
+            return false;
+        }
+        // int へ写す前に範囲を見る。写してから比べると、int の外の数が切り詰められて別の長さで通る
+        if (value->is_number_unsigned())
+        {
+            const uint64 frames = value->get<uint64>();
+            if (frames > static_cast<uint64>(std::numeric_limits<int>::max()))
+            {
+                return false;
+            }
+            out = static_cast<int>(frames);
+            return true;
+        }
+        const int64 frames = value->get<int64>();
+        if (frames < 0 || frames > std::numeric_limits<int>::max())
+        {
+            return false;
+        }
+        out = static_cast<int>(frames);
+        return true;
+    }
+
     ActorFileLibrary& ActorFileLibrary::Get()
     {
         static ActorFileLibrary instance;
@@ -390,8 +422,8 @@ namespace NS
     {
         if (m_directory.empty())
         {
-            m_directory = OS::FileSystem::Combine(
-                OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), "Actors");
+            m_directory =
+                OS::FileSystem::Combine(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets"), "Actors");
         }
         return m_directory;
     }
@@ -562,7 +594,8 @@ namespace NS
         const std::unique_ptr<SceneActor> actor = CreateActorWithCodeValues(ActorFileClass(actorFile));
         if (actor == nullptr)
         {
-            NS_LOG_ERROR(Scene, ".actor {} の class {} のアクターを作れないので読まない", name, ActorFileClass(actorFile));
+            NS_LOG_ERROR(
+                Scene, ".actor {} の class {} のアクターを作れないので読まない", name, ActorFileClass(actorFile));
             return std::nullopt;
         }
         nlohmann::json values = actorFile;
@@ -573,7 +606,8 @@ namespace NS
                 m_mergedValues.find(baseName);
             if (base == m_mergedValues.end() || !ActorFileBase(base->second).empty())
             {
-                NS_LOG_ERROR(Scene, "派生の .actor {} の元 {} が、読んだ元の .actor に無いので読まない", name, baseName);
+                NS_LOG_ERROR(
+                    Scene, "派生の .actor {} の元 {} が、読んだ元の .actor に無いので読まない", name, baseName);
                 return std::nullopt;
             }
             if (ActorFileClass(base->second) != ActorFileClass(actorFile))
@@ -845,7 +879,8 @@ namespace NS
         const std::string name{fieldName};
         if (part == nullptr || fields == nullptr || !fields->contains(name))
         {
-            NS_LOG_ERROR(Scene, "{} の全部の値に部品 {} の欄 {} が無いので戻せない", actor->ActorFileName(), row.key, name);
+            NS_LOG_ERROR(
+                Scene, "{} の全部の値に部品 {} の欄 {} が無いので戻せない", actor->ActorFileName(), row.key, name);
             return false;
         }
         actor->RemoveSceneOverride(row.key, fieldName);

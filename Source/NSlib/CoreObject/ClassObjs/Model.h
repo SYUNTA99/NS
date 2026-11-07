@@ -127,7 +127,7 @@ namespace NS
         //! 揺れを止めて、ずれを 0 に戻す
         void StopDrawShake() noexcept;
         //! 描く倍率の曲線の再生を始める。前の再生が残っていても始め直す
-        //! 次の AdvanceDraw を desc.firstFrame のフレームに数え、長さのフレームで元の倍率へ戻す
+        //! 次の AdvanceDraw を 0 フレーム目に数え、長さのフレームで元の倍率へ戻す
         void StartDrawShape(const DrawShapeDesc& desc) noexcept;
         //! 形の再生を止めて、描く倍率を SetDrawScale で書いた倍率へ戻す
         void StopDrawShape() noexcept;
@@ -259,7 +259,7 @@ namespace NS
             bool active = false;
         };
         ShakeRun m_shake;
-        // 形の再生。始めた後の最初の AdvanceDraw を desc.firstFrame のフレームに数える
+        // 形の再生。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
         struct ShapeRun
         {
             DrawShapeDesc desc{};

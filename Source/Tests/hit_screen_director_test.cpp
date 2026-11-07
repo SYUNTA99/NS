@@ -97,7 +97,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     wave.frames = 30;
     screen.StartGroundWave(rock, wave);
     ASSERT_GT(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
-    NS::HitPadVibration pad;
+    NS::PadRumbleDesc pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     pad.frames = 30;

@@ -1,13 +1,13 @@
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
-#include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
+#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 
@@ -18,25 +18,26 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 // 動作のタイムラインのファイルの形・読み込みと保存の往復・壊れた動作の扱いと、動作を状態の歩で進める部品を縛る
 
 namespace
 {
-    // 当たる直前の動作の形。縮みと自機以外の止めを、状態に入ってからの歩に置く
+    // 当たる直前の動作の形。振動とカメラの揺れと画面の光を、状態に入ってからの歩に置く
     NS::ActorActionInfo MakeBeforeContactAction()
     {
-        NS::HitShapeItem shape;
-        shape.along.count = 2;
-        shape.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
-        shape.along.keys[1] = NS::Curve::Key{6.0f, 0.85f};
+        NS::ActionPadItem pad;
+        pad.left.count = 2;
+        pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
+        pad.left.keys[1] = NS::Curve::Key{6.0f, 0.85f};
         NS::ActorActionInfo action;
         action.name = "BeforeContactCenter";
         action.events = {
-            {shape, 0, 7},
-            {NS::HitOthersStopItem{}, 4, 2},
-            {NS::HitFlashItem{}, 4, 0},
+            {pad, 0, 7},
+            {NS::ActionCameraItem{}, 4, 2},
+            {NS::ActionScreenItem{}, 4, 0},
         };
         return action;
     }
@@ -46,14 +47,14 @@ namespace
 TEST(ActorActionInfo, EventsRoundTripThroughTheFileFormInOrder)
 {
     const NS::ActorActionInfo written = MakeBeforeContactAction();
-    const nlohmann::json doc = NS::ActorActionToJson(written);
+    const nlohmann::json doc = NS::ActorActionInfoToJson(written);
     EXPECT_EQ(doc["name"].get<std::string>(), "BeforeContactCenter");
     ASSERT_EQ(doc["events"].size(), 3u);
-    EXPECT_EQ(doc["events"][1]["type"].get<std::string>(), "OthersStop");
+    EXPECT_EQ(doc["events"][1]["type"].get<std::string>(), "Camera");
     EXPECT_EQ(doc["events"][1]["start"].get<int>(), 4);
 
     std::string error;
-    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     // センサーの入り切りの無い動作は鍵を書かない
     EXPECT_FALSE(doc.contains("sensors"));
@@ -66,9 +67,66 @@ TEST(ActorActionInfo, EventsRoundTripThroughTheFileFormInOrder)
         EXPECT_EQ(read->events[i].start, written.events[i].start);
         EXPECT_EQ(read->events[i].length, written.events[i].length);
     }
-    EXPECT_EQ(std::get<NS::HitShapeItem>(read->events[0].item).along,
-              std::get<NS::HitShapeItem>(written.events[0].item).along);
-    EXPECT_EQ(NS::ActorActionToJson(*read), doc);
+    EXPECT_EQ(std::get<NS::ActionPadItem>(read->events[0].item).left,
+              std::get<NS::ActionPadItem>(written.events[0].item).left);
+    EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
+}
+
+// 動作の項目は 6 つの種類 (アニメーション・効果音・エフェクト・振動・カメラ・画面) で、種類の名前と欄が往復する
+TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
+{
+    NS::ActionAnimItem anim;
+    anim.blendSeconds = 0.2f;
+    anim.looping = false;
+    NS::ActionSoundItem sound;
+    sound.sound.name = "Player/Jump";
+    sound.volume = 0.5f;
+    NS::ActionPadItem pad;
+    pad.left.count = 1;
+    pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
+    NS::ActionCameraItem camera;
+    camera.trauma = 0.4f;
+    NS::ActionScreenItem screen;
+    screen.alpha = 0.3f;
+    NS::ActorActionInfo written;
+    written.name = "Jump";
+    written.events = {
+        {anim, 0, 10}, {sound, 0, 1}, {NS::ActionEffectItem{}, 1, 1}, {pad, 2, 4}, {camera, 3, 5}, {screen, 4, 2}};
+
+    const nlohmann::json doc = NS::ActorActionInfoToJson(written);
+    const char* const typeNames[] = {"Anim", "Sound", "Effect", "Pad", "Camera", "Screen"};
+    ASSERT_EQ(doc["events"].size(), std::size(typeNames));
+    for (std::size_t i = 0; i < std::size(typeNames); ++i)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(doc["events"][i]["type"].get<std::string>(), typeNames[i]);
+    }
+
+    std::string error;
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
+    ASSERT_TRUE(read.has_value()) << error;
+    EXPECT_FLOAT_EQ(std::get<NS::ActionAnimItem>(read->events[0].item).blendSeconds, 0.2f);
+    EXPECT_FALSE(std::get<NS::ActionAnimItem>(read->events[0].item).looping);
+    EXPECT_EQ(std::get<NS::ActionSoundItem>(read->events[1].item).sound.name, "Player/Jump");
+    EXPECT_FLOAT_EQ(std::get<NS::ActionSoundItem>(read->events[1].item).volume, 0.5f);
+    EXPECT_EQ(std::get<NS::ActionPadItem>(read->events[3].item).left, pad.left);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraItem>(read->events[4].item).trauma, 0.4f);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenItem>(read->events[5].item).alpha, 0.3f);
+    EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
+}
+
+// 当たりの反応の種類 (白い光・自機以外の止め・形・持ち主へ渡す項目) は動作の項目ではないので、動作ごと読まない
+TEST(ActorActionInfo, HitReactionItemKindsAreNotActionItems)
+{
+    for (const char* type : {"Flash", "OthersStop", "Shape", "Owner"})
+    {
+        SCOPED_TRACE(type);
+        nlohmann::json doc = nlohmann::json{{"name", "A"}};
+        doc["events"] = nlohmann::json::array({nlohmann::json{{"type", type}, {"start", 0}, {"length", 1}}});
+        std::string error;
+        EXPECT_FALSE(NS::ParseActorActionInfo(doc, error).has_value());
+        EXPECT_NE(error.find(type), std::string::npos);
+    }
 }
 
 // センサーの入り切りは、どのセンサーか・入れるか外すか・始まり・長さを持ち、並びの順のまま往復する
@@ -78,13 +136,13 @@ TEST(ActorActionInfo, SensorSwitchesRoundTripThroughTheFileForm)
     written.name = "Swing";
     written.sensors = {{.sensor = "Attack", .valid = true, .start = 2, .length = 5},
                        {.sensor = "Body", .valid = false, .start = 0, .length = 3}};
-    const nlohmann::json doc = NS::ActorActionToJson(written);
+    const nlohmann::json doc = NS::ActorActionInfoToJson(written);
     ASSERT_EQ(doc["sensors"].size(), 2u);
     EXPECT_EQ(doc["sensors"][0]["sensor"].get<std::string>(), "Attack");
     EXPECT_EQ(doc["sensors"][0]["start"].get<int>(), 2);
 
     std::string error;
-    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->sensors.size(), 2u);
     for (std::size_t i = 0; i < written.sensors.size(); ++i)
@@ -95,7 +153,7 @@ TEST(ActorActionInfo, SensorSwitchesRoundTripThroughTheFileForm)
         EXPECT_EQ(read->sensors[i].start, written.sensors[i].start);
         EXPECT_EQ(read->sensors[i].length, written.sensors[i].length);
     }
-    EXPECT_EQ(NS::ActorActionToJson(*read), doc);
+    EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
 }
 
 // 動作の長さ (状態の歩の回数) は往復する。鍵が無い動作は長さを決めておらず、決めていない長さは鍵を書かない
@@ -105,38 +163,38 @@ TEST(ActorActionInfo, TheActionLengthRoundTripsAndIsUnsetWhenMissing)
     NS::ActorActionInfo written;
     written.name = "AirDash";
     written.length = 29;
-    const nlohmann::json doc = NS::ActorActionToJson(written);
+    const nlohmann::json doc = NS::ActorActionInfoToJson(written);
     ASSERT_TRUE(doc.contains("length"));
     EXPECT_EQ(doc.at("length").get<int>(), 29);
     std::string error;
-    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     EXPECT_EQ(read->length, 29);
-    EXPECT_EQ(NS::ActorActionToJson(*read), doc);
+    EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
 
     const std::optional<NS::ActorActionInfo> missing =
-        NS::ParseActorAction(nlohmann::json::parse(R"({"name": "A", "events": []})"), error);
+        NS::ParseActorActionInfo(nlohmann::json::parse(R"({"name": "A", "events": []})"), error);
     ASSERT_TRUE(missing.has_value()) << error;
     EXPECT_EQ(missing->length, 0);
-    EXPECT_FALSE(NS::ActorActionToJson(*missing).contains("length"));
+    EXPECT_FALSE(NS::ActorActionInfoToJson(*missing).contains("length"));
     EXPECT_EQ(log.WarningCount(), 0);
 }
 
 TEST(ActorActionInfo, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 {
     const nlohmann::json doc = nlohmann::json::parse(R"({"name": "A", "古い欄": 0, "events": [
-        {"type": "Flash", "start": 1, "length": 6, "fields": {"濃さ": 0.3, "消した欄": 2}},
-        {"type": "ZoomRoll", "start": 2, "length": 7}
+        {"type": "Screen", "start": 1, "length": 6, "fields": {"濃さ": 0.3, "消した欄": 2}},
+        {"type": "Camera", "start": 2, "length": 7}
     ], "sensors": [
         {"sensor": "Body", "start": 1, "length": 2, "古い欄": 1}
     ]})");
     std::string error;
     const TestLogCapture log;
-    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->events.size(), 2u);
-    EXPECT_FLOAT_EQ(std::get<NS::HitFlashItem>(read->events[0].item).alpha, 0.3f);
-    EXPECT_FLOAT_EQ(std::get<NS::HitZoomRollItem>(read->events[1].item).zoom, NS::HitZoomRollItem{}.zoom);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenItem>(read->events[0].item).alpha, 0.3f);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraItem>(read->events[1].item).trauma, NS::ActionCameraItem{}.trauma);
     ASSERT_EQ(read->sensors.size(), 1u);
     EXPECT_EQ(read->sensors[0].sensor, "Body");
     EXPECT_EQ(read->sensors[0].valid, NS::ActionSensorEvent{}.valid);
@@ -147,14 +205,15 @@ TEST(ActorActionInfo, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 // 入り切りはセンサーを名前で指す。名前の無い物と空の名前は、どのセンサーか決まらないので読まない
 TEST(ActorActionInfo, SensorSwitchWithoutANameIsRefused)
 {
-    for (const char* row : {R"({"start": 0, "length": 2})", R"({"sensor": "", "start": 0, "length": 2})",
+    for (const char* row : {R"({"start": 0, "length": 2})",
+                            R"({"sensor": "", "start": 0, "length": 2})",
                             R"({"sensor": true, "start": 0, "length": 2})"})
     {
         SCOPED_TRACE(row);
         nlohmann::json doc = nlohmann::json{{"name", "A"}, {"events", nlohmann::json::array()}};
         doc["sensors"] = nlohmann::json::array({nlohmann::json::parse(row)});
         std::string error;
-        EXPECT_FALSE(NS::ParseActorAction(doc, error).has_value());
+        EXPECT_FALSE(NS::ParseActorActionInfo(doc, error).has_value());
         EXPECT_NE(error.find("sensor"), std::string::npos);
     }
 }
@@ -166,12 +225,12 @@ TEST(ActorActionInfo, BrokenActionsAreRejectedWithAReason)
         R"({"name": "", "events": []})",
         R"({"name": "A"})",
         R"({"name": "A", "events": [{"type": "Explode", "start": 0, "length": 1}]})",
-        R"({"name": "A", "events": [{"type": "Flash", "start": 0, "length": -1}]})",
+        R"({"name": "A", "events": [{"type": "Screen", "start": 0, "length": -1}]})",
         // 時計は状態に入った歩を 0 と数えるので、負の始まりは来ない
-        R"({"name": "A", "events": [{"type": "Flash", "start": -1, "length": 1}]})",
-        R"({"name": "A", "events": [{"type": "Flash", "start": 1.5, "length": 1}]})",
-        R"({"name": "A", "events": [{"type": "Flash", "length": 1}]})",
-        R"({"name": "A", "events": [{"type": "Flash", "start": 0}]})",
+        R"({"name": "A", "events": [{"type": "Screen", "start": -1, "length": 1}]})",
+        R"({"name": "A", "events": [{"type": "Screen", "start": 1.5, "length": 1}]})",
+        R"({"name": "A", "events": [{"type": "Screen", "length": 1}]})",
+        R"({"name": "A", "events": [{"type": "Screen", "start": 0}]})",
         R"({"name": "A", "events": [], "sensors": {}})",
         R"({"name": "A", "events": [], "sensors": [{"start": 0, "length": -1}]})",
         R"({"name": "A", "events": [], "sensors": [{"length": 1}]})",
@@ -186,7 +245,7 @@ TEST(ActorActionInfo, BrokenActionsAreRejectedWithAReason)
     {
         SCOPED_TRACE(text);
         std::string error;
-        EXPECT_FALSE(NS::ParseActorAction(nlohmann::json::parse(text), error).has_value());
+        EXPECT_FALSE(NS::ParseActorActionInfo(nlohmann::json::parse(text), error).has_value());
         EXPECT_FALSE(error.empty());
     }
 }
@@ -197,8 +256,8 @@ TEST(ActorActionInfo, ActorFileSkipsBrokenAndDuplicateActions)
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileActions(actorFile, nlohmann::json::parse(R"([
         {"name": "BeforeContact", "events": []},
-        {"name": "Broken", "events": [{"type": "Flash", "start": -1, "length": 1}]},
-        {"name": "BeforeContact", "events": [{"type": "Flash", "start": 0, "length": 1}]},
+        {"name": "Broken", "events": [{"type": "Screen", "start": -1, "length": 1}]},
+        {"name": "BeforeContact", "events": [{"type": "Screen", "start": 0, "length": 1}]},
         {"name": "Hit", "events": []}
     ])"));
     const TestLogCapture log;
@@ -215,8 +274,8 @@ TEST(ActorActionInfo, WritingBackKeepsTheActionsThatWereNotRead)
 {
     const nlohmann::json original = nlohmann::json::parse(R"([
         {"name": "BeforeContact", "events": []},
-        {"name": "Broken", "events": [{"type": "Flash", "start": -1, "length": 1}]},
-        {"name": "BeforeContact", "events": [{"type": "Flash", "start": 0, "length": 1}]},
+        {"name": "Broken", "events": [{"type": "Screen", "start": -1, "length": 1}]},
+        {"name": "BeforeContact", "events": [{"type": "Screen", "start": 0, "length": 1}]},
         {"name": "Hit", "events": []}
     ])");
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
@@ -224,7 +283,7 @@ TEST(ActorActionInfo, WritingBackKeepsTheActionsThatWereNotRead)
     const TestLogCapture log;
     std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
     ASSERT_EQ(actions.size(), 2u);
-    actions[1].events.push_back(NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = 2, .length = 3});
+    actions[1].events.push_back(NS::ActorActionEvent{.item = NS::ActionScreenItem{}, .start = 2, .length = 3});
     NS::WriteActorActions(actorFile, actions);
     const nlohmann::json* list = NS::ActorFileActions(actorFile);
     ASSERT_NE(list, nullptr);
@@ -242,7 +301,7 @@ TEST(ActorActionInfo, TheLengthDoesNotWrapPastInt)
 {
     NS::ActorActionInfo action;
     action.events.push_back(
-        NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = std::numeric_limits<int>::max(), .length = 1});
+        NS::ActorActionEvent{.item = NS::ActionScreenItem{}, .start = std::numeric_limits<int>::max(), .length = 1});
     EXPECT_EQ(NS::ActionLength(action), std::numeric_limits<int>::max());
 }
 
@@ -257,7 +316,7 @@ TEST(ActorActionInfo, NoActionsWriteNoKey)
     EXPECT_EQ(actorFile, CodeValuesActorFile("PlayerActor"));
 }
 
-// 動作のタイムラインの部品。状態に入る時に動作を始め、状態の歩を時計にして事象を起こす
+// 動作の部品。状態に入る時に名前で動作を始め、状態の歩かアニメーションの時刻を時計にして、始まった項目を持ち主が自分の部品へ頼む
 
 namespace
 {
@@ -274,7 +333,7 @@ namespace
         }
     };
 
-    // 入る時に持ち主の actionName の動作を startFrame から始める状態
+    // 入る時に持ち主の actionName の動作を始める状態
     class ActionRunState final : public NS::StateOf<ActionRunState, ActionProbeActor>
     {
     public:
@@ -282,16 +341,14 @@ namespace
         void OnStep(ActionProbeActor* owner, float) override;
     };
 
-    // 体と攻撃のセンサー・当たりの返り・動作のタイムラインと、2 つの状態を持つアクター
+    // 体と攻撃のセンサー・動作の部品と、2 つの状態を持つアクター
     class ActionProbeActor final : public NS::SceneActor
     {
     public:
         NS_REFLECT_NONE(ActionProbeActor, NS::SceneActor)
 
         std::string actionName;
-        int startFrame = 0;
         bool started = false;
-        NS::SceneActor* partner = nullptr;
         std::vector<bool> endSeen; // 動作の状態の OnStep ごとに、IsStateEnd が答えた値
         bool startOnEnter = true;  // 偽なら、動作の状態に入っても動作を始めない
 
@@ -299,12 +356,12 @@ namespace
         void OnInit() override
         {
             CreateClassObj(m_hitSensors);
-            m_bodySensor = m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
-            m_attackSensor = m_hitSensors->AddShape(this, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
+            m_bodySensor =
+                m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
+            m_attackSensor =
+                m_hitSensors->AddShape(this, "Attack", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             NS::Cast<NS::ShapeHitSensor>(m_attackSensor)->SetSphere(0.8f);
-            CreateClassObj(m_model);
-            CreateClassObj(m_hitReaction);
             CreateClassObj(m_actorAction);
             NS::StateMachineOf<ActionProbeActor>* machine = nullptr;
             (void)BuildStateMachine<ActionProbeActor, ActionIdleState, ActionRunState>(this, machine);
@@ -322,12 +379,7 @@ namespace
         {
             return;
         }
-        owner->started = owner->ActorActionClassObj()->Start(owner->ActorActionSelfOf(),
-                                                               owner->actionName,
-                                                               owner->startFrame,
-                                                               owner->Root().Position(),
-                                                               owner->HitSensorsClassObj()->Find("Body"),
-                                                               owner->partner->HitSensorsClassObj()->Find("Body"));
+        owner->started = owner->StartStateAction(owner->actionName);
     }
 
     void ActionRunState::OnStep(ActionProbeActor* owner, float)
@@ -337,26 +389,30 @@ namespace
     }
 } // namespace
 
-NS_PLACEABLE(ActionProbeActor, "試しの動作のタイムライン")
+NS_PLACEABLE(ActionProbeActor, "試しの動作")
 
 namespace
 {
     constexpr const char* k_ActionProbeName = "ActionProbeActor";
 
-    // 名前 name で、長さの長い持ち主へ渡す項目。始まった物が OwnerRuns に残る
-    NS::ActorActionEvent OwnerEvent(std::string name, int start)
+    // 名前 name の効果音を鳴らす項目。音の部品を持たない試しのアクターでは鳴らず、始まった事だけが残る
+    NS::ActorActionEvent SoundEvent(std::string name, int start)
     {
-        NS::HitOwnerItem item;
-        item.name = std::move(name);
-        return NS::ActorActionEvent{.item = item, .start = start, .length = 100};
+        NS::ActionSoundItem item;
+        item.sound.name = std::move(name);
+        return NS::ActorActionEvent{.item = item, .start = start, .length = 1};
     }
 
-    // actions を書いた .actor を敷いて、原点のアクターと前の相手を置いた場面
+    // actions を書いた .actor を敷いて、原点にアクターを置いた場面
     struct ActionScene
     {
         NS::Scene scene;
         ActionProbeActor* self = nullptr;
-        ActionProbeActor* other = nullptr;
+        std::vector<std::string> started; // 始まった効果音の項目の名前。始まった順
+        // 前の Step で読んだ動作とフレーム。ヒットストップの間は Advance が呼ばれず、StartedEvents
+        // が前のフレームのまま残る
+        const NS::ActorActionInfo* readAction = nullptr;
+        int readFrame = -1;
 
         explicit ActionScene(const std::vector<NS::ActorActionInfo>& actions)
         {
@@ -364,34 +420,37 @@ namespace
             NS::WriteActorActions(actorFile, actions);
             const ScopedActorFile scoped(k_ActionProbeName, std::move(actorFile));
             self = scene.SpawnActor<ActionProbeActor>("Self");
-            other = scene.SpawnActor<ActionProbeActor>("Other");
-            if (self != nullptr && other != nullptr)
-            {
-                other->Root().SetPosition(NS::Vector3{0.0f, 0.0f, 3.0f});
-                self->partner = other;
-            }
         }
 
         // self の状態を動作の状態へ移す予約をする。次の Step の頭で入る
-        void Enter(std::string name, int startFrame = 0)
+        void Enter(std::string name)
         {
             self->actionName = std::move(name);
-            self->startFrame = startFrame;
             (void)NS::SetState<ActionRunState>(self);
         }
 
-        void Step() { scene.OnUpdate(); }
-
-        // self の持ち主へ渡す項目の名前。始まった順
-        [[nodiscard]] std::vector<std::string> Started() const
+        // 1 フレーム進め、その歩に始まった効果音の項目の名前を started へ足す
+        void Step()
         {
-            std::vector<std::string> names;
-            for (const NS::HitOwnerRun& run : self->HitReactionClassObj()->OwnerRuns())
+            scene.OnUpdate();
+            const NS::ActorAction& actions = *self->ActorActionClassObj();
+            const NS::ActorActionInfo* action = actions.CurrentAction();
+            if (action == nullptr || (action == readAction && actions.Frame() == readFrame))
             {
-                names.push_back(run.item.name);
+                return;
             }
-            return names;
+            readAction = action;
+            readFrame = actions.Frame();
+            for (const std::size_t index : actions.StartedEvents())
+            {
+                if (const NS::ActionSoundItem* sound = std::get_if<NS::ActionSoundItem>(&action->events[index].item))
+                {
+                    started.push_back(sound->sound.name);
+                }
+            }
         }
+
+        [[nodiscard]] const std::vector<std::string>& Started() const noexcept { return started; }
     };
 
     using Names = std::vector<std::string>;
@@ -403,10 +462,10 @@ TEST(ActorAction, EventsStartOnTheStateStepsInFileOrder)
 {
     NS::ActorActionInfo action;
     action.name = "Run";
-    action.events = {OwnerEvent("A", 0), OwnerEvent("Z", 2), OwnerEvent("Y", 2), OwnerEvent("D", 4)};
+    action.events = {SoundEvent("A", 0), SoundEvent("Z", 2), SoundEvent("Y", 2), SoundEvent("D", 4)};
     ActionScene probes({action});
     ASSERT_NE(probes.self, nullptr);
-    const NS::ActorAction& timeline = *probes.self->ActorActionClassObj();
+    const NS::ActorAction& actions = *probes.self->ActorActionClassObj();
     probes.Enter("Run");
 
     const Names expected[] = {{"A"}, {"A"}, {"A", "Z", "Y"}, {"A", "Z", "Y"}, {"A", "Z", "Y", "D"}};
@@ -416,11 +475,92 @@ TEST(ActorAction, EventsStartOnTheStateStepsInFileOrder)
         SCOPED_TRACE(frame);
         probes.Step();
         EXPECT_EQ(probes.Started(), expected[frame]);
-        EXPECT_EQ(timeline.StartedEvents(), started[frame]);
-        EXPECT_EQ(timeline.Frame(), frame);
+        EXPECT_EQ(actions.StartedEvents(), started[frame]);
+        EXPECT_EQ(actions.Frame(), frame);
     }
     EXPECT_TRUE(probes.self->started);
-    EXPECT_EQ(timeline.CurrentName(), "Run");
+    EXPECT_EQ(actions.CurrentName(), "Run");
+}
+
+// 状態に結ばずに始めた動作は、持ち主のアニメーションを流した秒で進む。1 回に 2 フレーム以上進むと、
+// 飛んだフレームの事象も起こす
+TEST(ActorAction, AnActionWithoutAStateFollowsThePlayedSeconds)
+{
+    NS::ActorActionInfo action;
+    action.name = "Wave";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1), SoundEvent("C", 2), SoundEvent("D", 4)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    ASSERT_TRUE(actions.Start("Wave"));
+
+    actions.Advance(NS::ActionClock{});
+    EXPECT_EQ(actions.StartedEvents(), Indices{0});
+    // 流さなければ、事象は起きない
+    actions.Advance(NS::ActionClock{});
+    EXPECT_TRUE(actions.StartedEvents().empty());
+    actions.Advance(NS::ActionClock{.playbackSeconds = step * 2.5f});
+    EXPECT_EQ(actions.StartedEvents(), (Indices{1, 2}));
+    EXPECT_EQ(actions.Frame(), 2);
+    actions.Advance(NS::ActionClock{.playbackSeconds = step * 2.0f});
+    EXPECT_EQ(actions.StartedEvents(), Indices{3});
+}
+
+// 流した秒を 1 フレームずつ足しても、float の誤差で事象が次のフレームへずれない。
+// アニメーションの時刻を読まないので、クリップが替わったり繰り返して時刻が頭へ戻ったりしても、時計は止まらない
+TEST(ActorAction, ThePlayedSecondsAddUpOneFrameAtATime)
+{
+    NS::ActorActionInfo action;
+    action.name = "Wave";
+    for (int frame = 0; frame < 60; ++frame)
+    {
+        action.events.push_back(SoundEvent("F", frame));
+    }
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    ASSERT_TRUE(actions.Start("Wave"));
+    actions.Advance(NS::ActionClock{});
+    for (int frame = 1; frame < 60; ++frame)
+    {
+        actions.Advance(NS::ActionClock{.playbackSeconds = step});
+        ASSERT_EQ(actions.Frame(), frame);
+        ASSERT_EQ(actions.StartedEvents(), Indices{static_cast<std::size_t>(frame)});
+    }
+}
+
+// 名前で始めた動作は、始めた呼び出しの中でフレーム 0 の事象を起こす。
+// 次の Update まで待つと、クリップの切り替えが 1 フレーム遅れる
+TEST(ActorAction, StartingByNameRunsTheFirstFrameAtOnce)
+{
+    NS::ActorActionInfo action;
+    action.name = "Wave";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    ASSERT_TRUE(probes.self->StartAction("Wave"));
+    const NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    EXPECT_EQ(actions.Frame(), 0);
+    EXPECT_EQ(actions.StartedEvents(), Indices{0});
+}
+
+// 始まった項目は持ち主の SceneActor が自分の場面へ頼む。画面の光の項目は、場面の画面の光を始める
+TEST(ActorAction, TheOwnerRunsTheStartedItems)
+{
+    NS::ActionScreenItem screen;
+    screen.alpha = 0.6f;
+    NS::ActorActionInfo action;
+    action.name = "Run";
+    action.events = {{screen, 1, 6}};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    probes.Enter("Run");
+    probes.Step();
+    EXPECT_EQ(probes.scene.HitScreen().FlashFramesRemaining(), 0);
+    probes.Step();
+    EXPECT_GT(probes.scene.HitScreen().FlashFramesRemaining(), 0);
 }
 
 // 止めの間は状態の歩が進まないので、動作の時計も進まない
@@ -428,7 +568,7 @@ TEST(ActorAction, TheClockHoldsDuringTheHitStop)
 {
     NS::ActorActionInfo action;
     action.name = "Run";
-    action.events = {OwnerEvent("A", 0), OwnerEvent("B", 1)};
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
     ActionScene probes({action});
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
@@ -451,7 +591,7 @@ TEST(ActorAction, LeavingTheStateDropsTheRestOfTheAction)
 {
     NS::ActorActionInfo action;
     action.name = "Run";
-    action.events = {OwnerEvent("A", 0), OwnerEvent("B", 3)};
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 3)};
     ActionScene probes({action});
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
@@ -465,48 +605,6 @@ TEST(ActorAction, LeavingTheStateDropsTheRestOfTheAction)
         EXPECT_EQ(probes.Started(), Names{"A"});
         EXPECT_FALSE(probes.self->ActorActionClassObj()->IsRunning());
     }
-}
-
-// 始める歩を渡すと、その歩から始まり、それより前の事象は起きない
-TEST(ActorAction, AStartFrameSkipsTheEarlierEvents)
-{
-    NS::ActorActionInfo action;
-    action.name = "Run";
-    action.events = {OwnerEvent("Early", 1), OwnerEvent("At", 3), OwnerEvent("Late", 5)};
-    ActionScene probes({action});
-    ASSERT_NE(probes.self, nullptr);
-    probes.Enter("Run", 3);
-    probes.Step();
-    EXPECT_EQ(probes.Started(), Names{"At"});
-    EXPECT_EQ(probes.self->ActorActionClassObj()->Frame(), 3);
-    probes.Step();
-    EXPECT_EQ(probes.Started(), Names{"At"});
-    probes.Step();
-    EXPECT_EQ(probes.Started(), (Names{"At", "Late"}));
-}
-
-// 始める歩の途中にある形は、その歩の姿から描く。形は動作のフレームに合わせて描く姿で、始まりの歩に起こす事象と違う
-TEST(ActorAction, AStartFrameDrawsTheShapeFromThatFrame)
-{
-    NS::HitShapeItem shape;
-    shape.height.count = 2;
-    shape.height.keys[0] = NS::Curve::Key{0.0f, 1.0f};
-    shape.height.keys[1] = NS::Curve::Key{6.0f, 0.4f};
-    NS::ActorActionInfo action;
-    action.name = "Run";
-    action.events = {{shape, 0, 7}};
-    ActionScene probes({action});
-    ASSERT_NE(probes.self, nullptr);
-    const NS::DrawShapeDesc drawn{.height = shape.height, .alongDirection = NS::Vector3{0.0f, 0.0f, 1.0f}, .length = 7};
-    probes.Enter("Run", 3);
-    for (int frame = 3; frame < 7; ++frame)
-    {
-        SCOPED_TRACE(frame);
-        probes.Step();
-        EXPECT_NEAR(probes.self->ModelClassObj()->GetDrawScale().y, drawn.ScaleAt(frame).y, 1.0e-6f);
-    }
-    probes.Step();
-    EXPECT_FLOAT_EQ(probes.self->ModelClassObj()->GetDrawScale().y, 1.0f);
 }
 
 // センサーの入り切りは始まりの歩に効き、終わりの歩に戻る。途中で状態を出ても戻る
@@ -541,6 +639,13 @@ TEST(ActorAction, SensorSwitchesHoldForTheirLength)
     EXPECT_TRUE(body.IsValid());
     (void)NS::SetState<ActionIdleState>(probes.self);
     probes.Step();
+    EXPECT_TRUE(attack.IsValid());
+
+    // 状態の中で動作を止めても、入り切りの途中のセンサーはその場で戻る
+    probes.Enter("Hold");
+    probes.Step();
+    ASSERT_FALSE(attack.IsValid());
+    probes.self->StopAction();
     EXPECT_TRUE(attack.IsValid());
 }
 
@@ -646,7 +751,7 @@ TEST(ActorAction, TheStateEndsEvenIfTheActionStopsMidway)
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
     probes.Step();
-    probes.self->ActorActionClassObj()->Stop();
+    probes.self->StopAction();
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
@@ -658,7 +763,7 @@ TEST(ActorAction, TheStateEndsEvenIfTheActionStopsMidway)
     probes.self->endSeen.clear();
     probes.Enter("Run");
     probes.Step();
-    probes.self->ActorActionClassObj()->ReloadActions(probes.self);
+    probes.self->ReloadActions();
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
@@ -681,7 +786,7 @@ TEST(ActorAction, ReenteringWithoutStartDoesNotUseThePreviousLength)
     }
     ASSERT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, true}));
 
-    probes.self->ActorActionClassObj()->Stop();
+    probes.self->StopAction();
     (void)NS::SetState<ActionIdleState>(probes.self);
     probes.Step();
     probes.self->endSeen.clear();

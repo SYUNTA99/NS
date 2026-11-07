@@ -29,9 +29,9 @@ namespace
     }
 
     // 左のモーターを start から frames フレームで 0 へ下げる振動
-    NS::HitPadVibration FadingLeft(float start, int frames)
+    NS::PadRumbleDesc FadingLeft(float start, int frames)
     {
-        NS::HitPadVibration pad;
+        NS::PadRumbleDesc pad;
         pad.left.count = 2;
         pad.left.keys[0] = NS::Curve::Key{0.0f, start};
         pad.left.keys[1] = NS::Curve::Key{static_cast<float>(frames), 0.0f};
@@ -111,28 +111,6 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), flash * 0.5f);
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
-}
-
-// 重ねる振動の項目は、走っている振動を始め直さずに足す
-TEST(HitReactionChannels, LayeredPadItemAddsToTheRunningVibration)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionClassObj();
-    ASSERT_NE(reaction, nullptr);
-
-    scene.PadRumble().Start(player, FadingLeft(0.5f, 4));
-    NS::HitPadVibrationItem layered{};
-    layered.layered = true;
-    layered.left = FadingLeft(0.25f, 2).left;
-    reaction->StartItem(NS::HitReactionSelf{.actor = player},
-                        NS::HitReactionItem{layered},
-                        2,
-                        player->Root().Position(),
-                        player->HitSensorsClassObj()->Find("Body"),
-                        player->HitSensorsClassObj()->Find("Body"));
-    EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 }
 
 // 揺れと寄りは、頼んだ物だけがカメラの効果に積まれる

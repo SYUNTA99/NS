@@ -164,11 +164,11 @@ void PlayerActor::UpdateReboundPreview()
         }
         direction /= speed;
         // ダッシュが終わった後に触れた壁は反動にならないので、残りの歩で進む距離までだけ調べる
-        const NS::ActorAction* timeline = ActorActionClassObj();
+        const NS::ActorAction* actions = ActorActionClassObj();
         const NS::ActorActionInfo* action{nullptr};
-        if (timeline != nullptr)
+        if (actions != nullptr)
         {
-            action = timeline->FindAction(AirDashActionName());
+            action = actions->FindAction(AirDashActionName());
         }
         // 移る予約の間の歩の数は uint32 の最大 (IsStateEnd と同じ見分け方)
         const NS::IStateMachine* machine = GetStateMachine();
@@ -204,8 +204,7 @@ void PlayerActor::UpdateReboundPreview()
     }
     // 反動になる面だけを数える。当て方が欄「反動に数える当て方の下限」より浅い面は、当たっても反動にならない
     NS::Phys::CapsuleCastHit hit{};
-    if (!NS::CastCapsuleCollision(
-            m_collider.get(), ball, direction, reach, m_params->m_reboundMinFacing, hit))
+    if (!NS::CastCapsuleCollision(m_collider.get(), ball, direction, reach, m_params->m_reboundMinFacing, hit))
     {
         return;
     }
@@ -220,12 +219,12 @@ void PlayerActor::UpdateReboundPreview()
 
 float PlayerActor::AirDashSpeed() const noexcept
 {
-    const NS::ActorAction* timeline = ActorActionClassObj();
-    if (timeline == nullptr)
+    const NS::ActorAction* actions = ActorActionClassObj();
+    if (actions == nullptr)
     {
         return 0.0f;
     }
-    const NS::ActorActionInfo* action = timeline->FindAction(AirDashActionName());
+    const NS::ActorActionInfo* action = actions->FindAction(AirDashActionName());
     // 長さを決めていない動作では割らない。距離は欄の範囲が有限の正の数だけを書く
     if (action == nullptr || action->length <= 0)
     {
@@ -238,18 +237,8 @@ bool PlayerActor::StartAirDashAction() noexcept
 {
     // 速さは状態に入った時の動作の長さで決めて控え、途中で読み直しても変えない。IsStateEnd も入った時の長さで終わる
     m_airDash.m_dashSpeed = AirDashSpeed();
-    NS::ActorAction* timeline = ActorActionClassObj();
-    if (timeline == nullptr)
-    {
-        return false;
-    }
-    // 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。動作が無ければ Start が WARN を出す
-    return timeline->Start(ActorActionSelfOf(),
-                           AirDashActionName(),
-                           0,
-                           Root().Position(),
-                           m_bodyHitSensor,
-                           m_bodyHitSensor);
+    // 動作が無ければ StartStateAction が WARN を出す
+    return StartStateAction(AirDashActionName());
 }
 
 void PlayerActor::KeepAirDashSpeed() noexcept
@@ -447,7 +436,8 @@ void PlayerActor::ExtendReboundStop() noexcept
         m_airDash.m_reboundStopFrames = m_airDash.m_reboundStopFrames + 1;
     }
     // 1 フレーム足すのは、止めの最後のフレームか、止めが明けて向きを選ぶはずのフレームだけ。
-    // 明けるフレームで足すとそのフレームから止まるので、最短が 1 以下でも延ばせる。止めの残りを数えるのは基盤の止めだけにする
+    // 明けるフレームで足すとそのフレームから止まるので、最短が 1
+    // 以下でも延ばせる。止めの残りを数えるのは基盤の止めだけにする
     if (!m_airDash.m_stickMoving || HitStopFramesRemaining() > 1 ||
         m_airDash.m_reboundStopFrames >= m_params->m_reboundStopMaxFrames)
     {

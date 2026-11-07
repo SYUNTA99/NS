@@ -22,6 +22,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
+#include "NSlib/CoreObject/Reflection/ItemVariant.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DCommandList.h"
@@ -490,7 +491,7 @@ namespace NS
                         HitReactionEntry& entry = set.entries[e];
                         ImGui::PushID(e);
                         // 項目は畳める見出しにし、閉じていても長さが読めるようにする
-                        const std::string label{HitReactionItemLabel(entry.item)};
+                        const std::string label{ItemLabel(entry.item)};
                         if (ImGui::TreeNodeEx("##entry",
                                               ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_NoTreePushOnOpen,
                                               "%s (%d フレーム)",
@@ -499,10 +500,9 @@ namespace NS
                         {
                             ImGui::Indent();
                             committed |= DrawFrameCount("長さ", "##length", entry.length, m_hitSetsEditing);
-                            if (const ReflectionInfo* info = HitReactionItemReflection(entry.item))
+                            if (const ReflectionInfo* info = ItemReflection(entry.item))
                             {
-                                const ValueEditResult fields =
-                                    DrawReflectedValue(HitReactionItemFields(entry.item), *info);
+                                const ValueEditResult fields = DrawReflectedValue(ItemFields(entry.item), *info);
                                 m_hitSetsEditing |= fields.changed;
                                 committed |= fields.committed;
                             }

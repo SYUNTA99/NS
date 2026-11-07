@@ -8,17 +8,17 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorActionInfo.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Core/Windows/Clock.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
@@ -91,4 +91,3 @@ TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
 
     ExpectSameVector(player->Root().Position(), position);
 }
-

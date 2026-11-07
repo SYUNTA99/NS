@@ -22,11 +22,6 @@
 
 namespace NS
 {
-    namespace Anim
-    {
-        struct AnimClip;
-    }
-    class AnimClip;
     class Body;
     class Collider;
     class ActorList;
@@ -38,7 +33,6 @@ namespace GL
     namespace Player
     {
         class PlayerParams;
-        class PlayerClips;
         class PlayerAppearance;
         class PlayerSounds;
     } // namespace Player
@@ -74,8 +68,6 @@ public:
     [[nodiscard]] const NS::Collider& Collider() const noexcept { return *m_collider; }
     [[nodiscard]] GL::Player::PlayerParams& Params() noexcept { return *m_params; }
     [[nodiscard]] const GL::Player::PlayerParams& Params() const noexcept { return *m_params; }
-    [[nodiscard]] GL::Player::PlayerClips& Clips() noexcept { return *m_clips; }
-    [[nodiscard]] const GL::Player::PlayerClips& Clips() const noexcept { return *m_clips; }
     [[nodiscard]] const GL::Player::PlayerSounds& Sounds() const noexcept { return *m_playerSounds; }
     // =========================================================================
     // 当たり・演出サブシステムの参照
@@ -90,9 +82,11 @@ public:
     // 更新・アニメーション・移動入力・ジャンプ状態
     // =========================================================================
     using NS::SceneActor::Update;
-    //! 機器を読まずに slamHeld (エアダッシュのボタンの押し) を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜 で書いた値のまま
+    //! 機器を読まずに slamHeld (エアダッシュのボタンの押し) を差し込み、1 固定ステップ進める。ほかの入力は部品の Set〜
+    //! で書いた値のまま
     void Update(bool slamHeld);
-    //! 状態と水平の速さから再生するクリップと速度を選び、同居する Animation へ渡す
+    //! 状態と水平の速さから動きの動作を選んで名前で始め、歩きと走りの再生速度を同居する Animation へ渡す
+    //! 状態に結んだ動作 (エアダッシュなど) が走っている間は、動きの動作で止めない
     void UpdateAnimation();
     void OnEndPlay() override;
 
@@ -235,16 +229,22 @@ private:
 #endif
     [[nodiscard]] float AirDashSpeed() const noexcept;
     void TryBeginTerrainRebound() noexcept;
-    //! @brief 遮った面 normal で反動を始める。向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
+    //! @brief 遮った面 normal で反動を始める
+    //! 向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
     //! @details 入力補正はここでは掛けない。止めが明けたフレームに ChooseReboundAtRelease が掛ける
-    //! @param[in] baseSpeed 返る速さ (m/s)。エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
+    //! @param[in] baseSpeed 返る速さ (m/s)
+    //! エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
-    //! @brief DecideStep から毎フレーム、ExtendReboundStop より前に呼ぶ。前の歩から左スティックが欄「スティックが動いているとみなす変化」より
+    //! @brief DecideStep から毎フレーム、ExtendReboundStop
+    //! より前に呼ぶ。前の歩から左スティックが欄「スティックが動いているとみなす変化」より
     //! 動いたかを控え、止まっている歩ではその水平の向きを控える
     void ObserveStick() noexcept;
-    //! @brief DecideStep から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1 フレーム延ばす
+    //! @brief DecideStep
+    //! から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1
+    //! フレーム延ばす
     void ExtendReboundStop() noexcept;
-    //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
+    //! @brief 止めが明けたフレームに 1
+    //! 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
     void ChooseReboundAtRelease() noexcept;
     //! 体を動かす時の登れる坂の上限。向きを選んだ後の操作なしの段で、当たった面から離れて飛ぶ間は欄の広い上限を返す
     [[nodiscard]] float MoveMaxSlopeRadians() const noexcept;
@@ -291,13 +291,14 @@ private:
                                       float& outTop,
                                       NS::Vector3& outFaceNormal,
                                       NS::Vector3& outHangPos) const noexcept;
-    [[nodiscard]] const NS::AnimClip* ChooseClip(float lateralSpeed) const noexcept;
-    [[nodiscard]] float ChoosePlaybackSpeed(const NS::Anim::AnimClip* clip, float lateralSpeed) const noexcept;
+    // 状態と水平の速さから選ぶ動きの動作の名前。クリップを流せない動作の代わりは立ちの動作
+    [[nodiscard]] std::string_view ChooseMovementAction(float lateralSpeed) const noexcept;
+    // 走っている動作の名前から、Animation の再生速度を選ぶ。歩きと走りだけ速さに比例させる
+    [[nodiscard]] float ChoosePlaybackSpeed(std::string_view action, float lateralSpeed) const noexcept;
     // =========================================================================
     // メンバ変数：所有コンポーネント・サブシステム・体力
     // =========================================================================
     std::unique_ptr<GL::Player::PlayerParams> m_params;
-    std::unique_ptr<GL::Player::PlayerClips> m_clips;
     std::unique_ptr<NS::PlayerInput> m_input;
     std::unique_ptr<NS::Body> m_body;
     std::unique_ptr<NS::Collider> m_collider;
@@ -306,7 +307,7 @@ private:
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
-    GL::Level::TackleGhost* m_ghost = nullptr; // 子として基底が所有する
+    GL::Level::TackleGhost* m_ghost = nullptr;        // 子として基底が所有する
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================

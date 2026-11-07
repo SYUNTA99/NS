@@ -20,19 +20,19 @@ namespace NS
                                                                  std::string& error)
         {
             std::string reason;
-            std::optional<HitReactionItem> item = ParseHitReactionItem(row, {"start", "length"}, reason);
+            std::optional<ActionItem> item = detail::ParseItemRow<ActionItem>(row, {"start", "length"}, reason);
             if (!item.has_value())
             {
                 error = std::format("{} 番目の事象: {}", index, reason);
                 return std::nullopt;
             }
             ActorActionEvent event{.item = std::move(*item)};
-            if (!ReadHitReactionFrames(row, "start", event.start))
+            if (!ReadActorFileFrames(row, "start", event.start))
             {
                 error = std::format("{} 番目の事象の始まり start が 0 以上の整数でない", index);
                 return std::nullopt;
             }
-            if (!ReadHitReactionFrames(row, "length", event.length))
+            if (!ReadActorFileFrames(row, "length", event.length))
             {
                 error = std::format("{} 番目の事象の長さ length が 0 以上の整数でない", index);
                 return std::nullopt;
@@ -67,12 +67,12 @@ namespace NS
                 return std::nullopt;
             }
             ActionSensorEvent event;
-            if (!ReadHitReactionFrames(row, "start", event.start))
+            if (!ReadActorFileFrames(row, "start", event.start))
             {
                 error = std::format("{} 番目の入り切りの始まり start が 0 以上の整数でない", index);
                 return std::nullopt;
             }
-            if (!ReadHitReactionFrames(row, "length", event.length))
+            if (!ReadActorFileFrames(row, "length", event.length))
             {
                 error = std::format("{} 番目の入り切りの長さ length が 0 以上の整数でない", index);
                 return std::nullopt;
@@ -102,7 +102,7 @@ namespace NS
         }
     } // namespace
 
-    std::optional<ActorActionInfo> ParseActorAction(const nlohmann::json& doc, std::string& error)
+    std::optional<ActorActionInfo> ParseActorActionInfo(const nlohmann::json& doc, std::string& error)
     {
         if (!doc.is_object())
         {
@@ -131,13 +131,12 @@ namespace NS
         }
         for (nlohmann::json::const_iterator entry = doc.begin(); entry != doc.end(); ++entry)
         {
-            if (entry.key() != "name" && entry.key() != "length" && entry.key() != "events" &&
-                entry.key() != "sensors")
+            if (entry.key() != "name" && entry.key() != "length" && entry.key() != "events" && entry.key() != "sensors")
             {
                 NS_LOG_WARN(Scene, "動作 {} に読み手のいない欄 {} があり、読まない", action.name, entry.key());
             }
         }
-        if (doc.contains("length") && !ReadHitReactionFrames(doc, "length", action.length))
+        if (doc.contains("length") && !ReadActorFileFrames(doc, "length", action.length))
         {
             error = std::format("動作 {} の長さ length が 0 以上の整数でない", action.name);
             return std::nullopt;
@@ -173,13 +172,13 @@ namespace NS
         return action;
     }
 
-    nlohmann::json ActorActionToJson(const ActorActionInfo& action)
+    nlohmann::json ActorActionInfoToJson(const ActorActionInfo& action)
     {
         nlohmann::json events = nlohmann::json::array();
         for (const ActorActionEvent& event : action.events)
         {
             nlohmann::json row;
-            WriteHitReactionItem(event.item, row);
+            detail::WriteItemRow(event.item, row);
             row["start"] = event.start;
             row["length"] = event.length;
             events.push_back(std::move(row));
@@ -223,16 +222,15 @@ namespace NS
     std::vector<ActorActionInfo> ReadActorActions(std::string_view actorFileName, const nlohmann::json& actorFile)
     {
         return detail::ReadNamedActorFileItems(
-            actorFileName, ActorFileActions(actorFile), &ParseActorAction, "actions", "動作");
+            actorFileName, ActorFileActions(actorFile), &ParseActorActionInfo, "actions", "動作");
     }
 
     void WriteActorActions(nlohmann::json& actorFile, const std::vector<ActorActionInfo>& actions)
     {
         // 読まなかった動作は字面のまま同じ位置に残す。捨てると、直していない本人の値が .actor から消える
-        SetActorFileActions(
-            actorFile,
-            detail::BuildNamedActorFileItemsJson(
-                ActorFileActions(actorFile), actions, &ParseActorAction, &ActorActionToJson, "動作"));
+        SetActorFileActions(actorFile,
+                            detail::BuildNamedActorFileItemsJson(
+                                ActorFileActions(actorFile), actions, &ParseActorActionInfo, &ActorActionInfoToJson, "動作"));
     }
 
     int ActionLength(const ActorActionInfo& action) noexcept

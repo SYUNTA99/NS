@@ -5,16 +5,17 @@
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
-#include "NSlib/CoreObject/ClassObjs/Body.h"
-#include "NSlib/CoreObject/ClassObjs/Collider.h"
-#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Input.h"
-#include "NSlib/Phys/PhysicsScene.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/Phys/PhysicsScene.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestLogCapture.h"
 #include "Tests/TestSceneSetup.h"
@@ -59,7 +60,8 @@ namespace
     }
 
     // +Z を向くカメラと、宙に浮かせた自機。床は無い
-    // 左スティックを worldDir の位置へ動かす。テストのカメラは動かないので、世界の向きとカメラで回す前の入力が同じになる
+    // 左スティックを worldDir
+    // の位置へ動かす。テストのカメラは動かないので、世界の向きとカメラで回す前の入力が同じになる
     void MoveStick(PlayerActor* player, const NS::Vector3& worldDir, float speedScale)
     {
         player->Input().SetDesiredMove(worldDir, speedScale);
@@ -374,8 +376,8 @@ TEST(PlayerAirDashTest, TheDashLengthAndSpeedComeFromTheAirDashAction)
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(AirDashLength(player), 10);
-    const float speed = ParamsFields(player).at("エアダッシュの距離").get<float>() /
-                        (10.0f * NS::OS::FrameTimer::FixedDelta());
+    const float speed =
+        ParamsFields(player).at("エアダッシュの距離").get<float>() / (10.0f * NS::OS::FrameTimer::FixedDelta());
 
     MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
@@ -536,7 +538,7 @@ TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
             }
             NS::WriteActorActions(actorFile, actions);
         });
-        player->ActorActionClassObj()->ReloadActions(player);
+        player->ReloadActions();
     }
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
@@ -556,7 +558,7 @@ TEST(PlayerAirDashTest, TheDashEndsEvenIfTheActionIsReloadedMidway)
     MoveStick(player, NS::Vector3{}, 0.0f);
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
-    player->ActorActionClassObj()->ReloadActions(player);
+    player->ReloadActions();
     for (int step = 0; step < length + 1 && player->IsAirDashing(); ++step)
     {
         player->Update(false);
@@ -1173,8 +1175,7 @@ TEST(PlayerAirDashTest, PlainFallHasFullAirControlFromTheFirstFrame)
     NS::Scene scene;
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
-    const float full =
-        ParamsFields(player).at("空中の加速度").get<float>() * NS::OS::FrameTimer::FixedDelta();
+    const float full = ParamsFields(player).at("空中の加速度").get<float>() * NS::OS::FrameTimer::FixedDelta();
     player->Update(false);
     player->Update(false);
 

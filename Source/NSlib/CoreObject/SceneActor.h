@@ -37,7 +37,6 @@ namespace NS
     class HitReaction;
     struct HitOwnerRun;
     class ActorAction;
-    struct ActorActionSelf;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -63,7 +62,8 @@ namespace NS
         [[nodiscard]] const std::string& ActorFileName() const noexcept { return m_actorFileName; }
 
         //! part の部品の欄 field をシーンで上書きしているか
-        //! 一覧に入るのはグローバルの項目 (NS_GLOBAL_FIELD・NS_GLOBAL_ACCESSOR) だけ。参照の欄は一覧に入れず、保存でいつも書く
+        //! 一覧に入るのはグローバルの項目 (NS_GLOBAL_FIELD・NS_GLOBAL_ACCESSOR)
+        //! だけ。参照の欄は一覧に入れず、保存でいつも書く
         [[nodiscard]] bool IsSceneOverride(std::string_view part, std::string_view field) const;
         //! 項目をシーンの上書きの一覧に足す。保存はこの一覧の項目を書く
         void AddSceneOverride(std::string_view part, std::string_view field);
@@ -143,8 +143,17 @@ namespace NS
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActorAction* ActorActionClassObj() noexcept { return m_actorAction.get(); }
         [[nodiscard]] const ActorAction* ActorActionClassObj() const noexcept { return m_actorAction.get(); }
-        //! 自分の ActorAction の Start と Advance に渡す、自分と自分の部品
-        [[nodiscard]] ActorActionSelf ActorActionSelfOf() noexcept;
+        //! 名前の動作を始め、自分のアニメーションを流した秒で進める。始まった項目は自分の部品へ頼む
+        //! フレーム 0 の項目はこの呼び出しの中で頼む
+        //! @return 始めた場合 true。ActorAction を持たない・その名前の動作が無い場合は WARN を出して false
+        bool StartAction(std::string_view name);
+        //! 名前の動作を自分の今の状態に結んで始め、状態の歩数で進める。状態の OnEnter で呼ぶ
+        //! @return 始めた場合 true。ActorAction か状態機械を持たない・その名前の動作が無い場合は WARN を出して false
+        bool StartStateAction(std::string_view name);
+        //! 走っている動作を止め、入り切りの途中のセンサーを戻す
+        void StopAction();
+        //! .actor の動作を読み直す。走っている動作は止める。エディタが動作を書き換えた後に呼ぶ
+        void ReloadActions();
 
         //! 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
         //! 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りから効き、
@@ -211,8 +220,9 @@ namespace NS
         }
         //! OnSensorEnter を受けた組の重なりが終わった時に 1 回呼ばれる
         //! 形が離れた時と、どちらかのセンサーが調べる対象から外れた時 (Invalidate・持ち主の Disappear) に届く。
-        //! 相手のセンサーが一覧から外れた時 (相手のアクターが終わった時) は、次の固定フレームに other を nullptr で届く。
-        //! 自分のセンサーが一覧から外れた時 (自分のアクターが終わる時) は、SceneActor::OnEndPlay の中でその場で届く
+        //! 相手のセンサーが一覧から外れた時 (相手のアクターが終わった時) は、次の固定フレームに other を nullptr
+        //! で届く。 自分のセンサーが一覧から外れた時 (自分のアクターが終わる時) は、SceneActor::OnEndPlay
+        //! の中でその場で届く
         virtual void OnSensorExit(HitSensor* self, HitSensor* other)
         {
             (void)self;
@@ -222,8 +232,9 @@ namespace NS
         //! 親から子の順に、一度だけ開始する
         void Start();
         virtual void OnStart();
-        //! Disappear で世界から外し、基底のメンバーの部品 (Model・Shadow・当たり・センサー) のうち作った物をシーンの仕組みから外す
-        //! 消えたままでも外し、当たりの body は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
+        //! Disappear で世界から外し、基底のメンバーの部品 (Model・Shadow・当たり・センサー)
+        //! のうち作った物をシーンの仕組みから外す 消えたままでも外し、当たりの body
+        //! は壊す。入れていない部品は何もしないので、2 回呼ばれてもよい
         virtual void OnEndPlay();
 
         //! .actor だけに書き、シーンでは上書きしない値 (センサーの値・束・動作) を今の .actor から読み直す
@@ -324,6 +335,17 @@ namespace NS
         }
 
     private:
+        // 動作の時計を 1 フレーム進め、記録した物を自分の部品へ頼む。呼ぶのは Update と StartAction だけ
+        void AdvanceAction(float playbackSeconds);
+        // 1 回の Update で自分のアニメーションを流す秒。結ばない動作の時計を進める
+        [[nodiscard]] float ActionPlaybackSeconds() const noexcept;
+        // 動作の部品が記録した、センサーの入り切りと始まった事象の項目を、自分の部品へ頼む
+        void RunActionOutputs();
+        // 動作の効果音の項目の音を、自分の Sound に読んでおく
+        void PreloadActionSounds();
+        // 当たりの束の効果音の項目の音を、自分の Sound に読んでおく
+        void PreloadHitReactionSounds();
+
         friend class ActorList;
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
@@ -390,7 +412,7 @@ namespace NS
             [[nodiscard]] std::strong_ordering operator<=>(const SceneOverrideKey& other) const noexcept = default;
         };
         std::set<SceneOverrideKey> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
-        Scene* m_scene = nullptr;    // 入るシーン。子は InitChild で親と同じシーンに結び付ける
+        Scene* m_scene = nullptr;                    // 入るシーン。子は InitChild で親と同じシーンに結び付ける
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 

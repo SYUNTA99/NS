@@ -34,7 +34,6 @@
       "classObjs": {
         "ActionTimeline": {},
         "Appearance": {},
-        "Clips": {},
         "Collider": {},
         "Effect": {},
         "HitReaction": {},

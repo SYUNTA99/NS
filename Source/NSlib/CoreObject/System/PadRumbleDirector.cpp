@@ -38,7 +38,7 @@ namespace NS
         Write();
     }
 
-    void PadRumbleDirector::Start(const SceneActor* requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Start(const SceneActor* requester, const PadRumbleDesc& pad)
     {
         NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Start: 頼んだ物が null");
         m_layers.clear();
@@ -49,7 +49,7 @@ namespace NS
         Write();
     }
 
-    void PadRumbleDirector::Blend(const SceneActor* requester, const HitPadVibration& pad)
+    void PadRumbleDirector::Blend(const SceneActor* requester, const PadRumbleDesc& pad)
     {
         NS_ASSERT(Scene, requester != nullptr, "PadRumbleDirector::Blend: 頼んだ物が null");
         if (!m_running)

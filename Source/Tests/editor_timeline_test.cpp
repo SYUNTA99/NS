@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelinePanel.h"
-#include "Editor/EditorMode.h"
 #include "Editor/EditorActors.h"
+#include "Editor/EditorMode.h"
 #include "Editor/GameViewPanel.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/LevelFileBrowser.h"
@@ -12,24 +12,24 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
-#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
-#include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/D3DRenderTarget.h"
-#include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/Core/Windows/Window.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Core/Windows/Window.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DRenderTarget.h"
+#include "NSlib/Gfx/D3DTexture.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestCheckLayer.h"
 
@@ -61,10 +61,7 @@ namespace
     class TimelineGui
     {
     public:
-        TimelineGui()
-        {
-            m_context = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f});
-        }
+        TimelineGui() { m_context = CreateHeadlessImGui(ImVec2{1000.0f, 800.0f}); }
         ~TimelineGui() { ImGui::DestroyContext(m_context); }
 
     private:
@@ -278,7 +275,8 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     EXPECT_FALSE(app.Input().Mouse().IsRelativeMode());
 }
 
-// 「保存」は開いていない .actor の変更も書く。今の .actor だけ書いて未保存のフラグを消すと、選び直す前の変更が黙って失われる
+// 「保存」は開いていない .actor の変更も書く。今の .actor
+// だけ書いて未保存のフラグを消すと、選び直す前の変更が黙って失われる
 TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
 {
     const ScopedActorFileDirectory directory("EditorActionTimelineSave");
@@ -403,7 +401,67 @@ namespace
     {
         PressPanelButton(editor, timeline, "再生の位置に足す");
     }
+
+    //! 足す項目の種類のコンボボックスを開き、ポップアップの中の label の種類を選ぶ
+    void ChooseAddType(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline, const char* label)
+    {
+        const auto drawPanel = [&] {
+            ImGui::SetNextWindowPos({0.0f, 0.0f});
+            ImGui::SetNextWindowSize({650.0f, 780.0f});
+            timeline.Render(editor);
+        };
+        PressPanelButton(editor, timeline, "##add-type");
+        ImGui::NewFrame();
+        drawPanel();
+        ImGui::EndFrame();
+        ImGui::NewFrame();
+        ImGuiWindow* popup = ImGui::FindWindowByName("##Combo_00");
+        ASSERT_NE(popup, nullptr);
+        ImGuiContext& context = *ImGui::GetCurrentContext();
+        context.NavActivateId = popup->GetID(label);
+        context.NavActivateDownId = context.NavActivateId;
+        drawPanel();
+        ImGui::EndFrame();
+    }
 } // namespace
+
+// 窓から動作の 6 つの種類の項目とセンサーの入り切りを足し、保存すると .actor に並ぶ
+TEST(EditorActionTimelinePanel, AddsEveryItemKindAndASensorSwitchAndSavesThem)
+{
+    const ScopedActorFileDirectory directory("EditorActionTimelineEveryKind");
+    TimelineGui gui;
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    NS::Editor::ActionTimelinePanel timeline;
+    PlaceEditedPlayer(directory, scene, editor);
+    const std::vector<NS::ActorActionInfo> before =
+        NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_FALSE(before.empty());
+
+    const char* const labels[] = {"アニメーション", "効果音", "エフェクト", "パッドの振動", "カメラの揺れ", "白い光"};
+    for (const char* label : labels)
+    {
+        SCOPED_TRACE(label);
+        ChooseAddType(editor, timeline, label);
+        PressPanelButton(editor, timeline, "再生の位置に足す");
+    }
+    PressPanelButton(editor, timeline, "入り切りを足す");
+    PressPanelButton(editor, timeline, "保存");
+
+    NS::ActorFileLibrary::Get().Reload();
+    const std::vector<NS::ActorActionInfo> saved =
+        NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
+    ASSERT_EQ(saved.size(), before.size());
+    const NS::ActorActionInfo& action = saved.front();
+    const std::size_t first = before.front().events.size();
+    ASSERT_EQ(action.events.size(), first + std::size(labels));
+    for (std::size_t i = 0; i < std::size(labels); ++i)
+    {
+        SCOPED_TRACE(i);
+        EXPECT_EQ(action.events[first + i].item.index(), i);
+    }
+    EXPECT_EQ(action.sensors.size(), before.front().sensors.size() + 1);
+}
 
 // 「元に戻す」は派生を指すアクターの動作も読み直す。動作を書く先は元の .actor なので、派生の名前では見つからない
 TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
@@ -445,22 +503,19 @@ TEST(EditorActorFileWrite, SavingValuesKeepsTheRunningAction)
     PlaceEditedPlayer(directory, scene, editor);
     NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
-    const NS::HitSensor* sensor = actor->HitSensorsClassObj()->Find("Body");
-    ASSERT_NE(sensor, nullptr);
     const std::vector<NS::ActorActionInfo> actions =
         NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
     ASSERT_FALSE(actions.empty());
-    NS::ActorAction& timeline = *actor->ActorActionClassObj();
-    ASSERT_TRUE(timeline.Start(
-        actor->ActorActionSelfOf(), actions.front().name, 0, actor->Root().Position(), sensor, sensor));
+    ASSERT_TRUE(actor->StartAction(actions.front().name));
 
     NS::HitReactionSet set;
     set.name = "Hit";
     editor.WriteActorFileHitReactions("PlayerActor", {set});
 
     EXPECT_NE(actor->HitReactionClassObj()->FindSet("Hit"), nullptr);
-    EXPECT_TRUE(timeline.IsRunning());
-    EXPECT_EQ(timeline.CurrentName(), actions.front().name);
+    const NS::ActorActionInfo* current = actor->ActorActionClassObj()->CurrentAction();
+    ASSERT_NE(current, nullptr);
+    EXPECT_EQ(current->name, actions.front().name);
 }
 
 // インスペクターの .actor の保存は、タイムラインの保存していない動作を書かない。書くと「元に戻す」で動作が戻らない
@@ -625,12 +680,11 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     // シーンの書き先は、Assets の下に作る試しのレベルにする。起動シーンのファイルを書かない
     const std::string folder =
         "EditorQuitTest" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
-    const std::string levelDirectory = NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), folder);
+    const std::string levelDirectory =
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), folder);
     ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(levelDirectory));
     const std::string levelText = NS::MakeSceneJson().dump();
-    const std::span<const std::byte> levelBytes{reinterpret_cast<const std::byte*>(levelText.data()),
-                                                levelText.size()};
+    const std::span<const std::byte> levelBytes{reinterpret_cast<const std::byte*>(levelText.data()), levelText.size()};
     ASSERT_TRUE(
         NS::OS::FileSystem::WriteAllBytes(NS::OS::FileSystem::Combine(levelDirectory, "quit.scene"), levelBytes));
     NS::Editor::EditorMode& mode = editor.Editor();
@@ -706,7 +760,8 @@ TEST(EditorActionTimelinePanel, SaveKeepsAFileChangedOutsideAndStaysUnsaved)
 }
 
 // 終了の確認と Save Level を開いている間は、編集のショートカットを止める答えが真になる。
-// 答えはモーダルを ImGui の窓の積み重ねで問うので、2 つの窓がモーダルとして開いていないと Delete で消した後のシーンを保存できてしまう
+// 答えはモーダルを ImGui の窓の積み重ねで問うので、2 つの窓がモーダルとして開いていないと Delete
+// で消した後のシーンを保存できてしまう
 TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
 {
     TimelineGui gui;

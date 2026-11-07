@@ -9,6 +9,7 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -18,7 +19,6 @@
 #include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -252,11 +252,8 @@ TEST(PlayerStateSequence, LedgeIsRefusedUnderACeilingAboveTheClimbEnd)
     ASSERT_NE(player, nullptr);
     const NS::Collider& collider = player->Collider();
     const float standCenter = collider.StandingHalfHeight() + collider.CapsuleRadius();
-    AddTerrainBox(scene,
-                  NS::Vector3{0.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f},
-                  2.0f,
-                  1.0f,
-                  1.0f);
+    AddTerrainBox(
+        scene, NS::Vector3{0.0f, standCenter + 0.5f * collider.StandingHalfHeight() + 1.0f, 2.0f}, 2.0f, 1.0f, 1.0f);
     EXPECT_FALSE(FallUntilHanging(player));
 }
 
@@ -332,8 +329,8 @@ TEST(PlayerStateSequence, TiltedSlopeIsNotALedge)
     const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{1.0f, 0.0f, 0.0f}, -NS::k_Pi / 4.0f);
     const NS::OBB slope = NS::MakeOBB(NS::Vector3{0.0f, 0.5f, 5.0f}, tilt, NS::Vector3{3.0f, 0.5f, 5.0f});
     scene.Physics().AddBox(slope, NS::Phys::k_TerrainObjectLayer);
-    const float boundingTop = slope.center.y + slope.halfExtentY * std::abs(slope.axisY.y) +
-                              slope.halfExtentZ * std::abs(slope.axisZ.y);
+    const float boundingTop =
+        slope.center.y + slope.halfExtentY * std::abs(slope.axisY.y) + slope.halfExtentZ * std::abs(slope.axisZ.y);
 
     const NS::Collider& collider = player->Collider();
     player->Root().SetPosition(NS::Vector3{0.0f, boundingTop + 0.2f - collider.CapsuleHalfHeight(), 1.0f});
@@ -512,8 +509,7 @@ TEST(PlayerStateSequence, CurledAnswerShapeAndDrawnMeshAgree)
     NS::LoadAssetField(ballMesh, looks["玉のメッシュ"].get<std::string>());
     ASSERT_NE(standingMesh, ballMesh);
 
-    const auto expectAgree = [&](bool curled, const char* when)
-    {
+    const auto expectAgree = [&](bool curled, const char* when) {
         EXPECT_EQ(player->IsCurled(), curled) << when;
         EXPECT_EQ(player->Collider().CapsuleHalfHeight() == 0.0f, curled) << when;
         const NS::Mesh* expected = standingMesh;
