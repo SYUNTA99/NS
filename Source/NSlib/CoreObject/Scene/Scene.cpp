@@ -274,7 +274,8 @@ namespace NS
         }
         const nlohmann::json& object = *merged;
         const bool actorFileChanged = actorFile != obj->ActorFileName();
-        m_actors.ApplyIdentity(obj, ReadActorHeader(snapshot));
+        const ActorHeader header = ReadActorHeader(snapshot);
+        m_actors.ApplyIdentityExceptPresence(obj, header);
         ReadSceneOverrides(obj, snapshot);
         bool written = false;
         ForEachReflectedClassObj(obj, [&](const ClassObjInfo& field, Object* classObj) {
@@ -295,6 +296,8 @@ namespace NS
         {
             obj->ReloadAssets();
         }
+        // 出す時は今の姿で当たりと補間の前の値を揃えるので、JSON の値を全部当ててから出す
+        ActorList::ApplyPresence(obj, header);
         // 書き換えた欄に ActorRef があれば、指す相手を取得し直す
         if (written)
         {

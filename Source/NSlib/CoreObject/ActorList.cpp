@@ -317,10 +317,21 @@ namespace NS
 
     void ActorList::ApplyIdentity(SceneActor* obj, const ActorHeader& header)
     {
-        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentity: 写す先のアクターが無い");
+        ApplyIdentityExceptPresence(obj, header);
+        ApplyPresence(obj, header);
+    }
+
+    void ActorList::ApplyIdentityExceptPresence(SceneActor* obj, const ActorHeader& header)
+    {
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentityExceptPresence: 写す先のアクターが無い");
         obj->SetId(header.id);
         obj->m_actorFileName = header.actorFile;
         RenameActor(obj, header.name);
+    }
+
+    void ActorList::ApplyPresence(SceneActor* obj, const ActorHeader& header)
+    {
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyPresence: 写す先のアクターが無い");
         if (header.active)
         {
             obj->Appear();

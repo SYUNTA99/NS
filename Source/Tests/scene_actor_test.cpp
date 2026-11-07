@@ -382,6 +382,29 @@ TEST(SceneActor, ApplyFromJsonNumbersANameThatIsAlreadyUsed)
     EXPECT_EQ(applied->Name(), "Ball_1");
 }
 
+// Undo の JSON で隠れていたアクターを出す時は、JSON の位置を当ててから出す。補間の前の値が古い位置から始まらない
+TEST(SceneActor, ApplyFromJsonShowsAHiddenActorAtTheSnapshotPosition)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "GoalActor", 1);
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+    ASSERT_NE(actor, nullptr);
+    const NS::Vector3 shown{4.0f, 0.0f, 0.0f};
+    actor->Root().SetPosition(shown);
+    actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
+    const nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
+    actor->Root().SetPosition(NS::Vector3{});
+    actor->Disappear();
+    actor->Root().Snapshot();
+
+    ASSERT_EQ(ApplySnapshot(scene, snapshot), actor);
+    EXPECT_TRUE(actor->IsAppeared());
+    EXPECT_FLOAT_EQ(actor->Root().Position().x, shown.x);
+    EXPECT_FLOAT_EQ(actor->Root().PreviousPosition().x, shown.x);
+}
+
 TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
 {
     EXPECT_EQ(NS::TypeRegistry::Get().Find("PhysicsSettings"), nullptr);

@@ -147,8 +147,13 @@ namespace NS
         //! 外した相手を指したまま次のフレームへ持ち越さない
         void ResolveActorRefs();
 
-        //! 頭の欄の id・.actor の名前・名前・出現を obj へ写す。名前は他のアクターと重なれば番号を付ける
+        //! header の id・.actor の名前・名前・出現を obj へ写す。名前は他のアクターと重なれば番号を付ける
+        //! 出すのは最後なので、JSON の値を全部当てたアクターに使う
         void ApplyIdentity(SceneActor* obj, const ActorHeader& header);
+        //! header の id・.actor の名前・名前を obj へ写し、出現は変えない
+        void ApplyIdentityExceptPresence(SceneActor* obj, const ActorHeader& header);
+        //! header の出現のとおりに obj を出すか隠す。出す時は今の姿で当たりと補間の前の値を揃えるので、JSON の値を全部当ててから呼ぶ
+        static void ApplyPresence(SceneActor* obj, const ActorHeader& header);
 
         std::vector<std::unique_ptr<SceneActor>> m_actors; // アクターの単一所有リスト
         std::vector<SceneActor*> m_scheduled; // UpdateActors・PrepareRenderActors が呼ぶ順に積む作業用の並び
