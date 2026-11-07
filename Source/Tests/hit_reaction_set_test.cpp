@@ -1,6 +1,6 @@
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -286,7 +286,7 @@ TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     (void)NS::ActorJsonClassObjs(actorFile);
     NS::WriteHitReactionSets(actorFile, {MakeEveryKindSet()});
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "BeforeContact";
     action.events = {{NS::HitOthersStopItem{}, 4, 2}, {NS::HitFlashItem{}, 0, 6}};
     NS::WriteActorActions(actorFile, {action});
@@ -914,7 +914,7 @@ namespace
     struct ShippedActorFile
     {
         std::vector<NS::HitReactionSet> sets;
-        std::vector<NS::ActorAction> actions;
+        std::vector<NS::ActorActionInfo> actions;
     };
 
     // 出荷の Assets/Actors/<name>.actor の束と動作。読めなければ空

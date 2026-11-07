@@ -404,7 +404,7 @@ namespace NS
     class Model;
 
     //! 束か項目を始める 1 回の呼び出しに渡す、持ち主の読む物と書く先。呼び出しの中だけ使い、覚えない
-    //! 組む所は SceneActor・ActionTimeline と、束を直に呼ぶ SceneActor の派生。ActionTimeline は ActionTimelineSelf の
+    //! 組む所は SceneActor・ActorAction と、束を直に呼ぶ SceneActor の派生。ActorAction は ActionTimelineSelf の
     //! const SceneActor* から写すので、SceneActor の関数 1 つには寄らない。項目を足す時は組む所を全部揃える
     struct HitReactionSelf
     {

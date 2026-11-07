@@ -6,7 +6,7 @@ namespace NS
 {
     namespace Editor
     {
-        std::size_t AddActionEvent(ActorAction& action, const HitReactionItem& item, int start)
+        std::size_t AddActionEvent(ActorActionInfo& action, const HitReactionItem& item, int start)
         {
             ActorActionEvent event;
             event.item = item;
@@ -15,7 +15,7 @@ namespace NS
             return action.events.size() - 1;
         }
 
-        bool RemoveActionEvent(ActorAction& action, std::size_t row) noexcept
+        bool RemoveActionEvent(ActorActionInfo& action, std::size_t row) noexcept
         {
             if (row >= action.events.size())
             {
@@ -25,7 +25,7 @@ namespace NS
             return true;
         }
 
-        TimelineFrameRange ActionFrameRange(const ActorAction& action) noexcept
+        TimelineFrameRange ActionFrameRange(const ActorActionInfo& action) noexcept
         {
             TimelineFrameRange range;
             for (const ActorActionEvent& event : action.events)

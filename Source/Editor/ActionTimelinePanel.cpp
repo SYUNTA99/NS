@@ -6,7 +6,7 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -62,7 +62,7 @@ namespace NS
             }
         } // namespace
 
-        const ActorAction* ActionTimelinePanel::EditingAction() const noexcept
+        const ActorActionInfo* ActionTimelinePanel::EditingAction() const noexcept
         {
             if (m_actionIndex >= m_actions.size())
             {
@@ -71,7 +71,7 @@ namespace NS
             return &m_actions[m_actionIndex];
         }
 
-        ActorAction* ActionTimelinePanel::WorkingAction() noexcept
+        ActorActionInfo* ActionTimelinePanel::WorkingAction() noexcept
         {
             if (m_actionIndex >= m_actions.size())
             {
@@ -138,9 +138,9 @@ namespace NS
             for (SceneActor* actor : editor.Actors())
             {
                 if (ActorFileToWrite(actor, FieldDestination::ActorFile) == m_actorFile &&
-                    actor->ActionTimelineClassObj() != nullptr)
+                    actor->ActorActionClassObj() != nullptr)
                 {
-                    actor->ActionTimelineClassObj()->ReloadActions(actor);
+                    actor->ActorActionClassObj()->ReloadActions(actor);
                 }
             }
         }
@@ -235,7 +235,7 @@ namespace NS
         void ActionTimelinePanel::RenderActionChoice(LevelEditorController& editor) noexcept
         {
             std::string actionLabel = "(動作が無い)";
-            if (const ActorAction* action = EditingAction())
+            if (const ActorActionInfo* action = EditingAction())
             {
                 actionLabel = action->name;
             }
@@ -252,7 +252,7 @@ namespace NS
                 }
                 ImGui::EndCombo();
             }
-            if (ActorAction* working = WorkingAction())
+            if (ActorActionInfo* working = WorkingAction())
             {
                 ImGui::SameLine();
                 ImGui::SetNextItemWidth(80.0f);
@@ -270,7 +270,7 @@ namespace NS
             if (ImGui::Button("動作を足す"))
             {
                 const std::string newName{m_newName};
-                const bool taken = std::any_of(m_actions.begin(), m_actions.end(), [&newName](const ActorAction& other) {
+                const bool taken = std::any_of(m_actions.begin(), m_actions.end(), [&newName](const ActorActionInfo& other) {
                     return other.name == newName;
                 });
                 if (newName.empty() || taken)
@@ -279,7 +279,7 @@ namespace NS
                 }
                 else
                 {
-                    ActorAction added;
+                    ActorActionInfo added;
                     added.name = newName;
                     m_actions.push_back(std::move(added));
                     m_actionIndex = m_actions.size() - 1;
@@ -325,14 +325,14 @@ namespace NS
                 {
                     // m_dirty は動作を書く先の名前なので、派生を指すアクターも書く先の名前で比べる
                     if (ActorFileToWrite(actor, FieldDestination::ActorFile) == name &&
-                        actor->ActionTimelineClassObj() != nullptr)
+                        actor->ActorActionClassObj() != nullptr)
                     {
-                        actor->ActionTimelineClassObj()->ReloadActions(actor);
+                        actor->ActorActionClassObj()->ReloadActions(actor);
                     }
                 }
             }
             std::string actionName;
-            if (const ActorAction* action = EditingAction())
+            if (const ActorActionInfo* action = EditingAction())
             {
                 actionName = action->name;
             }
@@ -388,7 +388,7 @@ namespace NS
             ImGui::SameLine();
             if (ImGui::Button("再生の位置に足す"))
             {
-                if (ActorAction* working = WorkingAction())
+                if (ActorActionInfo* working = WorkingAction())
                 {
                     m_selectedRow = AddActionEvent(*working, types[static_cast<std::size_t>(m_addType)], clock);
                     ApplyWorking(editor);
@@ -400,7 +400,7 @@ namespace NS
             ImGui::BeginDisabled(sensors.empty());
             if (ImGui::Button("入り切りを足す"))
             {
-                if (ActorAction* working = WorkingAction())
+                if (ActorActionInfo* working = WorkingAction())
                 {
                     ActionSensorEvent sensor;
                     sensor.sensor = sensors.front()->Name();
@@ -416,7 +416,7 @@ namespace NS
 
         void ActionTimelinePanel::RenderBands() noexcept
         {
-            const ActorAction* action = EditingAction();
+            const ActorActionInfo* action = EditingAction();
             if (action == nullptr)
             {
                 return;
@@ -533,7 +533,7 @@ namespace NS
 
         void ActionTimelinePanel::RenderSelectedRow(LevelEditorController& editor) noexcept
         {
-            ActorAction* action = WorkingAction();
+            ActorActionInfo* action = WorkingAction();
             if (action == nullptr || !m_selectedRow.has_value())
             {
                 return;

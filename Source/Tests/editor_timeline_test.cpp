@@ -13,7 +13,7 @@
 #include "NSlib/App/Application.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -294,7 +294,7 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     library.Reload();
     ASSERT_NE(library.Find("PlayerActor"), nullptr);
-    const std::vector<NS::ActorAction> before = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    const std::vector<NS::ActorActionInfo> before = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
     ASSERT_FALSE(before.empty());
 
     TimelineGui gui;
@@ -333,7 +333,7 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
 
     library.Reload();
     ASSERT_NE(library.Find("PlayerActor"), nullptr);
-    const std::vector<NS::ActorAction> saved = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    const std::vector<NS::ActorActionInfo> saved = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
     ASSERT_EQ(saved.size(), before.size());
     EXPECT_EQ(saved.front().events.size(), before.front().events.size() + 1);
 }
@@ -368,7 +368,7 @@ namespace
         {
             return 0;
         }
-        const std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", *actorFile);
+        const std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", *actorFile);
         EXPECT_FALSE(actions.empty());
         if (actions.empty())
         {
@@ -417,14 +417,14 @@ TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor, "DerivedPlayer");
-    const std::vector<NS::ActorAction> before =
+    const std::vector<NS::ActorActionInfo> before =
         NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
     ASSERT_FALSE(before.empty());
 
     NS::Editor::ActionTimelinePanel timeline;
 
     const auto eventCount = [&] {
-        const NS::ActionTimeline* actions = scene.Actors().FindByActorId(1)->ActionTimelineClassObj();
+        const NS::ActorAction* actions = scene.Actors().FindByActorId(1)->ActorActionClassObj();
         return actions->FindAction(before.front().name)->events.size();
     };
     AddEventThroughThePanel(editor, timeline);
@@ -447,12 +447,12 @@ TEST(EditorActorFileWrite, SavingValuesKeepsTheRunningAction)
     ASSERT_NE(actor, nullptr);
     const NS::HitSensor* sensor = actor->HitSensorsClassObj()->Find("Body");
     ASSERT_NE(sensor, nullptr);
-    const std::vector<NS::ActorAction> actions =
+    const std::vector<NS::ActorActionInfo> actions =
         NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
     ASSERT_FALSE(actions.empty());
-    NS::ActionTimeline& timeline = *actor->ActionTimelineClassObj();
+    NS::ActorAction& timeline = *actor->ActorActionClassObj();
     ASSERT_TRUE(timeline.Start(
-        actor->ActionTimelineSelfOf(), actions.front().name, 0, actor->Root().Position(), sensor, sensor));
+        actor->ActorActionSelfOf(), actions.front().name, 0, actor->Root().Position(), sensor, sensor));
 
     NS::HitReactionSet set;
     set.name = "Hit";
@@ -549,10 +549,10 @@ TEST(EditorActionTimelinePanel, RevertKeepsActorFileEditsThatCouldNotBeWritten)
     EXPECT_FALSE(timeline.HasUnsavedChanges());
     const nlohmann::json* document = NS::ActorFileLibrary::Get().Find("PlayerActor");
     ASSERT_NE(document, nullptr);
-    const std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", *document);
+    const std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", *document);
     ASSERT_FALSE(actions.empty());
-    const NS::ActorAction* placed =
-        scene.Actors().FindByActorId(1)->ActionTimelineClassObj()->FindAction(actions.front().name);
+    const NS::ActorActionInfo* placed =
+        scene.Actors().FindByActorId(1)->ActorActionClassObj()->FindAction(actions.front().name);
     ASSERT_NE(placed, nullptr);
     EXPECT_EQ(placed->events.size(), before);
     const nlohmann::json* kept = NS::ActorFileHitReactions(*document);

@@ -12,7 +12,7 @@
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Core/Windows/Window.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -607,7 +607,7 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
     NS::HitReactionSet set;
     set.name = "試しの束";
     NS::WriteHitReactionSets(tunedFile, {set});
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "試しの動作";
     NS::WriteActorActions(tunedFile, {action});
     const ScopedActorFile tuned{"TunedPlayer", std::move(tunedFile)};
@@ -618,9 +618,9 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
     const NS::SceneActor* before = scene.Actors().FindByActorId(1);
     ASSERT_NE(before, nullptr);
     ASSERT_NE(before->HitReactionClassObj(), nullptr);
-    ASSERT_NE(before->ActionTimelineClassObj(), nullptr);
+    ASSERT_NE(before->ActorActionClassObj(), nullptr);
     ASSERT_EQ(before->HitReactionClassObj()->FindSet("試しの束"), nullptr);
-    ASSERT_EQ(before->ActionTimelineClassObj()->FindAction("試しの動作"), nullptr);
+    ASSERT_EQ(before->ActorActionClassObj()->FindAction("試しの動作"), nullptr);
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "TunedPlayer");
@@ -628,7 +628,7 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
     ASSERT_NE(applied, nullptr);
     EXPECT_EQ(applied, before);
     EXPECT_NE(applied->HitReactionClassObj()->FindSet("試しの束"), nullptr);
-    EXPECT_NE(applied->ActionTimelineClassObj()->FindAction("試しの動作"), nullptr);
+    EXPECT_NE(applied->ActorActionClassObj()->FindAction("試しの動作"), nullptr);
 }
 
 namespace

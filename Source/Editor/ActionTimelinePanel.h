@@ -2,7 +2,7 @@
 
 #include "Editor/Timeline.h"
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Action/ActorActionInfo.h"
 
 #include <cstddef>
 #include <functional>
@@ -24,7 +24,7 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
             [[nodiscard]] const std::string& EditingActorFile() const noexcept { return m_actorFile; }
-            [[nodiscard]] const ActorAction* EditingAction() const noexcept;
+            [[nodiscard]] const ActorActionInfo* EditingAction() const noexcept;
 
             //! 未保存の変更がある .actor をすべて保存する。すべて書けた時だけ未保存記録を空にして true を返す
             [[nodiscard]] bool SaveAll() noexcept;
@@ -47,10 +47,10 @@ namespace NS
             void RevertDirtyActions(LevelEditorController& editor);
             void LoadWorking(std::string_view name, std::string_view action);
             void ApplyWorking(LevelEditorController& editor);
-            [[nodiscard]] ActorAction* WorkingAction() noexcept;
+            [[nodiscard]] ActorActionInfo* WorkingAction() noexcept;
 
             std::string m_actorFile;
-            std::vector<ActorAction> m_actions;
+            std::vector<ActorActionInfo> m_actions;
             std::size_t m_actionIndex = 0;
             std::set<std::string, std::less<>> m_dirty;
             char m_newName[64] = {};

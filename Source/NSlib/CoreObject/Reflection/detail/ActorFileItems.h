@@ -1,7 +1,7 @@
 #pragma once
 
 // .actor の名前付き項目の並び (動作・名前の束) を読み書きする関数のテンプレート。
-// 使うのは ActorAction.cpp と HitReaction.cpp だけなので、公開ヘッダ ActorFile.h に置かず、ログと書式の include を広げない
+// 使うのは ActorActionInfo.cpp と HitReaction.cpp だけなので、公開ヘッダ ActorFile.h に置かず、ログと書式の include を広げない
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorJson.h"

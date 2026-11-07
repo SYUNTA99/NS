@@ -9,7 +9,7 @@
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -1071,12 +1071,12 @@ TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
     // 動作の窓は取り消しの履歴を通さずに .actor の文書を書く
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     nlohmann::json document = *library.Find("PlayerActor");
-    NS::WriteActorActions(document, {NS::ActorAction{"Jump", {}, {}}});
+    NS::WriteActorActions(document, {NS::ActorActionInfo{"Jump", {}, {}}});
     ASSERT_TRUE(library.Set("PlayerActor", std::move(document)));
 
     ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
-    std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
     ASSERT_EQ(actions.size(), 1u);
     EXPECT_EQ(actions[0].name, "Jump");
 

@@ -20,7 +20,7 @@
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Asset/AnimClip.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
@@ -72,7 +72,7 @@ void PlayerActor::OnInit()
     NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
     m_ghost = CreateChildActor<GL::Level::TackleGhost>();
     CreateClassObj(m_hitReaction);
-    CreateClassObj(m_actionTimeline);
+    CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
     NS::InitOverlay(this, m_reboundPreview.get());
     CreateClassObj(m_effect);
@@ -508,7 +508,7 @@ void PlayerActor::ResetState() noexcept
     OverrideHitStop(0);
     StopTackleHitEffects();
     // 動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
-    ActionTimelineClassObj()->Stop();
+    ActorActionClassObj()->Stop();
     OwningScene()->RequestStopScene(this, 0);
     // 潰れたままの描く形から出現位置の形へ補間されないよう、前のフレームの倍率ごと揃える
     m_appearance->ResetDrawScale(m_model.get());

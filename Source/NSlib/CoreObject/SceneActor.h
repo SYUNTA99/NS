@@ -36,8 +36,8 @@ namespace NS
     class Sound;
     class HitReaction;
     struct HitOwnerRun;
-    class ActionTimeline;
-    struct ActionTimelineSelf;
+    class ActorAction;
+    struct ActorActionSelf;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -141,10 +141,10 @@ namespace NS
         [[nodiscard]] const HitSensorsObj* HitSensorsClassObj() const noexcept { return m_hitSensors.get(); }
         [[nodiscard]] HitReaction* HitReactionClassObj() noexcept { return m_hitReaction.get(); }
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
-        [[nodiscard]] ActionTimeline* ActionTimelineClassObj() noexcept { return m_actionTimeline.get(); }
-        [[nodiscard]] const ActionTimeline* ActionTimelineClassObj() const noexcept { return m_actionTimeline.get(); }
-        //! 自分の ActionTimeline の Start と Advance に渡す、自分と自分の部品
-        [[nodiscard]] ActionTimelineSelf ActionTimelineSelfOf() noexcept;
+        [[nodiscard]] ActorAction* ActorActionClassObj() noexcept { return m_actorAction.get(); }
+        [[nodiscard]] const ActorAction* ActorActionClassObj() const noexcept { return m_actorAction.get(); }
+        //! 自分の ActorAction の Start と Advance に渡す、自分と自分の部品
+        [[nodiscard]] ActorActionSelf ActorActionSelfOf() noexcept;
 
         //! 当たりの止め (ヒットストップ) の残りを、frames が残りより長い時だけ延ばす
         //! 止めの間は Update が状態機械の 1 歩と BodyStep を飛ばす。呼んだフレームの残りから効き、
@@ -403,7 +403,7 @@ namespace NS
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectObj> m_effect;
         std::unique_ptr<Sound> m_sound;
-        std::unique_ptr<ActionTimeline> m_actionTimeline;
+        std::unique_ptr<ActorAction> m_actorAction;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;
 

@@ -8,7 +8,7 @@
 #include "Game/Player/States/WalkPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"

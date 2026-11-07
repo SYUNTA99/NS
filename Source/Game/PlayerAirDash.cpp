@@ -13,7 +13,7 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Windows/Clock.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -164,8 +164,8 @@ void PlayerActor::UpdateReboundPreview()
         }
         direction /= speed;
         // ダッシュが終わった後に触れた壁は反動にならないので、残りの歩で進む距離までだけ調べる
-        const NS::ActionTimeline* timeline = ActionTimelineClassObj();
-        const NS::ActorAction* action{nullptr};
+        const NS::ActorAction* timeline = ActorActionClassObj();
+        const NS::ActorActionInfo* action{nullptr};
         if (timeline != nullptr)
         {
             action = timeline->FindAction(AirDashActionName());
@@ -220,12 +220,12 @@ void PlayerActor::UpdateReboundPreview()
 
 float PlayerActor::AirDashSpeed() const noexcept
 {
-    const NS::ActionTimeline* timeline = ActionTimelineClassObj();
+    const NS::ActorAction* timeline = ActorActionClassObj();
     if (timeline == nullptr)
     {
         return 0.0f;
     }
-    const NS::ActorAction* action = timeline->FindAction(AirDashActionName());
+    const NS::ActorActionInfo* action = timeline->FindAction(AirDashActionName());
     // 長さを決めていない動作では割らない。距離は欄の範囲が有限の正の数だけを書く
     if (action == nullptr || action->length <= 0)
     {
@@ -238,13 +238,13 @@ bool PlayerActor::StartAirDashAction() noexcept
 {
     // 速さは状態に入った時の動作の長さで決めて控え、途中で読み直しても変えない。IsStateEnd も入った時の長さで終わる
     m_airDash.m_dashSpeed = AirDashSpeed();
-    NS::ActionTimeline* timeline = ActionTimelineClassObj();
+    NS::ActorAction* timeline = ActorActionClassObj();
     if (timeline == nullptr)
     {
         return false;
     }
     // 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。動作が無ければ Start が WARN を出す
-    return timeline->Start(ActionTimelineSelfOf(),
+    return timeline->Start(ActorActionSelfOf(),
                            AirDashActionName(),
                            0,
                            Root().Position(),

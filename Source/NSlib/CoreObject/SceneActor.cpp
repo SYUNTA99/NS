@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
@@ -39,7 +39,7 @@ namespace NS
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
     NS_CLASSOBJ(m_effect, "Effect")
     NS_CLASSOBJ(m_sound, "Sound")
-    NS_CLASSOBJ(m_actionTimeline, "ActionTimeline")
+    NS_CLASSOBJ(m_actorAction, "ActionTimeline")
     NS_CLASSOBJ(m_stateMachine, "StateMachine")
     NS_REFLECT_END_IMPL()
 
@@ -307,9 +307,9 @@ namespace NS
     void SceneActor::ReloadActorFileOnlyValues()
     {
         ReloadActorFileOnlyValuesExceptActions();
-        if (m_actionTimeline)
+        if (m_actorAction)
         {
-            m_actionTimeline->ReloadActions(this);
+            m_actorAction->ReloadActions(this);
         }
     }
 
@@ -421,7 +421,7 @@ namespace NS
         if (m_shadow) { HideModel(this, m_shadow.get()); }
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
-        if (m_actionTimeline) { m_actionTimeline->Stop(); }
+        if (m_actorAction) { m_actorAction->Stop(); }
         if (m_hitReaction) { m_hitReaction->StopAll(this); }
     }
 
@@ -466,9 +466,9 @@ namespace NS
         return m_hitReaction->OwnerRunsSince(first);
     }
 
-    ActionTimelineSelf SceneActor::ActionTimelineSelfOf() noexcept
+    ActorActionSelf SceneActor::ActorActionSelfOf() noexcept
     {
-        return ActionTimelineSelf{.actor = this,
+        return ActorActionSelf{.actor = this,
                                   .reaction = m_hitReaction.get(),
                                   .model = m_model.get(),
                                   .sensors = m_hitSensors.get()};
@@ -497,7 +497,7 @@ namespace NS
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
             if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
-            if (m_actionTimeline) { m_actionTimeline->Advance(ActionTimelineSelfOf()); }
+            if (m_actorAction) { m_actorAction->Advance(ActorActionSelfOf()); }
             // clang-format on
             AfterStateStep();
         }

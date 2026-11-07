@@ -1,5 +1,5 @@
 #include "Game/Level/SensorKinds.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
@@ -25,13 +25,13 @@
 namespace
 {
     // 当たる直前の動作の形。縮みと自機以外の止めを、状態に入ってからの歩に置く
-    NS::ActorAction MakeBeforeContactAction()
+    NS::ActorActionInfo MakeBeforeContactAction()
     {
         NS::HitShapeItem shape;
         shape.along.count = 2;
         shape.along.keys[0] = NS::Curve::Key{0.0f, 1.0f};
         shape.along.keys[1] = NS::Curve::Key{6.0f, 0.85f};
-        NS::ActorAction action;
+        NS::ActorActionInfo action;
         action.name = "BeforeContactCenter";
         action.events = {
             {shape, 0, 7},
@@ -43,9 +43,9 @@ namespace
 } // namespace
 
 // 事象は種類・始まりの歩・長さ・欄を持ち、並びの順のまま往復する
-TEST(ActorAction, EventsRoundTripThroughTheFileFormInOrder)
+TEST(ActorActionInfo, EventsRoundTripThroughTheFileFormInOrder)
 {
-    const NS::ActorAction written = MakeBeforeContactAction();
+    const NS::ActorActionInfo written = MakeBeforeContactAction();
     const nlohmann::json doc = NS::ActorActionToJson(written);
     EXPECT_EQ(doc["name"].get<std::string>(), "BeforeContactCenter");
     ASSERT_EQ(doc["events"].size(), 3u);
@@ -53,7 +53,7 @@ TEST(ActorAction, EventsRoundTripThroughTheFileFormInOrder)
     EXPECT_EQ(doc["events"][1]["start"].get<int>(), 4);
 
     std::string error;
-    const std::optional<NS::ActorAction> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     // センサーの入り切りの無い動作は鍵を書かない
     EXPECT_FALSE(doc.contains("sensors"));
@@ -72,9 +72,9 @@ TEST(ActorAction, EventsRoundTripThroughTheFileFormInOrder)
 }
 
 // センサーの入り切りは、どのセンサーか・入れるか外すか・始まり・長さを持ち、並びの順のまま往復する
-TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
+TEST(ActorActionInfo, SensorSwitchesRoundTripThroughTheFileForm)
 {
-    NS::ActorAction written;
+    NS::ActorActionInfo written;
     written.name = "Swing";
     written.sensors = {{.sensor = "Attack", .valid = true, .start = 2, .length = 5},
                        {.sensor = "Body", .valid = false, .start = 0, .length = 3}};
@@ -84,7 +84,7 @@ TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
     EXPECT_EQ(doc["sensors"][0]["start"].get<int>(), 2);
 
     std::string error;
-    const std::optional<NS::ActorAction> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->sensors.size(), 2u);
     for (std::size_t i = 0; i < written.sensors.size(); ++i)
@@ -99,22 +99,22 @@ TEST(ActorAction, SensorSwitchesRoundTripThroughTheFileForm)
 }
 
 // 動作の長さ (状態の歩の回数) は往復する。鍵が無い動作は長さを決めておらず、決めていない長さは鍵を書かない
-TEST(ActorAction, TheActionLengthRoundTripsAndIsUnsetWhenMissing)
+TEST(ActorActionInfo, TheActionLengthRoundTripsAndIsUnsetWhenMissing)
 {
     const TestLogCapture log;
-    NS::ActorAction written;
+    NS::ActorActionInfo written;
     written.name = "AirDash";
     written.length = 29;
     const nlohmann::json doc = NS::ActorActionToJson(written);
     ASSERT_TRUE(doc.contains("length"));
     EXPECT_EQ(doc.at("length").get<int>(), 29);
     std::string error;
-    const std::optional<NS::ActorAction> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     EXPECT_EQ(read->length, 29);
     EXPECT_EQ(NS::ActorActionToJson(*read), doc);
 
-    const std::optional<NS::ActorAction> missing =
+    const std::optional<NS::ActorActionInfo> missing =
         NS::ParseActorAction(nlohmann::json::parse(R"({"name": "A", "events": []})"), error);
     ASSERT_TRUE(missing.has_value()) << error;
     EXPECT_EQ(missing->length, 0);
@@ -122,7 +122,7 @@ TEST(ActorAction, TheActionLengthRoundTripsAndIsUnsetWhenMissing)
     EXPECT_EQ(log.WarningCount(), 0);
 }
 
-TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
+TEST(ActorActionInfo, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 {
     const nlohmann::json doc = nlohmann::json::parse(R"({"name": "A", "古い欄": 0, "events": [
         {"type": "Flash", "start": 1, "length": 6, "fields": {"濃さ": 0.3, "消した欄": 2}},
@@ -132,7 +132,7 @@ TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     ]})");
     std::string error;
     const TestLogCapture log;
-    const std::optional<NS::ActorAction> read = NS::ParseActorAction(doc, error);
+    const std::optional<NS::ActorActionInfo> read = NS::ParseActorAction(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->events.size(), 2u);
     EXPECT_FLOAT_EQ(std::get<NS::HitFlashItem>(read->events[0].item).alpha, 0.3f);
@@ -145,7 +145,7 @@ TEST(ActorAction, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
 }
 
 // 入り切りはセンサーを名前で指す。名前の無い物と空の名前は、どのセンサーか決まらないので読まない
-TEST(ActorAction, SensorSwitchWithoutANameIsRefused)
+TEST(ActorActionInfo, SensorSwitchWithoutANameIsRefused)
 {
     for (const char* row : {R"({"start": 0, "length": 2})", R"({"sensor": "", "start": 0, "length": 2})",
                             R"({"sensor": true, "start": 0, "length": 2})"})
@@ -159,7 +159,7 @@ TEST(ActorAction, SensorSwitchWithoutANameIsRefused)
     }
 }
 
-TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
+TEST(ActorActionInfo, BrokenActionsAreRejectedWithAReason)
 {
     const char* const broken[] = {
         R"({"events": []})",
@@ -192,7 +192,7 @@ TEST(ActorAction, BrokenActionsAreRejectedWithAReason)
 }
 
 // .actor の動作の並びは、壊れた動作と名前の重なった動作を ERROR で知らせて読まず、残りを読む
-TEST(ActorAction, ActorFileSkipsBrokenAndDuplicateActions)
+TEST(ActorActionInfo, ActorFileSkipsBrokenAndDuplicateActions)
 {
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileActions(actorFile, nlohmann::json::parse(R"([
@@ -202,7 +202,7 @@ TEST(ActorAction, ActorFileSkipsBrokenAndDuplicateActions)
         {"name": "Hit", "events": []}
     ])"));
     const TestLogCapture log;
-    const std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+    const std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
     ASSERT_EQ(actions.size(), 2u);
     EXPECT_EQ(actions[0].name, "BeforeContact");
     EXPECT_TRUE(actions[0].events.empty());
@@ -211,7 +211,7 @@ TEST(ActorAction, ActorFileSkipsBrokenAndDuplicateActions)
 }
 
 // 読めた動作を直して書き戻しても、読めなかった動作と名前の重なった動作は .actor の同じ位置に元の字面のまま残る
-TEST(ActorAction, WritingBackKeepsTheActionsThatWereNotRead)
+TEST(ActorActionInfo, WritingBackKeepsTheActionsThatWereNotRead)
 {
     const nlohmann::json original = nlohmann::json::parse(R"([
         {"name": "BeforeContact", "events": []},
@@ -222,7 +222,7 @@ TEST(ActorAction, WritingBackKeepsTheActionsThatWereNotRead)
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::SetActorFileActions(actorFile, original);
     const TestLogCapture log;
-    std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
+    std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
     ASSERT_EQ(actions.size(), 2u);
     actions[1].events.push_back(NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = 2, .length = 3});
     NS::WriteActorActions(actorFile, actions);
@@ -238,16 +238,16 @@ TEST(ActorAction, WritingBackKeepsTheActionsThatWereNotRead)
 }
 
 // 動作の長さは、始まりと長さを足すと int を越える事象でも負に回らない
-TEST(ActorAction, TheLengthDoesNotWrapPastInt)
+TEST(ActorActionInfo, TheLengthDoesNotWrapPastInt)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.events.push_back(
         NS::ActorActionEvent{.item = NS::HitFlashItem{}, .start = std::numeric_limits<int>::max(), .length = 1});
     EXPECT_EQ(NS::ActionLength(action), std::numeric_limits<int>::max());
 }
 
 // 動作が 1 つも無い時は鍵を書かない。束と動作を持たない .actor の形を変えない
-TEST(ActorAction, NoActionsWriteNoKey)
+TEST(ActorActionInfo, NoActionsWriteNoKey)
 {
     nlohmann::json actorFile = CodeValuesActorFile("PlayerActor");
     NS::WriteActorActions(actorFile, {MakeBeforeContactAction()});
@@ -305,7 +305,7 @@ namespace
             NS::Cast<NS::ShapeHitSensor>(m_attackSensor)->SetSphere(0.8f);
             CreateClassObj(m_model);
             CreateClassObj(m_hitReaction);
-            CreateClassObj(m_actionTimeline);
+            CreateClassObj(m_actorAction);
             NS::StateMachineOf<ActionProbeActor>* machine = nullptr;
             (void)BuildStateMachine<ActionProbeActor, ActionIdleState, ActionRunState>(this, machine);
         }
@@ -322,7 +322,7 @@ namespace
         {
             return;
         }
-        owner->started = owner->ActionTimelineClassObj()->Start(owner->ActionTimelineSelfOf(),
+        owner->started = owner->ActorActionClassObj()->Start(owner->ActorActionSelfOf(),
                                                                owner->actionName,
                                                                owner->startFrame,
                                                                owner->Root().Position(),
@@ -358,7 +358,7 @@ namespace
         ActionProbeActor* self = nullptr;
         ActionProbeActor* other = nullptr;
 
-        explicit ActionScene(const std::vector<NS::ActorAction>& actions)
+        explicit ActionScene(const std::vector<NS::ActorActionInfo>& actions)
         {
             nlohmann::json actorFile = CodeValuesActorFile(k_ActionProbeName);
             NS::WriteActorActions(actorFile, actions);
@@ -399,14 +399,14 @@ namespace
 } // namespace
 
 // 事象は状態に入ってからの歩で起き、同じ歩の事象は並びの順に起きる。始まった事象は記録から読める
-TEST(ActionTimeline, EventsStartOnTheStateStepsInFileOrder)
+TEST(ActorAction, EventsStartOnTheStateStepsInFileOrder)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.events = {OwnerEvent("A", 0), OwnerEvent("Z", 2), OwnerEvent("Y", 2), OwnerEvent("D", 4)};
     ActionScene probes({action});
     ASSERT_NE(probes.self, nullptr);
-    const NS::ActionTimeline& timeline = *probes.self->ActionTimelineClassObj();
+    const NS::ActorAction& timeline = *probes.self->ActorActionClassObj();
     probes.Enter("Run");
 
     const Names expected[] = {{"A"}, {"A"}, {"A", "Z", "Y"}, {"A", "Z", "Y"}, {"A", "Z", "Y", "D"}};
@@ -424,9 +424,9 @@ TEST(ActionTimeline, EventsStartOnTheStateStepsInFileOrder)
 }
 
 // 止めの間は状態の歩が進まないので、動作の時計も進まない
-TEST(ActionTimeline, TheClockHoldsDuringTheHitStop)
+TEST(ActorAction, TheClockHoldsDuringTheHitStop)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.events = {OwnerEvent("A", 0), OwnerEvent("B", 1)};
     ActionScene probes({action});
@@ -440,16 +440,16 @@ TEST(ActionTimeline, TheClockHoldsDuringTheHitStop)
         SCOPED_TRACE(frame);
         probes.Step();
         EXPECT_EQ(probes.Started(), Names{"A"});
-        EXPECT_EQ(probes.self->ActionTimelineClassObj()->Frame(), 0);
+        EXPECT_EQ(probes.self->ActorActionClassObj()->Frame(), 0);
     }
     probes.Step();
     EXPECT_EQ(probes.Started(), (Names{"A", "B"}));
 }
 
 // 状態が移ると、前の動作の残りの事象は起きない
-TEST(ActionTimeline, LeavingTheStateDropsTheRestOfTheAction)
+TEST(ActorAction, LeavingTheStateDropsTheRestOfTheAction)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.events = {OwnerEvent("A", 0), OwnerEvent("B", 3)};
     ActionScene probes({action});
@@ -463,14 +463,14 @@ TEST(ActionTimeline, LeavingTheStateDropsTheRestOfTheAction)
         SCOPED_TRACE(frame);
         probes.Step();
         EXPECT_EQ(probes.Started(), Names{"A"});
-        EXPECT_FALSE(probes.self->ActionTimelineClassObj()->IsRunning());
+        EXPECT_FALSE(probes.self->ActorActionClassObj()->IsRunning());
     }
 }
 
 // 始める歩を渡すと、その歩から始まり、それより前の事象は起きない
-TEST(ActionTimeline, AStartFrameSkipsTheEarlierEvents)
+TEST(ActorAction, AStartFrameSkipsTheEarlierEvents)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.events = {OwnerEvent("Early", 1), OwnerEvent("At", 3), OwnerEvent("Late", 5)};
     ActionScene probes({action});
@@ -478,7 +478,7 @@ TEST(ActionTimeline, AStartFrameSkipsTheEarlierEvents)
     probes.Enter("Run", 3);
     probes.Step();
     EXPECT_EQ(probes.Started(), Names{"At"});
-    EXPECT_EQ(probes.self->ActionTimelineClassObj()->Frame(), 3);
+    EXPECT_EQ(probes.self->ActorActionClassObj()->Frame(), 3);
     probes.Step();
     EXPECT_EQ(probes.Started(), Names{"At"});
     probes.Step();
@@ -486,13 +486,13 @@ TEST(ActionTimeline, AStartFrameSkipsTheEarlierEvents)
 }
 
 // 始める歩の途中にある形は、その歩の姿から描く。形は動作のフレームに合わせて描く姿で、始まりの歩に起こす事象と違う
-TEST(ActionTimeline, AStartFrameDrawsTheShapeFromThatFrame)
+TEST(ActorAction, AStartFrameDrawsTheShapeFromThatFrame)
 {
     NS::HitShapeItem shape;
     shape.height.count = 2;
     shape.height.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     shape.height.keys[1] = NS::Curve::Key{6.0f, 0.4f};
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.events = {{shape, 0, 7}};
     ActionScene probes({action});
@@ -510,12 +510,12 @@ TEST(ActionTimeline, AStartFrameDrawsTheShapeFromThatFrame)
 }
 
 // センサーの入り切りは始まりの歩に効き、終わりの歩に戻る。途中で状態を出ても戻る
-TEST(ActionTimeline, SensorSwitchesHoldForTheirLength)
+TEST(ActorAction, SensorSwitchesHoldForTheirLength)
 {
-    NS::ActorAction flicker;
+    NS::ActorActionInfo flicker;
     flicker.name = "Flicker";
     flicker.sensors = {{.sensor = "Body", .valid = false, .start = 1, .length = 2}};
-    NS::ActorAction hold;
+    NS::ActorActionInfo hold;
     hold.name = "Hold";
     hold.sensors = {{.sensor = "Attack", .valid = false, .start = 0, .length = 10}};
     ActionScene probes({flicker, hold});
@@ -545,9 +545,9 @@ TEST(ActionTimeline, SensorSwitchesHoldForTheirLength)
 }
 
 // 持ち主に無い名前の入り切りは、WARN を出してどのセンサーも切り替えない
-TEST(ActionTimeline, SensorSwitchOfAMissingNameChangesNothing)
+TEST(ActorAction, SensorSwitchOfAMissingNameChangesNothing)
 {
-    NS::ActorAction missing;
+    NS::ActorActionInfo missing;
     missing.name = "Missing";
     missing.sensors = {{.sensor = "Tail", .valid = false, .start = 0, .length = 10}};
     ActionScene probes({missing});
@@ -564,7 +564,7 @@ TEST(ActionTimeline, SensorSwitchOfAMissingNameChangesNothing)
 }
 
 // 名前の無い動作は始めず、知らせる
-TEST(ActionTimeline, AMissingActionIsNotStarted)
+TEST(ActorAction, AMissingActionIsNotStarted)
 {
     ActionScene probes({});
     ASSERT_NE(probes.self, nullptr);
@@ -572,14 +572,14 @@ TEST(ActionTimeline, AMissingActionIsNotStarted)
     probes.Enter("Nothing");
     probes.Step();
     EXPECT_FALSE(probes.self->started);
-    EXPECT_FALSE(probes.self->ActionTimelineClassObj()->IsRunning());
+    EXPECT_FALSE(probes.self->ActorActionClassObj()->IsRunning());
     EXPECT_EQ(log.WarningCount(), 1);
 }
 
 // 状態の OnStep が動作の長さの回数だけ走ると、次の OnStep から状態の終わりと答える
-TEST(ActionTimeline, TheStateEndsWhenItsStepsReachTheActionLength)
+TEST(ActorAction, TheStateEndsWhenItsStepsReachTheActionLength)
 {
-    NS::ActorAction action;
+    NS::ActorActionInfo action;
     action.name = "Run";
     action.length = 3;
     ActionScene probes({action});
@@ -593,14 +593,14 @@ TEST(ActionTimeline, TheStateEndsWhenItsStepsReachTheActionLength)
 }
 
 // 長さを決めていない動作・始まらなかった動作・動作の無いアクター・移る予約の後は、状態の終わりと答えない
-TEST(ActionTimeline, TheStateDoesNotEndWithoutTheBoundActionLength)
+TEST(ActorAction, TheStateDoesNotEndWithoutTheBoundActionLength)
 {
     NS::SceneActor plain;
     EXPECT_FALSE(NS::IsStateEnd(&plain));
 
-    NS::ActorAction unset;
+    NS::ActorActionInfo unset;
     unset.name = "Unset";
-    NS::ActorAction run;
+    NS::ActorActionInfo run;
     run.name = "Run";
     run.length = 1;
     ActionScene probes({unset, run});
@@ -637,16 +637,16 @@ TEST(ActionTimeline, TheStateDoesNotEndWithoutTheBoundActionLength)
 }
 
 // 途中で動作が止まっても (Stop・読み直し)、状態は動作を始めた時の長さで終わる
-TEST(ActionTimeline, TheStateEndsEvenIfTheActionStopsMidway)
+TEST(ActorAction, TheStateEndsEvenIfTheActionStopsMidway)
 {
-    NS::ActorAction run;
+    NS::ActorActionInfo run;
     run.name = "Run";
     run.length = 3;
     ActionScene probes({run});
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
     probes.Step();
-    probes.self->ActionTimelineClassObj()->Stop();
+    probes.self->ActorActionClassObj()->Stop();
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
@@ -658,7 +658,7 @@ TEST(ActionTimeline, TheStateEndsEvenIfTheActionStopsMidway)
     probes.self->endSeen.clear();
     probes.Enter("Run");
     probes.Step();
-    probes.self->ActionTimelineClassObj()->ReloadActions(probes.self);
+    probes.self->ActorActionClassObj()->ReloadActions(probes.self);
     for (int frame = 0; frame < 3; ++frame)
     {
         probes.Step();
@@ -667,9 +667,9 @@ TEST(ActionTimeline, TheStateEndsEvenIfTheActionStopsMidway)
 }
 
 // 動作を始めずに同じ状態へ入り直すと、前に入った時の動作の長さでは終わらない
-TEST(ActionTimeline, ReenteringWithoutStartDoesNotUseThePreviousLength)
+TEST(ActorAction, ReenteringWithoutStartDoesNotUseThePreviousLength)
 {
-    NS::ActorAction run;
+    NS::ActorActionInfo run;
     run.name = "Run";
     run.length = 2;
     ActionScene probes({run});
@@ -681,7 +681,7 @@ TEST(ActionTimeline, ReenteringWithoutStartDoesNotUseThePreviousLength)
     }
     ASSERT_EQ(probes.self->endSeen, (std::vector<bool>{false, false, true}));
 
-    probes.self->ActionTimelineClassObj()->Stop();
+    probes.self->ActorActionClassObj()->Stop();
     (void)NS::SetState<ActionIdleState>(probes.self);
     probes.Step();
     probes.self->endSeen.clear();
@@ -695,16 +695,16 @@ TEST(ActionTimeline, ReenteringWithoutStartDoesNotUseThePreviousLength)
 }
 
 // 予約し直した先が動作を始めた状態と同じでも、移る予約の間は状態の終わりと答えない
-TEST(ActionTimeline, TheStateDoesNotEndWhileReservedBackIntoTheSameState)
+TEST(ActorAction, TheStateDoesNotEndWhileReservedBackIntoTheSameState)
 {
-    NS::ActorAction run;
+    NS::ActorActionInfo run;
     run.name = "Run";
     run.length = 1;
     ActionScene probes({run});
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
     probes.Step();
-    ASSERT_TRUE(probes.self->ActionTimelineClassObj()->IsRunning());
+    ASSERT_TRUE(probes.self->ActorActionClassObj()->IsRunning());
     (void)NS::SetState<ActionIdleState>(probes.self);
     (void)NS::SetState<ActionRunState>(probes.self);
     EXPECT_FALSE(NS::IsStateEnd(probes.self));

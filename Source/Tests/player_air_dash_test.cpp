@@ -6,7 +6,7 @@
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ActorJson.h"
-#include "NSlib/CoreObject/Action/ActionTimeline.h"
+#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -43,7 +43,7 @@ namespace
     // 自機の .actor の動作 "AirDash" の長さ (状態の歩の回数)。動作が無ければ 0
     int AirDashLength(const PlayerActor* player)
     {
-        const NS::ActorAction* action = player->ActionTimelineClassObj()->FindAction("AirDash");
+        const NS::ActorActionInfo* action = player->ActorActionClassObj()->FindAction("AirDash");
         if (action == nullptr)
         {
             return 0;
@@ -360,8 +360,8 @@ TEST(PlayerAirDashTest, DashLastsTheActionLengthThenKeepsTheExitSpeed)
 TEST(PlayerAirDashTest, TheDashLengthAndSpeedComeFromTheAirDashAction)
 {
     const ScopedActorFileEdit shorter("PlayerActor", [](nlohmann::json& actorFile) {
-        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-        for (NS::ActorAction& action : actions)
+        std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        for (NS::ActorActionInfo& action : actions)
         {
             if (action.name == "AirDash")
             {
@@ -470,8 +470,8 @@ TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
     {
         SCOPED_TRACE("動作が無い");
         const ScopedActorFileEdit removed("PlayerActor", [](nlohmann::json& actorFile) {
-            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-            std::erase_if(actions, [](const NS::ActorAction& action) { return action.name == "AirDash"; });
+            std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            std::erase_if(actions, [](const NS::ActorActionInfo& action) { return action.name == "AirDash"; });
             NS::WriteActorActions(actorFile, actions);
         });
         ExpectNoDashOnPress();
@@ -479,8 +479,8 @@ TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
     {
         SCOPED_TRACE("長さが 0");
         const ScopedActorFileEdit unset("PlayerActor", [](nlohmann::json& actorFile) {
-            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-            for (NS::ActorAction& action : actions)
+            std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            for (NS::ActorActionInfo& action : actions)
             {
                 if (action.name == "AirDash")
                 {
@@ -497,8 +497,8 @@ TEST(PlayerAirDashTest, NoDashWithoutTheAirDashActionLength)
 TEST(PlayerAirDashTest, TheDashEndsWhenItsActionCannotStart)
 {
     const ScopedActorFileEdit removed("PlayerActor", [](nlohmann::json& actorFile) {
-        std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-        std::erase_if(actions, [](const NS::ActorAction& action) { return action.name == "AirDash"; });
+        std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
+        std::erase_if(actions, [](const NS::ActorActionInfo& action) { return action.name == "AirDash"; });
         NS::WriteActorActions(actorFile, actions);
     });
     NS::Scene scene;
@@ -526,8 +526,8 @@ TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
     ASSERT_TRUE(player->IsAirDashing());
     {
         const ScopedActorFileEdit shorter("PlayerActor", [](nlohmann::json& actorFile) {
-            std::vector<NS::ActorAction> actions = NS::ReadActorActions("PlayerActor", actorFile);
-            for (NS::ActorAction& action : actions)
+            std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
+            for (NS::ActorActionInfo& action : actions)
             {
                 if (action.name == "AirDash")
                 {
@@ -536,7 +536,7 @@ TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
             }
             NS::WriteActorActions(actorFile, actions);
         });
-        player->ActionTimelineClassObj()->ReloadActions(player);
+        player->ActorActionClassObj()->ReloadActions(player);
     }
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
@@ -556,7 +556,7 @@ TEST(PlayerAirDashTest, TheDashEndsEvenIfTheActionIsReloadedMidway)
     MoveStick(player, NS::Vector3{}, 0.0f);
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
-    player->ActionTimelineClassObj()->ReloadActions(player);
+    player->ActorActionClassObj()->ReloadActions(player);
     for (int step = 0; step < length + 1 && player->IsAirDashing(); ++step)
     {
         player->Update(false);
