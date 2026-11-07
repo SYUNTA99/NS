@@ -5118,8 +5118,8 @@
           ]
         },
         "Model": {
-          "メッシュ": "Assets/Models/apricot_ruins/nature/fractured_cliffs.glb",
-          "マテリアル": "Assets/Materials/apricot_ruins/nature/rock_strata.mat",
+          "メッシュ": "Assets/Models/apricot_ruins/nature/faceted_cliffs_v5.glb",
+          "マテリアル": "Assets/Materials/apricot_ruins/nature/rock_facets_v5.mat",
           "基本色": null
         }
       }
@@ -5142,8 +5142,8 @@
           ]
         },
         "Model": {
-          "メッシュ": "Assets/Models/apricot_ruins/nature/grass_tops.glb",
-          "マテリアル": "Assets/Materials/apricot_ruins/nature/coastal_grass.mat",
+          "メッシュ": "Assets/Models/apricot_ruins/nature/terrain_grass_v5.glb",
+          "マテリアル": "Assets/Materials/apricot_ruins/nature/grass_terrain_v4.mat",
           "基本色": null
         }
       }

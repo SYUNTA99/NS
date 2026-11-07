@@ -1,0 +1,17 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": [
+    "Assets/Textures/apricot_ruins/grass.png"
+  ],
+  "baseColor": [
+    0.36,
+    0.48,
+    0.17
+  ],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 1,
+    "worldProjection": false
+  }
+}

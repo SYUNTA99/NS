@@ -1,0 +1,17 @@
+{
+  "vs": "Shaders/standard.vs.hlsl",
+  "ps": "Shaders/lit.ps.hlsl",
+  "textures": [
+    "Assets/Textures/apricot_ruins/rock_tones_v4.png"
+  ],
+  "baseColor": [
+    1,
+    1,
+    1
+  ],
+  "blend": "Opaque",
+  "params": {
+    "textureScale": 1,
+    "worldProjection": false
+  }
+}

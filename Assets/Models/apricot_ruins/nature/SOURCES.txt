@@ -7,3 +7,13 @@ Metadata: https://api.polyhaven.com/files/boulder_01
 Adaptation: scan surface converted into radial relief; resampled to each island's grass rim.
 Output: fractured_cliffs.glb
 Texture: Assets/Textures/apricot_ruins/boulder_01_ao_1k.jpg
+
+Stylized adaptation (2026-11-06): stylized_cliffs_v4.glb.
+Uses only the broad relief from the earlier adaptation, with a continuous uneven top.
+Fine scanned detail and AO are omitted; colors use a numeric tone lookup.
+Grass surface: terrain_grass_v4.glb, shaped to follow the same top surface.
+
+Faceted adaptation (2026-11-06): faceted_cliffs_v5.glb and terrain_grass_v5.glb.
+Project-authored intersecting planes, local fractures and narrow edge bevels.
+Surface albedo: Assets/Textures/apricot_ruins/stone_brush_v5.png, built-in image_gen.
+Prompt and original output: build/apricot-ruins/nov6/facets/texture-prompt.txt.
