@@ -209,6 +209,8 @@ void PlayerActor::LaunchJump() noexcept
     m_jumpsRemaining = std::max(0, m_jumpsRemaining - 1);
     m_bufferTimer = 0.0f;
     m_coyoteTimer = 0.0f;
+    // オデッセイの Player::exeJump と同じく、跳ぶ所で動作を始める。跳ぶ音はこの動作のフレーム 0 の項目が鳴らす
+    StartJumpAction();
     m_playerEvents.onJump.Invoke();
 }
 
@@ -238,7 +240,10 @@ void PlayerActor::SetCurled(bool curled) noexcept
     ChangeCurled(curled);
 }
 
-bool PlayerActor::IsCurled() const noexcept { return m_collider->IsSphereShape(); }
+bool PlayerActor::IsCurled() const noexcept
+{
+    return m_collider->IsSphereShape();
+}
 
 void PlayerActor::ChangeCurled(bool curled) noexcept
 {
@@ -337,7 +342,8 @@ namespace
         const NS::Vector3 faceOrigin{center.x, band.handY - band.below, center.z};
         float faceDistance = 0.0f;
         NS::Vector3 faceHitNormal{};
-        if (!NS::RaycastCollision(&collider, faceOrigin, dir, radius + reach, faceDistance, faceHitNormal, JPH::BodyID{}) ||
+        if (!NS::RaycastCollision(
+                &collider, faceOrigin, dir, radius + reach, faceDistance, faceHitNormal, JPH::BodyID{}) ||
             NS::Phys::IsWalkableNormal(faceHitNormal.y, maxSlopeRadians))
         {
             return false;
@@ -349,9 +355,8 @@ namespace
         }
 
         const NS::Vector3 facePoint = faceOrigin + dir * faceDistance;
-        const NS::Vector3 topOrigin{facePoint.x - faceNormal.x * reach,
-                                    band.handY + band.above + radius,
-                                    facePoint.z - faceNormal.z * reach};
+        const NS::Vector3 topOrigin{
+            facePoint.x - faceNormal.x * reach, band.handY + band.above + radius, facePoint.z - faceNormal.z * reach};
         float topDistance = 0.0f;
         NS::Vector3 topNormal{};
         if (!NS::RaycastCollision(&collider,
@@ -474,7 +479,8 @@ void PlayerActor::ClimbLedge() noexcept
     const NS::Collider& collider = *m_collider;
     const NS::Vector3 pos = Root().Position();
     m_ledgeMantleStart = pos;
-    m_ledgeMantleEnd = MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
+    m_ledgeMantleEnd =
+        MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
     m_ledgeMantleTimer = 0.0f;
     (void)m_states->Change<GL::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});

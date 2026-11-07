@@ -16,19 +16,18 @@ namespace GL
     namespace Player
     {
         //! @brief 自機がどの出来事でどの音を鳴らすかを持つ部品
-        //! @details 跳びと着地は出来事の受け手が頼み、閃光と同じ VisualStep の Update で鳴らす。
-        //!          落下とゴールはその場で鳴らす。落下は消えた後に VisualStep が呼ばれず、ゴールは知らせが毎フレーム届くため。
-        //!          反動もその場で鳴らす。1 回の衝突に 1 回だけ呼ばれ、間引く物が無いため
+        //! @details 着地は出来事の受け手が頼み、閃光と同じ VisualStep の Update で鳴らす。跳ぶ音は自機の動作 Jump
+        //! の項目が鳴らす。
+        //!          落下とゴールはその場で鳴らす。落下は消えた後に VisualStep
+        //!          が呼ばれず、ゴールは知らせが毎フレーム届くため。 反動もその場で鳴らす。1 回の衝突に 1
+        //!          回だけ呼ばれ、間引く物が無いため
         class PlayerSounds : public NS::Object
         {
         public:
             //! 鳴らす名前の音を先に読む
             void Preload(const NS::IGetAudio* audio);
 
-            //! 跳んだフレームに呼ぶ。次の Update で跳ぶ音を鳴らす。次の着地の音も鳴らせるようにする
-            void RequestJump() noexcept;
-
-            //! 足場を離れたフレームと、エアダッシュを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
+            //! 足場を離れたフレーム・跳んだフレーム・エアダッシュを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
             void AllowLand() noexcept;
 
             //! 着いたフレームに呼ぶ。Reset の後、まだ足場を離れていなければ頼まない。
@@ -54,8 +53,6 @@ namespace GL
             [[nodiscard]] bool IsLandRequested() const noexcept { return m_landRequested; }
 
             NS_REFLECT_BEGIN(PlayerSounds, NS::Object)
-            NS_FIELD(m_jumpSound, "跳ぶ音")
-            NS_FIELD(m_jumpVolume, "跳ぶ音の音量", NS::FieldRange::Unit())
             NS_FIELD(m_landSound, "着地の音")
             NS_FIELD(m_landVolume, "着地の音の音量", NS::FieldRange::Unit())
             NS_FIELD(m_landMinInterval, "着地の音の最短の間隔", NS::FieldRange::NonNegative())
@@ -68,8 +65,6 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            NS::SoundName m_jumpSound{"jump"};
-            float m_jumpVolume = 0.6f;
             NS::SoundName m_landSound{"land"};
             float m_landVolume = 0.5f;
             float m_landMinInterval = 0.15f; // 着地の音を鳴らしてから、次を鳴らせるまでの秒
@@ -80,9 +75,8 @@ namespace GL
             NS::SoundName m_reboundSound{"rebound"};
             float m_reboundVolume = 0.7f;
 
-            bool m_jumpRequested = false;
             bool m_landRequested = false;
-            bool m_landAllowed = false; // Reset の後、足場を離れるまで偽
+            bool m_landAllowed = false;                                      // Reset の後、足場を離れるまで偽
             float m_sinceLandSound = std::numeric_limits<float>::infinity(); // 前に着地の音を鳴らしてからの秒
         };
     } // namespace Player

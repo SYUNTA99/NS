@@ -50,20 +50,6 @@ namespace
     constexpr std::string_view k_FallAction = "Fall";
     constexpr std::string_view k_LedgeHangAction = "LedgeHang";
 
-    // 状態と速さで選ぶ動きの動作の場合 true。状態に結んだ動作 (エアダッシュなど) は入らない
-    bool IsMovementAction(std::string_view name) noexcept
-    {
-        for (const std::string_view movement :
-             {k_WaitAction, k_WalkAction, k_RunAction, k_JumpAction, k_FallAction, k_LedgeHangAction})
-        {
-            if (name == movement)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
     // actions の name の動作の、最初のアニメーションの項目のクリップ。動作か項目が無ければ nullptr
     const NS::AnimClip* ActionClip(const NS::ActorAction* actions, std::string_view name) noexcept
     {
@@ -141,8 +127,8 @@ void PlayerActor::OnInit()
     CreateClassObj(m_effect);
     CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
-    // 跳びと着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep
-    m_playerEvents.onJump.Subscribe([this] { m_playerSounds->RequestJump(); });
+    // 着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep。跳ぶ音は動作 Jump の項目が鳴らす
+    m_playerEvents.onJump.Subscribe([this] { m_playerSounds->AllowLand(); });
     m_body->Events().onGroundExit.Subscribe([this] { m_playerSounds->AllowLand(); });
     m_body->Events().onGroundEnter.Subscribe([this] { m_playerSounds->RequestLand(); });
     // 部品を全部作った後に組む。並べた型が移れる状態の全部になる。先頭の立ちへは最初の更新の初めに入る
@@ -199,15 +185,11 @@ void PlayerActor::UpdateAnimation()
     }
 
     const float lateralSpeed = m_body->LateralVelocity().Length();
-    // 状態に結んだ動作は、止めると残りの事象とセンサーの入り切りが起きなくなるので、終わるまで任せる
-    if (!actions->IsRunning() || IsMovementAction(actions->CurrentName()))
+    const std::string_view chosen = ChooseMovementAction(lateralSpeed);
+    // 同じ動作を始め直すとクリップの時刻が頭へ戻るので、名前が変わった時だけ始める
+    if (!chosen.empty() && chosen != actions->CurrentName() && actions->FindAction(chosen) != nullptr)
     {
-        const std::string_view chosen = ChooseMovementAction(lateralSpeed);
-        // 同じ動作を始め直すとクリップの時刻が頭へ戻るので、名前が変わった時だけ始める
-        if (chosen != actions->CurrentName() && actions->FindAction(chosen) != nullptr)
-        {
-            (void)StartAction(chosen);
-        }
+        (void)StartAction(chosen);
     }
 
     animation->SetSpeed(ChoosePlaybackSpeed(actions->CurrentName(), lateralSpeed));
@@ -310,8 +292,20 @@ void PlayerActor::VisualStep()
 
 std::string_view PlayerActor::ChooseMovementAction(float lateralSpeed) const noexcept
 {
-    // 選ぶのはクリップの道を書いた動作。道はあるが読めないクリップの動作は、立ちの動作で代える
+    // エアダッシュ・反動・よじ登りの状態は、動きの動作を始めない。エアダッシュは入る時に自分の動作を始める
+    if (m_states->IsCurrent<GL::Player::AirDashPlayerState>() ||
+        m_states->IsCurrent<GL::Player::DashReboundPlayerState>() ||
+        m_states->IsCurrent<GL::Player::LedgeClimbingPlayerState>())
+    {
+        return {};
+    }
     const NS::ActorAction* actions = ActorActionClassObj();
+    // 跳んだ所 (LaunchJump) で始めた Jump は、上がっている間は残す。跳ばずに上向きに飛ぶ時は Jump を始めない
+    if (actions->CurrentName() == k_JumpAction && m_body->VerticalVelocity() > 0.0f)
+    {
+        return {};
+    }
+    // 選ぶのはクリップの道を書いた動作。道はあるが読めないクリップの動作は、立ちの動作で代える
     std::string_view chosen = k_WaitAction;
     if (m_states->IsCurrent<GL::Player::LedgeHangingPlayerState>())
     {
@@ -322,11 +316,7 @@ std::string_view PlayerActor::ChooseMovementAction(float lateralSpeed) const noe
     }
     else if (!m_body->IsGrounded())
     {
-        if (m_body->VerticalVelocity() > 0.0f && HasActionClip(actions, k_JumpAction))
-        {
-            chosen = k_JumpAction;
-        }
-        if (m_body->VerticalVelocity() <= 0.0f && HasActionClip(actions, k_FallAction))
+        if (HasActionClip(actions, k_FallAction))
         {
             chosen = k_FallAction;
         }
@@ -349,6 +339,11 @@ std::string_view PlayerActor::ChooseMovementAction(float lateralSpeed) const noe
         return k_WaitAction;
     }
     return chosen;
+}
+
+void PlayerActor::StartJumpAction() noexcept
+{
+    (void)StartAction(k_JumpAction);
 }
 
 float PlayerActor::ChoosePlaybackSpeed(std::string_view action, float lateralSpeed) const noexcept
@@ -594,8 +589,9 @@ void PlayerActor::ResetState() noexcept
     if (NS::Animation* animation = AnimationClassObj())
     {
         animation->Play(nullptr);
-        // OnEndPlay からも呼ばれるので、動作は始めずクリップだけを流す。立ちの動作の効果音や振動を、終わる時に起こさない。
-        // 次の VisualStep が立ちの動作を始め、同じクリップなので頭から流し直さない
+        // OnEndPlay
+        // からも呼ばれるので、動作は始めずクリップだけを流す。立ちの動作の効果音や振動を、終わる時に起こさない。 次の
+        // VisualStep が立ちの動作を始め、同じクリップなので頭から流し直さない
         if (CanPlayAction(ActorActionClassObj(), k_WaitAction))
         {
             animation->Play(ActionClip(ActorActionClassObj(), k_WaitAction)->Clip());

@@ -86,7 +86,7 @@ public:
     //! で書いた値のまま
     void Update(bool slamHeld);
     //! 状態と水平の速さから動きの動作を選んで名前で始め、歩きと走りの再生速度を同居する Animation へ渡す
-    //! 状態に結んだ動作 (エアダッシュなど) が走っている間は、動きの動作で止めない
+    //! 跳ぶ動作 Jump は選ばない。跳んだ所 (LaunchJump) で始める
     void UpdateAnimation();
     void OnEndPlay() override;
 
@@ -291,7 +291,10 @@ private:
                                       float& outTop,
                                       NS::Vector3& outFaceNormal,
                                       NS::Vector3& outHangPos) const noexcept;
+    // 跳ぶ動作 Jump を始める。跳ぶ所 (LaunchJump) だけが呼ぶ
+    void StartJumpAction() noexcept;
     // 状態と水平の速さから選ぶ動きの動作の名前。クリップを流せない動作の代わりは立ちの動作
+    // 今の動作を残す時 (自分で動作を始める状態の間と、跳んで上がっている間) は空
     [[nodiscard]] std::string_view ChooseMovementAction(float lateralSpeed) const noexcept;
     // 走っている動作の名前から、Animation の再生速度を選ぶ。歩きと走りだけ速さに比例させる
     [[nodiscard]] float ChoosePlaybackSpeed(std::string_view action, float lateralSpeed) const noexcept;

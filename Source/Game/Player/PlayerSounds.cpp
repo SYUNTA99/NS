@@ -10,13 +10,7 @@ namespace GL
         void PlayerSounds::Preload(const NS::IGetAudio* audio)
         {
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::Preload: 音を鳴らすアクターが空");
-            NS::PreloadSounds(audio, {m_jumpSound, m_landSound, m_goalSound, m_fallSound, m_reboundSound});
-        }
-
-        void PlayerSounds::RequestJump() noexcept
-        {
-            m_jumpRequested = true;
-            m_landAllowed = true;
+            NS::PreloadSounds(audio, {m_landSound, m_goalSound, m_fallSound, m_reboundSound});
         }
 
         void PlayerSounds::AllowLand() noexcept
@@ -37,16 +31,11 @@ namespace GL
         {
             m_sinceLandSound += dt;
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::Update: 音を鳴らすアクターが空");
-            if (m_jumpRequested)
-            {
-                NS::PlaySound(audio, m_jumpSound, m_jumpVolume);
-            }
             if (m_landRequested)
             {
                 NS::PlaySound(audio, m_landSound, m_landVolume);
                 m_sinceLandSound = 0.0f;
             }
-            m_jumpRequested = false;
             m_landRequested = false;
         }
 
@@ -70,7 +59,6 @@ namespace GL
 
         void PlayerSounds::Reset() noexcept
         {
-            m_jumpRequested = false;
             m_landRequested = false;
             m_landAllowed = false;
             m_sinceLandSound = std::numeric_limits<float>::infinity();

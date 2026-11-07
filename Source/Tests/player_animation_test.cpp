@@ -1,6 +1,9 @@
 #include "Editor/EditorActors.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/PlayerSounds.h"
+#include "Game/Player/States/AirDashPlayerState.h"
+#include "Game/Player/States/FallPlayerState.h"
 #include "Game/Player/States/LedgeHangingPlayerState.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/Animation/AnimClip.h"
@@ -8,6 +11,7 @@
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
+#include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "TestAnimatedPlayerActor.h"
@@ -17,8 +21,8 @@
 #include <string>
 #include <variant>
 
-// 自機は場面ごとに .actor の動作を名前で始め、その動作のアニメーションの項目のクリップを流す。
-// 場面と流すクリップの組は、動作へ移す前の自機 (クリップの欄から選んでいた時) と同じ
+// 自機は状態と場面で .actor の動作を名前で始め、その動作のアニメーションの項目のクリップを流す。
+// 跳ぶ動作 Jump は、跳んだフレームにだけ始める (オデッセイの Player::exeJump と同じく、跳ぶ所で始める)
 
 namespace
 {
@@ -100,15 +104,33 @@ TEST(PlayerAnimation, ClipsLiveInTheActionsAndGaitValuesInTheAppearance)
     {
         const NS::ActorActionInfo* action = actions.FindAction(name);
         ASSERT_NE(action, nullptr) << name;
-        ASSERT_EQ(action->events.size(), 1u) << name;
+        // アニメーションの項目は先頭のフレーム 0 に置く。Jump はその後に跳ぶ音の項目を持つ
+        ASSERT_FALSE(action->events.empty()) << name;
         EXPECT_EQ(action->events.front().start, 0) << name;
         const NS::ActionAnimItem* anim = std::get_if<NS::ActionAnimItem>(&action->events.front().item);
         ASSERT_NE(anim, nullptr) << name;
         EXPECT_FLOAT_EQ(anim->blendSeconds, 0.12f) << name;
     }
+    // 跳ぶ音は動作 Jump のフレーム 0 の項目にあり、PlayerSounds は持たない
+    const NS::ActorActionInfo* jump = actions.FindAction("Jump");
+    ASSERT_NE(jump, nullptr);
+    const NS::ActionSoundItem* sound = nullptr;
+    for (const NS::ActorActionEvent& event : jump->events)
+    {
+        if (const NS::ActionSoundItem* found = std::get_if<NS::ActionSoundItem>(&event.item))
+        {
+            sound = found;
+            EXPECT_EQ(event.start, 0);
+        }
+    }
+    ASSERT_NE(sound, nullptr);
+    EXPECT_EQ(sound->sound.name, "jump");
+    EXPECT_FLOAT_EQ(sound->volume, 0.6f);
+    EXPECT_FALSE(NS::SerializeClassObjFields(&player.Sounds()).contains("跳ぶ音"));
 }
 
-TEST(PlayerAnimation, AirborneAndHangingStartTheirActions)
+// 跳んでいないのに上向きに飛ぶ時 (反動の続きなど) は Jump を始めない。跳ぶ音が鳴らないため
+TEST(PlayerAnimation, FlyingUpWithoutJumpingStartsFall)
 {
     const ScopedPlayerActionClips clips({{"Wait", "Assets/Models/Xbot.glb#idle"},
                                          {"Jump", "Assets/Models/Xbot.glb#agree"},
@@ -117,12 +139,9 @@ TEST(PlayerAnimation, AirborneAndHangingStartTheirActions)
     NS::Scene scene;
     PlayerActor& player = SpawnAnimatedPlayer(scene);
     NS::Animation* animation = player.AnimationClassObj();
+    ASSERT_TRUE(player.States().Change<GL::Player::FallPlayerState>());
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(2.0f);
-    player.UpdateAnimation();
-    EXPECT_EQ(CurrentActionName(player), "Jump");
-    EXPECT_EQ(CurrentClipName(animation), "agree");
-    player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
     EXPECT_EQ(CurrentActionName(player), "Fall");
     EXPECT_EQ(CurrentClipName(animation), "headShake");
@@ -130,6 +149,33 @@ TEST(PlayerAnimation, AirborneAndHangingStartTheirActions)
     player.UpdateAnimation();
     EXPECT_EQ(CurrentActionName(player), "LedgeHang");
     EXPECT_EQ(CurrentClipName(animation), "sad_pose");
+}
+
+// 跳んだフレームに Jump を始め、上がっている間は残す。下がり始めたら Fall を始める
+TEST(PlayerAnimation, JumpingStartsJumpUntilThePlayerFalls)
+{
+    const ScopedPlayerActionClips clips({{"Wait", "Assets/Models/Xbot.glb#idle"},
+                                         {"Jump", "Assets/Models/Xbot.glb#agree"},
+                                         {"Fall", "Assets/Models/Xbot.glb#headShake"}});
+    NS::Scene scene;
+    PlayerActor& player = SpawnAnimatedPlayer(scene);
+    NS::Animation* animation = player.AnimationClassObj();
+    NS::Body& body = player.Body();
+    body.SetGrounded(true);
+    player.SyncGroundState();
+    player.Input().SetJumpPressed();
+    player.Input().Update(&player);
+    player.Update();
+    ASSERT_GT(body.VerticalVelocity(), 0.0f);
+    EXPECT_EQ(CurrentActionName(player), "Jump");
+    EXPECT_EQ(CurrentClipName(animation), "agree");
+    body.SetGrounded(false);
+    player.UpdateAnimation();
+    EXPECT_EQ(CurrentActionName(player), "Jump");
+    body.SetVerticalVelocity(-2.0f);
+    player.UpdateAnimation();
+    EXPECT_EQ(CurrentActionName(player), "Fall");
+    EXPECT_EQ(CurrentClipName(animation), "headShake");
 }
 
 // 名前はあるが読めないクリップの動作は始めず、立ちの動作 Wait を始める。再生速度の下限は動かしたまま効く
@@ -154,14 +200,17 @@ TEST(PlayerAnimation, MissingClipFallsBackToWaitAndSpeedFloorIsLive)
     EXPECT_NEAR(animation->Time(), NS::OS::FrameTimer::FixedDelta() * 0.75f, 0.00001f);
 }
 
-// 状態に結んだ動作 (エアダッシュ) が走っている間は、動きの動作で止めない。止めると残りの事象が起きなくなる
-TEST(PlayerAnimation, MovementDoesNotReplaceAStateAction)
+// エアダッシュの状態では、状態が始めた動作 AirDash を動きの動作で止めない
+TEST(PlayerAnimation, TheAirDashStateKeepsItsAction)
 {
-    const ScopedPlayerActionClips clips({{"Wait", "Assets/Models/Xbot.glb#idle"},
-                                         {"Fall", "Assets/Models/Xbot.glb#headShake"}});
+    const ScopedPlayerActionClips clips(
+        {{"Wait", "Assets/Models/Xbot.glb#idle"}, {"Fall", "Assets/Models/Xbot.glb#headShake"}});
     NS::Scene scene;
     PlayerActor& player = SpawnAnimatedPlayer(scene);
-    ASSERT_TRUE(player.StartStateAction("AirDash"));
+    ASSERT_TRUE(player.States().Change<GL::Player::AirDashPlayerState>());
+    // 予約した状態へは次の歩で入り、入る時に動作 AirDash を始める
+    player.Update();
+    ASSERT_EQ(CurrentActionName(player), "AirDash");
     player.Body().SetGrounded(false);
     player.Body().SetVerticalVelocity(-2.0f);
     player.UpdateAnimation();
