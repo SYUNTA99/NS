@@ -6,7 +6,7 @@ namespace NS
 {
     namespace Editor
     {
-        std::size_t AddActionEvent(ActorActionInfo& action, const ActionItem& item, int start)
+        std::size_t AddActionEvent(ActorActionInfo& action, const ActionEventInfo& item, int start)
         {
             ActorActionEvent event;
             event.item = item;

@@ -15,7 +15,7 @@ namespace NS
     class SceneActor;
     class HitSensor;
     class Model;
-    struct HitOwnerItem;
+    struct HitOwnerInfo;
     struct HitOwnerRun;
 } // namespace NS
 
@@ -106,10 +106,10 @@ namespace GL
         };
 
         //! 持ち主へ渡す項目の値。.actor に書き忘れた値は WARN を出して fallback を使う
-        [[nodiscard]] float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback);
+        [[nodiscard]] float HitOwnerValue(const NS::HitOwnerInfo& item, std::string_view name, float fallback);
 
         //! 持ち主へ渡す項目の値をフレーム数として読む。小数は 0 の側へ切り捨てる
         //! 書き忘れた値と、非数・無限・負・int に入らない値は WARN を出して fallback を使う
-        [[nodiscard]] int HitOwnerFrames(const NS::HitOwnerItem& item, std::string_view name, int fallback);
+        [[nodiscard]] int HitOwnerFrames(const NS::HitOwnerInfo& item, std::string_view name, int fallback);
     } // namespace Level
 } // namespace GL

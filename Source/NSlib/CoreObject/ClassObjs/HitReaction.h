@@ -29,7 +29,7 @@ namespace NS
 
     //! 持ち主の描く形の倍率。縮み・潰れ・伸びを 1 本の流れで持つ
     //! 向きの倍率は 2 つのセンサーを結ぶ水平の向きで x と z へ分ける
-    struct HitShapeItem
+    struct HitShapeInfo
     {
         std::string_view typeName = "Shape"; // ファイルに書く種類の名前
         std::string_view label = "描く形";   // 窓とインスペクタに出す名前
@@ -38,7 +38,7 @@ namespace NS
         Curve height{}; // 高さの倍率。元の形が 1
         Curve side{};   // 相手へ向かう向きに直角な水平の横の倍率。点が無ければ 1
 
-        NS_REFLECT_BEGIN(HitShapeItem, void)
+        NS_REFLECT_BEGIN(HitShapeInfo, void)
         NS_FIELD(along, "突進の向きの倍率")
         NS_FIELD(height, "高さの倍率")
         NS_FIELD(side, "横の倍率")
@@ -46,7 +46,7 @@ namespace NS
     };
 
     //! 持ち主の描く形を、床に沿う画面の横方向へ揺らす。最初の振れは相手と逆の側
-    struct HitBodyShakeItem
+    struct HitBodyShakeInfo
     {
         std::string_view typeName = "BodyShake";
         std::string_view label = "横揺れ";
@@ -56,14 +56,14 @@ namespace NS
         float amplitudePixels = 10.0f;
         int flipFrames = 1; // 左右を入れ替えるフレーム数。1 未満は 1
 
-        NS_REFLECT_BEGIN(HitBodyShakeItem, void)
+        NS_REFLECT_BEGIN(HitBodyShakeInfo, void)
         NS_FIELD(amplitudePixels, "振れ幅のピクセル")
         NS_FIELD(flipFrames, "左右を入れ替えるフレーム数")
         NS_REFLECT_END_VALUE()
     };
 
     //! 渡した位置から持ち主の体の裏へ震えを伝える。描く形だけを揺らし、当たりと根の位置は動かさない
-    struct HitBodyTremorItem
+    struct HitBodyTremorInfo
     {
         std::string_view typeName = "BodyTremor";
         std::string_view label = "衝撃の震え";
@@ -76,7 +76,7 @@ namespace NS
         float radiusRatio = 0.0f;
         float referenceHeight = 720.0f; // ピクセルの欄を数える画面の高さ
 
-        NS_REFLECT_BEGIN(HitBodyTremorItem, void)
+        NS_REFLECT_BEGIN(HitBodyTremorInfo, void)
         NS_FIELD(amplitudePixels, "振れ幅のピクセル")
         NS_FIELD(reachFrames, "裏まで届くフレーム数")
         NS_FIELD(radiusRatio, "体の半径に対する振れ幅の割合")
@@ -86,7 +86,7 @@ namespace NS
 
     //! 画面を沈めて震わせる。同じ持ち主の「沈みを戻す」で跳ね返り、戻されなければ長さで終わる
     //! ピクセルは高さ 1080 の画面で数える。カメラの位置と向きは変えない
-    struct HitCameraSinkItem
+    struct HitCameraSinkInfo
     {
         std::string_view typeName = "CameraSink";
         std::string_view label = "沈む揺れ";
@@ -99,7 +99,7 @@ namespace NS
         float overshootRatio = 0.5f; // 跳ね返りで 0 を越えて上へ出る量の、底の深さに対する割合
         int bouncePeriodFrames = 8;  // 跳ね返りの 1 往復のフレーム数
 
-        NS_REFLECT_BEGIN(HitCameraSinkItem, void)
+        NS_REFLECT_BEGIN(HitCameraSinkInfo, void)
         NS_FIELD(bottomPixels, "底の深さのピクセル")
         NS_FIELD(sinkFrames, "沈むフレーム数")
         NS_FIELD(tremblePixels, "震えの大きさ")
@@ -111,14 +111,14 @@ namespace NS
     };
 
     //! 同じ持ち主が先に始めた沈む揺れを跳ね返す。新しい揺れは始めず、沈みが無ければ何もしない
-    struct HitCameraSinkReleaseItem
+    struct HitCameraSinkReleaseInfo
     {
         std::string_view typeName = "CameraSinkRelease";
         std::string_view label = "沈みを戻す";
     };
 
     //! カメラの寄りと傾き。項目の長さは保つフレーム数と戻すフレーム数の和
-    struct HitZoomRollItem
+    struct HitZoomRollInfo
     {
         std::string_view typeName = "ZoomRoll";
         std::string_view label = "寄りと傾き";
@@ -129,7 +129,7 @@ namespace NS
         //! 束を始めてから寄せ始めるまでのフレーム数。止めの間も数える
         int delayFrames = 0;
 
-        NS_REFLECT_BEGIN(HitZoomRollItem, void)
+        NS_REFLECT_BEGIN(HitZoomRollInfo, void)
         NS_FIELD(zoom, "寄りの倍率")
         NS_FIELD(rollDegrees, "傾き")
         NS_FIELD(returnFrames, "戻すフレーム数")
@@ -139,7 +139,7 @@ namespace NS
 
     //! カメラのトラウマを足し、相手の側へ一撃を振る。揺れの途中なら前のトラウマに足す
     //! 揺れの長さは項目の長さでなく減る速さで決まる
-    struct HitCameraTraumaItem
+    struct HitCameraTraumaInfo
     {
         std::string_view typeName = "CameraTrauma";
         std::string_view label = "トラウマの揺れ";
@@ -154,7 +154,7 @@ namespace NS
         float kickDegrees = 2.5f;    // 一撃の山の大きさ (度)
         int kickPeakFrames = 1;      // 一撃の山のフレーム。始めたフレームを 1 と数える
 
-        NS_REFLECT_BEGIN(HitCameraTraumaItem, void)
+        NS_REFLECT_BEGIN(HitCameraTraumaInfo, void)
         NS_FIELD(trauma, "トラウマ")
         NS_FIELD(yawDegrees, "横の首振り")
         NS_FIELD(pitchDegrees, "縦の首振り")
@@ -168,47 +168,47 @@ namespace NS
     };
 
     //! カメラの位置と注視点を、相手へ向かう水平の向きへ曲線の距離だけずらす。向きと地平線は変えない
-    struct HitCameraLurchItem
+    struct HitCameraLurchInfo
     {
         std::string_view typeName = "CameraLurch";
         std::string_view label = "つんのめり";
 
         Curve distance{}; // ずらす距離 (m)。負は手前へ
 
-        NS_REFLECT_BEGIN(HitCameraLurchItem, void)
+        NS_REFLECT_BEGIN(HitCameraLurchInfo, void)
         NS_FIELD(distance, "ずらす距離")
         NS_REFLECT_END_VALUE()
     };
 
     //! カメラの位置と注視点を、相手から離れる向きの画面方向へ曲線の距離だけずらす
     //! 奥行きの成分は捨て、画面方向が無ければ揺らさない。向きと地平線は変えない
-    struct HitCameraAwaySwayItem
+    struct HitCameraAwaySwayInfo
     {
         std::string_view typeName = "CameraAwaySway";
         std::string_view label = "離れる向きの揺れ";
 
         Curve distance{}; // ずらす距離 (m)。負は相手へ向かう向き
 
-        NS_REFLECT_BEGIN(HitCameraAwaySwayItem, void)
+        NS_REFLECT_BEGIN(HitCameraAwaySwayInfo, void)
         NS_FIELD(distance, "ずらす距離")
         NS_REFLECT_END_VALUE()
     };
 
     //! 画面の白い光。長さの間に始めの濃さから直線で薄れる
-    struct HitFlashItem
+    struct HitFlashInfo
     {
         std::string_view typeName = "Flash";
         std::string_view label = "白い光";
 
         float alpha = 0.5f; // 始めの濃さ 0〜1
 
-        NS_REFLECT_BEGIN(HitFlashItem, void)
+        NS_REFLECT_BEGIN(HitFlashInfo, void)
         NS_FIELD(alpha, "濃さ")
         NS_REFLECT_END_VALUE()
     };
 
     //! 渡した位置から画面に輪を広げ、輪の部分の絵を外へ押し出す。長さが出すフレーム数
-    struct HitDistortionRingItem
+    struct HitDistortionRingInfo
     {
         std::string_view typeName = "DistortionRing";
         std::string_view label = "歪みの輪";
@@ -217,7 +217,7 @@ namespace NS
         Curve push{};            // 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ歪めない
         float halfWidth = 0.05f; // 輪の半分の幅。画面の高さに対する割合
 
-        NS_REFLECT_BEGIN(HitDistortionRingItem, void)
+        NS_REFLECT_BEGIN(HitDistortionRingInfo, void)
         NS_FIELD(radius, "半径")
         NS_FIELD(push, "押し")
         NS_FIELD(halfWidth, "半分の幅")
@@ -225,7 +225,7 @@ namespace NS
     };
 
     //! 渡した位置の真下から、上を向いた面へ光の輪を広げる。長さが出すフレーム数
-    struct HitGroundWaveItem
+    struct HitGroundWaveInfo
     {
         std::string_view typeName = "GroundWave";
         std::string_view label = "床の波";
@@ -233,7 +233,7 @@ namespace NS
         Curve radius{};   // 輪の半径 (m)。点が無ければ 0
         Curve strength{}; // 輪の強さ。面の倒れと頂の光の量。点が無ければ出さない
 
-        NS_REFLECT_BEGIN(HitGroundWaveItem, void)
+        NS_REFLECT_BEGIN(HitGroundWaveInfo, void)
         NS_FIELD(radius, "半径")
         NS_FIELD(strength, "強さ")
         NS_REFLECT_END_VALUE()
@@ -242,7 +242,7 @@ namespace NS
     //! パッドの振動。左右のモーターの速さの曲線で、長さの間だけ書く
     //! 向き別の時は、持ち主から見た相手の向きの角度で隣り合う 2 つの向きの曲線を混ぜる。
     //! 向きは右・左・上・下で、向き無しの曲線は使わない
-    struct HitPadItem
+    struct HitPadInfo
     {
         std::string_view typeName = "Pad";
         std::string_view label = "パッドの振動";
@@ -260,7 +260,7 @@ namespace NS
         Curve downLeft{}; // 相手が下の時の左のモーター
         Curve downRight{};
 
-        NS_REFLECT_BEGIN(HitPadItem, void)
+        NS_REFLECT_BEGIN(HitPadInfo, void)
         NS_FIELD(byDirection, "向き別")
         NS_FIELD(layered, "前の振動に重ねる")
         NS_FIELD(left, "左の速さ")
@@ -277,7 +277,7 @@ namespace NS
     };
 
     //! 長さの間、持ち主以外の世界を止める (Scene::RequestStopScene)。始めた歩の次の歩から止まる
-    struct HitOthersStopItem
+    struct HitOthersStopInfo
     {
         std::string_view typeName = "OthersStop";
         std::string_view label = "自機以外の止め";
@@ -285,7 +285,7 @@ namespace NS
 
     //! 持ち主のアクターへ渡す項目。名前と値を持ち主が読んで、持ち主の演出 (残像・エフェクトなど) を始める
     //! NSlib は名前と値の意味を知らない。値の名前は持ち主が決める
-    struct HitOwnerItem
+    struct HitOwnerInfo
     {
         std::string_view typeName = "Owner";
         std::string_view label = "持ち主へ渡す項目";
@@ -294,13 +294,13 @@ namespace NS
         //! 値の名前から値。ファイルでは欄の「値」に書き、インスペクタの欄の表には載らない
         std::map<std::string, float, std::less<>> values;
 
-        NS_REFLECT_BEGIN(HitOwnerItem, void)
+        NS_REFLECT_BEGIN(HitOwnerInfo, void)
         NS_FIELD(name, "名前")
         NS_REFLECT_END_VALUE()
     };
 
-    //! 持ち主の Sound で効果音を鳴らす。動作の項目 ActionSoundItem と同じ頼む先
-    struct HitSoundItem
+    //! 持ち主の Sound で効果音を鳴らす。動作の項目 ActionSoundInfo と同じ頼む先
+    struct HitSoundInfo
     {
         std::string_view typeName = "Sound";
         std::string_view label = "効果音";
@@ -308,48 +308,48 @@ namespace NS
         SoundName sound{};   // 鳴らす音
         float volume = 1.0f; // 音量 0〜1
 
-        NS_REFLECT_BEGIN(HitSoundItem, void)
+        NS_REFLECT_BEGIN(HitSoundInfo, void)
         NS_FIELD(sound, "音")
         NS_FIELD(volume, "音量")
         NS_REFLECT_END_VALUE()
     };
 
-    //! 持ち主の EffectObj で、束を始めた位置にエフェクトを出す。動作の項目 ActionEffectItem と同じ頼む先
-    struct HitEffectItem
+    //! 持ち主の EffectObj で、束を始めた位置にエフェクトを出す。動作の項目 ActionEffectInfo と同じ頼む先
+    struct HitEffectInfo
     {
         std::string_view typeName = "Effect";
         std::string_view label = "エフェクト";
 
         Effect* effect = nullptr; // 出すエフェクト
 
-        NS_REFLECT_BEGIN(HitEffectItem, void)
+        NS_REFLECT_BEGIN(HitEffectInfo, void)
         NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
     };
 
     //! 項目の種類ごとの値。種類を足す時はここへ型を足す
-    using HitReactionItem = std::variant<HitShapeItem,
-                                         HitBodyShakeItem,
-                                         HitBodyTremorItem,
-                                         HitCameraSinkItem,
-                                         HitCameraSinkReleaseItem,
-                                         HitZoomRollItem,
-                                         HitCameraTraumaItem,
-                                         HitCameraLurchItem,
-                                         HitCameraAwaySwayItem,
-                                         HitFlashItem,
-                                         HitDistortionRingItem,
-                                         HitGroundWaveItem,
-                                         HitPadItem,
-                                         HitOthersStopItem,
-                                         HitOwnerItem,
-                                         HitSoundItem,
-                                         HitEffectItem>;
+    using HitReactionEntryInfo = std::variant<HitShapeInfo,
+                                              HitBodyShakeInfo,
+                                              HitBodyTremorInfo,
+                                              HitCameraSinkInfo,
+                                              HitCameraSinkReleaseInfo,
+                                              HitZoomRollInfo,
+                                              HitCameraTraumaInfo,
+                                              HitCameraLurchInfo,
+                                              HitCameraAwaySwayInfo,
+                                              HitFlashInfo,
+                                              HitDistortionRingInfo,
+                                              HitGroundWaveInfo,
+                                              HitPadInfo,
+                                              HitOthersStopInfo,
+                                              HitOwnerInfo,
+                                              HitSoundInfo,
+                                              HitEffectInfo>;
 
     //! 束の 1 項目。束を始めたフレームに始まり、長さのフレーム数だけ続く
     struct HitReactionEntry
     {
-        HitReactionItem item{};
+        HitReactionEntryInfo item{};
         int length = 1; // 長さ (フレーム数)。0 以上
     };
 
@@ -397,7 +397,7 @@ namespace NS
     //! 持ち主は名前で演出を選び、frame と値で描く。frame は始めたフレームが 0
     struct HitOwnerRun
     {
-        HitOwnerItem item{};
+        HitOwnerInfo item{};
         int length = 0;     // 長さ (フレーム数)。frame がこれに届いたフレームの頭で外れる
         int frame = 0;      // 始めてから進めたフレーム数
         Vector3 position{}; // 束を始めた時に渡した位置

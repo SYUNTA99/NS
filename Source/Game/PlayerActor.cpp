@@ -64,7 +64,7 @@ namespace
         }
         for (const NS::ActorActionEvent& event : action->events)
         {
-            if (const NS::ActionAnimItem* anim = std::get_if<NS::ActionAnimItem>(&event.item))
+            if (const NS::ActionAnimInfo* anim = std::get_if<NS::ActionAnimInfo>(&event.item))
             {
                 return anim->clip;
             }

@@ -28,7 +28,7 @@ namespace
     // 当たる直前の動作の形。振動とカメラの揺れと画面の光を、状態に入ってからの歩に置く
     NS::ActorActionInfo MakeBeforeContactAction()
     {
-        NS::ActionPadItem pad;
+        NS::ActionPadInfo pad;
         pad.left.count = 2;
         pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
         pad.left.keys[1] = NS::Curve::Key{6.0f, 0.85f};
@@ -36,8 +36,8 @@ namespace
         action.name = "BeforeContactCenter";
         action.events = {
             {pad, 0, 7},
-            {NS::ActionCameraItem{}, 4, 2},
-            {NS::ActionScreenItem{}, 4, 0},
+            {NS::ActionCameraInfo{}, 4, 2},
+            {NS::ActionScreenInfo{}, 4, 0},
         };
         return action;
     }
@@ -67,31 +67,31 @@ TEST(ActorActionInfo, EventsRoundTripThroughTheFileFormInOrder)
         EXPECT_EQ(read->events[i].start, written.events[i].start);
         EXPECT_EQ(read->events[i].length, written.events[i].length);
     }
-    EXPECT_EQ(std::get<NS::ActionPadItem>(read->events[0].item).left,
-              std::get<NS::ActionPadItem>(written.events[0].item).left);
+    EXPECT_EQ(std::get<NS::ActionPadInfo>(read->events[0].item).left,
+              std::get<NS::ActionPadInfo>(written.events[0].item).left);
     EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
 }
 
 // 動作の項目は 6 つの種類 (アニメーション・効果音・エフェクト・振動・カメラ・画面) で、種類の名前と欄が往復する
 TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
 {
-    NS::ActionAnimItem anim;
+    NS::ActionAnimInfo anim;
     anim.blendSeconds = 0.2f;
     anim.looping = false;
-    NS::ActionSoundItem sound;
+    NS::ActionSoundInfo sound;
     sound.sound.name = "Player/Jump";
     sound.volume = 0.5f;
-    NS::ActionPadItem pad;
+    NS::ActionPadInfo pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
-    NS::ActionCameraItem camera;
+    NS::ActionCameraInfo camera;
     camera.trauma = 0.4f;
-    NS::ActionScreenItem screen;
+    NS::ActionScreenInfo screen;
     screen.alpha = 0.3f;
     NS::ActorActionInfo written;
     written.name = "Jump";
     written.events = {
-        {anim, 0, 10}, {sound, 0, 1}, {NS::ActionEffectItem{}, 1, 1}, {pad, 2, 4}, {camera, 3, 5}, {screen, 4, 2}};
+        {anim, 0, 10}, {sound, 0, 1}, {NS::ActionEffectInfo{}, 1, 1}, {pad, 2, 4}, {camera, 3, 5}, {screen, 4, 2}};
 
     const nlohmann::json doc = NS::ActorActionInfoToJson(written);
     const char* const typeNames[] = {"Anim", "Sound", "Effect", "Pad", "Camera", "Screen"};
@@ -105,13 +105,13 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     std::string error;
     const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
-    EXPECT_FLOAT_EQ(std::get<NS::ActionAnimItem>(read->events[0].item).blendSeconds, 0.2f);
-    EXPECT_FALSE(std::get<NS::ActionAnimItem>(read->events[0].item).looping);
-    EXPECT_EQ(std::get<NS::ActionSoundItem>(read->events[1].item).sound.name, "Player/Jump");
-    EXPECT_FLOAT_EQ(std::get<NS::ActionSoundItem>(read->events[1].item).volume, 0.5f);
-    EXPECT_EQ(std::get<NS::ActionPadItem>(read->events[3].item).left, pad.left);
-    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraItem>(read->events[4].item).trauma, 0.4f);
-    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenItem>(read->events[5].item).alpha, 0.3f);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionAnimInfo>(read->events[0].item).blendSeconds, 0.2f);
+    EXPECT_FALSE(std::get<NS::ActionAnimInfo>(read->events[0].item).looping);
+    EXPECT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).sound.name, "Player/Jump");
+    EXPECT_FLOAT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).volume, 0.5f);
+    EXPECT_EQ(std::get<NS::ActionPadInfo>(read->events[3].item).left, pad.left);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraInfo>(read->events[4].item).trauma, 0.4f);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenInfo>(read->events[5].item).alpha, 0.3f);
     EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
 }
 
@@ -193,8 +193,8 @@ TEST(ActorActionInfo, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     const std::optional<NS::ActorActionInfo> read = NS::ParseActorActionInfo(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->events.size(), 2u);
-    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenItem>(read->events[0].item).alpha, 0.3f);
-    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraItem>(read->events[1].item).trauma, NS::ActionCameraItem{}.trauma);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionScreenInfo>(read->events[0].item).alpha, 0.3f);
+    EXPECT_FLOAT_EQ(std::get<NS::ActionCameraInfo>(read->events[1].item).trauma, NS::ActionCameraInfo{}.trauma);
     ASSERT_EQ(read->sensors.size(), 1u);
     EXPECT_EQ(read->sensors[0].sensor, "Body");
     EXPECT_EQ(read->sensors[0].valid, NS::ActionSensorEvent{}.valid);
@@ -283,7 +283,7 @@ TEST(ActorActionInfo, WritingBackKeepsTheActionsThatWereNotRead)
     const TestLogCapture log;
     std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
     ASSERT_EQ(actions.size(), 2u);
-    actions[1].events.push_back(NS::ActorActionEvent{.item = NS::ActionScreenItem{}, .start = 2, .length = 3});
+    actions[1].events.push_back(NS::ActorActionEvent{.item = NS::ActionScreenInfo{}, .start = 2, .length = 3});
     NS::WriteActorActions(actorFile, actions);
     const nlohmann::json* list = NS::ActorFileActions(actorFile);
     ASSERT_NE(list, nullptr);
@@ -301,7 +301,7 @@ TEST(ActorActionInfo, TheLengthDoesNotWrapPastInt)
 {
     NS::ActorActionInfo action;
     action.events.push_back(
-        NS::ActorActionEvent{.item = NS::ActionScreenItem{}, .start = std::numeric_limits<int>::max(), .length = 1});
+        NS::ActorActionEvent{.item = NS::ActionScreenInfo{}, .start = std::numeric_limits<int>::max(), .length = 1});
     EXPECT_EQ(NS::ActionLength(action), std::numeric_limits<int>::max());
 }
 
@@ -398,7 +398,7 @@ namespace
     // 名前 name の効果音を鳴らす項目。音の部品を持たない試しのアクターでは鳴らず、始まった事だけが残る
     NS::ActorActionEvent SoundEvent(std::string name, int start)
     {
-        NS::ActionSoundItem item;
+        NS::ActionSoundInfo item;
         item.sound.name = std::move(name);
         return NS::ActorActionEvent{.item = item, .start = start, .length = 1};
     }
@@ -443,7 +443,7 @@ namespace
             readFrame = actions.Frame();
             for (const std::size_t index : actions.StartedEvents())
             {
-                if (const NS::ActionSoundItem* sound = std::get_if<NS::ActionSoundItem>(&action->events[index].item))
+                if (const NS::ActionSoundInfo* sound = std::get_if<NS::ActionSoundInfo>(&action->events[index].item))
                 {
                     started.push_back(sound->sound.name);
                 }
@@ -549,7 +549,7 @@ TEST(ActorAction, StartingByNameRunsTheFirstFrameAtOnce)
 // 始まった項目は持ち主の SceneActor が自分の場面へ頼む。画面の光の項目は、場面の画面の光を始める
 TEST(ActorAction, TheOwnerRunsTheStartedItems)
 {
-    NS::ActionScreenItem screen;
+    NS::ActionScreenInfo screen;
     screen.alpha = 0.6f;
     NS::ActorActionInfo action;
     action.name = "Run";

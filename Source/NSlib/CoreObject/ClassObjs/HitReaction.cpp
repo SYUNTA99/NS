@@ -54,9 +54,9 @@ namespace NS
 
         // 持ち主へ渡す項目の値は欄の表に無いので、欄を当てる前に fields から読んで外す。壊れていれば error
         // に理由を書いて false
-        [[nodiscard]] bool ReadOwnerFields(HitReactionItem& item, nlohmann::json& fields, std::string& error)
+        [[nodiscard]] bool ReadOwnerFields(HitReactionEntryInfo& item, nlohmann::json& fields, std::string& error)
         {
-            HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item);
+            HitOwnerInfo* owner = std::get_if<HitOwnerInfo>(&item);
             if (owner == nullptr)
             {
                 return true;
@@ -76,10 +76,10 @@ namespace NS
         }
 
         // item の種類 type と欄 fields を row へ書く。持ち主へ渡す項目は値も欄に書く
-        void WriteItem(const HitReactionItem& item, nlohmann::json& row)
+        void WriteItem(const HitReactionEntryInfo& item, nlohmann::json& row)
         {
             detail::WriteItemRow(item, row);
-            if (const HitOwnerItem* owner = std::get_if<HitOwnerItem>(&item))
+            if (const HitOwnerInfo* owner = std::get_if<HitOwnerInfo>(&item))
             {
                 nlohmann::json values = nlohmann::json::object();
                 for (const std::pair<const std::string, float>& value : owner->values)
@@ -110,8 +110,8 @@ namespace NS
                                                                  std::string& error)
         {
             std::string reason;
-            std::optional<HitReactionItem> item =
-                detail::ParseItemRow<HitReactionItem>(row, {"length"}, reason, &ReadOwnerFields);
+            std::optional<HitReactionEntryInfo> item =
+                detail::ParseItemRow<HitReactionEntryInfo>(row, {"length"}, reason, &ReadOwnerFields);
             if (!item.has_value())
             {
                 error = std::format("{} 番目の項目: {}", index, reason);
@@ -241,7 +241,7 @@ namespace NS
         const HitStartContext& context;
         int length;
 
-        void operator()(const HitShapeItem& shape) const
+        void operator()(const HitShapeInfo& shape) const
         {
             Model* model = owner.model;
             if (model == nullptr || length <= 0)
@@ -261,7 +261,7 @@ namespace NS
                                                 .length = length});
         }
 
-        void operator()(const HitBodyShakeItem& shake) const
+        void operator()(const HitBodyShakeInfo& shake) const
         {
             const SceneActor* actor = owner.actor;
             Model* model = owner.model;
@@ -290,7 +290,7 @@ namespace NS
                               .flipFrames = shake.flipFrames});
         }
 
-        void operator()(const HitBodyTremorItem& tremor) const
+        void operator()(const HitBodyTremorInfo& tremor) const
         {
             Model* model = owner.model;
             if (model == nullptr || length <= 0)
@@ -307,7 +307,7 @@ namespace NS
                                                   .bodyLength = context.bodyLength});
         }
 
-        void operator()(const HitCameraSinkItem& sink) const
+        void operator()(const HitCameraSinkInfo& sink) const
         {
             // 跳ね返りは同じ持ち主の「沈みを戻す」で始まる。来なければ底のまま長さで終わる
             (void)reaction.StartSink(owner.actor,
@@ -322,7 +322,7 @@ namespace NS
                                                     .frames = length});
         }
 
-        void operator()(const HitCameraSinkReleaseItem&) const
+        void operator()(const HitCameraSinkReleaseInfo&) const
         {
             if (CameraManager* cameras = owner.actor->GetCameraManager())
             {
@@ -330,7 +330,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitZoomRollItem& zoomRoll) const
+        void operator()(const HitZoomRollInfo& zoomRoll) const
         {
             const int frames = std::max(length, 0);
             CameraZoomRollDesc desc;
@@ -346,7 +346,7 @@ namespace NS
             (void)reaction.StartZoomRoll(owner.actor, desc);
         }
 
-        void operator()(const HitCameraTraumaItem& trauma) const
+        void operator()(const HitCameraTraumaInfo& trauma) const
         {
             CameraTraumaDesc desc;
             desc.trauma = trauma.trauma;
@@ -364,7 +364,7 @@ namespace NS
             (void)reaction.AddTrauma(owner.actor, desc);
         }
 
-        void operator()(const HitCameraLurchItem& lurch) const
+        void operator()(const HitCameraLurchInfo& lurch) const
         {
             if (!context.hasToward)
             {
@@ -376,7 +376,7 @@ namespace NS
                     .direction = context.towardOther, .distance = lurch.distance, .frames = length, .onScreen = false});
         }
 
-        void operator()(const HitCameraAwaySwayItem& sway) const
+        void operator()(const HitCameraAwaySwayInfo& sway) const
         {
             if (!context.hasToward)
             {
@@ -388,7 +388,7 @@ namespace NS
                     .direction = -context.towardOther, .distance = sway.distance, .frames = length, .onScreen = true});
         }
 
-        void operator()(const HitFlashItem& flash) const
+        void operator()(const HitFlashInfo& flash) const
         {
             if (HitScreenDirector* screen = HitScreenOf(owner.actor))
             {
@@ -396,7 +396,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitDistortionRingItem& ring) const
+        void operator()(const HitDistortionRingInfo& ring) const
         {
             if (HitScreenDirector* screen = HitScreenOf(owner.actor))
             {
@@ -409,7 +409,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitGroundWaveItem& wave) const
+        void operator()(const HitGroundWaveInfo& wave) const
         {
             if (HitScreenDirector* screen = HitScreenOf(owner.actor))
             {
@@ -421,7 +421,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitPadItem& pad) const
+        void operator()(const HitPadInfo& pad) const
         {
             PadRumbleDirector* rumble = PadRumbleOf(owner.actor);
             if (rumble == nullptr)
@@ -471,7 +471,7 @@ namespace NS
             }
         }
 
-        void operator()(const HitOthersStopItem&) const
+        void operator()(const HitOthersStopInfo&) const
         {
             if (Scene* scene = owner.actor->OwningScene())
             {
@@ -479,15 +479,15 @@ namespace NS
             }
         }
 
-        void operator()(const HitOwnerItem& ownerItem) const
+        void operator()(const HitOwnerInfo& ownerItem) const
         {
             reaction.m_ownerRuns.push_back(
                 HitOwnerRun{.item = ownerItem, .length = length, .frame = 0, .position = context.position});
         }
 
-        void operator()(const HitSoundItem& sound) const { PlaySound(owner.actor, sound.sound, sound.volume); }
+        void operator()(const HitSoundInfo& sound) const { PlaySound(owner.actor, sound.sound, sound.volume); }
 
-        void operator()(const HitEffectItem& effect) const
+        void operator()(const HitEffectInfo& effect) const
         {
             EffectObj* effects = owner.actor->GetEffect();
             if (effects == nullptr || effect.effect == nullptr)

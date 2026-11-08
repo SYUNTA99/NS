@@ -507,7 +507,7 @@ namespace NS
                                 committed |= fields.committed;
                             }
                             // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
-                            HitOwnerItem* owner = std::get_if<HitOwnerItem>(&entry.item);
+                            HitOwnerInfo* owner = std::get_if<HitOwnerInfo>(&entry.item);
                             if (owner != nullptr && !owner->values.empty() && BeginFieldTable("##ownerValues"))
                             {
                                 for (std::pair<const std::string, float>& ownerValue : owner->values)

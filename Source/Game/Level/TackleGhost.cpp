@@ -27,7 +27,7 @@ namespace GL
             {
                 return;
             }
-            const NS::HitOwnerItem& item = run.item;
+            const NS::HitOwnerInfo& item = run.item;
             const NS::Vector3 forward = NS::CalcCameraForwardHorizontal(owner);
             m_desc = TackleGhostDesc{
                 .axis = NS::Vector3{forward.z, 0.0f, -forward.x},

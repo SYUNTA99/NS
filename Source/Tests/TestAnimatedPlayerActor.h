@@ -33,7 +33,7 @@ public:
               std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", actorFile);
               for (const std::pair<std::string, std::string>& clip : clips)
               {
-                  NS::ActionAnimItem item;
+                  NS::ActionAnimInfo item;
                   NS::LoadAssetField(item.clip, clip.second);
                   NS::ActorActionInfo* target = nullptr;
                   for (NS::ActorActionInfo& action : actions)

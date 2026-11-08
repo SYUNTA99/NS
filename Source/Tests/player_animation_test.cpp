@@ -107,17 +107,17 @@ TEST(PlayerAnimation, ClipsLiveInTheActionsAndGaitValuesInTheAppearance)
         // アニメーションの項目は先頭のフレーム 0 に置く。Jump はその後に跳ぶ音の項目を持つ
         ASSERT_FALSE(action->events.empty()) << name;
         EXPECT_EQ(action->events.front().start, 0) << name;
-        const NS::ActionAnimItem* anim = std::get_if<NS::ActionAnimItem>(&action->events.front().item);
+        const NS::ActionAnimInfo* anim = std::get_if<NS::ActionAnimInfo>(&action->events.front().item);
         ASSERT_NE(anim, nullptr) << name;
         EXPECT_FLOAT_EQ(anim->blendSeconds, 0.12f) << name;
     }
     // 跳ぶ音は動作 Jump のフレーム 0 の項目にあり、PlayerSounds は持たない
     const NS::ActorActionInfo* jump = actions.FindAction("Jump");
     ASSERT_NE(jump, nullptr);
-    const NS::ActionSoundItem* sound = nullptr;
+    const NS::ActionSoundInfo* sound = nullptr;
     for (const NS::ActorActionEvent& event : jump->events)
     {
-        if (const NS::ActionSoundItem* found = std::get_if<NS::ActionSoundItem>(&event.item))
+        if (const NS::ActionSoundInfo* found = std::get_if<NS::ActionSoundInfo>(&event.item))
         {
             sound = found;
             EXPECT_EQ(event.start, 0);

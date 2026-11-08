@@ -20,7 +20,7 @@ namespace NS
     // 動作の事象の項目の型。始まった項目は持ち主のアクターが読み、自分の部品へ頼む。動作の部品はほかの部品を知らない
 
     //! 持ち主の Animation でクリップを流す
-    struct ActionAnimItem
+    struct ActionAnimInfo
     {
         std::string_view typeName = "Anim";
         std::string_view label = "アニメーション";
@@ -29,7 +29,7 @@ namespace NS
         float blendSeconds = 0.0f; // 前のクリップから移る秒。0 以上
         bool looping = true;       // 終わりまで流したら頭へ戻る場合 true
 
-        NS_REFLECT_BEGIN(ActionAnimItem, void)
+        NS_REFLECT_BEGIN(ActionAnimInfo, void)
         NS_FIELD(clip, "クリップ")
         NS_FIELD(blendSeconds, "切り替えの秒")
         NS_FIELD(looping, "繰り返す")
@@ -37,7 +37,7 @@ namespace NS
     };
 
     //! 持ち主の Sound で効果音を鳴らす
-    struct ActionSoundItem
+    struct ActionSoundInfo
     {
         std::string_view typeName = "Sound";
         std::string_view label = "効果音";
@@ -45,27 +45,27 @@ namespace NS
         SoundName sound{};   // 鳴らす音
         float volume = 1.0f; // 音量 0〜1
 
-        NS_REFLECT_BEGIN(ActionSoundItem, void)
+        NS_REFLECT_BEGIN(ActionSoundInfo, void)
         NS_FIELD(sound, "音")
         NS_FIELD(volume, "音量")
         NS_REFLECT_END_VALUE()
     };
 
     //! 持ち主の EffectObj で、持ち主の位置にエフェクトを出す
-    struct ActionEffectItem
+    struct ActionEffectInfo
     {
         std::string_view typeName = "Effect";
         std::string_view label = "エフェクト";
 
         Effect* effect = nullptr; // 出すエフェクト
 
-        NS_REFLECT_BEGIN(ActionEffectItem, void)
+        NS_REFLECT_BEGIN(ActionEffectInfo, void)
         NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
     };
 
     //! パッドの振動。左右のモーターの速さの曲線で、長さの間だけ書く
-    struct ActionPadItem
+    struct ActionPadInfo
     {
         std::string_view typeName = "Pad";
         std::string_view label = "パッドの振動";
@@ -74,7 +74,7 @@ namespace NS
         Curve left{};         // 左のモーターの速さ 0〜1
         Curve right{};        // 右のモーターの速さ 0〜1
 
-        NS_REFLECT_BEGIN(ActionPadItem, void)
+        NS_REFLECT_BEGIN(ActionPadInfo, void)
         NS_FIELD(layered, "前の振動に重ねる")
         NS_FIELD(left, "左の速さ")
         NS_FIELD(right, "右の速さ")
@@ -82,39 +82,39 @@ namespace NS
     };
 
     //! 向きを持たないカメラの揺れ。足したトラウマが時間で減る
-    struct ActionCameraItem
+    struct ActionCameraInfo
     {
         std::string_view typeName = "Camera";
         std::string_view label = "カメラの揺れ";
 
         float trauma = 0.5f; // 足すトラウマ 0〜1
 
-        NS_REFLECT_BEGIN(ActionCameraItem, void)
+        NS_REFLECT_BEGIN(ActionCameraInfo, void)
         NS_FIELD(trauma, "トラウマ")
         NS_REFLECT_END_VALUE()
     };
 
     //! 画面の白い光。長さの間に始めの濃さから直線で薄れる
-    struct ActionScreenItem
+    struct ActionScreenInfo
     {
         std::string_view typeName = "Screen";
         std::string_view label = "白い光";
 
         float alpha = 0.5f; // 始めの濃さ 0〜1
 
-        NS_REFLECT_BEGIN(ActionScreenItem, void)
+        NS_REFLECT_BEGIN(ActionScreenInfo, void)
         NS_FIELD(alpha, "濃さ")
         NS_REFLECT_END_VALUE()
     };
 
     //! 動作の事象の項目の種類ごとの値。種類を足す時はここへ型を足す
-    using ActionItem = std::
-        variant<ActionAnimItem, ActionSoundItem, ActionEffectItem, ActionPadItem, ActionCameraItem, ActionScreenItem>;
+    using ActionEventInfo = std::
+        variant<ActionAnimInfo, ActionSoundInfo, ActionEffectInfo, ActionPadInfo, ActionCameraInfo, ActionScreenInfo>;
 
     //! 動作の事象 1 つ。状態に入ったフレームを 0 にしたフレーム数で始まりと長さを持つ
     struct ActorActionEvent
     {
-        ActionItem item{};
+        ActionEventInfo item{};
         int start = 0;  // 始まりのフレーム。0 以上
         int length = 1; // 長さ (フレーム数)。0 以上
     };

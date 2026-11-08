@@ -13,7 +13,7 @@ namespace
     {
         NS::ActorActionInfo action;
         action.name = "Test";
-        action.events = {{NS::ActionPadItem{}, 0, 12}, {NS::ActionScreenItem{}, 13, 1}};
+        action.events = {{NS::ActionPadInfo{}, 0, 12}, {NS::ActionScreenInfo{}, 13, 1}};
         return action;
     }
 } // namespace
@@ -22,13 +22,13 @@ namespace
 TEST(EditorActionTimelineEdit, AddsAtThePlayheadAndStartsNoEarlierThanTheEntry)
 {
     NS::ActorActionInfo action = MakeTwoEvents();
-    const std::size_t screen = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionItem>("Screen"), 5);
+    const std::size_t screen = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Screen"), 5);
     ASSERT_EQ(screen, 2u);
     EXPECT_EQ(action.events[2].start, 5);
     EXPECT_EQ(action.events[2].length, 1);
     EXPECT_EQ(NS::ItemTypeName(action.events[2].item), "Screen");
 
-    const std::size_t early = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionItem>("Sound"), -3);
+    const std::size_t early = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Sound"), -3);
     EXPECT_EQ(action.events[early].start, 0);
 }
 

@@ -70,7 +70,7 @@ namespace GL
             return true;
         }
 
-        float HitOwnerValue(const NS::HitOwnerItem& item, std::string_view name, float fallback)
+        float HitOwnerValue(const NS::HitOwnerInfo& item, std::string_view name, float fallback)
         {
             const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(name);
             if (found == item.values.end())
@@ -81,7 +81,7 @@ namespace GL
             return found->second;
         }
 
-        int HitOwnerFrames(const NS::HitOwnerItem& item, std::string_view name, int fallback)
+        int HitOwnerFrames(const NS::HitOwnerInfo& item, std::string_view name, int fallback)
         {
             const float value = HitOwnerValue(item, name, static_cast<float>(fallback));
             // int の最大を float にすると 2^31 に丸まるので、その値は等号でも断る

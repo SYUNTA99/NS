@@ -31,12 +31,12 @@ namespace NS
     {
         namespace
         {
-            // 項目の種類の並び。ActionItem の選択肢の順で、種類を足すとここにも出る
-            const std::vector<ActionItem>& ItemTypes()
+            // 項目の種類の並び。ActionEventInfo の選択肢の順で、種類を足すとここにも出る
+            const std::vector<ActionEventInfo>& ItemTypes()
             {
-                static const std::vector<ActionItem> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
-                    return std::vector<ActionItem>{ActionItem{std::in_place_index<I>}...};
-                }(std::make_index_sequence<std::variant_size_v<ActionItem>>{});
+                static const std::vector<ActionEventInfo> s_types = []<std::size_t... I>(std::index_sequence<I...>) {
+                    return std::vector<ActionEventInfo>{ActionEventInfo{std::in_place_index<I>}...};
+                }(std::make_index_sequence<std::variant_size_v<ActionEventInfo>>{});
                 return s_types;
             }
 
@@ -372,7 +372,7 @@ namespace NS
         void ActionTimelinePanel::RenderAddButtons(LevelEditorController& editor) noexcept
         {
             ImGui::BeginDisabled(EditingAction() == nullptr);
-            const std::vector<ActionItem>& types = ItemTypes();
+            const std::vector<ActionEventInfo>& types = ItemTypes();
             m_addType = std::clamp(m_addType, 0, static_cast<int>(types.size()) - 1);
             ImGui::SetNextItemWidth(160.0f);
             const std::string currentLabel{ItemLabel(types[static_cast<std::size_t>(m_addType)])};

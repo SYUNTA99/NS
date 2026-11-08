@@ -46,51 +46,51 @@ namespace
         set.name = "TackleCenter";
         set.stopFrames = 12;
 
-        NS::HitShapeItem shape;
+        NS::HitShapeInfo shape;
         shape.along.count = 2;
         shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
         shape.along.keys[1] = NS::Curve::Key{11.0f, 0.7f};
         shape.height.count = 1;
         shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
-        NS::HitBodyShakeItem shake;
+        NS::HitBodyShakeInfo shake;
         shake.amplitudePixels = 45.0f;
         shake.flipFrames = 2;
-        NS::HitBodyTremorItem tremor;
+        NS::HitBodyTremorInfo tremor;
         tremor.amplitudePixels = 1.5f;
         tremor.radiusRatio = 0.2f;
-        NS::HitCameraSinkItem sink;
+        NS::HitCameraSinkInfo sink;
         sink.bottomPixels = 7.5f;
         sink.tremblePixels = 4.0f;
-        NS::HitZoomRollItem zoom;
+        NS::HitZoomRollInfo zoom;
         zoom.zoom = 1.1f;
         zoom.delayFrames = 6;
-        NS::HitCameraTraumaItem trauma;
+        NS::HitCameraTraumaInfo trauma;
         trauma.trauma = 1.0f;
-        NS::HitCameraLurchItem lurch;
+        NS::HitCameraLurchInfo lurch;
         lurch.distance.count = 2;
         lurch.distance.keys[0] = NS::Curve::Key{0.0f, 0.3f};
         lurch.distance.keys[1] = NS::Curve::Key{8.0f, 0.0f};
-        NS::HitCameraAwaySwayItem sway;
+        NS::HitCameraAwaySwayInfo sway;
         sway.distance.count = 1;
         sway.distance.keys[0] = NS::Curve::Key{0.0f, -0.5f};
-        NS::HitFlashItem flash;
+        NS::HitFlashInfo flash;
         flash.alpha = 0.9f;
-        NS::HitDistortionRingItem ring;
+        NS::HitDistortionRingInfo ring;
         ring.halfWidth = 0.06f;
-        NS::HitGroundWaveItem wave;
+        NS::HitGroundWaveInfo wave;
         wave.radius.count = 2;
         wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.5f};
         wave.radius.keys[1] = NS::Curve::Key{10.0f, 6.0f};
-        NS::HitPadItem pad;
+        NS::HitPadInfo pad;
         pad.byDirection = true;
         pad.upLeft.count = 1;
         pad.upLeft.keys[0] = NS::Curve::Key{0.0f, 0.8f};
         pad.downRight.count = 1;
         pad.downRight.keys[0] = NS::Curve::Key{2.0f, 0.3f};
-        NS::HitOwnerItem ghost;
+        NS::HitOwnerInfo ghost;
         ghost.name = "Ghost";
         ghost.values = {{"離れの画素", 112.5f}, {"明けの残像のフレーム数", 0.0f}};
-        NS::HitSoundItem sound;
+        NS::HitSoundInfo sound;
         sound.sound.name = "Player/Hit";
         sound.volume = 0.4f;
 
@@ -99,7 +99,7 @@ namespace
             {shake, 12},
             {tremor, 4},
             {sink, 33},
-            {NS::HitCameraSinkReleaseItem{}, 1},
+            {NS::HitCameraSinkReleaseInfo{}, 1},
             {zoom, 7},
             {trauma, 1},
             {lurch, 9},
@@ -108,10 +108,10 @@ namespace
             {ring, 14},
             {wave, 20},
             {pad, 16},
-            {NS::HitOthersStopItem{}, 2},
+            {NS::HitOthersStopInfo{}, 2},
             {ghost, 12},
             {sound, 1},
-            {NS::HitEffectItem{}, 1},
+            {NS::HitEffectInfo{}, 1},
         };
         return set;
     }
@@ -119,17 +119,17 @@ namespace
 
 TEST(HitReactionSet, ValueTypeFieldsRoundTripThroughJson)
 {
-    NS::HitCameraSinkItem sink;
+    NS::HitCameraSinkInfo sink;
     sink.bottomPixels = 7.5f;
     sink.bouncePeriodFrames = 10;
-    const NS::ReflectionInfo& info = *NS::HitCameraSinkItem::StaticReflection();
+    const NS::ReflectionInfo& info = *NS::HitCameraSinkInfo::StaticReflection();
     const nlohmann::json fields = NS::SerializeReflectedFields(&sink, info);
     EXPECT_FLOAT_EQ(fields["底の深さのピクセル"].get<float>(), 7.5f);
     EXPECT_EQ(fields["跳ね返りの 1 往復"].get<int>(), 10);
     // 威力の掛けは無くなり、深さは束に書いた値のまま
     EXPECT_FALSE(fields.contains("威力の基準"));
 
-    NS::HitCameraSinkItem read;
+    NS::HitCameraSinkInfo read;
     EXPECT_EQ(NS::ApplyReflectedFields(&read, info, fields), 0u);
     EXPECT_FLOAT_EQ(read.bottomPixels, 7.5f);
     EXPECT_EQ(read.bouncePeriodFrames, 10);
@@ -138,7 +138,7 @@ TEST(HitReactionSet, ValueTypeFieldsRoundTripThroughJson)
 TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
 {
     const NS::HitReactionSet written = MakeEveryKindSet();
-    ASSERT_EQ(written.entries.size(), std::variant_size_v<NS::HitReactionItem>);
+    ASSERT_EQ(written.entries.size(), std::variant_size_v<NS::HitReactionEntryInfo>);
     const nlohmann::json doc = NS::HitReactionSetToJson(written);
     EXPECT_EQ(doc["name"].get<std::string>(), "TackleCenter");
     EXPECT_EQ(doc["stopFrames"].get<int>(), 12);
@@ -165,18 +165,18 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     }
     EXPECT_EQ(NS::HitReactionSetToJson(*read), doc);
 
-    const NS::HitPadItem* pad = std::get_if<NS::HitPadItem>(&read->entries[12].item);
+    const NS::HitPadInfo* pad = std::get_if<NS::HitPadInfo>(&read->entries[12].item);
     ASSERT_NE(pad, nullptr);
     EXPECT_TRUE(pad->byDirection);
-    EXPECT_EQ(pad->upLeft, std::get<NS::HitPadItem>(written.entries[12].item).upLeft);
-    const NS::HitZoomRollItem* zoom = std::get_if<NS::HitZoomRollItem>(&read->entries[5].item);
+    EXPECT_EQ(pad->upLeft, std::get<NS::HitPadInfo>(written.entries[12].item).upLeft);
+    const NS::HitZoomRollInfo* zoom = std::get_if<NS::HitZoomRollInfo>(&read->entries[5].item);
     ASSERT_NE(zoom, nullptr);
     EXPECT_EQ(zoom->delayFrames, 6);
-    const NS::HitOwnerItem* ghost = std::get_if<NS::HitOwnerItem>(&read->entries[14].item);
+    const NS::HitOwnerInfo* ghost = std::get_if<NS::HitOwnerInfo>(&read->entries[14].item);
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->name, "Ghost");
-    EXPECT_EQ(ghost->values, std::get<NS::HitOwnerItem>(written.entries[14].item).values);
-    const NS::HitSoundItem* sound = std::get_if<NS::HitSoundItem>(&read->entries[15].item);
+    EXPECT_EQ(ghost->values, std::get<NS::HitOwnerInfo>(written.entries[14].item).values);
+    const NS::HitSoundInfo* sound = std::get_if<NS::HitSoundInfo>(&read->entries[15].item);
     ASSERT_NE(sound, nullptr);
     EXPECT_EQ(sound->sound.name, "Player/Hit");
     EXPECT_FLOAT_EQ(sound->volume, 0.4f);
@@ -195,9 +195,9 @@ TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     const std::optional<NS::HitReactionSet> read = NS::ParseHitReactionSet(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->entries.size(), 3u);
-    EXPECT_FLOAT_EQ(std::get<NS::HitFlashItem>(read->entries[0].item).alpha, 0.3f);
-    EXPECT_EQ(std::get<NS::HitZoomRollItem>(read->entries[1].item).delayFrames, NS::HitZoomRollItem{}.delayFrames);
-    const NS::HitOwnerItem& owner = std::get<NS::HitOwnerItem>(read->entries[2].item);
+    EXPECT_FLOAT_EQ(std::get<NS::HitFlashInfo>(read->entries[0].item).alpha, 0.3f);
+    EXPECT_EQ(std::get<NS::HitZoomRollInfo>(read->entries[1].item).delayFrames, NS::HitZoomRollInfo{}.delayFrames);
+    const NS::HitOwnerInfo& owner = std::get<NS::HitOwnerInfo>(read->entries[2].item);
     EXPECT_EQ(owner.name, "HitEffect");
     EXPECT_TRUE(owner.values.empty());
     // 知らない欄は束の頭と項目の欄の 2 か所で知らせて飛ばす
@@ -308,7 +308,7 @@ TEST(HitReactionSet, ActorFileWithSetsAndActionsRoundTripsByteForByte)
     NS::WriteHitReactionSets(actorFile, {MakeEveryKindSet()});
     NS::ActorActionInfo action;
     action.name = "BeforeContact";
-    action.events = {{NS::ActionCameraItem{}, 4, 2}, {NS::ActionScreenItem{}, 0, 6}};
+    action.events = {{NS::ActionCameraInfo{}, 4, 2}, {NS::ActionScreenInfo{}, 0, 6}};
     NS::WriteActorActions(actorFile, {action});
     const std::string text = actorFile.dump(2, ' ', false, nlohmann::json::error_handler_t::replace);
 
@@ -493,21 +493,21 @@ namespace
 // 値は束に書いた値のまま使う
 TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
 {
-    NS::HitFlashItem flash;
+    NS::HitFlashInfo flash;
     flash.alpha = 0.6f;
-    NS::HitPadItem pad;
+    NS::HitPadInfo pad;
     pad.left = ConstantCurve(0.5f);
-    NS::HitZoomRollItem zoom;
+    NS::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
-    NS::HitCameraLurchItem lurch;
+    NS::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
-    NS::HitCameraSinkItem sink;
+    NS::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.sinkFrames = 1;
-    NS::HitCameraTraumaItem trauma;
+    NS::HitCameraTraumaInfo trauma;
     trauma.trauma = 0.3f;
-    NS::HitOwnerItem spark;
+    NS::HitOwnerInfo spark;
     spark.name = "Spark";
     spark.values = {{"大きさ", 2.0f}};
     ProbeScene probes(
@@ -546,9 +546,9 @@ TEST(HitReactionStart, SoundAndEffectItemsAskTheOwnersParts)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     assets.SetAudioDevice(&device);
     const NS::AssetManagerScope scope{assets};
-    NS::HitSoundItem sound;
+    NS::HitSoundInfo sound;
     sound.sound.name = "missing";
-    NS::HitEffectItem effect;
+    NS::HitEffectInfo effect;
     effect.effect = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
     ASSERT_NE(effect.effect, nullptr);
     const TestLogCapture log;
@@ -570,7 +570,7 @@ TEST(HitReactionStart, SoundAndEffectItemsAskTheOwnersParts)
 // 重ねる振動の項目は、走っている振動を始め直さずに足す
 TEST(HitReactionStart, LayeredPadItemAddsToTheRunningVibration)
 {
-    NS::HitPadItem layered;
+    NS::HitPadInfo layered;
     layered.layered = true;
     layered.left = ConstantCurve(0.25f);
     ProbeScene probes({SetOf("Layer", 0, {{layered, 2}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -583,9 +583,9 @@ TEST(HitReactionStart, LayeredPadItemAddsToTheRunningVibration)
 // 束の止めの長さの間は、持ち主の状態と体の段が進まない。白と描く揺れは係と模型の歩で進む
 TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
 {
-    NS::HitFlashItem flash;
+    NS::HitFlashInfo flash;
     flash.alpha = 1.0f;
-    NS::HitBodyShakeItem shake;
+    NS::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 3, {{flash, 6}, {shake, 6}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -612,9 +612,9 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
 
 TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
 {
-    NS::HitOwnerItem shortItem;
+    NS::HitOwnerInfo shortItem;
     shortItem.name = "Short";
-    NS::HitOwnerItem longItem;
+    NS::HitOwnerInfo longItem;
     longItem.name = "Long";
     ProbeScene probes({SetOf("Hit", 3, {{shortItem, 5}, {longItem, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -643,7 +643,7 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
 // は、始めたフレームの仮想カメラを追わせる
 TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 {
-    NS::HitZoomRollItem zoom;
+    NS::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
     zoom.delayFrames = 2;
@@ -665,18 +665,18 @@ TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 // 震えと歪みの輪の中心は渡した位置
 TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
 {
-    NS::HitCameraLurchItem lurch;
+    NS::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
-    NS::HitCameraAwaySwayItem sway;
+    NS::HitCameraAwaySwayInfo sway;
     sway.distance = ConstantCurve(0.3f);
-    NS::HitZoomRollItem zoom;
+    NS::HitZoomRollInfo zoom;
     zoom.zoom = 1.1f;
     zoom.rollDegrees = 3.0f;
     zoom.returnFrames = 1;
-    NS::HitBodyShakeItem shake;
+    NS::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
-    NS::HitBodyTremorItem tremor;
-    NS::HitDistortionRingItem ring;
+    NS::HitBodyTremorInfo tremor;
+    NS::HitDistortionRingInfo ring;
     ring.radius = ConstantCurve(0.2f);
     ring.push = ConstantCurve(0.1f);
     const std::vector<NS::HitReactionSet> sets = {
@@ -711,7 +711,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
 // 向き別の振動は、自機から見た相手の向きの角度で隣り合う 2 本を混ぜる。右上 45 度なら右と上を半分ずつ
 TEST(HitReactionStart, DirectedVibrationBlendsTheTwoNeighborsTowardTheOther)
 {
-    NS::HitPadItem pad;
+    NS::HitPadInfo pad;
     pad.byDirection = true;
     pad.rightLeft = ConstantCurve(1.0f);
     pad.leftLeft = ConstantCurve(0.6f);
@@ -764,7 +764,7 @@ TEST(HitReactionStart, DirectionWeightsBlendTheTwoNeighborsByAngle)
 // 束を始めた後に止めの残りを上書きすると、止めの長さだけが替わり、揺れの長さは束のまま
 TEST(HitReactionStart, OverridingTheStopChangesOnlyTheStop)
 {
-    NS::HitBodyShakeItem shake;
+    NS::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 2, {{shake, 2}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -786,11 +786,11 @@ TEST(HitReactionStart, OverridingTheStopChangesOnlyTheStop)
 // 沈みは同じ持ち主の「沈みを戻す」で跳ね返り、ほかの持ち主の戻しでは跳ね返らない
 TEST(HitReactionStart, TheSinkBouncesOnlyOnItsOwnersRelease)
 {
-    NS::HitCameraSinkItem sink;
+    NS::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.tremblePixels = 0.0f;
     const std::vector<NS::HitReactionSet> sets = {SetOf("Hit", 0, {{sink, 30}}),
-                                                  SetOf("Rebound", 0, {{NS::HitCameraSinkReleaseItem{}, 1}})};
+                                                  SetOf("Rebound", 0, {{NS::HitCameraSinkReleaseInfo{}, 1}})};
     ProbeScene probes(sets, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
@@ -813,7 +813,7 @@ TEST(HitReactionStart, TheSinkBouncesOnlyOnItsOwnersRelease)
 // 戻されない沈みは底のまま、自分の長さで終わる
 TEST(HitReactionStart, AnUnreleasedSinkEndsWithItsLength)
 {
-    NS::HitCameraSinkItem sink;
+    NS::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.tremblePixels = 0.0f;
     ProbeScene probes({SetOf("Hit", 0, {{sink, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -832,7 +832,7 @@ TEST(HitReactionStart, AnUnreleasedSinkEndsWithItsLength)
 // トラウマは次の束に積む
 TEST(HitReactionStart, TraumaStacksOnTheNextSet)
 {
-    NS::HitCameraTraumaItem trauma;
+    NS::HitCameraTraumaInfo trauma;
     trauma.trauma = 0.3f;
     // 2 回の間でほぼ減らさない。0 は終わらない揺れとして断られる
     trauma.decayPerSecond = 1.0e-6f;
@@ -850,7 +850,7 @@ TEST(HitReactionStart, TraumaStacksOnTheNextSet)
 // 持ち主が書いた倍率に掛かり、止めの間も進む
 TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
 {
-    NS::HitShapeItem shape;
+    NS::HitShapeInfo shape;
     shape.along = ConstantCurve(0.8f);
     shape.height.count = 2;
     shape.height.keys[0] = NS::Curve::Key{0.0f, 2.0f};
@@ -891,7 +891,7 @@ TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
 // 形を止めると、描く倍率は持ち主の書いた倍率へその場で戻る
 TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
 {
-    NS::HitShapeItem shape;
+    NS::HitShapeInfo shape;
     shape.height = ConstantCurve(2.0f);
     ProbeScene probes({SetOf("Hit", 0, {{shape, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -909,7 +909,7 @@ TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
 // にした曲線の半径と強さで広がり、長さの終わりで消える
 TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
 {
-    NS::HitGroundWaveItem wave;
+    NS::HitGroundWaveInfo wave;
     wave.radius.count = 2;
     wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
     wave.radius.keys[1] = NS::Curve::Key{8.0f, 4.0f};
@@ -938,7 +938,7 @@ TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
 // 床の波を止めると消える。ほかの持ち主が止めても消えない
 TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
 {
-    NS::HitGroundWaveItem wave;
+    NS::HitGroundWaveInfo wave;
     wave.radius = ConstantCurve(1.0f);
     wave.strength = ConstantCurve(0.8f);
     ProbeScene probes({SetOf("Hit", 0, {{wave, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -956,10 +956,10 @@ TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る
 TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
 {
-    NS::HitZoomRollItem zoom;
+    NS::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
-    NS::HitCameraLurchItem lurch;
+    NS::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
     ProbeScene probes({SetOf("Zoom", 0, {{zoom, 10}}), SetOf("Lurch", 0, {{lurch, 10}})},
                       NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -1028,7 +1028,7 @@ namespace
     {
         for (const NS::HitReactionEntry& entry : set.entries)
         {
-            const NS::HitOwnerItem* owner = std::get_if<NS::HitOwnerItem>(&entry.item);
+            const NS::HitOwnerInfo* owner = std::get_if<NS::HitOwnerInfo>(&entry.item);
             if (owner != nullptr && owner->name == name)
             {
                 return &entry;
@@ -1057,16 +1057,16 @@ TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
     ASSERT_NE(terrainShift, nullptr);
     EXPECT_EQ(terrainShift->stopFrames, 0);
     ASSERT_EQ(terrainShift->entries.size(), 1u);
-    const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadItem>(*terrainShift);
+    const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadInfo>(*terrainShift);
     ASSERT_NE(shiftPad, nullptr);
-    EXPECT_TRUE(std::get<NS::HitPadItem>(shiftPad->item).layered);
+    EXPECT_TRUE(std::get<NS::HitPadInfo>(shiftPad->item).layered);
 }
 
 // 束の値をフレーム数に読む時、非数・無限・負・int に入らない値は WARN を出して既定の数にする。
 // 小数は 0 の側へ切り捨てる
 TEST(HitOwnerFrames, ValuesOutsideTheFrameRangeFallBack)
 {
-    NS::HitOwnerItem item;
+    NS::HitOwnerInfo item;
     item.name = "TackleGhost";
     item.values = {{"half", 2.7f},
                    {"nan", std::numeric_limits<float>::quiet_NaN()},

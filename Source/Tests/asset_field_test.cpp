@@ -171,7 +171,7 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     action.name = "Wait";
     for (const char* path : clipPaths)
     {
-        NS::ActionAnimItem item;
+        NS::ActionAnimInfo item;
         NS::LoadAssetField(item.clip, path);
         action.events.push_back(NS::ActorActionEvent{.item = item, .start = 0, .length = 1});
     }
@@ -185,7 +185,7 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
     const NS::FieldDesc* modelField = NS::FindField(NS::Animation::StaticReflection(), "モデル");
     ASSERT_NE(modelField, nullptr);
     EXPECT_EQ(modelField->assetKind, NS::AssetKind::Model);
-    const NS::FieldDesc* clipField = NS::FindField(NS::ActionAnimItem::StaticReflection(), "クリップ");
+    const NS::FieldDesc* clipField = NS::FindField(NS::ActionAnimInfo::StaticReflection(), "クリップ");
     ASSERT_NE(clipField, nullptr);
     EXPECT_EQ(clipField->type, NS::FieldType::Asset);
     EXPECT_EQ(clipField->assetKind, NS::AssetKind::Animation);

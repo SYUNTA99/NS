@@ -20,7 +20,8 @@ namespace NS
                                                                  std::string& error)
         {
             std::string reason;
-            std::optional<ActionItem> item = detail::ParseItemRow<ActionItem>(row, {"start", "length"}, reason);
+            std::optional<ActionEventInfo> item =
+                detail::ParseItemRow<ActionEventInfo>(row, {"start", "length"}, reason);
             if (!item.has_value())
             {
                 error = std::format("{} 番目の事象: {}", index, reason);

@@ -457,7 +457,7 @@ namespace NS
             SceneActor& actor;
             int length = 0; // 項目の長さ (フレーム数)
 
-            void operator()(const ActionAnimItem& anim) const
+            void operator()(const ActionAnimInfo& anim) const
             {
                 Animation* animation = actor.AnimationClassObj();
                 if (animation == nullptr || anim.clip == nullptr || anim.clip->Clip() == nullptr)
@@ -468,9 +468,9 @@ namespace NS
                 animation->Play(anim.clip->Clip(), anim.blendSeconds);
             }
 
-            void operator()(const ActionSoundItem& sound) const { PlaySound(&actor, sound.sound, sound.volume); }
+            void operator()(const ActionSoundInfo& sound) const { PlaySound(&actor, sound.sound, sound.volume); }
 
-            void operator()(const ActionEffectItem& effect) const
+            void operator()(const ActionEffectInfo& effect) const
             {
                 EffectObj* effects = actor.GetEffect();
                 if (effects == nullptr || effect.effect == nullptr)
@@ -482,7 +482,7 @@ namespace NS
                 (void)effects->Play(actor.GetEffectScene(), effect.effect, desc);
             }
 
-            void operator()(const ActionPadItem& pad) const
+            void operator()(const ActionPadInfo& pad) const
             {
                 Scene* scene = actor.OwningScene();
                 if (scene == nullptr)
@@ -498,7 +498,7 @@ namespace NS
                 scene->PadRumble().Start(&actor, vibration);
             }
 
-            void operator()(const ActionCameraItem& camera) const
+            void operator()(const ActionCameraInfo& camera) const
             {
                 // カメラの無い場面 (試しの台) では揺らす先が無い
                 if (actor.GetCameraManager() == nullptr)
@@ -513,7 +513,7 @@ namespace NS
                 }
             }
 
-            void operator()(const ActionScreenItem& screen) const
+            void operator()(const ActionScreenInfo& screen) const
             {
                 Scene* scene = actor.OwningScene();
                 if (scene == nullptr)
@@ -637,7 +637,7 @@ namespace NS
         {
             for (const ActorActionEvent& event : action.events)
             {
-                if (const ActionSoundItem* sound = std::get_if<ActionSoundItem>(&event.item))
+                if (const ActionSoundInfo* sound = std::get_if<ActionSoundInfo>(&event.item))
                 {
                     m_sound->Preload(&AssetManager::Get(), sound->sound.name);
                 }
@@ -655,7 +655,7 @@ namespace NS
         {
             for (const HitReactionEntry& entry : set.entries)
             {
-                if (const HitSoundItem* sound = std::get_if<HitSoundItem>(&entry.item))
+                if (const HitSoundInfo* sound = std::get_if<HitSoundInfo>(&entry.item))
                 {
                     m_sound->Preload(&AssetManager::Get(), sound->sound.name);
                 }
