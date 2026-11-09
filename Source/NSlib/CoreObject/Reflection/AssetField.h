@@ -10,7 +10,6 @@ namespace NS
     class AnimClip;
     class Material;
     class Mesh;
-    class SkinnedModel;
 
     //! 素材の姿を指す欄の型。保存は素材の道を使い、エフェクトは永続的な識別子を使う
     //! 素材の欄にできる型は、ここに並ぶ型だけ。並んでいない型の欄は FieldTypeOf の static_assert で落ちる
@@ -19,8 +18,6 @@ namespace NS
     template <> struct IsAssetPointer<Mesh*> : std::true_type
     {};
     template <> struct IsAssetPointer<Material*> : std::true_type
-    {};
-    template <> struct IsAssetPointer<SkinnedModel*> : std::true_type
     {};
     template <> struct IsAssetPointer<AnimClip*> : std::true_type
     {};
@@ -35,12 +32,10 @@ namespace NS
     //! 読めない名前でも、その名前を持つ中身の空の素材が入るので、field は nullptr にならない
     void LoadAssetField(Mesh*& field, std::string_view name);
     void LoadAssetField(Material*& field, std::string_view name);
-    void LoadAssetField(SkinnedModel*& field, std::string_view name);
     void LoadAssetField(AnimClip*& field, std::string_view name);
     //! field が指す素材の道。nullptr なら空
     [[nodiscard]] const std::string& AssetFieldName(const Mesh* field) noexcept;
     [[nodiscard]] const std::string& AssetFieldName(const Material* field) noexcept;
-    [[nodiscard]] const std::string& AssetFieldName(const SkinnedModel* field) noexcept;
     [[nodiscard]] const std::string& AssetFieldName(const AnimClip* field) noexcept;
 
     class SceneActor;

@@ -46,7 +46,6 @@ namespace NS
     class AnimClip;
     class AssetManager;
     class Shader;
-    class SkinnedModel;
     class SoundClip;
     class Texture;
 
@@ -62,7 +61,7 @@ namespace NS
     [[nodiscard]] AnimSource LoadGltfAnimationSource(std::string_view path);
 
     //! アプリ寿命で素材を重複なく持つ。素材の種類ごとに表を 1 本持つ
-    //! メッシュ・マテリアル・骨付きのモデル・動きのクリップは、欄の名前を正規化した鍵で持つ。
+    //! メッシュ・マテリアル・動きのクリップは、欄の名前を正規化した鍵で持つ。
     //! 読めなかった名前も中身の空の姿で覚え、Clear まで読み直さないので、読めない時のログは名前ごとに 1 回出る
     class AssetManager : public NonCopyable
     {
@@ -94,11 +93,6 @@ namespace NS
         //! 欄の名前のメッシュの当たりを返す。名前の決まりは LoadMesh と同じ
         //! 装置が無くても作れる。空の名前と読めない名前は nullptr で、当たりを作らない
         [[nodiscard]] const Phys::MeshShape* LoadMeshShape(std::string_view name);
-
-        //! 欄の名前の骨付きのモデルを返す。名前は ContentRoot からの glTF の道筋
-        //! nullptr を返さない。空の名前と読めない名前は、その名前を持つ中身の空のモデルを返す
-        //! 空の名前は「使わない」で何も出さない。読めない名前は ERROR を出す
-        [[nodiscard]] SkinnedModel* LoadSkinnedModel(std::string_view name);
 
         //! 欄の名前のクリップを返す。名前は ContentRoot からの glTF の道筋か「道筋#動きの名前」
         //! # が無ければファイルの中の先頭の 1 本。nullptr を返さない
@@ -172,8 +166,6 @@ namespace NS
         // 読み直したシェーダーは MaterialParams の並びが変わり得るので、全部のマテリアルの b2 と値を組み直す
         void RebuildAllMaterials();
 
-        // 表に無い key の骨付きのモデルを skinned glTF から作る。読めなければ中身の空のモデル
-        [[nodiscard]] std::unique_ptr<SkinnedModel> CreateSkinnedModel(const std::string& key);
         // name のクリップを作る。読めなければ中身の空のクリップにする
         [[nodiscard]] std::unique_ptr<AnimClip> CreateAnimClip(const std::string& key);
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
@@ -186,7 +178,6 @@ namespace NS
         std::map<std::string, std::unique_ptr<Texture>> m_textures;
         std::map<std::string, std::unique_ptr<Mesh>> m_meshes;
         std::map<std::string, std::unique_ptr<Material>> m_materials;
-        std::map<std::string, std::unique_ptr<SkinnedModel>> m_skinnedModels;
         std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
         // 読めなかった名前も、中身の空のクリップとして覚える
         std::map<std::string, std::unique_ptr<AnimClip>> m_animClips;

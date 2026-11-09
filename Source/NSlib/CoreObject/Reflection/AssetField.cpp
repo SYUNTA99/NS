@@ -5,7 +5,6 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -39,11 +38,6 @@ namespace NS
         field = AssetManager::Get().LoadMaterial(name);
     }
 
-    void LoadAssetField(SkinnedModel*& field, std::string_view name)
-    {
-        field = AssetManager::Get().LoadSkinnedModel(name);
-    }
-
     void LoadAssetField(AnimClip*& field, std::string_view name)
     {
         field = AssetManager::Get().LoadAnimClip(name);
@@ -55,11 +49,6 @@ namespace NS
     }
 
     const std::string& AssetFieldName(const Material* field) noexcept
-    {
-        return PathOrEmpty(field);
-    }
-
-    const std::string& AssetFieldName(const SkinnedModel* field) noexcept
     {
         return PathOrEmpty(field);
     }

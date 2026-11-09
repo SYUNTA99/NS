@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/Asset/AnimClip.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -58,37 +57,6 @@ TEST(AnimClip, UnreadableNamesGiveAnEmptyClipWithTheName)
         EXPECT_EQ(clip, assets.LoadAnimClip(name)) << name;
     }
     EXPECT_EQ(log.ErrorCount(), 4);
-}
-
-TEST(SkinnedModelAsset, UnreadableNamesGiveAnEmptyModelWithTheName)
-{
-    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-    const TestLogCapture log;
-    for (const char* name : {"", "Assets/Models/__ns_missing__.glb", "../__ns_outside__.glb"})
-    {
-        const NS::SkinnedModel* model = assets.LoadSkinnedModel(name);
-        ASSERT_NE(model, nullptr) << name;
-        EXPECT_EQ(model->Path(), name);
-        EXPECT_EQ(model->GetMesh(), nullptr) << name;
-        EXPECT_EQ(model->GetSkeleton(), nullptr) << name;
-        EXPECT_EQ(model, assets.LoadSkinnedModel(name)) << name;
-    }
-    EXPECT_EQ(log.ErrorCount(), 3);
-}
-
-TEST(SkinnedModelAsset, ReadableFileHoldsTheSkinnedMeshAndItsSkeleton)
-{
-    NS::OS::Window window(NS::OS::WindowDesc{.title = "骨付きのモデルの試し", .size = {64, 64}, .visible = false});
-    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
-    ASSERT_TRUE(device.IsValid());
-    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
-
-    const NS::SkinnedModel* model = assets.LoadSkinnedModel("Assets/Models/Xbot.glb");
-    EXPECT_EQ(model->Path(), "Assets/Models/Xbot.glb");
-    ASSERT_NE(model->GetMesh(), nullptr);
-    EXPECT_NE(model->GetMesh()->D3D(), nullptr);
-    ASSERT_NE(model->GetSkeleton(), nullptr);
-    EXPECT_GT(model->GetSkeleton()->BoneCount(), 0u);
 }
 
 // スキンのある glb は骨付きの Mesh になり、骨格と骨ごとの影響の球を持つ。当たりは持たない

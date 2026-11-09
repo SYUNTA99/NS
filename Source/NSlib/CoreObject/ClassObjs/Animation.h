@@ -5,7 +5,6 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
 
 #include <cstddef>
@@ -25,8 +24,9 @@ namespace NS
         Animation();
         ~Animation();
 
-        //! 非所有。nullptr の間は姿勢を適用しない。今の姿勢の境界は mesh の影響の球から組む
-        void SetMesh(const Mesh* mesh) noexcept;
+        //! 骨格と、今の姿勢の境界を組む影響の球を mesh から読む。非所有。持ち主の OnAssetsLoaded が Model のメッシュの欄の
+        //! Mesh を渡す。骨の無いメッシュか nullptr なら骨格を空にし、姿勢を適用しない。現在のクリップは維持する
+        void UseMesh(const Mesh* mesh);
         //! 非所有。nullptr の間は姿勢を適用しない
         void SetSkeleton(const Anim::Skeleton* skeleton) noexcept;
         [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
@@ -61,14 +61,9 @@ namespace NS
         //! 再生中なら dt (秒) ぶん時刻を進め、現在時刻の姿勢と描画境界を renderer へ反映する
         void Update(Model* renderer, float dt);
 
-        //! モデルの欄で読んだ骨格とメッシュを自身と renderer へ設定する。持ち主の OnAssetsLoaded から呼ぶ
-        //! モデルが空または未読込なら骨格とメッシュを空にする。現在のクリップは維持する
-        void UseModel(Model* renderer);
-
         NS_REFLECT_BEGIN(Animation, Object)
         NS_FIELD(m_speed, "再生速度")
         NS_FIELD(m_looping, "ループ再生")
-        NS_FIELD(m_model, "モデル")
         NS_REFLECT_END()
 
     private:
@@ -80,7 +75,6 @@ namespace NS
         void FindClipBones();
 
         const Mesh* m_mesh = nullptr;
-        SkinnedModel* m_model = nullptr;
         const Anim::Skeleton* m_skeleton = nullptr;
         const Anim::AnimClip* m_clip = nullptr;
         std::vector<int> m_clipBones; // トラックごとのボーン番号 (-1 は骨格に無いボーン)

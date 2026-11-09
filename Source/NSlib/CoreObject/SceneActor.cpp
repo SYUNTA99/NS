@@ -347,7 +347,7 @@ namespace NS
     void SceneActor::ReloadAssets()
     {
         LoadAssetFields(this);
-        // 差したメッシュを残すと、骨付きのモデルの欄を空にした後も前のメッシュを描く。差し直すのは OnAssetsLoaded
+        // 欄を替えずに描くメッシュ (自機の姿) は読み直した素材を指さないので外す。差し直すのは OnAssetsLoaded
         if (m_model)
         {
             m_model->SetMesh(nullptr);
@@ -366,10 +366,15 @@ namespace NS
 
     void SceneActor::OnAssetsLoaded()
     {
-        // 読んだ素材から作る物。骨付きのメッシュを Model に差してから、Model のメッシュの名前で当たりを作る
+        // 読んだ素材から作る物。骨格は Model のメッシュの欄の Mesh から、当たりは Model のメッシュの名前から作る
         if (m_animation)
         {
-            m_animation->UseModel(m_model.get());
+            const Mesh* mesh = nullptr;
+            if (m_model)
+            {
+                mesh = m_model->MeshField();
+            }
+            m_animation->UseMesh(mesh);
         }
         if (MeshCollision* meshCollision = Cast<MeshCollision>(m_collision.get()))
         {

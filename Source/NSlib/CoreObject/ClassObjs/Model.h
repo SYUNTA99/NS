@@ -61,6 +61,8 @@ namespace NS
         //! 欄を替えずに、描くメッシュを替える。保存する名前は欄のメッシュのまま
         //! nullptr で欄のメッシュに戻す。SceneActor::ReloadAssets も欄のメッシュに戻す
         void SetMesh(Mesh* mesh) noexcept { m_shownMesh = mesh; }
+        //! メッシュの欄の Mesh。SetMesh で替えた描くメッシュは見ない。nullptr にならない
+        [[nodiscard]] const Mesh* MeshField() const noexcept { return m_mesh; }
         //! 描くメッシュ。SetMesh で替えていればその物、無ければ欄のメッシュ
         [[nodiscard]] const Mesh* GetMesh() const noexcept;
 
@@ -218,7 +220,7 @@ namespace NS
                                                      const Matrix& world) const noexcept;
 
         // 素材は AssetManager が持つ。欄は nullptr にならない
-        Mesh* m_mesh = nullptr;              // 描くメッシュ
+        Mesh* m_mesh = nullptr;              // メッシュの欄。m_shownMesh が無い間はこれを描く
         Material* m_material = nullptr;
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
         Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない

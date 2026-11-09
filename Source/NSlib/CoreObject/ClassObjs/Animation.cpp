@@ -4,7 +4,6 @@
 
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Gfx/D3DBuffer.h"
@@ -14,14 +13,21 @@
 
 namespace NS
 {
-    Animation::Animation()
-    {
-        LoadAssetField(m_model, "");
-    }
+    Animation::Animation() = default;
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(const Mesh* mesh) noexcept { m_mesh = mesh; }
+    void Animation::UseMesh(const Mesh* mesh)
+    {
+        m_mesh = mesh;
+        const Anim::Skeleton* skeleton = nullptr;
+        if (mesh != nullptr)
+        {
+            skeleton = mesh->Skeleton();
+        }
+        SetSkeleton(skeleton);
+        FindClipBones();
+    }
 
     void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
     {
@@ -109,24 +115,6 @@ namespace NS
         {
             m_clipBones = Anim::FindTrackBones(*m_clip, *m_skeleton);
         }
-    }
-
-    void Animation::UseModel(Model* renderer)
-    {
-        NS_ASSERT(Scene, renderer != nullptr, "Animation::UseModel: メッシュを差す Model が空");
-        // 欄を書き換えるたびに読み直すので、前のモデルの骨格とメッシュを残さない
-        SetSkeleton(nullptr);
-        SetMesh(nullptr);
-        Mesh* mesh = m_model->GetMesh();
-        if (mesh != nullptr)
-        {
-            SetSkeleton(m_model->GetSkeleton());
-            SetMesh(mesh);
-
-            // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
-            renderer->SetMesh(mesh);
-        }
-        FindClipBones();
     }
 
     void Animation::BindToModel(Model* renderer)

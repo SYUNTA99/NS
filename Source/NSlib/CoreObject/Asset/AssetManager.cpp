@@ -13,7 +13,6 @@
 #include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Asset/SoundClip.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DMaterial.h"
@@ -394,31 +393,6 @@ namespace NS
         return WithShape(LoadMesh(name)->Collision());
     }
 
-    SkinnedModel* AssetManager::LoadSkinnedModel(std::string_view name)
-    {
-        const std::string key = NameKey(name);
-        return &FindOrAdd(m_skinnedModels, key, [this, &key] { return CreateSkinnedModel(key); });
-    }
-
-    std::unique_ptr<SkinnedModel> AssetManager::CreateSkinnedModel(const std::string& key)
-    {
-        if (key.empty())
-        {
-            return std::make_unique<SkinnedModel>(key);
-        }
-        std::unique_ptr<Mesh> mesh = CreateMesh(key);
-        if (mesh->Skeleton() == nullptr)
-        {
-            // 読めない名前は CreateMesh が ERROR を出したので、読めてスキンの無いファイルだけを断る
-            if (!mesh->IsEmpty())
-            {
-                NS_LOG_ERROR(Scene, "骨付きのモデル {} から骨付きの形を取り出せないので、何も描かない", key);
-            }
-            return std::make_unique<SkinnedModel>(key);
-        }
-        return std::make_unique<SkinnedModel>(key, std::move(mesh));
-    }
-
     const AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
     {
         const std::string key = OS::FileSystem::Normalize(path);
@@ -679,7 +653,6 @@ namespace NS
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
-        m_skinnedModels.clear();
         m_animClips.clear();
         m_animationSources.clear();
     }

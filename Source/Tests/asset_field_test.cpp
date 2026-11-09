@@ -153,18 +153,13 @@ TEST(AssetField, UnreadableNamesStayWhenSavedAgain)
     EXPECT_EQ(log.ErrorCount(), 5);
 }
 
-TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
+TEST(AssetField, UnreadableClipNamesStayWhenSavedAgain)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     const TestLogCapture log;
 
-    const nlohmann::json model{{"モデル", "Assets/Models/__ns_missing_model__.glb"}};
-    NS::Animation animation;
-    EXPECT_EQ(NS::ApplyJsonFields(&animation, model), 0u);
-    EXPECT_EQ(NS::SerializeClassObjFields(&animation)["モデル"], model["モデル"]);
-
-    // 動作のアニメーションの項目のクリップの欄も、読めない道を保ったまま .actor の形へ書く
+    // 動作のアニメーションの項目のクリップの欄は、読めない道を保ったまま .actor の形へ書く
     const char* const clipPaths[] = {
         "Assets/Models/__ns_missing_clip__.glb", "Assets/Models/Xbot.glb#__ns_missing__", "../__ns_outside__.glb"};
     NS::ActorActionInfo action;
@@ -182,14 +177,11 @@ TEST(AssetField, UnreadableModelAndClipNamesStayWhenSavedAgain)
         EXPECT_EQ(saved["events"][i]["fields"]["クリップ"], nlohmann::json(clipPaths[i])) << i;
     }
 
-    const NS::FieldDesc* modelField = NS::FindField(NS::Animation::StaticReflection(), "モデル");
-    ASSERT_NE(modelField, nullptr);
-    EXPECT_EQ(modelField->assetKind, NS::AssetKind::Model);
     const NS::FieldDesc* clipField = NS::FindField(NS::ActionAnimInfo::StaticReflection(), "クリップ");
     ASSERT_NE(clipField, nullptr);
     EXPECT_EQ(clipField->type, NS::FieldType::Asset);
     EXPECT_EQ(clipField->assetKind, NS::AssetKind::Animation);
-    EXPECT_EQ(log.ErrorCount(), 6);
+    EXPECT_EQ(log.ErrorCount(), 4);
 }
 
 // 欄の名前から素材を引く決まりは AssetManager の口の中にある
@@ -342,20 +334,23 @@ TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)
     EXPECT_NE(collision->Shape(), assets.LoadMeshShape("cube"));
 }
 
-TEST(AssetField, EmptyModelLeavesNoSkeleton)
+// Animation の骨格は Model のメッシュの欄の glb から読む。欄を空にして読み直すと骨格も空になる
+TEST(AssetField, AnimationReadsTheSkeletonOfTheModelMesh)
 {
-    const NS::FieldDesc* field = NS::FindField(NS::Animation::StaticReflection(), "モデル");
-    ASSERT_NE(field, nullptr);
-    EXPECT_EQ(field->type, NS::FieldType::Asset);
-
+    const ScopedActorFileEdit xbot("PlayerActor", [](nlohmann::json& actorFile) {
+        actorFile["classObjs"]["Model"]["メッシュ"] = "Assets/Models/Xbot.glb";
+    });
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
     ASSERT_NE(player, nullptr);
-    NS::Animation* animation = player->AnimationClassObj();
-    const NS::Anim::Skeleton skeleton;
-    animation->SetSkeleton(&skeleton);
+    const NS::Mesh* xbotMesh = NS::AssetManager::Get().LoadMesh("Assets/Models/Xbot.glb");
+    ASSERT_NE(xbotMesh->Skeleton(), nullptr);
+    ASSERT_NE(player->AnimationClassObj()->Skeleton(), nullptr);
+    EXPECT_EQ(player->AnimationClassObj()->Skeleton()->BoneCount(), xbotMesh->Skeleton()->BoneCount());
+
+    player->ModelClassObj()->SetMeshRef("");
     player->ReloadAssets();
-    EXPECT_EQ(animation->Skeleton(), nullptr);
+    EXPECT_EQ(player->AnimationClassObj()->Skeleton(), nullptr);
 }
 
 TEST(AssetField, PlayerLooksHoldTheirAssetsInAssetFields)
