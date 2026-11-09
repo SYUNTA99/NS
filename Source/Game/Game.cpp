@@ -12,7 +12,7 @@ Game::Game(std::string_view startSceneName, StartScene startScene)
     : NS::Layer("Game"), m_startSceneName(startSceneName), m_startScene(startScene)
 {
     s_instance = this;
-    // 物ごとの見た目の口のファイル (SurfaceHooks.hlsli) を Game の物から先に読ませる。シーンの素材を読む前に渡す
+    // 物ごとの見た目とシーンの値の使い方の口のファイル (SurfaceHooks.hlsli) を Game の物から先に読ませる。シーンの素材を読む前に渡す
     NS::Gfx::SetShaderIncludeDirectories(
         {NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Shaders/Game")});
 }

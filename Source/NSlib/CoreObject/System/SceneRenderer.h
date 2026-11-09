@@ -11,6 +11,7 @@
 #include "NSlib/Gfx/Render/RenderSettings.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 
+#include <array>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -105,10 +106,11 @@ namespace NS
         //! 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
-        //! 次に描くフレームから使う床の波を書く。強さ 0 で消える
-        void SetGroundWave(const Gfx::GroundWave& wave) noexcept { m_groundWave = wave; }
-        //! 描く時に使う床の波
-        [[nodiscard]] const Gfx::GroundWave& GroundWaveShown() const noexcept { return m_groundWave; }
+        //! 次に描くフレームから使う名前の無いシーンの値の index 番目を書く。ほかの番号の値は変えず、欄の外の番号なら何もしない
+        //! 意味は書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める
+        void SetSceneValue(std::size_t index, const Vector4& value) noexcept;
+        //! 描く時に使う名前の無いシーンの値。書かれていなければ全部 0
+        [[nodiscard]] const std::array<Vector4, 2>& SceneValuesShown() const noexcept { return m_sceneValues; }
 
         //! 次に描くフレームから使う歪みの輪を書く。押し 0 で消える
         void SetDistortionRing(const Gfx::DistortionRing& ring) noexcept { m_distortionRing = ring; }
@@ -283,7 +285,7 @@ namespace NS
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;
 
-        Gfx::GroundWave m_groundWave{};             // 描く床の波。SetGroundWave で書いた値
+        std::array<Vector4, 2> m_sceneValues{};     // 描く名前の無いシーンの値。SetSceneValue で書いた値
         Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。SetDistortionRing で書いた値
         std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有
         std::vector<Gfx::DrawItem> m_bodyMaskItems; // 体の型に描く物。描くたびに組み直す

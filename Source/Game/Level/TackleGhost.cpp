@@ -196,14 +196,14 @@ namespace GL
                 {
                     m_draws.push_back(NS::ModelDraw{.offset = m_spread * side,
                                                     .opacity = m_sideOpacity,
-                                                    .groundWave = false});
+                                                    .sceneValues = false});
                 }
             }
             if (m_afterimageOpacity > 0.0f)
             {
                 m_draws.push_back(NS::ModelDraw{.world = m_afterimageWorld,
                                                 .opacity = m_afterimageOpacity,
-                                                .groundWave = false,
+                                                .sceneValues = false,
                                                 .objectValues = false});
             }
         }

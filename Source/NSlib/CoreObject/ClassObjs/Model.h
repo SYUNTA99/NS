@@ -26,7 +26,7 @@ namespace NS
         //! 世界座標の描画ずれを置き換える。省略時は元のModelのずれを使う
         std::optional<Vector3> offset;
         float opacity = 1.0f;
-        bool groundWave = true;
+        bool sceneValues = true;  // 偽なら名前の無いシーンの値を全部 0 で渡す
         bool objectValues = true; // 偽なら名前の無い物ごとの値を全部 0 で渡す
     };
 

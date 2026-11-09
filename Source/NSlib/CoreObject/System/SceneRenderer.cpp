@@ -64,6 +64,16 @@ namespace NS
         m_effects = std::make_unique<Gfx::EffectScene>();
     }
 
+    void SceneRenderer::SetSceneValue(std::size_t index, const Vector4& value) noexcept
+    {
+        NS_ASSERT(Graphics, index < m_sceneValues.size(), "SceneRenderer::SetSceneValue: 番号が欄の数を超える");
+        if (index >= m_sceneValues.size())
+        {
+            return;
+        }
+        m_sceneValues[index] = value;
+    }
+
     void SceneRenderer::OnTick()
     {
         m_sceneTimeSeconds += OS::FrameTimer::FixedDelta();
@@ -514,7 +524,7 @@ namespace NS
         ctx.viewProjection = viewCamera->ViewProjection();
         ctx.cameraPosition = viewCamera->Position();
         ctx.resolvedSettings = ResolveSceneSettings(Gfx::RenderSettings{});
-        ctx.groundWave = m_groundWave;
+        ctx.sceneValues = m_sceneValues;
         ctx.distortionRing = m_distortionRing;
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ

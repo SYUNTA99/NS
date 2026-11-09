@@ -6,6 +6,27 @@ namespace GL
 {
     namespace Level
     {
+        namespace
+        {
+            // 床の波はシーンの値の 1 つ目に、中心の X・中心の Z・半径・強さの順で並べる。読むのは Shaders/Game/SurfaceHooks.hlsli
+            // 並びは書く関数と読む関数の 2 つだけが知る
+            void WriteGroundWaveValue(NS::SceneRenderer& renderer, const GroundWaveFrame& wave) noexcept
+            {
+                renderer.SetSceneValue(0, NS::Vector4{wave.centerX, wave.centerZ, wave.radius, wave.strength});
+            }
+
+            [[nodiscard]] GroundWaveFrame ReadGroundWaveValue(const NS::SceneRenderer& renderer) noexcept
+            {
+                const NS::Vector4& value = renderer.SceneValuesShown()[0];
+                return GroundWaveFrame{.centerX = value.x, .centerZ = value.y, .radius = value.z, .strength = value.w};
+            }
+        } // namespace
+
+        GroundWaveFrame HitScreenDirector::GroundWaveShown(const NS::SceneRenderer& renderer) noexcept
+        {
+            return ReadGroundWaveValue(renderer);
+        }
+
         void HitScreenDirector::StartDistortionRing(const NS::SceneActor* requester,
                                                     const HitDistortionRingDesc& desc) noexcept
         {
@@ -97,10 +118,11 @@ namespace GL
         void HitScreenDirector::WriteGroundWave() noexcept
         {
             const float frame = static_cast<float>(m_waveElapsed);
-            m_renderer.SetGroundWave(NS::Gfx::GroundWave{.centerX = m_wave.center.x,
-                                                                          .centerZ = m_wave.center.z,
-                                                                          .radius = m_wave.radius.Evaluate(frame),
-                                                                          .strength = m_wave.strength.Evaluate(frame)});
+            WriteGroundWaveValue(m_renderer,
+                                 GroundWaveFrame{.centerX = m_wave.center.x,
+                                                 .centerZ = m_wave.center.z,
+                                                 .radius = m_wave.radius.Evaluate(frame),
+                                                 .strength = m_wave.strength.Evaluate(frame)});
         }
 
         void HitScreenDirector::EndGroundWave() noexcept
@@ -113,7 +135,7 @@ namespace GL
             m_waveActive = false;
             m_waveJustStarted = false;
             m_waveRequester = nullptr;
-            m_renderer.SetGroundWave(NS::Gfx::GroundWave{});
+            WriteGroundWaveValue(m_renderer, GroundWaveFrame{});
         }
 
         void HitScreenDirector::Clear() noexcept

@@ -16,17 +16,19 @@ namespace NS
             Matrix viewProj{};
             // 照明の既定値はプロジェクト描画既定値の RenderSettings と共有し、値の二重管理を避ける
             Vector3 lightDir = Gfx::RenderSettings{}.lightDir;
-            float groundWaveCenterX = 0.0f; // 床の波の中心のワールド X 座標
+            float lightDirPad = 0.0f;
             Vector3 baseColor{1.0f, 1.0f, 1.0f};
-            float groundWaveCenterZ = 0.0f; // 床の波の中心のワールド Z 座標
+            float baseColorPad = 0.0f;
             Vector3 lightColor = Gfx::RenderSettings{}.lightColor;
-            float groundWaveRadius = 0.0f; // 床の波の半径 (m)
+            float lightColorPad = 0.0f;
             Vector3 ambientColor = Gfx::RenderSettings{}.ambientColor;
-            float groundWaveStrength = 0.0f; // 床の波の強さ (0 以下で無効)
+            float ambientColorPad = 0.0f;
             Vector3 groundColor = Gfx::RenderSettings{}.groundColor;
             float exposure = Gfx::RenderSettings{}.exposure;
             // 名前の無い物ごとの 4 つの値。意味は Model の SetDrawValues で書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める
             std::array<Vector4, 4> objectValues{};
+            // 名前の無いシーンの値 2 つ。意味は SceneRenderer の SetSceneValue で書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める
+            std::array<Vector4, 2> sceneValues{};
             float opacity = 1.0f; // 不透明度 0..1 (lit / unlit / soft_circle が読む。Alpha ブレンド時のみ有効)
             float pad0 = 0.0f;
             float pad1 = 0.0f;
@@ -34,7 +36,7 @@ namespace NS
             Vector3 cameraPosition{};
             float sceneTimeSeconds = 0.0f;
         };
-        static_assert(sizeof(FrameCB) == 304, "FrameCB size は Common.hlsli と完全一致 (304 byte)");
+        static_assert(sizeof(FrameCB) == 336, "FrameCB size は Common.hlsli と完全一致 (336 byte)");
         static_assert(alignof(FrameCB) == 16, "FrameCB は 16 byte alignment");
     } // namespace Gfx
 } // namespace NS

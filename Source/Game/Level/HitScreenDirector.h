@@ -33,6 +33,15 @@ namespace GL
             int frames = 0;       // 出すフレーム数。0 以下なら出さない
         };
 
+        //! 1 フレームの床の波。SceneRenderer の名前の無いシーンの値に並べ、Shaders/Game/SurfaceHooks.hlsli が読む
+        struct GroundWaveFrame
+        {
+            float centerX = 0.0f;  // 輪の中心のワールド X 座標
+            float centerZ = 0.0f;  // 輪の中心のワールド Z 座標
+            float radius = 0.0f;   // 半径 (m)
+            float strength = 0.0f; // 強さ。0 以下なら出さない
+        };
+
         //! 当たりの画面の演出 (歪みの輪・床の波)。GameScene がシーンに 1 つ持ち、シーンが止まっている歩でも進める
         //! 開始した歩は初期状態を描き、次の更新から進める。描く値は渡した SceneRenderer へ書く
         class HitScreenDirector final : public NS::NonCopyable
@@ -66,6 +75,9 @@ namespace GL
 
             //! 歪みの輪と床の波を 1 フレーム進める
             void OnTick() noexcept;
+
+            //! renderer の名前の無いシーンの値から、描く床の波を読む。書いていなければ強さ 0
+            [[nodiscard]] static GroundWaveFrame GroundWaveShown(const NS::SceneRenderer& renderer) noexcept;
 
         private:
             void WriteDistortionRing() noexcept;

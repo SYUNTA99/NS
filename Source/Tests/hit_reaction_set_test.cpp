@@ -945,7 +945,8 @@ TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
     {
         SCOPED_TRACE(frame);
         probes.Step();
-        const NS::Gfx::GroundWave& shown = probes.scene.GetSceneRenderer()->GroundWaveShown();
+        const GL::Level::GroundWaveFrame shown =
+            GL::Level::HitScreenDirector::GroundWaveShown(*probes.scene.GetSceneRenderer());
         if (frame >= 8)
         {
             EXPECT_FLOAT_EQ(shown.strength, 0.0f);
@@ -969,11 +970,11 @@ TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
     probes.scene.HitScreen().StopGroundWave(probes.other);
-    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*probes.scene.GetSceneRenderer()).strength, 0.8f);
     probes.scene.HitScreen().StopGroundWave(probes.self);
-    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*probes.scene.GetSceneRenderer()).strength, 0.0f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*probes.scene.GetSceneRenderer()).strength, 0.0f);
 }
 
 // 持ち主の HitReaction の ScaleRunning と Stop は、項目が始めた輪と床の波に触らない
@@ -993,7 +994,7 @@ TEST(HitReactionStart, ScalingAndStoppingTheReactionLeaveTheRingAndWave)
     probes.self->HitReactionClassObj()->ScaleRunning(self, 0.5f);
     probes.self->HitReactionClassObj()->Stop(self);
     EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->DistortionRingShown().push, 0.1f);
-    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*probes.scene.GetSceneRenderer()).strength, 0.8f);
 }
 
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る

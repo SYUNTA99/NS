@@ -233,13 +233,15 @@ namespace
     }
 } // namespace
 
-// 名前の無い物ごとの値の欄は物ごとの定数の照明の後、不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
+// 名前の無い物ごとの値の欄は物ごとの定数の照明の後、名前の無いシーンの値と不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
 TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
 {
     EXPECT_EQ(sizeof(NS::Gfx::FrameCB::objectValues), 64u);
     EXPECT_EQ(offsetof(NS::Gfx::FrameCB, objectValues), 208u);
-    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 272u);
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 304u);
+    EXPECT_EQ(sizeof(NS::Gfx::FrameCB::sceneValues), 32u);
+    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, sceneValues), 272u);
+    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 304u);
+    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 336u);
     // 書いていない値は全部 0 で、震えの振れ幅も 0。書いていない不透明度は 1
     const NS::Gfx::FrameCB constants{};
     EXPECT_FLOAT_EQ(GL::Level::BodyTremor::FromDrawValues(constants.objectValues).amplitude, 0.0f);
@@ -335,4 +337,12 @@ TEST(TremorShader, WithoutTheGameHooksTheValuesMoveNothing)
         EXPECT_FLOAT_EQ(moved[i].y, origin.y + points[i].y);
         EXPECT_FLOAT_EQ(moved[i].z, origin.z + points[i].z);
     }
+}
+
+// 光を受ける面のピクセルシェーダーは、面の向きと足す光を口のファイルから取る。NSlib の何もしない口のファイルでも、
+// Game の床の波を書いた口のファイルでもコンパイルできる
+TEST(SurfaceHooksShader, LitPixelShaderCompilesWithBothSurfaceHooks)
+{
+    EXPECT_NE(NS::Gfx::CompileShaderFile("Shaders/lit.ps.hlsl", "PSMain", "ps_5_0", {}), nullptr);
+    EXPECT_NE(NS::Gfx::CompileShaderFile("Shaders/lit.ps.hlsl", "PSMain", "ps_5_0", k_GameShaders), nullptr);
 }

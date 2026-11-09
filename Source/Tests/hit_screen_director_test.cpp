@@ -38,7 +38,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     wave.frames = 30;
     screen.StartGroundWave(goal, wave);
-    ASSERT_GT(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    ASSERT_GT(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.0f);
     GL::Level::HitDistortionRingDesc ring;
     ring.push.count = 1;
     ring.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
@@ -53,7 +53,7 @@ TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
     ASSERT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 1.0f);
 
     scene.ResetFromJson(NS::MakeSceneJson());
-    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.0f);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
@@ -168,12 +168,12 @@ TEST(HitScreenDirector, ScaleWeakensOnlyTheRequestersRingAndWave)
 
     screen.Scale(goal, 0.5f);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.1f);
-    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.8f);
     screen.Scale(player, 0.5f);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.05f);
-    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.4f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.4f);
     screen.OnTick();
     screen.OnTick();
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.05f);
-    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.4f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.4f);
 }

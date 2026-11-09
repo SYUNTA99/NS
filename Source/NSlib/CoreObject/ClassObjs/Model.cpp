@@ -255,9 +255,9 @@ namespace NS
             Gfx::DrawItem item = MakeDrawItem(context, world);
             item.blend = Gfx::BlendMode::Alpha;
             item.constants.opacity = draw.opacity;
-            if (!draw.groundWave)
+            if (!draw.sceneValues)
             {
-                item.constants.groundWaveStrength = 0.0f;
+                item.constants.sceneValues = {};
             }
             if (!draw.objectValues)
             {
@@ -332,10 +332,7 @@ namespace NS
         item.constants.ambientColor = settings.ambientColor;
         item.constants.groundColor = settings.groundColor;
         item.constants.exposure = settings.exposure;
-        item.constants.groundWaveCenterX = context.groundWave.centerX;
-        item.constants.groundWaveCenterZ = context.groundWave.centerZ;
-        item.constants.groundWaveRadius = context.groundWave.radius;
-        item.constants.groundWaveStrength = context.groundWave.strength;
+        item.constants.sceneValues = context.sceneValues;
         item.constants.objectValues = m_drawValues;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;

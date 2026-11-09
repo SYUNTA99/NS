@@ -522,7 +522,7 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
     EXPECT_EQ(ghost->Root().WorldMatrix(), parent->Root().WorldMatrix());
 
     NS::Gfx::RenderContext context{};
-    context.groundWave.strength = 2.0f;
+    context.sceneValues[0].w = 2.0f;
     std::vector<NS::Gfx::DrawItem> copies;
     ghost->Collect(context, NS::RenderSource{ghost->Root().WorldMatrix()}, copies);
     ASSERT_EQ(copies.size(), 3u);
@@ -533,14 +533,14 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
     EXPECT_FLOAT_EQ(copies[1].constants.opacity, 0.5f);
     EXPECT_FLOAT_EQ(copies[2].constants.opacity, 0.25f);
     EXPECT_EQ(copies[0].blend, NS::Gfx::BlendMode::Alpha);
-    EXPECT_FLOAT_EQ(copies[0].constants.groundWaveStrength, 0.0f);
+    EXPECT_FLOAT_EQ(copies[0].constants.sceneValues[0].w, 0.0f);
     std::vector<NS::Gfx::DrawItem> body;
     parent->ModelClassObj()->Collect(context, NS::RenderSource{parent->Root().WorldMatrix()}, body);
     ASSERT_EQ(body.size(), 1u);
     EXPECT_EQ(copies[0].mesh, body[0].mesh);
     EXPECT_EQ(copies[2].material, body[0].material);
     EXPECT_FLOAT_EQ(body[0].constants.opacity, 1.0f);
-    EXPECT_FLOAT_EQ(body[0].constants.groundWaveStrength, 2.0f);
+    EXPECT_FLOAT_EQ(body[0].constants.sceneValues[0].w, 2.0f);
     EXPECT_EQ(ghost->SortPriority(), -1);
 
     NS::SceneRenderer* renderer = parent->GetSceneRenderer();
