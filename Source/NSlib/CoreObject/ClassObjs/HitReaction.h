@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
@@ -542,9 +543,28 @@ namespace NS
         int length = 0;                        // 今始める項目の長さ (フレーム数)
     };
 
+    //! 当たりの項目が始めた後も毎フレーム進める見た目。項目の Start が HitReaction::AddRun で預け、HitReaction が持つ
+    //! 持ち主の SceneActor::Update が、体を動かした後・VisualStep の前に 1 フレームずつ進める。持ち主の止めの間も進む
+    //! 持ち主は覚えず、進める・弱める・止める時に受ける
+    class HitReactionRun : public NonCopyable
+    {
+    public:
+        virtual ~HitReactionRun() noexcept = default;
+
+        //! 1 フレーム進め、持ち主の Model へ書く。中で HitReaction の AddRun・Stop・StopAll を呼ばない
+        //! @return 続ける場合 true。false を返した物は、HitReaction が Stop を呼んでから外す
+        [[nodiscard]] virtual bool Advance(const HitReactionSelf& owner) = 0;
+
+        //! 振れ幅に scale を掛ける。次の Advance から効く。事前条件: 0 以上の有限の数
+        virtual void Scale(float scale) noexcept = 0;
+
+        //! 持ち主の Model へ書いた見た目を元へ戻す。呼んだ後に HitReaction が外す
+        virtual void Stop(const HitReactionSelf& owner) noexcept = 0;
+    };
+
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
     //! カメラの効果は CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れ・形・震えは持ち主の Model、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
+    //! 描く揺れ・形・震えは持ち主の Model、始めた後も進む見た目は預かった HitReactionRun、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
     //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
@@ -585,6 +605,13 @@ namespace NS
         //! 呼ぶのは SceneActor::Update の頭だけ。持ち主の止めの間も進める
         void AdvanceOwnerRuns() noexcept;
 
+        //! 始めた後も進む見た目を預かる。nullptr は何もしない
+        void AddRun(std::unique_ptr<HitReactionRun> run);
+
+        //! 預かった見た目を預けた順に 1 フレーム進め、終わった物を外す
+        //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。持ち主の止めの間も進める
+        void AdvanceRuns(const HitReactionSelf& owner);
+
         // 下の関数の owner は管理クラスとカメラを引くアクターで、依頼の主にもなる。事前条件: nullptr でない
 
         //! カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
@@ -601,20 +628,21 @@ namespace NS
         void StopGroundWave(const SceneActor* owner) noexcept;
 
         //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
-        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅。
+        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅・
+        //! 預かった見た目 (HitReactionRun::Scale)。
         //! 震えの線・描く形の倍率・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
         //! @param[in] owner 頼んだ持ち主と、揺れと震えを書いた先
         //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
         void ScaleRunning(const HitReactionSelf& owner, float scale);
 
         //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、持ち主が頼んだカメラの効果のうちトラウマのほかを外し、
-        //! 持ち主へ渡す項目を外す
+        //! 持ち主へ渡す項目を外し、預かった見た目を止めて外す
         //! トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す
-        void Stop(const SceneActor* owner);
+        void Stop(const HitReactionSelf& owner);
 
         //! Stop に加えて、この部品が頼んだカメラの効果をトラウマも含めて全部外す。途中で外れても効果を残さない
-        void StopAll(const SceneActor* owner);
+        void StopAll(const HitReactionSelf& owner);
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, Object)
@@ -626,6 +654,7 @@ namespace NS
         std::vector<HitReactionSet> m_sets;   // 持ち主の .actor の束
         std::vector<HitOwnerRun> m_ownerRuns; // 進めている持ち主へ渡す項目
         uint32 m_startCount = 0;              // 束か項目を始めた回数。揺れの種に混ぜる
+        std::vector<std::unique_ptr<HitReactionRun>> m_runs; // 預かった、始めた後も進む見た目。預けた順
     };
 } // namespace NS
 

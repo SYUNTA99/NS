@@ -10,6 +10,7 @@
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
 
+#include <array>
 #include <optional>
 #include <span>
 #include <string>
@@ -143,6 +144,17 @@ namespace NS
         //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
         //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める
         void AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition);
+        //! 描く姿勢へ足す世界のずれ (m) を書く。補間しない。当たりの見た目の走る物が毎フレーム書く
+        //! @return 全成分が有限の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetDrawOffset(const Vector3& offset) noexcept;
+        //! SetDrawScale の倍率に掛ける、形の再生の倍率を書く。描く倍率は 2 つの積
+        //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetDrawShapeScale(const Vector3& scale) noexcept;
+        //! シェーダへ渡す、名前の無い物ごとの 4 つの値を書く。補間しない
+        //! 意味は値を書く走る物と、シェーダの口のファイルが決める
+        void SetDrawValues(const std::array<Vector4, 4>& values) noexcept { m_drawValues = values; }
+        //! SetDrawValues で書いた値。書かれていなければ全部 0
+        [[nodiscard]] const std::array<Vector4, 4>& DrawValues() const noexcept { return m_drawValues; }
         //! 描く姿勢へ足す世界のずれ (m)。補間しない
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
         //! 今の固定フレームの描く時だけの倍率。SetDrawScale で書いた倍率と形の再生の倍率の積で、どちらも無ければ (1, 1, 1)
@@ -246,10 +258,11 @@ namespace NS
         // 描く時だけの姿勢。根の Transform と当たりには効かず、保存しない
         Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};      // SetDrawScale で書いた倍率
-        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // 形の再生の倍率。書くのは形の再生だけ
+        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // 形の再生の倍率。書くのは形の再生と SetDrawShapeScale
         // 補間の始点。GetDrawScale の積を、固定更新の頭と SnapDrawScale で控える
         Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f};
         Gfx::TremorCB m_drawTremor{};
+        std::array<Vector4, 4> m_drawValues{}; // シェーダへ渡す名前の無い物ごとの値
 
         // 揺れ。始めた後の最初の AdvanceDraw を 1 フレーム目に数える
         struct ShakeRun

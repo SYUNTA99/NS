@@ -642,25 +642,56 @@ namespace NS
         {
             owner.model->ScaleDrawShaking(scale);
         }
+        for (const std::unique_ptr<HitReactionRun>& run : m_runs)
+        {
+            run->Scale(scale);
+        }
     }
 
-    void HitReaction::Stop(const SceneActor* owner)
+    void HitReaction::Stop(const HitReactionSelf& owner)
     {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::Stop: 持ち主が null");
-        if (HitScreenDirector* screen = HitScreenOf(owner))
+        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::Stop: 持ち主が null");
+        if (HitScreenDirector* screen = HitScreenOf(owner.actor))
         {
-            screen->Stop(owner);
+            screen->Stop(owner.actor);
         }
-        if (PadRumbleDirector* rumble = PadRumbleOf(owner))
+        if (PadRumbleDirector* rumble = PadRumbleOf(owner.actor))
         {
-            rumble->Stop(owner);
+            rumble->Stop(owner.actor);
         }
-        if (CameraManager* cameras = owner->GetCameraManager())
+        if (CameraManager* cameras = owner.actor->GetCameraManager())
         {
             // 持ち主が頼む効果は当たりの項目とトラウマだけ。トラウマは続けて当てると足されるので残す
-            cameras->RemoveModifiersOfExcept(owner, CameraTraumaModifier::StaticKind());
+            cameras->RemoveModifiersOfExcept(owner.actor, CameraTraumaModifier::StaticKind());
         }
         m_ownerRuns.clear();
+        for (const std::unique_ptr<HitReactionRun>& run : m_runs)
+        {
+            run->Stop(owner);
+        }
+        m_runs.clear();
+    }
+
+    void HitReaction::AddRun(std::unique_ptr<HitReactionRun> run)
+    {
+        if (run != nullptr)
+        {
+            m_runs.push_back(std::move(run));
+        }
+    }
+
+    void HitReaction::AdvanceRuns(const HitReactionSelf& owner)
+    {
+        NS_ASSERT(Scene, owner.actor != nullptr, "HitReaction::AdvanceRuns: 持ち主が null");
+        // 預けた順を保って、終わった物だけを外す。終わった物も書いた見た目を戻してから外す
+        std::erase_if(m_runs, [&owner](const std::unique_ptr<HitReactionRun>& run) {
+            if (run->Advance(owner))
+            {
+                return false;
+            }
+            run->Stop(owner);
+            return true;
+        });
     }
 
     bool HitReaction::AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc)
@@ -682,13 +713,13 @@ namespace NS
         return true;
     }
 
-    void HitReaction::StopAll(const SceneActor* owner)
+    void HitReaction::StopAll(const HitReactionSelf& owner)
     {
         Stop(owner);
         // プレイを終えた後の視点にトラウマを残さない。ほかの物が頼んだ効果は、その物が外す
-        if (CameraManager* cameras = owner->GetCameraManager())
+        if (CameraManager* cameras = owner.actor->GetCameraManager())
         {
-            cameras->RemoveModifiersOf(owner);
+            cameras->RemoveModifiersOf(owner.actor);
         }
     }
 

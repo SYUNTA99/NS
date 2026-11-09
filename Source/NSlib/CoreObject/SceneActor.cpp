@@ -446,7 +446,7 @@ namespace NS
         if (m_actorAction) { StopAction(); }
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
-        if (m_hitReaction) { m_hitReaction->StopAll(this); }
+        if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
     }
 
     namespace
@@ -768,6 +768,7 @@ namespace NS
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
         // clang-format on
         // clang-format off
+        if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
         if (m_model) { m_model->AdvanceDraw(this, Root().Position()); }
         // clang-format on
         for (const std::unique_ptr<SceneActor>& child : m_children)

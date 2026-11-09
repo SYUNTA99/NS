@@ -119,6 +119,26 @@ namespace NS
         return true;
     }
 
+    bool Model::SetDrawOffset(const Vector3& offset) noexcept
+    {
+        if (!IsFinite(offset))
+        {
+            return false;
+        }
+        m_drawOffset = offset;
+        return true;
+    }
+
+    bool Model::SetDrawShapeScale(const Vector3& scale) noexcept
+    {
+        if (!IsPositiveFiniteScale(scale))
+        {
+            return false;
+        }
+        m_drawShapeScale = scale;
+        return true;
+    }
+
     void Model::StartDrawShake(const DrawShakeDesc& desc) noexcept
     {
         m_shake = ShakeRun{.desc = desc, .frame = 0, .active = true};

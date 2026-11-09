@@ -77,7 +77,7 @@ TEST(HitScreenDirector, HitReactionStopsThroughTheDirector)
     ASSERT_NE(screen, nullptr);
     screen->StartFlash(player, 4, 1.0f);
     EXPECT_EQ(screen->FlashFramesRemaining(), 4);
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
 }
 
@@ -188,7 +188,7 @@ TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     screen->StopDistortionRing(rock);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
     reaction->StopDistortionRing(player);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);

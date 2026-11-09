@@ -77,7 +77,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
 
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
     EXPECT_EQ(screen->FlashFramesRemaining(), 0);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }

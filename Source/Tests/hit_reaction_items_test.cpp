@@ -66,7 +66,7 @@ TEST(HitReactionItems, StopRemovesTheOwnersCameraEffectsButKeepsTheTrauma)
     const float trauma = cameras->Trauma();
     ASSERT_GT(trauma, 0.0f);
 
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
 
     EXPECT_EQ(cameras->FindModifier<GL::Level::CameraSinkModifier>(), nullptr);
     EXPECT_FLOAT_EQ(cameras->Trauma(), trauma);

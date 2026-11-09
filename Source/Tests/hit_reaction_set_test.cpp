@@ -30,6 +30,7 @@
 #include <initializer_list>
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -1150,4 +1151,75 @@ TEST(HitReactionItemRegistry, ARegisteredItemReadsWritesAndStarts)
     g_countedFrames = 0;
     ASSERT_TRUE(probes.Start(probes.self, "Count", NS::Vector3{}));
     EXPECT_EQ(g_countedFrames, 6);
+}
+
+namespace
+{
+    // 走る物の呼ばれ方を数える
+    struct RunLog
+    {
+        int advances = 0;
+        int bodyStepsAtAdvance = -1; // 進めた時の持ち主の BodyStep の回数
+        float scale = 1.0f;
+        int stops = 0;
+    };
+
+    // length 回目の Advance で偽を返す走る物
+    class ProbeRun final : public NS::HitReactionRun
+    {
+    public:
+        ProbeRun(RunLog* log, int length) noexcept : m_log(log), m_length(length) {}
+
+        bool Advance(const NS::HitReactionSelf& owner) override
+        {
+            ++m_log->advances;
+            m_log->bodyStepsAtAdvance = static_cast<const ReactionProbeActor*>(owner.actor)->bodySteps;
+            return m_log->advances < m_length;
+        }
+        void Scale(float scale) noexcept override { m_log->scale *= scale; }
+        void Stop(const NS::HitReactionSelf& owner) noexcept override
+        {
+            (void)owner;
+            ++m_log->stops;
+        }
+
+    private:
+        RunLog* m_log = nullptr;
+        int m_length = 0;
+    };
+} // namespace
+
+// 預けた走る物は、持ち主の体を動かした後に毎フレーム進み、偽を返したフレームで止められて外れる
+TEST(HitReactionRun, ARunAdvancesAfterTheBodyEachFrameUntilItEnds)
+{
+    ProbeScene probes({}, NS::Vector3{0.0f, 1.0f, 2.0f});
+    ASSERT_NE(probes.self, nullptr);
+    RunLog log;
+    probes.self->HitReactionClassObj()->AddRun(std::make_unique<ProbeRun>(&log, 2));
+    probes.Step();
+    EXPECT_EQ(log.advances, 1);
+    EXPECT_EQ(log.bodyStepsAtAdvance, probes.self->bodySteps);
+    EXPECT_EQ(log.stops, 0);
+    probes.Step();
+    EXPECT_EQ(log.advances, 2);
+    EXPECT_EQ(log.stops, 1);
+    probes.Step();
+    EXPECT_EQ(log.advances, 2);
+}
+
+// 弱めると止めるは預けた走る物へ届き、止めた物は外れる
+TEST(HitReactionRun, ScaleAndStopReachTheRuns)
+{
+    ProbeScene probes({}, NS::Vector3{0.0f, 1.0f, 2.0f});
+    ASSERT_NE(probes.self, nullptr);
+    NS::HitReaction* reaction = probes.self->HitReactionClassObj();
+    RunLog log;
+    reaction->AddRun(std::make_unique<ProbeRun>(&log, 10));
+    const NS::HitReactionSelf self{.actor = probes.self, .model = probes.self->ModelClassObj()};
+    reaction->ScaleRunning(self, 0.5f);
+    EXPECT_FLOAT_EQ(log.scale, 0.5f);
+    reaction->Stop(self);
+    EXPECT_EQ(log.stops, 1);
+    probes.Step();
+    EXPECT_EQ(log.advances, 0);
 }
