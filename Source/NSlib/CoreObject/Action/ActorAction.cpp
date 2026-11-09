@@ -15,7 +15,7 @@ namespace NS
 {
     namespace
     {
-        // 流した秒をフレームの数へ直す時に、float の足し算の誤差で 1 フレーム前へ切り捨てないための余白
+        // クリップの時刻をフレームの数へ直す時に、float の足し算の誤差で 1 フレーム前へ切り捨てないための余白
         // (フレームの割合)
         constexpr float k_FrameRoundingSlack = 1.0e-3f;
     } // namespace
@@ -51,8 +51,24 @@ namespace NS
             return false;
         }
         m_state = nullptr;
-        m_playedSeconds = 0.0f;
         return true;
+    }
+
+    void ActorAction::BindClip(const ActionClock& clock) noexcept
+    {
+        if (!IsRunning() || m_state != nullptr)
+        {
+            return;
+        }
+        m_clip = clock.clip;
+        m_clipLoops = clock.clipLoops;
+        m_clipBound = true;
+        // 流れていたクリップがそのまま続く時は、今の時刻から数える。前のフレームの事象をまとめて起こさない
+        const std::optional<int> now = ClockFrame(clock);
+        if (now.has_value())
+        {
+            m_frame = std::max(m_frame, *now);
+        }
     }
 
     bool ActorAction::StartWithState(std::string_view name, const IStateMachine& machine)
@@ -97,6 +113,9 @@ namespace NS
         EndSensorSwitches(std::nullopt);
         m_current = k_NoAction;
         m_state = nullptr;
+        m_clip = nullptr;
+        m_clipLoops = 0;
+        m_clipBound = false;
         m_started.clear();
     }
 
@@ -107,9 +126,18 @@ namespace NS
             // 状態の歩 k の OnStep が走ったフレームに、フレーム k - 1 の事象を起こす
             return static_cast<int>(clock.machine->StepCount()) - 1;
         }
-        // 流した秒を固定フレームの数に丸める。k 回足した秒は k
+        // 結ぶ前はフレーム 0 だけ。結んだクリップが無いか長さが 0 なら進まない
+        if (!m_clipBound)
+        {
+            return 0;
+        }
+        if (m_clip == nullptr || m_clip->duration <= 0.0f)
+        {
+            return std::nullopt;
+        }
+        // クリップの時刻を固定フレームの数に丸める。k 回足した秒は k
         // フレーム分をわずかに下回る事があるので、余白を足して切り捨てる
-        return static_cast<int>(std::floor(m_playedSeconds / OS::FrameTimer::FixedDelta() + k_FrameRoundingSlack));
+        return static_cast<int>(std::floor(clock.clipTime / OS::FrameTimer::FixedDelta() + k_FrameRoundingSlack));
     }
 
     void ActorAction::Advance(const ActionClock& clock)
@@ -124,20 +152,58 @@ namespace NS
             Stop();
             return;
         }
-        if (m_state == nullptr)
+        // 結んだクリップが別のクリップへ替わったら、状態に結んだ動作が状態を出た時と同じく止める
+        if (m_state == nullptr && m_clipBound && m_clip != nullptr && clock.clip != m_clip)
         {
-            m_playedSeconds += std::max(clock.playbackSeconds, 0.0f);
+            Stop();
+            return;
         }
         const std::optional<int> clockFrame = ClockFrame(clock);
+        if (!clockFrame.has_value())
+        {
+            return;
+        }
+        // 同じクリップが頭から流れ直した (ループの回数が減った) 時は、フレーム 0 から起こし直す
+        if (m_state == nullptr && clock.clipLoops < m_clipLoops)
+        {
+            m_clipLoops = clock.clipLoops;
+            EndSensorSwitches(std::nullopt);
+            m_frame = -1;
+        }
+        if (m_state == nullptr && clock.clipLoops > m_clipLoops)
+        {
+            // 前の周で届かなかったクリップの終わりまでと、1 回の Advance の間に過ぎた周の全部を起こしてから、
+            // センサーを戻してフレーム 0 から起こし直す
+            const int last = LastClipFrame();
+            RunFrames(m_frame + 1, last);
+            for (uint32 lap = m_clipLoops + 1; lap < clock.clipLoops; ++lap)
+            {
+                EndSensorSwitches(std::nullopt);
+                RunFrames(0, last);
+            }
+            m_clipLoops = clock.clipLoops;
+            EndSensorSwitches(std::nullopt);
+            m_frame = -1;
+        }
         // 時計の進まなかったフレームは、前と同じかそれより前のフレームになるので回さない
-        if (!clockFrame.has_value() || *clockFrame <= m_frame)
+        if (*clockFrame <= m_frame)
         {
             return;
         }
         // 時計が 2 フレーム以上進んだ時 (アニメーションの再生が速い時) は、飛んだフレームの事象も起こす
-        const int from = m_frame + 1;
-        const int to = *clockFrame;
-        m_frame = to;
+        RunFrames(m_frame + 1, *clockFrame);
+        m_frame = *clockFrame;
+    }
+
+    int ActorAction::LastClipFrame() const noexcept
+    {
+        // 時刻がクリップの長さより前に始まる最後のフレーム
+        const float frames = m_clip->duration / OS::FrameTimer::FixedDelta();
+        return static_cast<int>(std::ceil(frames - k_FrameRoundingSlack)) - 1;
+    }
+
+    void ActorAction::RunFrames(int from, int to)
+    {
         const ActorActionInfo& action = m_actions[m_current];
         for (int frame = from; frame <= to; ++frame)
         {

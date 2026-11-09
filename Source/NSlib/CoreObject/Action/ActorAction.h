@@ -1,5 +1,7 @@
 #pragma once
 
+#include "NSlib/Core/Animation/AnimClip.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/IGet/IGetState.h"
 #include "NSlib/CoreObject/Object.h"
@@ -18,8 +20,11 @@ namespace NS
     struct ActionClock
     {
         const IStateMachine* machine = nullptr; // 持ち主の状態機械。持たなければ nullptr
-        // 前の Advance から持ち主のアニメーションを流した秒 (1 フレームの秒 × 再生速度)。結ばない動作の時計を進める
-        float playbackSeconds = 0.0f;
+        // 持ち主の Animation の今のクリップと時刻 (秒) とループの回数。結ばない動作の時計を進める。
+        // Animation を持たない・クリップを流していない時は clip が nullptr
+        const Anim::AnimClip* clip = nullptr;
+        float clipTime = 0.0f;
+        uint32 clipLoops = 0;
     };
 
     //! 動作の中でセンサーの入り切りを変える頼み。持ち主が名前のセンサーへ当てる
@@ -31,7 +36,8 @@ namespace NS
 
     //! 持ち主の .actor の動作を持ち、名前で始めた動作の時計を進めて、その歩に始まる事象を記録する部品
     //! 時計は 2 つ。StartWithState で始めた動作は持ち主の状態の歩数で進み、止めの間は状態と一緒に止まり、
-    //! 始めた時と違う状態へ移ると止まる。Start で始めた動作は持ち主のアニメーションの時刻で進む。
+    //! 始めた時と違う状態へ移ると止まる。Start で始めた動作は、フレーム 0 の後に BindClip で結んだ持ち主の
+    //! アニメーションのクリップの時刻で進み、クリップが 1 周するとフレーム 0 からもう一度起こす。
     //! ほかの部品を知らない。始まった事象とセンサーの入り切りは持ち主の SceneActor が読み、自分の部品へ頼む。
     //! 進めるのは持ち主の SceneActor::Update だけ
     class ActorAction : public Object
@@ -42,10 +48,16 @@ namespace NS
         //! @param[in] actorFileName 持ち主の .actor の名前 (SceneActor::ActorFileName)
         void ReloadActions(std::string_view actorFileName);
 
-        //! 名前の動作を始め、持ち主のアニメーションを流した秒で進める。走っている動作は止めてから始める
-        //! 流した秒は Advance ごとに足すので、クリップが替わって時刻が頭へ戻っても時計は戻らない
+        //! 名前の動作を始める。走っている動作は止めてから始める。BindClip で結ぶまではフレーム 0 から進まない
         //! @return 始めた場合 true。その名前の動作が無い場合は false
         bool Start(std::string_view name);
+
+        //! Start で始めた動作を clock のクリップに結ぶ。持ち主がフレーム 0 の事象を当てた直後に呼ぶ
+        //! 以後はそのクリップの時刻で進み、ループの回数が増えるとフレーム 0 から事象をもう一度起こす。
+        //! 結んだ時のクリップの時刻より前のフレームは起こさない。同じクリップが頭から流れ直すと、フレーム 0 から
+        //! 起こし直す。違うクリップへ替わると止まる。クリップを結ばなかった (clock.clip が nullptr) か長さが 0 なら、
+        //! フレーム 0 のまま進まない。状態に結んだ動作では何もしない
+        void BindClip(const ActionClock& clock) noexcept;
 
         //! 名前の動作を持ち主の今の状態に結んで始め、状態の歩数で進める。状態に入る時 (OnEnter) に呼ぶ
         //! 走っている動作は止めてから始める。状態の最初の歩がフレーム 0 に当たる
@@ -62,8 +74,8 @@ namespace NS
         void Stop();
 
         //! 時計を 1 フレーム進め、その歩に始まる事象とセンサーの入り切りを記録する
-        //! 呼ぶのは持ち主の SceneActor だけ。Update の状態機械の 1 歩の直後と、StartAction の中 (流した秒 0 で
-        //! フレーム 0 を起こす) で呼ぶ。時計が進んでいなければ何も記録しない
+        //! 呼ぶのは持ち主の SceneActor だけ。Update の状態機械の 1 歩の直後と、StartAction の中 (フレーム 0 を
+        //! 起こす) で呼ぶ。時計が進んでいなければ何も記録しない
         void Advance(const ActionClock& clock);
 
         [[nodiscard]] bool IsRunning() const noexcept { return m_current != k_NoAction; }
@@ -92,13 +104,20 @@ namespace NS
         [[nodiscard]] bool Begin(std::string_view name);
         // 時計の今のフレーム。進んでいなければ std::nullopt
         [[nodiscard]] std::optional<int> ClockFrame(const ActionClock& clock) const noexcept;
+        // from から to までのフレームに始まる事象とセンサーの入り切りを記録する
+        void RunFrames(int from, int to);
+        // 結んだクリップの時刻が長さより前に始まる最後のフレーム。結んだクリップがある時だけ呼ぶ
+        [[nodiscard]] int LastClipFrame() const noexcept;
         // 入り切りの途中の物を戻す頼みを足す。endingFrame を渡すと、その歩に終わる物だけを戻す
         void EndSensorSwitches(std::optional<int> endingFrame);
 
         std::vector<ActorActionInfo> m_actions; // 持ち主の .actor の動作
         std::size_t m_current = k_NoAction;     // 走っている動作の m_actions の番号
         StateId m_state = nullptr;              // 状態に結んだ動作の、始めた時の持ち主の状態。結ばない動作は nullptr
-        float m_playedSeconds = 0.0f;           // 結ばない動作を始めてからアニメーションを流した秒
+        // 結ばない動作を結んだクリップと、結んだ後に読んだループの回数。結ぶまで m_clipBound は偽
+        const Anim::AnimClip* m_clip = nullptr;
+        uint32 m_clipLoops = 0;
+        bool m_clipBound = false;
         // IsStateEnd が読む、最後に状態に結んで始めた動作の状態に入った回数 (EntryCount) と length の控え。
         // Stop と ReloadActions では消さず、次の StartWithState で上書きする。動作が途中で止まっても、状態は
         // 始めた時の長さで終わる。入り直すと回数が変わるので、始め直さずに入り直した状態は前の長さで終わらない

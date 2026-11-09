@@ -451,6 +451,24 @@ namespace NS
 
     namespace
     {
+        // action のフレーム 0 に、clip を流すアニメーションの項目がある場合 true。clip が nullptr なら false
+        bool PlaysClipAtFirstFrame(const ActorActionInfo& action, const Anim::AnimClip* clip) noexcept
+        {
+            if (clip == nullptr)
+            {
+                return false;
+            }
+            for (const ActorActionEvent& event : action.events)
+            {
+                const ActionAnimInfo* anim = std::get_if<ActionAnimInfo>(&event.item);
+                if (event.start == 0 && anim != nullptr && anim->clip != nullptr && anim->clip->Clip() == clip)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // 動作の項目 1 つを、持ち主の部品と場面の管理クラスへ頼む
         struct ActionItemRunner
         {
@@ -579,7 +597,15 @@ namespace NS
             return false;
         }
         // 次の Update まで待つと、フレーム 0 のクリップの切り替えが 1 フレーム遅れる
-        AdvanceAction(0.0f);
+        AdvanceAction();
+        // フレーム 0 の項目がクリップを替えるので、当てた後のクリップに結ぶ。自分のフレーム 0 にそのクリップの
+        // 項目が無い動作は、ほかの動作が流したクリップに結ばず、フレーム 0 のままにする
+        ActionClock clock = CurrentActionClock();
+        if (!PlaysClipAtFirstFrame(*m_actorAction->CurrentAction(), clock.clip))
+        {
+            clock.clip = nullptr;
+        }
+        m_actorAction->BindClip(clock);
         return true;
     }
 
@@ -610,21 +636,22 @@ namespace NS
         RunActionOutputs();
     }
 
-    void SceneActor::AdvanceAction(float playbackSeconds)
+    void SceneActor::AdvanceAction()
     {
-        m_actorAction->Advance(ActionClock{.machine = GetStateMachine(), .playbackSeconds = playbackSeconds});
+        m_actorAction->Advance(CurrentActionClock());
         RunActionOutputs();
     }
 
-    float SceneActor::ActionPlaybackSeconds() const noexcept
+    ActionClock SceneActor::CurrentActionClock() const noexcept
     {
-        // 次の描画でアニメーションが進む秒と同じ。Animation を持たない時は 1 フレームの秒で進める
-        const float dt = GetFrameDelta(this);
+        ActionClock clock{.machine = GetStateMachine()};
         if (m_animation)
         {
-            return dt * m_animation->Speed();
+            clock.clip = m_animation->CurrentClip();
+            clock.clipTime = m_animation->Time();
+            clock.clipLoops = m_animation->LoopCount();
         }
-        return dt;
+        return clock;
     }
 
     void SceneActor::PreloadActionSounds()
@@ -726,7 +753,7 @@ namespace NS
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
             if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
-            if (m_actorAction) { AdvanceAction(ActionPlaybackSeconds()); }
+            if (m_actorAction) { AdvanceAction(); }
             // clang-format on
             AfterStateStep();
         }

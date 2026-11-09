@@ -95,23 +95,25 @@ void PlayerActor::RestoreOnLanding() noexcept
 
 void PlayerActor::RestoreWhileGrounded() noexcept
 {
-    m_coyoteTimer = m_params->m_coyoteTime;
+    // 次の歩の頭で 1 引いてから比べるので、宙の m_coyoteFrames 歩を跳べるように 1 を足す
+    m_coyoteTimer = m_params->m_coyoteFrames + 1;
     m_airDash.m_remaining = 1;
 }
 
-void PlayerActor::TickTimers(float dt) noexcept
+void PlayerActor::TickTimers() noexcept
 {
     NS::Body& body = *m_body;
-    m_bufferTimer -= dt;
+    m_bufferTimer = std::max(0, m_bufferTimer - 1);
     if (m_input->JumpPressed())
     {
-        m_bufferTimer = m_params->m_jumpBufferTime;
+        // 押した歩の後に m_jumpBufferFrames 歩を残す。次の歩の頭で 1 引いてから比べるので 1 を足す
+        m_bufferTimer = m_params->m_jumpBufferFrames + 1;
     }
 
     const bool inAir = !body.IsGrounded();
     if (inAir)
     {
-        m_coyoteTimer -= dt;
+        m_coyoteTimer = std::max(0, m_coyoteTimer - 1);
     }
 }
 
@@ -150,11 +152,11 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
     else if (m_airControlReturning)
     {
         // 返った軌道を落ちた最初のフレームで折らない。0 から滑らかに上げ、戻りの初めほどゆっくり効かせる
-        const float seconds = m_params->m_airControlReturnSeconds;
+        const int frames = m_params->m_airControlReturnFrames;
         float t = 1.0f;
-        if (seconds > 0.0f)
+        if (frames > 0)
         {
-            t = std::clamp(m_airControlReturnElapsed / seconds, 0.0f, 1.0f);
+            t = std::clamp(static_cast<float>(m_airControlReturnElapsed) / static_cast<float>(frames), 0.0f, 1.0f);
         }
         const float scale = t * t * (3.0f - 2.0f * t);
         acceleration *= scale;
@@ -166,17 +168,17 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
 void PlayerActor::StartAirControlReturn() noexcept
 {
     m_airControlReturning = true;
-    m_airControlReturnElapsed = 0.0f;
+    m_airControlReturnElapsed = 0;
 }
 
-void PlayerActor::AdvanceAirControlReturn(float dt) noexcept
+void PlayerActor::AdvanceAirControlReturn() noexcept
 {
     if (!m_airControlReturning)
     {
         return;
     }
-    m_airControlReturnElapsed += dt;
-    if (m_airControlReturnElapsed >= m_params->m_airControlReturnSeconds)
+    ++m_airControlReturnElapsed;
+    if (m_airControlReturnElapsed >= m_params->m_airControlReturnFrames)
     {
         m_airControlReturning = false;
     }
@@ -207,8 +209,8 @@ void PlayerActor::LaunchJump() noexcept
     m_body->SetVerticalVelocity(m_params->m_jumpImpulse);
     // 縁からは跳べる回数を見ずに跳ぶので、0 から先へは減らさない
     m_jumpsRemaining = std::max(0, m_jumpsRemaining - 1);
-    m_bufferTimer = 0.0f;
-    m_coyoteTimer = 0.0f;
+    m_bufferTimer = 0;
+    m_coyoteTimer = 0;
     // オデッセイの Player::exeJump と同じく、跳ぶ所で動作を始める。跳ぶ音はこの動作のフレーム 0 の項目が鳴らす
     StartJumpAction();
     m_playerEvents.onJump.Invoke();
@@ -481,7 +483,7 @@ void PlayerActor::ClimbLedge() noexcept
     m_ledgeMantleStart = pos;
     m_ledgeMantleEnd =
         MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
-    m_ledgeMantleTimer = 0.0f;
+    m_ledgeMantleTimer = 0;
     (void)m_states->Change<GL::Player::LedgeClimbingPlayerState>();
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_playerEvents.onLedgeClimbing.Invoke();
@@ -530,14 +532,14 @@ void PlayerActor::Shimmy(float dt) noexcept
     }
 }
 
-void PlayerActor::UpdateLedgeClimb(float dt) noexcept
+void PlayerActor::UpdateLedgeClimb() noexcept
 {
     NS::Body& body = *m_body;
-    m_ledgeMantleTimer += dt;
+    ++m_ledgeMantleTimer;
     float t = 1.0f;
-    if (m_params->m_ledgeClimbDuration > 0.0f)
+    if (m_params->m_ledgeClimbFrames > 0)
     {
-        t = NS::Clamp(m_ledgeMantleTimer / m_params->m_ledgeClimbDuration, 0.0f, 1.0f);
+        t = NS::Clamp(static_cast<float>(m_ledgeMantleTimer) / static_cast<float>(m_params->m_ledgeClimbFrames), 0.0f, 1.0f);
     }
 
     // 2 段に割るのは角への食い込みを避けるため。前半は上昇だけで前へ進まない

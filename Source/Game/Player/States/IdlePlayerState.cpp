@@ -14,7 +14,7 @@ namespace GL
         void IdlePlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            player->TickTimers(dt);
+            player->TickTimers();
             player->ApplyFriction(dt);
             player->Jump(dt);
             player->CutJumpRelease();

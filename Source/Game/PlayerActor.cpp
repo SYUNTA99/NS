@@ -556,14 +556,14 @@ void PlayerActor::ResetState() noexcept
     m_input->ResetMovementInput();
     m_prevJumpHeld = false;
     m_jumpsRemaining = 1;
-    m_coyoteTimer = 0.0f;
-    m_bufferTimer = 0.0f;
+    m_coyoteTimer = 0;
+    m_bufferTimer = 0;
     m_airControlReturning = false;
-    m_airControlReturnElapsed = 0.0f;
+    m_airControlReturnElapsed = 0;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
     m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_ledgeMantleTimer = 0.0f;
+    m_ledgeMantleTimer = 0;
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない

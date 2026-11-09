@@ -8,6 +8,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/Core/OBB.h"
 #include "NSlib/Core/Types.h"
+#include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
@@ -106,16 +107,20 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
     NS::Body* movement = &player->Body();
+    // 4 フレームで登ると、1 歩目が前半の中ほど、2 歩目が前半の終わりになる
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), nlohmann::json{{"よじ登りのフレーム数", 4}}), 0u);
     player->Root().SetPosition(NS::Vector3{});
     player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<GL::Player::LedgeClimbingPlayerState>());
     EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
     const float top = player->Collider().CapsuleHalfHeight() + player->Collider().CapsuleRadius();
-    player->States().Step(0.0625f);
+    player->States().Step(NS::OS::FrameTimer::FixedDelta());
     EXPECT_NEAR(player->Root().Position().y, top * 0.5f, 0.00001f);
-    player->States().Step(0.0625f);
+    player->States().Step(NS::OS::FrameTimer::FixedDelta());
     EXPECT_NEAR(player->Root().Position().y, top, 0.00001f);
-    player->States().Step(0.125f);
+    player->States().Step(NS::OS::FrameTimer::FixedDelta());
+    EXPECT_FALSE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
+    player->States().Step(NS::OS::FrameTimer::FixedDelta());
     EXPECT_TRUE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
     EXPECT_TRUE(movement->IsGrounded());
 }
@@ -169,7 +174,7 @@ TEST(PlayerStateSequence, LedgeJumpSpendsTheJumpLikeAGroundJump)
     player->Input().SetJumpPressed();
     ASSERT_TRUE(player->LedgeJump());
     EXPECT_EQ(player->JumpsRemaining(), 0);
-    EXPECT_EQ(player->CoyoteRemaining(), 0.0f);
+    EXPECT_EQ(player->CoyoteRemaining(), 0);
     player->Body().SetVerticalVelocity(0.0f);
     player->Input().SetJumpPressed();
     player->Jump(0.0f);

@@ -56,6 +56,7 @@ namespace NS
         }
         m_clip = clip;
         m_time = 0.0f;
+        m_loopCount = 0;
         m_playing = true;
         FindClipBones();
     }
@@ -157,6 +158,8 @@ namespace NS
             m_time += dt * m_speed;
             if (m_looping)
             {
+                // 再生速度は負にならないので、時刻は負にならない
+                m_loopCount += static_cast<uint32>(m_time / duration);
                 m_time = std::fmod(m_time, duration);
                 if (m_time < 0.0f)
                 {

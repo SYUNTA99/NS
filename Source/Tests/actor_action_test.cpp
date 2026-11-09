@@ -1,6 +1,9 @@
 #include "Game/Level/SensorKinds.h"
+#include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/ClassObjs/Animation.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -25,6 +28,14 @@
 
 namespace
 {
+    // 長さだけを持つクリップ。動作の時計はクリップの名前と骨を見ない
+    NS::Anim::AnimClip ClipOf(float duration)
+    {
+        NS::Anim::AnimClip clip;
+        clip.duration = duration;
+        return clip;
+    }
+
     // 当たる直前の動作の形。振動とカメラの揺れと画面の光を、状態に入ってからの歩に置く
     NS::ActorActionInfo MakeBeforeContactAction()
     {
@@ -482,9 +493,9 @@ TEST(ActorAction, EventsStartOnTheStateStepsInFileOrder)
     EXPECT_EQ(actions.CurrentName(), "Run");
 }
 
-// 状態に結ばずに始めた動作は、持ち主のアニメーションを流した秒で進む。1 回に 2 フレーム以上進むと、
+// 状態に結ばずに始めた動作は、フレーム 0 の後に結んだクリップの時刻で進む。1 回に 2 フレーム以上進むと、
 // 飛んだフレームの事象も起こす
-TEST(ActorAction, AnActionWithoutAStateFollowsThePlayedSeconds)
+TEST(ActorAction, AnActionWithoutAStateFollowsTheBoundClipTime)
 {
     NS::ActorActionInfo action;
     action.name = "Wave";
@@ -493,23 +504,24 @@ TEST(ActorAction, AnActionWithoutAStateFollowsThePlayedSeconds)
     ASSERT_NE(probes.self, nullptr);
     NS::ActorAction& actions = *probes.self->ActorActionClassObj();
     const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 30.0f);
     ASSERT_TRUE(actions.Start("Wave"));
 
     actions.Advance(NS::ActionClock{});
     EXPECT_EQ(actions.StartedEvents(), Indices{0});
-    // 流さなければ、事象は起きない
-    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip});
+    // クリップの時刻が進まなければ、事象は起きない
+    actions.Advance(NS::ActionClock{.clip = &clip});
     EXPECT_TRUE(actions.StartedEvents().empty());
-    actions.Advance(NS::ActionClock{.playbackSeconds = step * 2.5f});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 2.5f});
     EXPECT_EQ(actions.StartedEvents(), (Indices{1, 2}));
     EXPECT_EQ(actions.Frame(), 2);
-    actions.Advance(NS::ActionClock{.playbackSeconds = step * 2.0f});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 4.5f});
     EXPECT_EQ(actions.StartedEvents(), Indices{3});
 }
 
-// 流した秒を 1 フレームずつ足しても、float の誤差で事象が次のフレームへずれない。
-// アニメーションの時刻を読まないので、クリップが替わったり繰り返して時刻が頭へ戻ったりしても、時計は止まらない
-TEST(ActorAction, ThePlayedSecondsAddUpOneFrameAtATime)
+// クリップの時刻を 1 フレームずつ足しても、float の誤差で事象が次のフレームへずれない
+TEST(ActorAction, TheClipTimeAddsUpOneFrameAtATime)
 {
     NS::ActorActionInfo action;
     action.name = "Wave";
@@ -521,14 +533,196 @@ TEST(ActorAction, ThePlayedSecondsAddUpOneFrameAtATime)
     ASSERT_NE(probes.self, nullptr);
     NS::ActorAction& actions = *probes.self->ActorActionClassObj();
     const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 120.0f);
     ASSERT_TRUE(actions.Start("Wave"));
     actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip});
+    float time = 0.0f;
     for (int frame = 1; frame < 60; ++frame)
     {
-        actions.Advance(NS::ActionClock{.playbackSeconds = step});
+        time += step;
+        actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = time});
         ASSERT_EQ(actions.Frame(), frame);
         ASSERT_EQ(actions.StartedEvents(), Indices{static_cast<std::size_t>(frame)});
     }
+}
+
+// 結んだクリップが 1 周すると、フレーム 0 から事象をもう一度起こす
+TEST(ActorAction, ALoopOfTheBoundClipStartsTheEventsAgain)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 3.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 1.5f});
+    EXPECT_EQ(actions.StartedEvents(), Indices{1});
+
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 0.2f, .clipLoops = 1});
+    EXPECT_EQ(actions.StartedEvents(), Indices{0});
+    EXPECT_EQ(actions.Frame(), 0);
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 1.2f, .clipLoops = 1});
+    EXPECT_EQ(actions.StartedEvents(), Indices{1});
+}
+
+// 結んだクリップが別のクリップへ替わると動作は止まる。クリップが無いまま結んだ動作と、長さが 0 のクリップに
+// 結んだ動作はフレーム 0 のまま
+TEST(ActorAction, AnotherClipStopsTheActionAndNoClipHoldsIt)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip bound = ClipOf(step * 30.0f);
+    const NS::Anim::AnimClip other = ClipOf(step * 30.0f);
+    const NS::Anim::AnimClip empty = ClipOf(0.0f);
+
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &bound});
+    actions.Advance(NS::ActionClock{.clip = &other, .clipTime = step * 5.0f, .clipLoops = 2});
+    EXPECT_TRUE(actions.StartedEvents().empty());
+    EXPECT_FALSE(actions.IsRunning());
+
+    for (const NS::Anim::AnimClip* clip : {static_cast<const NS::Anim::AnimClip*>(nullptr), &empty})
+    {
+        ASSERT_TRUE(actions.Start("Step"));
+        actions.Advance(NS::ActionClock{});
+        actions.BindClip(NS::ActionClock{.clip = clip});
+        actions.Advance(NS::ActionClock{.clip = clip, .clipTime = step * 5.0f, .clipLoops = 1});
+        EXPECT_TRUE(actions.StartedEvents().empty());
+        EXPECT_EQ(actions.Frame(), 0);
+        EXPECT_TRUE(actions.IsRunning());
+    }
+}
+
+// 流れていたクリップの途中で結ぶと、結んだ時刻から数える。前のフレームの事象をまとめて起こさない
+TEST(ActorAction, BindingMidClipCountsFromTheBoundTime)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    for (int frame = 0; frame < 8; ++frame)
+    {
+        action.events.push_back(SoundEvent("F", frame));
+    }
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 30.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip, .clipTime = step * 5.5f});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 6.2f});
+    EXPECT_EQ(actions.StartedEvents(), Indices{6});
+}
+
+// 1 周の間に Advance が来ずにクリップの終わりを越えても、前の周の残りのフレームを起こしてからフレーム 0 へ戻る
+TEST(ActorAction, ALoopRunsTheRestOfThePreviousLapFirst)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1), SoundEvent("C", 2)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 3.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 1.2f});
+    EXPECT_EQ(actions.StartedEvents(), Indices{1});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 0.5f, .clipLoops = 1});
+    EXPECT_EQ(actions.StartedEvents(), (Indices{2, 0}));
+}
+
+// 1 回の Advance の間に 2 周以上したら、過ぎた周の事象も起こす
+TEST(ActorAction, SkippedLapsRunTheirEventsToo)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 2.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 0.5f, .clipLoops = 3});
+    // 0 周目の残り (1)、1 周目と 2 周目 (0・1 を 2 回)、3 周目の頭 (0)
+    EXPECT_EQ(actions.StartedEvents(), (Indices{1, 0, 1, 0, 1, 0}));
+}
+
+// クリップを結ばなかった動作は、ほかのクリップが流れていてもフレーム 0 のまま残る
+TEST(ActorAction, AnActionWithoutItsClipHoldsWhileAnotherClipPlays)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 30.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 2.0f, .clipLoops = 1});
+    EXPECT_TRUE(actions.StartedEvents().empty());
+    EXPECT_TRUE(actions.IsRunning());
+    EXPECT_EQ(actions.Frame(), 0);
+}
+
+// 同じクリップが頭から流れ直すと (ループの回数が減ると)、フレーム 0 から起こし直す
+TEST(ActorAction, TheSameClipRestartedStartsTheEventsAgain)
+{
+    NS::ActorActionInfo action;
+    action.name = "Step";
+    action.events = {SoundEvent("A", 0), SoundEvent("B", 1), SoundEvent("C", 5)};
+    ActionScene probes({action});
+    ASSERT_NE(probes.self, nullptr);
+    NS::ActorAction& actions = *probes.self->ActorActionClassObj();
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip clip = ClipOf(step * 10.0f);
+    ASSERT_TRUE(actions.Start("Step"));
+    actions.Advance(NS::ActionClock{});
+    actions.BindClip(NS::ActionClock{.clip = &clip, .clipLoops = 2});
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 5.5f, .clipLoops = 2});
+    EXPECT_EQ(actions.StartedEvents(), (Indices{1, 2}));
+    actions.Advance(NS::ActionClock{.clip = &clip, .clipTime = step * 1.5f});
+    EXPECT_EQ(actions.StartedEvents(), (Indices{0, 1}));
+}
+
+// アニメーションはクリップが 1 周するたびにループの回数を足し、別のクリップを流すと 0 に戻す
+TEST(ActorAction, TheAnimationCountsTheLoopsOfItsClip)
+{
+    const float step = NS::OS::FrameTimer::FixedDelta();
+    const NS::Anim::AnimClip first = ClipOf(step * 3.0f);
+    const NS::Anim::AnimClip second = ClipOf(step * 3.0f);
+    NS::Model model;
+    NS::Animation animation;
+    animation.Play(&first);
+    for (int frame = 0; frame < 7; ++frame)
+    {
+        animation.Update(&model, step);
+    }
+    EXPECT_EQ(animation.LoopCount(), 2u);
+    animation.Play(&first);
+    EXPECT_EQ(animation.LoopCount(), 2u);
+    animation.Play(&second);
+    EXPECT_EQ(animation.LoopCount(), 0u);
 }
 
 // 名前で始めた動作は、始めた呼び出しの中でフレーム 0 の事象を起こす。

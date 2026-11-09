@@ -37,6 +37,7 @@ namespace NS
     class HitReaction;
     struct HitOwnerRun;
     class ActorAction;
+    struct ActionClock;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -143,8 +144,8 @@ namespace NS
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActorAction* ActorActionClassObj() noexcept { return m_actorAction.get(); }
         [[nodiscard]] const ActorAction* ActorActionClassObj() const noexcept { return m_actorAction.get(); }
-        //! 名前の動作を始め、自分のアニメーションを流した秒で進める。始まった項目は自分の部品へ頼む
-        //! フレーム 0 の項目はこの呼び出しの中で頼む
+        //! 名前の動作を始め、自分のアニメーションのクリップの時刻で進める。始まった項目は自分の部品へ頼む
+        //! フレーム 0 の項目はこの呼び出しの中で頼み、頼んだ後に流れているクリップに動作を結ぶ
         //! @return 始めた場合 true。ActorAction を持たない・その名前の動作が無い場合は WARN を出して false
         bool StartAction(std::string_view name);
         //! 名前の動作を自分の今の状態に結んで始め、状態の歩数で進める。状態の OnEnter で呼ぶ
@@ -336,9 +337,9 @@ namespace NS
 
     private:
         // 動作の時計を 1 フレーム進め、記録した物を自分の部品へ頼む。呼ぶのは Update と StartAction だけ
-        void AdvanceAction(float playbackSeconds);
-        // 1 回の Update で自分のアニメーションを流す秒。結ばない動作の時計を進める
-        [[nodiscard]] float ActionPlaybackSeconds() const noexcept;
+        void AdvanceAction();
+        // 自分の状態機械と、自分のアニメーションの今のクリップと時刻とループの回数
+        [[nodiscard]] ActionClock CurrentActionClock() const noexcept;
         // 動作の部品が記録した、センサーの入り切りと始まった事象の項目を、自分の部品へ頼む
         void RunActionOutputs();
         // 動作の効果音の項目の音を、自分の Sound に読んでおく

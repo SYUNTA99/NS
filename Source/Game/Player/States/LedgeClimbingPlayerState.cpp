@@ -18,7 +18,7 @@ namespace GL
             while (true)
             {
                 co_await NS::NextFrame{};
-                player->UpdateLedgeClimb(StepDelta());
+                player->UpdateLedgeClimb();
                 if (!player->States().IsCurrent<LedgeClimbingPlayerState>())
                 {
                     co_return;
