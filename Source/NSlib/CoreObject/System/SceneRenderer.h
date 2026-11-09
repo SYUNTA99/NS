@@ -106,7 +106,7 @@ namespace NS
         //! 空でない間は各ビューを順に bind して描き分ける。差すのは Editor だけで、出荷では常に空
         void SetSceneViews(std::vector<SceneView> views) noexcept { m_sceneViews = std::move(views); }
 
-        //! 次に描くフレームから使う名前の無いシーンの値の index 番目を書く。ほかの番号の値は変えず、欄の外の番号なら何もしない
+        //! 次に描くフレームから使う名前の無いシーンの値の index 番目を書く。ほかの番号の値は変えない。index は欄の数より小さい事
         //! 意味は書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める
         void SetSceneValue(std::size_t index, const Vector4& value) noexcept;
         //! 描く時に使う名前の無いシーンの値。書かれていなければ全部 0

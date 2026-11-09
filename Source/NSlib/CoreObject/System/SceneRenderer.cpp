@@ -67,10 +67,6 @@ namespace NS
     void SceneRenderer::SetSceneValue(std::size_t index, const Vector4& value) noexcept
     {
         NS_ASSERT(Graphics, index < m_sceneValues.size(), "SceneRenderer::SetSceneValue: 番号が欄の数を超える");
-        if (index >= m_sceneValues.size())
-        {
-            return;
-        }
         m_sceneValues[index] = value;
     }
 
