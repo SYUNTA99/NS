@@ -24,7 +24,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
@@ -52,7 +52,7 @@ namespace
         void OnStep(::PlayerActor* player, float) override
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            EXPECT_EQ(player->OwningScene()->HitScreen().FlashFramesRemaining(), 3);
+            EXPECT_EQ(player->OwningScene()->ScreenFlash().FramesRemaining(), 3);
         }
     };
 
@@ -458,16 +458,16 @@ TEST(PlayerStateSequence, EffectsAdvanceAfterTheActorStateStep)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
+    NS::ScreenFlashDirector* screen = &scene.ScreenFlash();
     ASSERT_NE(screen, nullptr);
-    screen->StartFlash(player, 3, 1.0f);
+    screen->Start(player, 3, 1.0f);
     screen->OnTick();
-    ASSERT_EQ(screen->FlashFramesRemaining(), 3);
+    ASSERT_EQ(screen->FramesRemaining(), 3);
     player->States().Build<ObservePlayerEffectsState>(player);
-    // HitScreenDirector はアクターの PrepareRender の後に進む。自機の状態の歩は、薄れる前の白を見る
+    // 白はアクターの PrepareRender の後に進む。自機の状態の歩は、薄れる前の白を見る
     scene.OnUpdate();
     EXPECT_EQ(player->States().StepCount(), 1u);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
+    EXPECT_EQ(screen->FramesRemaining(), 2);
 }
 
 // 丸まると根が立ち姿の半長だけ下がり、立ち姿の下の球がそのまま玉になる。解くと根が同じだけ上がる。

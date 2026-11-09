@@ -538,7 +538,7 @@ namespace NS
                 {
                     return;
                 }
-                scene->HitScreen().StartFlash(&actor, length, screen.alpha);
+                scene->ScreenFlash().Start(&actor, length, screen.alpha);
             }
         };
     } // namespace

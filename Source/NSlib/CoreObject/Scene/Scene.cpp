@@ -368,7 +368,8 @@ namespace NS
     void Scene::ClearWorld()
     {
         // 前の世界のアクターが頼んだ演出と振動を、次の世界へ持ち越さない
-        m_hitScreen.Clear();
+        m_screenFlash.Clear();
+        ClearViewEffects();
         m_padRumble.Clear();
         Fade().Cancel();
         m_actors.Clear();
@@ -474,7 +475,8 @@ namespace NS
         m_fade.Advance(OS::FrameTimer::FixedDelta());
         // 画面の演出と振動は、アクターの PrepareRender の後に進める
         m_actors.PrepareRenderActors();
-        m_hitScreen.OnTick();
+        m_screenFlash.OnTick();
+        StepViewEffects();
         m_padRumble.OnTick();
     }
 

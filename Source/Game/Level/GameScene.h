@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Game/Level/HitScreenDirector.h"
 #include "NSlib/Core/Coroutine.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
@@ -69,6 +70,10 @@ namespace GL
             //! 曲を止める。次の StartMusic は最初から鳴らす
             void StopMusic();
 
+            //! 当たりの画面の演出 (歪みの輪・床の波)。当たりの反応の項目が頼む
+            [[nodiscard]] HitScreenDirector& HitScreen() noexcept { return m_hitScreen; }
+            [[nodiscard]] const HitScreenDirector& HitScreen() const noexcept { return m_hitScreen; }
+
         protected:
             //! 全てのアクターへ MsgCourseStart を送って今の姿を控えさせ、RestartCourse と同じ処理で始める。
             //! 続けてシーンの設定の曲を鳴らし始める
@@ -79,6 +84,12 @@ namespace GL
 
             //! 知らせを受けた分だけ流れを進める
             void StepGame() override;
+
+            //! 当たりの画面の演出を 1 フレーム進める。シーンが止まっている歩でも進む
+            void StepViewEffects() override { m_hitScreen.OnTick(); }
+
+            //! 当たりの画面の演出を全部消す。前の世界のアクターが頼んだ輪と波を次の世界へ持ち越さない
+            void ClearViewEffects() override { m_hitScreen.Clear(); }
 
         private:
             [[nodiscard]] NS::Coroutine ClearSequence();
@@ -101,6 +112,10 @@ namespace GL
             // 曲はアクターの音でなくコースの寿命の物なので、アクターの部品 Sound を通さずに持つ
             std::unique_ptr<NS::Audio::SoundLoop> m_music; // 音を出せない時は nullptr
             bool m_musicStarted = false;                   // StartMusic から StopMusic までの間か
+            HitScreenDirector m_hitScreen{*GetSceneRenderer()};
         };
+
+        //! actor が入っている GameScene の当たりの画面の演出。actor が GameScene に入っていなければ nullptr
+        [[nodiscard]] HitScreenDirector* HitScreenOf(const NS::SceneActor* actor) noexcept;
     } // namespace Level
 } // namespace GL

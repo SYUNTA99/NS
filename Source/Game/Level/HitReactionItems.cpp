@@ -2,6 +2,8 @@
 
 #include "Game/Level/BodyShake.h"
 #include "Game/Level/CameraHitModifiers.h"
+#include "Game/Level/GameScene.h"
+#include "Game/Level/HitScreenDirector.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
@@ -193,6 +195,43 @@ namespace GL
                                              .minScreenShare = minScreenShare});
         }
 
+        void HitFlashInfo::Start(const NS::HitReactionStart& start) const
+        {
+            if (NS::Scene* scene = start.owner.actor->OwningScene())
+            {
+                scene->ScreenFlash().Start(start.owner.actor, start.length, alpha);
+            }
+        }
+
+        void HitDistortionRingInfo::Start(const NS::HitReactionStart& start) const
+        {
+            HitScreenDirector* screen = HitScreenOf(start.owner.actor);
+            if (screen == nullptr)
+            {
+                return;
+            }
+            screen->StartDistortionRing(start.owner.actor,
+                                        HitDistortionRingDesc{.center = start.position,
+                                                              .radius = radius,
+                                                              .push = push,
+                                                              .halfWidth = halfWidth,
+                                                              .frames = start.length});
+        }
+
+        void HitGroundWaveInfo::Start(const NS::HitReactionStart& start) const
+        {
+            HitScreenDirector* screen = HitScreenOf(start.owner.actor);
+            if (screen == nullptr)
+            {
+                return;
+            }
+            screen->StartGroundWave(start.owner.actor,
+                                    HitGroundWaveDesc{.center = start.position,
+                                                      .radius = radius,
+                                                      .strength = strength,
+                                                      .frames = start.length});
+        }
+
         void HitOthersStopInfo::Start(const NS::HitReactionStart& start) const
         {
             if (NS::Scene* scene = start.owner.actor->OwningScene())
@@ -209,6 +248,9 @@ namespace GL
         NS_HIT_REACTION_ITEM(HitZoomRollInfo)
         NS_HIT_REACTION_ITEM(HitCameraLurchInfo)
         NS_HIT_REACTION_ITEM(HitCameraAwaySwayInfo)
+        NS_HIT_REACTION_ITEM(HitFlashInfo)
+        NS_HIT_REACTION_ITEM(HitDistortionRingInfo)
+        NS_HIT_REACTION_ITEM(HitGroundWaveInfo)
         NS_HIT_REACTION_ITEM(HitOthersStopInfo)
     } // namespace Level
 } // namespace GL

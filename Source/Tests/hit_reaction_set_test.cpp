@@ -1,5 +1,7 @@
 #include "Game/Level/BodyShake.h"
 #include "Game/Level/CameraHitModifiers.h"
+#include "Game/Level/GameScene.h"
+#include "Game/Level/HitScreenDirector.h"
 #include "Game/Level/HitReactionItems.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
@@ -18,8 +20,8 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 #include "TestViewCamera.h"
@@ -77,11 +79,11 @@ namespace
         GL::Level::HitCameraAwaySwayInfo sway;
         sway.distance.count = 1;
         sway.distance.keys[0] = NS::Curve::Key{0.0f, -0.5f};
-        NS::HitFlashInfo flash;
+        GL::Level::HitFlashInfo flash;
         flash.alpha = 0.9f;
-        NS::HitDistortionRingInfo ring;
+        GL::Level::HitDistortionRingInfo ring;
         ring.halfWidth = 0.06f;
-        NS::HitGroundWaveInfo wave;
+        GL::Level::HitGroundWaveInfo wave;
         wave.radius.count = 2;
         wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.5f};
         wave.radius.keys[1] = NS::Curve::Key{10.0f, 6.0f};
@@ -215,7 +217,7 @@ TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     const std::optional<NS::HitReactionSet> read = NS::ParseHitReactionSet(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->entries.size(), 3u);
-    EXPECT_FLOAT_EQ(read->entries[0].item.As<NS::HitFlashInfo>()->alpha, 0.3f);
+    EXPECT_FLOAT_EQ(read->entries[0].item.As<GL::Level::HitFlashInfo>()->alpha, 0.3f);
     EXPECT_EQ(read->entries[1].item.As<GL::Level::HitZoomRollInfo>()->delayFrames, GL::Level::HitZoomRollInfo{}.delayFrames);
     const NS::HitOwnerInfo& owner = *read->entries[2].item.As<NS::HitOwnerInfo>();
     EXPECT_EQ(owner.name, "HitEffect");
@@ -451,7 +453,7 @@ namespace
     // 後ろから +z を見るカメラと、原点のアクター self と前の other を置いた場面
     struct ProbeScene
     {
-        NS::Scene scene;
+        GL::Level::GameScene scene;
         ReactionProbeActor* self = nullptr;
         ReactionProbeActor* other = nullptr;
 
@@ -513,7 +515,7 @@ namespace
 // 値は束に書いた値のまま使う
 TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
 {
-    NS::HitFlashInfo flash;
+    GL::Level::HitFlashInfo flash;
     flash.alpha = 0.6f;
     NS::HitPadInfo pad;
     pad.left = ConstantCurve(0.5f);
@@ -537,10 +539,10 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     const NS::Vector3 contact{0.0f, 1.0f, 3.5f};
     ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
 
-    const NS::HitScreenDirector* screen = &probes.self->OwningScene()->HitScreen();
+    const NS::ScreenFlashDirector* screen = &probes.self->OwningScene()->ScreenFlash();
     ASSERT_NE(screen, nullptr);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
-    EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.6f);
+    EXPECT_EQ(screen->FramesRemaining(), 3);
+    EXPECT_FLOAT_EQ(screen->Alpha(), 0.6f);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
     EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.2f);
     EXPECT_NE(probes.Cameras().FindModifier<GL::Level::CameraNudgeModifier>(GL::Level::CameraNudgeModifier::KindFor(false)), nullptr);
@@ -603,13 +605,13 @@ TEST(HitReactionStart, LayeredPadItemAddsToTheRunningVibration)
 // 束の止めの長さの間は、持ち主の状態と体の段が進まない。白と描く揺れは係と模型の歩で進む
 TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
 {
-    NS::HitFlashInfo flash;
+    GL::Level::HitFlashInfo flash;
     flash.alpha = 1.0f;
     GL::Level::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 3, {{flash, 6}, {shake, 6}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    const NS::HitScreenDirector* screen = &probes.self->OwningScene()->HitScreen();
+    const NS::ScreenFlashDirector* screen = &probes.self->OwningScene()->ScreenFlash();
     ASSERT_NE(screen, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{0.0f, 1.0f, 3.5f}));
     EXPECT_TRUE(probes.self->IsHitStopping());
@@ -621,7 +623,7 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
         EXPECT_EQ(probes.self->bodySteps, 0);
         EXPECT_NE(probes.self->ModelClassObj()->GetDrawOffset().x, 0.0f);
     }
-    EXPECT_LT(screen->FlashFramesRemaining(), 6);
+    EXPECT_LT(screen->FramesRemaining(), 6);
     EXPECT_FALSE(probes.self->IsHitStopping());
     // 相手は止まらない
     EXPECT_EQ(probes.other->stateSteps, 3);
@@ -696,7 +698,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
     GL::Level::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     GL::Level::HitBodyTremorInfo tremor;
-    NS::HitDistortionRingInfo ring;
+    GL::Level::HitDistortionRingInfo ring;
     ring.radius = ConstantCurve(0.2f);
     ring.push = ConstantCurve(0.1f);
     const std::vector<NS::HitReactionSet> sets = {
@@ -930,7 +932,7 @@ TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
 // にした曲線の半径と強さで広がり、長さの終わりで消える
 TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
 {
-    NS::HitGroundWaveInfo wave;
+    GL::Level::HitGroundWaveInfo wave;
     wave.radius.count = 2;
     wave.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
     wave.radius.keys[1] = NS::Curve::Key{8.0f, 4.0f};
@@ -959,19 +961,39 @@ TEST(HitReactionStart, GroundWaveSpreadsFromThePositionForItsLength)
 // 床の波を止めると消える。ほかの持ち主が止めても消えない
 TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
 {
-    NS::HitGroundWaveInfo wave;
+    GL::Level::HitGroundWaveInfo wave;
     wave.radius = ConstantCurve(1.0f);
     wave.strength = ConstantCurve(0.8f);
     ProbeScene probes({SetOf("Hit", 0, {{wave, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
-    probes.other->HitReactionClassObj()->StopGroundWave(probes.other);
+    probes.scene.HitScreen().StopGroundWave(probes.other);
     EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
-    probes.self->HitReactionClassObj()->StopGroundWave(probes.self);
+    probes.scene.HitScreen().StopGroundWave(probes.self);
     EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
     probes.Step();
     EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+}
+
+// 持ち主の HitReaction の ScaleRunning と Stop は、項目が始めた輪と床の波に触らない
+TEST(HitReactionStart, ScalingAndStoppingTheReactionLeaveTheRingAndWave)
+{
+    GL::Level::HitDistortionRingInfo ring;
+    ring.radius = ConstantCurve(0.2f);
+    ring.push = ConstantCurve(0.1f);
+    GL::Level::HitGroundWaveInfo wave;
+    wave.radius = ConstantCurve(1.0f);
+    wave.strength = ConstantCurve(0.8f);
+    ProbeScene probes({SetOf("Hit", 0, {{ring, 10}, {wave, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
+    probes.Step();
+    const NS::HitReactionSelf self{.actor = probes.self, .model = probes.self->ModelClassObj()};
+    probes.self->HitReactionClassObj()->ScaleRunning(self, 0.5f);
+    probes.self->HitReactionClassObj()->Stop(self);
+    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->DistortionRingShown().push, 0.1f);
+    EXPECT_FLOAT_EQ(probes.scene.GetSceneRenderer()->GroundWaveShown().strength, 0.8f);
 }
 
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る

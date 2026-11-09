@@ -283,8 +283,8 @@ namespace NS
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る
         std::vector<ViewPasses> m_viewPasses;
 
-        Gfx::GroundWave m_groundWave{};             // 描く床の波。書くのは HitScreenDirector だけ
-        Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。書くのは HitScreenDirector だけ
+        Gfx::GroundWave m_groundWave{};             // 描く床の波。SetGroundWave で書いた値
+        Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。SetDistortionRing で書いた値
         std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有
         std::vector<Gfx::DrawItem> m_bodyMaskItems; // 体の型に描く物。描くたびに組み直す
     };

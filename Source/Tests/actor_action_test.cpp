@@ -10,7 +10,7 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 
@@ -752,9 +752,9 @@ TEST(ActorAction, TheOwnerRunsTheStartedItems)
     ASSERT_NE(probes.self, nullptr);
     probes.Enter("Run");
     probes.Step();
-    EXPECT_EQ(probes.scene.HitScreen().FlashFramesRemaining(), 0);
+    EXPECT_EQ(probes.scene.ScreenFlash().FramesRemaining(), 0);
     probes.Step();
-    EXPECT_GT(probes.scene.HitScreen().FlashFramesRemaining(), 0);
+    EXPECT_GT(probes.scene.ScreenFlash().FramesRemaining(), 0);
 }
 
 // 止めの間は状態の歩が進まないので、動作の時計も進まない

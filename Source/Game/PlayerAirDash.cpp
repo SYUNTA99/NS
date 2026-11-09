@@ -1,5 +1,7 @@
 #include "Game/PlayerActor.h"
 
+#include "Game/Level/GameScene.h"
+#include "Game/Level/HitScreenDirector.h"
 #include "Game/Level/ReboundDirections.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Player/PlayerAcceleration.h"
@@ -606,6 +608,10 @@ void PlayerActor::StartShiftedReboundReaction() noexcept
     }
     const float scale = m_params->m_reboundShiftedEffectScale;
     reaction->ScaleRunning(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()}, scale);
+    if (GL::Level::HitScreenDirector* screen = GL::Level::HitScreenOf(this))
+    {
+        screen->Scale(this, scale);
+    }
     m_ghost->ScaleOpacity(scale);
     (void)StartHitReaction("地形の反動[ずらし]", Root().Position(), self, self);
 }

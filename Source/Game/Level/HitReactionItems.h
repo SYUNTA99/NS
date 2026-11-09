@@ -174,6 +174,59 @@ namespace GL
             NS_REFLECT_END_VALUE()
         };
 
+        //! 画面の白い光 (NS::Scene::ScreenFlash)。長さの間に始めの濃さから直線で薄れる
+        struct HitFlashInfo
+        {
+            std::string_view typeName = "Flash";
+            std::string_view label = "白い光";
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            float alpha = 0.5f; // 始めの濃さ 0〜1
+
+            NS_REFLECT_BEGIN(HitFlashInfo, void)
+            NS_FIELD(alpha, "濃さ")
+            NS_REFLECT_END_VALUE()
+        };
+
+        //! 渡した位置から画面に輪を広げ、輪の部分の絵を外へ押し出す。長さが出すフレーム数
+        //! GameScene の HitScreenDirector が出す。HitReaction::Stop と ScaleRunning は輪に触らない
+        struct HitDistortionRingInfo
+        {
+            std::string_view typeName = "DistortionRing";
+            std::string_view label = "歪みの輪";
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            NS::Curve radius{};      // 輪の半径。画面の高さに対する割合。点が無ければ 0
+            NS::Curve push{};        // 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ歪めない
+            float halfWidth = 0.05f; // 輪の半分の幅。画面の高さに対する割合
+
+            NS_REFLECT_BEGIN(HitDistortionRingInfo, void)
+            NS_FIELD(radius, "半径")
+            NS_FIELD(push, "押し")
+            NS_FIELD(halfWidth, "半分の幅")
+            NS_REFLECT_END_VALUE()
+        };
+
+        //! 渡した位置の真下から、上を向いた面へ光の輪を広げる。長さが出すフレーム数
+        //! GameScene の HitScreenDirector が出す。HitReaction::Stop と ScaleRunning は波に触らない
+        struct HitGroundWaveInfo
+        {
+            std::string_view typeName = "GroundWave";
+            std::string_view label = "床の波";
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            NS::Curve radius{};   // 輪の半径 (m)。点が無ければ 0
+            NS::Curve strength{}; // 輪の強さ。面の倒れと頂の光の量。点が無ければ出さない
+
+            NS_REFLECT_BEGIN(HitGroundWaveInfo, void)
+            NS_FIELD(radius, "半径")
+            NS_FIELD(strength, "強さ")
+            NS_REFLECT_END_VALUE()
+        };
+
         //! 長さの間、持ち主以外の世界を止める (NS::Scene::RequestStopScene)。始めた歩の次の歩から止まる
         struct HitOthersStopInfo
         {

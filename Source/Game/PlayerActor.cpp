@@ -529,8 +529,11 @@ void PlayerActor::StopTackleHitEffects() noexcept
     {
         // 自機が預ける走る物は、当たりの束が描く形へ書く見た目だけなので、全部を止める
         reaction->StopRuns(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()});
-        reaction->StopGroundWave(this);
-        reaction->StopDistortionRing(this);
+    }
+    if (GL::Level::HitScreenDirector* screen = GL::Level::HitScreenOf(this))
+    {
+        screen->StopGroundWave(this);
+        screen->StopDistortionRing(this);
     }
     m_ghost->Stop();
 }

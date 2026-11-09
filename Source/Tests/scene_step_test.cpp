@@ -5,10 +5,11 @@
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
@@ -17,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include <optional>
+#include <vector>
 
 // 普段の歩とシーンが止まっている歩で、Scene のメンバーのどれが回ったかを、メンバーの効果で見る
 // 物理の管理役は broadphase の木を組み直すだけで、問いの答えも body の位置も変えないので、ここでは見ない。
@@ -101,7 +103,7 @@ namespace
             m_effect = effects->Play(stream, NS::Gfx::EffectPlayDesc{});
             ASSERT_TRUE(m_effect.IsValid());
 
-            m_scene.HitScreen().StartFlash(holder, 1000, 1.0f);
+            m_scene.ScreenFlash().Start(holder, 1000, 1.0f);
 
             NS::PadRumbleDesc vibration;
             vibration.left.count = 2;
@@ -137,7 +139,7 @@ namespace
             }
             view.effectExists = m_scene.GetEffectScene()->Exists(m_effect);
             view.sensorStays = m_sensorA->stays + m_sensorB->stays;
-            view.flashRemaining = m_scene.HitScreen().FlashFramesRemaining();
+            view.flashRemaining = m_scene.ScreenFlash().FramesRemaining();
             view.padLeft = NS::OS::Input::Get().Gamepad().Vibration().left;
             return view;
         }
@@ -211,4 +213,75 @@ TEST(SceneStep, DestroyingTheSceneClearsTheDebugShapes)
         ASSERT_GT(NS::Gfx::DebugDrawVertexCount(), 0u);
     }
     EXPECT_EQ(NS::Gfx::DebugDrawVertexCount(), 0u);
+}
+
+namespace
+{
+    // PrepareRender が呼ばれた回数を数えるアクター
+    class PrepareCountActor final : public NS::SceneActor
+    {
+    public:
+        void PrepareRender() override
+        {
+            NS::SceneActor::PrepareRender();
+            ++prepares;
+        }
+
+        int prepares = 0;
+    };
+
+    // 派生の関数が呼ばれた時の、アクターの PrepareRender の回数を控えるシーン
+    class ViewEffectsScene final : public NS::Scene
+    {
+    public:
+        PrepareCountActor* actor = nullptr;
+        std::vector<int> preparesAtSteps; // StepViewEffects が呼ばれるたびの PrepareRender の回数
+        int clears = 0;
+
+    protected:
+        void StepViewEffects() override
+        {
+            int prepares = -1;
+            if (actor != nullptr)
+            {
+                prepares = actor->prepares;
+            }
+            preparesAtSteps.push_back(prepares);
+        }
+
+        void ClearViewEffects() override { ++clears; }
+    };
+} // namespace
+
+// 派生の画面の演出は、普段の歩でも止まっている歩でも、アクターの PrepareRender の後に 1 歩 1 回進む
+TEST(SceneStep, DerivedViewEffectsStepAfterPrepareRenderEvenWhileStopped)
+{
+    ViewEffectsScene scene;
+    scene.actor = scene.SpawnActor<PrepareCountActor>("Counter");
+    ASSERT_NE(scene.actor, nullptr);
+    scene.OnUpdate();
+    ASSERT_EQ(scene.preparesAtSteps.size(), 1u);
+    EXPECT_GT(scene.preparesAtSteps.back(), 0);
+    EXPECT_EQ(scene.preparesAtSteps.back(), scene.actor->prepares);
+
+    scene.RequestStopScene(scene.actor, 10);
+    scene.OnUpdate();
+    for (int step = 0; step < 3; ++step)
+    {
+        SCOPED_TRACE(step);
+        const std::size_t before = scene.preparesAtSteps.size();
+        scene.OnUpdate();
+        ASSERT_TRUE(scene.IsSceneStopped());
+        ASSERT_EQ(scene.preparesAtSteps.size(), before + 1);
+        EXPECT_EQ(scene.preparesAtSteps.back(), scene.actor->prepares);
+    }
+}
+
+// シーンがアクターを組み直す時に、派生の画面の演出を消す関数が呼ばれる
+TEST(SceneStep, RebuildingTheSceneClearsTheDerivedViewEffects)
+{
+    ViewEffectsScene scene;
+    const int before = scene.clears;
+    scene.ResetFromJson(NS::MakeSceneJson());
+    EXPECT_GT(scene.clears, before);
 }

@@ -7,7 +7,6 @@
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 
 #pragma warning(push, 0)
@@ -62,57 +61,6 @@ namespace NS
         NS_FIELD(exponent, "指数")
         NS_FIELD(kickDegrees, "一撃の大きさ")
         NS_FIELD(kickPeakFrames, "一撃の山のフレーム")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 画面の白い光。長さの間に始めの濃さから直線で薄れる
-    struct HitFlashInfo
-    {
-        std::string_view typeName = "Flash";
-        std::string_view label = "白い光";
-
-        void Start(const HitReactionStart& start) const;
-
-        float alpha = 0.5f; // 始めの濃さ 0〜1
-
-        NS_REFLECT_BEGIN(HitFlashInfo, void)
-        NS_FIELD(alpha, "濃さ")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置から画面に輪を広げ、輪の部分の絵を外へ押し出す。長さが出すフレーム数
-    struct HitDistortionRingInfo
-    {
-        std::string_view typeName = "DistortionRing";
-        std::string_view label = "歪みの輪";
-
-        void Start(const HitReactionStart& start) const;
-
-        Curve radius{};          // 輪の半径。画面の高さに対する割合。点が無ければ 0
-        Curve push{};            // 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ歪めない
-        float halfWidth = 0.05f; // 輪の半分の幅。画面の高さに対する割合
-
-        NS_REFLECT_BEGIN(HitDistortionRingInfo, void)
-        NS_FIELD(radius, "半径")
-        NS_FIELD(push, "押し")
-        NS_FIELD(halfWidth, "半分の幅")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置の真下から、上を向いた面へ光の輪を広げる。長さが出すフレーム数
-    struct HitGroundWaveInfo
-    {
-        std::string_view typeName = "GroundWave";
-        std::string_view label = "床の波";
-
-        void Start(const HitReactionStart& start) const;
-
-        Curve radius{};   // 輪の半径 (m)。点が無ければ 0
-        Curve strength{}; // 輪の強さ。面の倒れと頂の光の量。点が無ければ出さない
-
-        NS_REFLECT_BEGIN(HitGroundWaveInfo, void)
-        NS_FIELD(radius, "半径")
-        NS_FIELD(strength, "強さ")
         NS_REFLECT_END_VALUE()
     };
 
@@ -505,7 +453,7 @@ namespace NS
     };
 
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
-    //! カメラの効果は CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
+    //! カメラの効果は CameraManager、白はシーンの ScreenFlashDirector、振動は PadRumbleDirector、
     //! 始めた後も進む見た目は預かった HitReactionRun、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
     //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
@@ -563,22 +511,14 @@ namespace NS
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
         bool AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc);
 
-        //! この部品が頼んだ歪みの輪を消す
-        //! Stop は輪を消さない
-        void StopDistortionRing(const SceneActor* owner) noexcept;
-
-        //! この部品が頼んだ床の波を消す
-        //! Stop は波を消さない
-        void StopGroundWave(const SceneActor* owner) noexcept;
-
         //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
-        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・預かった見た目 (HitReactionRun::Scale)。
-        //! 震えの線・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
+        //! @details 掛けるのは白の濃さ・振動の速さ・預かった見た目 (HitReactionRun::Scale)。
+        //! カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
         //! @param[in] owner 頼んだ持ち主
         //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
         void ScaleRunning(const HitReactionSelf& owner, float scale);
 
-        //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、持ち主が頼んだカメラの効果のうちトラウマのほかを外し、
+        //! この部品が頼んだ演出を止める。白を消し、振動を 0 にし、持ち主が頼んだカメラの効果のうちトラウマのほかを外し、
         //! 持ち主へ渡す項目を外し、預かった見た目を止めて外す
         //! トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す

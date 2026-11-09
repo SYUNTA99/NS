@@ -9,10 +9,10 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 #include "NSlib/Phys/PhysicsScene.h"
@@ -96,9 +96,9 @@ namespace NS
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
-        //! 当たりの画面の演出 (白・震えの線・歪みの輪・床の波)。HitReaction が頼む
-        [[nodiscard]] HitScreenDirector& HitScreen() noexcept { return m_hitScreen; }
-        [[nodiscard]] const HitScreenDirector& HitScreen() const noexcept { return m_hitScreen; }
+        //! 画面全体の白い光。動作の事象と当たりの反応の項目が頼む
+        [[nodiscard]] ScreenFlashDirector& ScreenFlash() noexcept { return m_screenFlash; }
+        [[nodiscard]] const ScreenFlashDirector& ScreenFlash() const noexcept { return m_screenFlash; }
 
         //! パッドの振動。HitReaction が頼む
         [[nodiscard]] PadRumbleDirector& PadRumble() noexcept { return m_padRumble; }
@@ -221,6 +221,13 @@ namespace NS
         //! 同じ歩のアクターとセンサーが書いた知らせを読める
         virtual void StepGame() {}
 
+        //! 普段の歩とシーンが止まっている歩の両方で、アクターの PrepareRender の後に 1 回呼ぶ。
+        //! 派生はシーンに 1 つの画面の演出をここで 1 フレーム進める
+        virtual void StepViewEffects() {}
+        //! アクターを組み直す前と終わる時に、アクターを捨てる前に 1 回呼ぶ。派生は StepViewEffects で進める物を全部消す。
+        //! 基底の破棄の中では派生がもう無いので呼ばれない
+        virtual void ClearViewEffects() {}
+
     private:
         // 状態ごとの 1 歩。OnUpdate が StepWorld か StepStopped を選んで呼び、回す物と順番はこの 4 つが決める。
         // 中で止めを確かめない
@@ -269,8 +276,8 @@ namespace NS
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
         // 作る時に m_sceneRenderer へ重ね描きを入れ、破棄で外すので、m_sceneRenderer より後に宣言する。
-        // アクターの HitReaction が頼むので、アクターより先に宣言して後に破棄する
-        HitScreenDirector m_hitScreen{*this};
+        // アクターの動作と HitReaction が頼むので、アクターより先に宣言して後に破棄する
+        ScreenFlashDirector m_screenFlash{*this};
         PadRumbleDirector m_padRumble;
 
         //! 衝突判定の PhysicsScene。Collision が出る時と動いた歩に body を入れる
