@@ -28,18 +28,11 @@ namespace NS
     //! モディファイアを積む。管理役が無ければ何もせず false
     bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier);
 
-    //! 寄りと傾きを始める。管理役が無いか壊れた設定なら false
-    bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc);
-
     //! 積んだ効果を、頼んだ物を問わず全て止める
     void StopCameraEffects(const IGetCamera* user) noexcept;
 
     //! トラウマを足す。管理役が無いか壊れた量なら false
     bool AddCameraTrauma(const IGetCamera* user, const CameraTraumaDesc& desc);
-
-    //! 当たりで始めた揺れ・ずれ・寄りを、頼んだ物を問わず止める。トラウマは残す
-    //! 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
-    void StopCameraHitEffects(const IGetCamera* user) noexcept;
 
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
     [[nodiscard]] float CalcCameraSideSign(const IGetCamera* user, const Vector3& direction) noexcept;

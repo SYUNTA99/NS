@@ -3,10 +3,8 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/CoreObject/Reflection/Curve.h"
 
 #include "NSlib/Core/Types.h"
-#include <array>
 #include <memory>
 
 namespace NS
@@ -19,6 +17,10 @@ namespace NS
         Vector3 right{1.0f, 0.0f, 0.0f}; // 視線の水平から作った右
         Vector3 up{0.0f, 1.0f, 0.0f};    // 視線と右から作った上
     };
+
+    //! 効果を掛ける順 (CameraModifier::Order)。揺れとずれを先に掛け、寄りと傾きはその後に掛ける
+    inline constexpr int k_CameraShakeOrder = 100;
+    inline constexpr int k_CameraLensOrder = 200;
 
     //! CameraManager が所有する姿勢の効果。Order 順に適用し、完了すると外す
     //! 最初の Tick は進めず、追加したフレームに初期姿勢を描く
@@ -64,99 +66,6 @@ namespace NS
         const IGetCamera* m_requester = nullptr;
     };
 
-    //! delayFrames の後に倍率と傾きを適用し、holdFrames の間保ち、returnFrames で滑らかに元へ戻す
-    struct CameraZoomRollDesc
-    {
-        float zoom = 1.0f;                       // 1 で等倍
-        float rollDegrees = 0.0f;                // 視線軸まわりの傾き (度)
-        Vector3 rollDirection{1.0f, 0.0f, 0.0f}; // 画面上端を倒す側を決める世界方向
-        int holdFrames = 0;                      // 開始フレームを含む保持フレーム数
-        int returnFrames = 0;
-        int delayFrames = 0;
-    };
-
-    struct CameraZoomRoll
-    {
-        float zoom = 1.0f;
-        float rollDegrees = 0.0f; // 視線軸まわりの傾き (度、正は画面上端をカメラの右へ倒す向き)
-    };
-
-    //! 寄りと傾き。寄りは視野角、傾きは視線の軸まわりの上の向きで掛け、視線ベクトルは変えない
-    class CameraZoomRollModifier final : public CameraModifier
-    {
-    public:
-        //! rollSign が負なら上端を左へ、それ以外は右へ倒す
-        //! 非有限値・zoom < 1・負のフレーム数の場合は nullptr を返す
-        [[nodiscard]] static std::unique_ptr<CameraZoomRollModifier> Create(const CameraZoomRollDesc& desc,
-                                                                            float rollSign);
-
-        [[nodiscard]] static const void* StaticKind() noexcept;
-        [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
-        [[nodiscard]] int Order() const noexcept override { return 200; }
-
-        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
-        [[nodiscard]] bool IsFinished() const noexcept override;
-
-        //! 現在のフレームの寄りと傾き。完了後は zoom = 1, rollDegrees = 0
-        [[nodiscard]] CameraZoomRoll Current() const noexcept;
-
-    private:
-        CameraZoomRollModifier() noexcept = default;
-
-        [[nodiscard]] int ZoomFrame() const noexcept { return Frame() - m_delayFrames; }
-
-        CameraZoomRoll m_full{};
-        int m_holdFrames = 0;
-        int m_returnFrames = 0;
-        int m_delayFrames = 0;
-    };
-
-    //! 沈む・震える・保持・跳ね返りの縦揺れ。高さ 1080 基準の画素で、下が負
-    struct CameraSinkDesc
-    {
-        float bottomPixels = 0.0f;   // 底の深さ (画素、0 以上)
-        int sinkFrames = 2;          // 開始フレームを含む底到達までのフレーム数
-        float tremblePixels = 0.0f;  // 震えの初期振幅 (画素)
-        int trembleFrames = 6;
-        int tremblePeriodFrames = 2; // 震え 1 往復のフレーム数
-        int bounceStartFrame = 0;    // 開始フレームを 0 とした跳ね返り開始フレーム
-        float overshootRatio = 0.5f; // 底の深さに対する上方向オーバーシュート比 (0 より大きく 1 未満)
-        int bouncePeriodFrames = 8;  // 跳ね返り 1 往復のフレーム数
-        int frames = 0;              // 開始フレームを含む総フレーム数
-    };
-
-    //! 開始を 0 とした frame の縦ずれ (画素、下が負)。範囲外は 0
-    [[nodiscard]] float CameraSinkPixelsAt(const CameraSinkDesc& desc, int frame) noexcept;
-
-    //! 射影後の画面を縦にずらす。カメラとの距離や入力方向には影響しない
-    class CameraSinkModifier final : public CameraModifier
-    {
-    public:
-        //! 非有限値・負の深さや振幅・frames <= 0・周期 < 1・overshootRatio が (0, 1) 外の場合は nullptr を返す
-        [[nodiscard]] static std::unique_ptr<CameraSinkModifier> Create(const CameraSinkDesc& desc);
-
-        [[nodiscard]] static const void* StaticKind() noexcept;
-        [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
-        [[nodiscard]] int Order() const noexcept override { return 100; }
-
-        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
-        [[nodiscard]] bool IsFinished() const noexcept override;
-        [[nodiscard]] bool IsShake() const noexcept override { return true; }
-
-        //! 現在のフレームの縦のずれ (画素、下が負)。完了後は 0
-        [[nodiscard]] float Pixels() const noexcept;
-
-        //! 次の Advance フレームから跳ね返りを開始する (設定の bounceStartFrame より遅くはしない)
-        void Release() noexcept { m_releasePending = true; }
-
-    private:
-        CameraSinkModifier() noexcept = default;
-        void Advance() noexcept override;
-
-        CameraSinkDesc m_desc{};
-        bool m_releasePending = false;
-    };
-
     //! 振れ幅は トラウマ^exponent × 最大角度。トラウマは時間で線形減衰する
     struct CameraTraumaShape
     {
@@ -192,7 +101,7 @@ namespace NS
 
         [[nodiscard]] static const void* StaticKind() noexcept;
         [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
-        [[nodiscard]] int Order() const noexcept override { return 100; }
+        [[nodiscard]] int Order() const noexcept override { return k_CameraShakeOrder; }
 
         //! トラウマを加算し、波形とシードを更新する。kick が有効なら再開する
         void AddTrauma(const CameraTraumaDesc& desc) noexcept;
@@ -217,43 +126,4 @@ namespace NS
         CameraKick m_kick{};
         int m_kickFrame = 0;
     };
-
-    //! 位置と注視点を同じだけずらす設定
-    struct CameraNudgeDesc
-    {
-        Vector3 direction{};   // ずらす世界方向 (単位ベクトル)
-        Curve distance{};      // 開始フレームを 0 とした移動距離 (m、負は逆方向)
-        int frames = 0;        // 開始フレームを含む総フレーム数
-        bool onScreen = false; // true ならカメラの右・上平面へ射影した方向へずらす
-    };
-
-    //! 位置と注視点を同じだけずらす。画面射影時の方向成分が微小なら動かさない
-    //! 世界方向と画面方向は併用でき、同じ方式の再指定は前の効果を置き換える
-    class CameraNudgeModifier final : public CameraModifier
-    {
-    public:
-        //! 非有限値・direction が単位長でない・frames <= 0 の場合は nullptr を返す
-        [[nodiscard]] static std::unique_ptr<CameraNudgeModifier> Create(const CameraNudgeDesc& desc);
-
-        [[nodiscard]] static const void* KindFor(bool onScreen) noexcept;
-        [[nodiscard]] const void* Kind() const noexcept override { return KindFor(m_desc.onScreen); }
-        [[nodiscard]] int Order() const noexcept override { return 100; }
-
-        void Modify(CameraPose& pose, const CameraAxes& axes) const noexcept override;
-        [[nodiscard]] bool IsFinished() const noexcept override;
-        [[nodiscard]] bool IsShake() const noexcept override { return true; }
-
-        [[nodiscard]] const CameraNudgeDesc& Desc() const noexcept { return m_desc; }
-
-        //! 現在のフレームの移動距離 (m)。完了後は 0
-        [[nodiscard]] float Distance() const noexcept;
-
-    private:
-        CameraNudgeModifier() noexcept = default;
-
-        CameraNudgeDesc m_desc{};
-    };
-
-    //! ヒット演出で開始する沈み・寄り・ずれの Kind タグ一覧 (加算式のトラウマは含まない)
-    [[nodiscard]] std::array<const void*, 4> CameraHitEffectKinds() noexcept;
 } // namespace NS

@@ -1,3 +1,5 @@
+#include "Game/Level/CameraHitModifiers.h"
+#include "Game/Level/HitReactionItems.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/Audio/AudioDevice.h"
@@ -58,19 +60,19 @@ namespace
         NS::HitBodyTremorInfo tremor;
         tremor.amplitudePixels = 1.5f;
         tremor.radiusRatio = 0.2f;
-        NS::HitCameraSinkInfo sink;
+        GL::Level::HitCameraSinkInfo sink;
         sink.bottomPixels = 7.5f;
         sink.tremblePixels = 4.0f;
-        NS::HitZoomRollInfo zoom;
+        GL::Level::HitZoomRollInfo zoom;
         zoom.zoom = 1.1f;
         zoom.delayFrames = 6;
         NS::HitCameraTraumaInfo trauma;
         trauma.trauma = 1.0f;
-        NS::HitCameraLurchInfo lurch;
+        GL::Level::HitCameraLurchInfo lurch;
         lurch.distance.count = 2;
         lurch.distance.keys[0] = NS::Curve::Key{0.0f, 0.3f};
         lurch.distance.keys[1] = NS::Curve::Key{8.0f, 0.0f};
-        NS::HitCameraAwaySwayInfo sway;
+        GL::Level::HitCameraAwaySwayInfo sway;
         sway.distance.count = 1;
         sway.distance.keys[0] = NS::Curve::Key{0.0f, -0.5f};
         NS::HitFlashInfo flash;
@@ -99,7 +101,7 @@ namespace
             {shake, 12},
             {tremor, 4},
             {sink, 33},
-            {NS::HitCameraSinkReleaseInfo{}, 1},
+            {GL::Level::HitCameraSinkReleaseInfo{}, 1},
             {zoom, 7},
             {trauma, 1},
             {lurch, 9},
@@ -108,7 +110,7 @@ namespace
             {ring, 14},
             {wave, 20},
             {pad, 16},
-            {NS::HitOthersStopInfo{}, 2},
+            {GL::Level::HitOthersStopInfo{}, 2},
             {ghost, 12},
             {sound, 1},
             {NS::HitEffectInfo{}, 1},
@@ -119,17 +121,17 @@ namespace
 
 TEST(HitReactionSet, ValueTypeFieldsRoundTripThroughJson)
 {
-    NS::HitCameraSinkInfo sink;
+    GL::Level::HitCameraSinkInfo sink;
     sink.bottomPixels = 7.5f;
     sink.bouncePeriodFrames = 10;
-    const NS::ReflectionInfo& info = *NS::HitCameraSinkInfo::StaticReflection();
+    const NS::ReflectionInfo& info = *GL::Level::HitCameraSinkInfo::StaticReflection();
     const nlohmann::json fields = NS::SerializeReflectedFields(&sink, info);
     EXPECT_FLOAT_EQ(fields["底の深さのピクセル"].get<float>(), 7.5f);
     EXPECT_EQ(fields["跳ね返りの 1 往復"].get<int>(), 10);
     // 威力の掛けは無くなり、深さは束に書いた値のまま
     EXPECT_FALSE(fields.contains("威力の基準"));
 
-    NS::HitCameraSinkInfo read;
+    GL::Level::HitCameraSinkInfo read;
     EXPECT_EQ(NS::ApplyReflectedFields(&read, info, fields), 0u);
     EXPECT_FLOAT_EQ(read.bottomPixels, 7.5f);
     EXPECT_EQ(read.bouncePeriodFrames, 10);
@@ -185,7 +187,7 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     ASSERT_NE(pad, nullptr);
     EXPECT_TRUE(pad->byDirection);
     EXPECT_EQ(pad->upLeft, written.entries[12].item.As<NS::HitPadInfo>()->upLeft);
-    const NS::HitZoomRollInfo* zoom = read->entries[5].item.As<NS::HitZoomRollInfo>();
+    const GL::Level::HitZoomRollInfo* zoom = read->entries[5].item.As<GL::Level::HitZoomRollInfo>();
     ASSERT_NE(zoom, nullptr);
     EXPECT_EQ(zoom->delayFrames, 6);
     const NS::HitOwnerInfo* ghost = read->entries[14].item.As<NS::HitOwnerInfo>();
@@ -212,7 +214,7 @@ TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->entries.size(), 3u);
     EXPECT_FLOAT_EQ(read->entries[0].item.As<NS::HitFlashInfo>()->alpha, 0.3f);
-    EXPECT_EQ(read->entries[1].item.As<NS::HitZoomRollInfo>()->delayFrames, NS::HitZoomRollInfo{}.delayFrames);
+    EXPECT_EQ(read->entries[1].item.As<GL::Level::HitZoomRollInfo>()->delayFrames, GL::Level::HitZoomRollInfo{}.delayFrames);
     const NS::HitOwnerInfo& owner = *read->entries[2].item.As<NS::HitOwnerInfo>();
     EXPECT_EQ(owner.name, "HitEffect");
     EXPECT_TRUE(owner.values.empty());
@@ -477,7 +479,7 @@ namespace
 
         [[nodiscard]] float SinkPixels()
         {
-            const NS::CameraSinkModifier* sink = Cameras().FindModifier<NS::CameraSinkModifier>();
+            const GL::Level::CameraSinkModifier* sink = Cameras().FindModifier<GL::Level::CameraSinkModifier>();
             if (sink == nullptr)
             {
                 return 0.0f;
@@ -513,12 +515,12 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     flash.alpha = 0.6f;
     NS::HitPadInfo pad;
     pad.left = ConstantCurve(0.5f);
-    NS::HitZoomRollInfo zoom;
+    GL::Level::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
-    NS::HitCameraLurchInfo lurch;
+    GL::Level::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
-    NS::HitCameraSinkInfo sink;
+    GL::Level::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.sinkFrames = 1;
     NS::HitCameraTraumaInfo trauma;
@@ -538,8 +540,8 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     EXPECT_EQ(screen->FlashFramesRemaining(), 3);
     EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.6f);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
-    EXPECT_NE(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)), nullptr);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.2f);
+    EXPECT_NE(probes.Cameras().FindModifier<GL::Level::CameraNudgeModifier>(GL::Level::CameraNudgeModifier::KindFor(false)), nullptr);
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
     EXPECT_FLOAT_EQ(probes.Cameras().Trauma(), 0.3f);
     const NS::HitOwnerRun* run = FindOwnerRun(probes.self->HitReactionClassObj(), "Spark");
@@ -659,33 +661,33 @@ TEST(HitReactionStart, OwnerItemsAdvanceThroughTheStop)
 // は、始めたフレームの仮想カメラを追わせる
 TEST(HitReactionStart, TheZoomWaitsItsDelayFrames)
 {
-    NS::HitZoomRollInfo zoom;
+    GL::Level::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
     zoom.delayFrames = 2;
     ProbeScene probes({SetOf("Hit", 0, {{zoom, 3}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.0f);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.0f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.0f);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.0f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.0f);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.0f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.2f);
     probes.Step();
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.2f);
 }
 
 // つんのめり・離れる向きの揺れ・寄りの傾き・横揺れの最初の振れは、自機のセンサーから相手のセンサーへの向きで決まる
 // 震えと歪みの輪の中心は渡した位置
 TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
 {
-    NS::HitCameraLurchInfo lurch;
+    GL::Level::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
-    NS::HitCameraAwaySwayInfo sway;
+    GL::Level::HitCameraAwaySwayInfo sway;
     sway.distance = ConstantCurve(0.3f);
-    NS::HitZoomRollInfo zoom;
+    GL::Level::HitZoomRollInfo zoom;
     zoom.zoom = 1.1f;
     zoom.rollDegrees = 3.0f;
     zoom.returnFrames = 1;
@@ -706,16 +708,16 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         ASSERT_TRUE(probes.Start(probes.self, "Hit", contact));
         NS::Vector3 toward{side, 0.0f, 4.0f};
         toward.Normalize();
-        const NS::CameraNudgeModifier* world =
-            probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false));
-        const NS::CameraNudgeModifier* screen =
-            probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(true));
+        const GL::Level::CameraNudgeModifier* world =
+            probes.Cameras().FindModifier<GL::Level::CameraNudgeModifier>(GL::Level::CameraNudgeModifier::KindFor(false));
+        const GL::Level::CameraNudgeModifier* screen =
+            probes.Cameras().FindModifier<GL::Level::CameraNudgeModifier>(GL::Level::CameraNudgeModifier::KindFor(true));
         ASSERT_NE(world, nullptr);
         ASSERT_NE(screen, nullptr);
         EXPECT_NEAR((world->Desc().direction - toward).Length(), 0.0f, 1.0e-5f);
         EXPECT_NEAR((screen->Desc().direction + toward).Length(), 0.0f, 1.0e-5f);
         // 相手がカメラの右なら上端を右へ倒し、体は相手と逆の左から揺れる
-        EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().rollDegrees, 3.0f * std::copysign(1.0f, side));
+        EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).rollDegrees, 3.0f * std::copysign(1.0f, side));
         EXPECT_EQ(probes.scene.GetSceneRenderer()->DistortionRingShown().center, contact);
         probes.Step();
         EXPECT_LT(probes.self->ModelClassObj()->GetDrawOffset().x * side, 0.0f);
@@ -802,11 +804,11 @@ TEST(HitReactionStart, OverridingTheStopChangesOnlyTheStop)
 // 沈みは同じ持ち主の「沈みを戻す」で跳ね返り、ほかの持ち主の戻しでは跳ね返らない
 TEST(HitReactionStart, TheSinkBouncesOnlyOnItsOwnersRelease)
 {
-    NS::HitCameraSinkInfo sink;
+    GL::Level::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.tremblePixels = 0.0f;
     const std::vector<NS::HitReactionSet> sets = {SetOf("Hit", 0, {{sink, 30}}),
-                                                  SetOf("Rebound", 0, {{NS::HitCameraSinkReleaseInfo{}, 1}})};
+                                                  SetOf("Rebound", 0, {{GL::Level::HitCameraSinkReleaseInfo{}, 1}})};
     ProbeScene probes(sets, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
@@ -829,7 +831,7 @@ TEST(HitReactionStart, TheSinkBouncesOnlyOnItsOwnersRelease)
 // 戻されない沈みは底のまま、自分の長さで終わる
 TEST(HitReactionStart, AnUnreleasedSinkEndsWithItsLength)
 {
-    NS::HitCameraSinkInfo sink;
+    GL::Level::HitCameraSinkInfo sink;
     sink.bottomPixels = 9.0f;
     sink.tremblePixels = 0.0f;
     ProbeScene probes({SetOf("Hit", 0, {{sink, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -842,7 +844,7 @@ TEST(HitReactionStart, AnUnreleasedSinkEndsWithItsLength)
     }
     EXPECT_FLOAT_EQ(probes.SinkPixels(), -9.0f);
     probes.Step();
-    EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraSinkModifier>(), nullptr);
+    EXPECT_EQ(probes.Cameras().FindModifier<GL::Level::CameraSinkModifier>(), nullptr);
 }
 
 // トラウマは次の束に積む
@@ -972,10 +974,10 @@ TEST(HitReactionStart, StoppingTheGroundWaveClearsOnlyTheOwnersWave)
 // 持ち主が消えても、ほかの持ち主が頼んだカメラの効果は残る
 TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
 {
-    NS::HitZoomRollInfo zoom;
+    GL::Level::HitZoomRollInfo zoom;
     zoom.zoom = 1.2f;
     zoom.returnFrames = 1;
-    NS::HitCameraLurchInfo lurch;
+    GL::Level::HitCameraLurchInfo lurch;
     lurch.distance = ConstantCurve(0.3f);
     ProbeScene probes({SetOf("Zoom", 0, {{zoom, 10}}), SetOf("Lurch", 0, {{lurch, 10}})},
                       NS::Vector3{0.0f, 1.0f, 4.0f});
@@ -983,8 +985,8 @@ TEST(HitReactionStart, AnOwnerLeavingKeepsTheOthersCameraEffects)
     ASSERT_TRUE(probes.Start(probes.self, "Zoom", NS::Vector3{}));
     ASSERT_TRUE(probes.Start(probes.other, "Lurch", NS::Vector3{}));
     probes.other->Disappear();
-    EXPECT_FLOAT_EQ(probes.Cameras().ZoomRoll().zoom, 1.2f);
-    EXPECT_EQ(probes.Cameras().FindModifier<NS::CameraNudgeModifier>(NS::CameraNudgeModifier::KindFor(false)), nullptr);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(probes.Cameras()).zoom, 1.2f);
+    EXPECT_EQ(probes.Cameras().FindModifier<GL::Level::CameraNudgeModifier>(GL::Level::CameraNudgeModifier::KindFor(false)), nullptr);
 }
 
 // 出荷の束と動作 (自機の .actor)

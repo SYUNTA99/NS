@@ -143,40 +143,16 @@ namespace NS
                       [requester](const std::unique_ptr<CameraModifier>& m) { return m->Requester() == requester; });
     }
 
-    void CameraManager::ReleaseSink(const IGetCamera* requester) noexcept
+    void CameraManager::RemoveModifiersOfExcept(const IGetCamera* requester, const void* keptKind) noexcept
     {
-        for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
-        {
-            if (modifier->Kind() == CameraSinkModifier::StaticKind() && modifier->Requester() == requester)
-            {
-                static_cast<CameraSinkModifier*>(modifier.get())->Release();
-            }
-        }
+        std::erase_if(m_modifiers, [requester, keptKind](const std::unique_ptr<CameraModifier>& m) {
+            return m->Requester() == requester && m->Kind() != keptKind;
+        });
     }
 
     void CameraManager::ClearModifiers() noexcept
     {
         m_modifiers.clear();
-    }
-
-    bool CameraManager::StartZoomRoll(const CameraZoomRollDesc& desc, const IGetCamera* requester)
-    {
-        std::unique_ptr<CameraZoomRollModifier> zoomRoll =
-            CameraZoomRollModifier::Create(desc, SideSignOf(desc.rollDirection));
-        if (zoomRoll != nullptr)
-        {
-            zoomRoll->SetRequester(requester);
-        }
-        return AddModifier(std::move(zoomRoll));
-    }
-
-    CameraZoomRoll CameraManager::ZoomRoll() const noexcept
-    {
-        if (const CameraZoomRollModifier* zoomRoll = FindModifier<CameraZoomRollModifier>())
-        {
-            return zoomRoll->Current();
-        }
-        return CameraZoomRoll{};
     }
 
     CameraTraumaModifier* CameraManager::TraumaModifier()

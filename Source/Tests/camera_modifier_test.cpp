@@ -1,3 +1,4 @@
+#include "Game/Level/CameraHitModifiers.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/PlayerActor.h"
@@ -105,13 +106,13 @@ namespace
 
 TEST(CameraModifier, BrokenDescIsRejected)
 {
-    EXPECT_EQ(NS::CameraZoomRollModifier::Create(NS::CameraZoomRollDesc{.zoom = 0.5f}, 1.0f), nullptr);
+    EXPECT_EQ(GL::Level::CameraZoomRollModifier::Create(GL::Level::CameraZoomRollDesc{.zoom = 0.5f}, 1.0f), nullptr);
 }
 
 TEST(CameraModifier, ZoomRollHoldsThenReturnsToIdentity)
 {
-    std::unique_ptr<NS::CameraZoomRollModifier> zoom = NS::CameraZoomRollModifier::Create(
-        NS::CameraZoomRollDesc{.zoom = 1.2f, .rollDegrees = 3.0f, .holdFrames = 2, .returnFrames = 2}, -1.0f);
+    std::unique_ptr<GL::Level::CameraZoomRollModifier> zoom = GL::Level::CameraZoomRollModifier::Create(
+        GL::Level::CameraZoomRollDesc{.zoom = 1.2f, .rollDegrees = 3.0f, .holdFrames = 2, .returnFrames = 2}, -1.0f);
     ASSERT_NE(zoom, nullptr);
     EXPECT_FLOAT_EQ(zoom->Current().zoom, 1.2f);
     // 向きの符号が傾きに掛かる
@@ -128,25 +129,25 @@ TEST(CameraModifier, ZoomRollHoldsThenReturnsToIdentity)
 TEST(CameraManager, SameKindReplacesAndClearRemovesAll)
 {
     NS::CameraManager cameras;
-    EXPECT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 10}));
-    EXPECT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 3}));
-    EXPECT_FLOAT_EQ(cameras.ZoomRoll().zoom, 1.1f);
-    ASSERT_TRUE(cameras.AddModifier(NS::CameraSinkModifier::Create(NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4})));
+    EXPECT_TRUE(cameras.AddModifier(GL::Level::CameraZoomRollModifier::Create(GL::Level::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 10}, 1.0f)));
+    EXPECT_TRUE(cameras.AddModifier(GL::Level::CameraZoomRollModifier::Create(GL::Level::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 3}, 1.0f)));
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(cameras).zoom, 1.1f);
+    ASSERT_TRUE(cameras.AddModifier(GL::Level::CameraSinkModifier::Create(GL::Level::CameraSinkDesc{.bottomPixels = 9.0f, .sinkFrames = 2, .tremblePeriodFrames = 2, .overshootRatio = 0.5f, .bouncePeriodFrames = 8, .frames = 4, .referenceHeightPixels = 1080.0f})));
 
     cameras.ClearModifiers();
-    EXPECT_EQ(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
-    EXPECT_EQ(cameras.FindModifier<NS::CameraSinkModifier>(), nullptr);
-    EXPECT_FLOAT_EQ(cameras.ZoomRoll().zoom, 1.0f);
+    EXPECT_EQ(cameras.FindModifier<GL::Level::CameraZoomRollModifier>(), nullptr);
+    EXPECT_EQ(cameras.FindModifier<GL::Level::CameraSinkModifier>(), nullptr);
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(cameras).zoom, 1.0f);
 }
 
 TEST(CameraManager, FinishedModifiersAreRemovedOnTick)
 {
     NS::CameraManager cameras;
-    ASSERT_TRUE(cameras.StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 1}));
+    ASSERT_TRUE(cameras.AddModifier(GL::Level::CameraZoomRollModifier::Create(GL::Level::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 1}, 1.0f)));
     cameras.OnTick(); // 積んだ直後は進めない
-    EXPECT_NE(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
+    EXPECT_NE(cameras.FindModifier<GL::Level::CameraZoomRollModifier>(), nullptr);
     cameras.OnTick();
-    EXPECT_EQ(cameras.FindModifier<NS::CameraZoomRollModifier>(), nullptr);
+    EXPECT_EQ(cameras.FindModifier<GL::Level::CameraZoomRollModifier>(), nullptr);
 }
 
 TEST(CameraManager, ModifiersApplyInOrder)
@@ -270,15 +271,15 @@ TEST(IGetCamera, ActorReachesSceneCameraManager)
     NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GetCameraManager(), scene.GetCameraManager());
-    EXPECT_TRUE(NS::StartCameraZoomRoll(actor, NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
-    EXPECT_NE(scene.GetCameraManager()->FindModifier<NS::CameraZoomRollModifier>(), nullptr);
+    EXPECT_TRUE(GL::Level::StartCameraZoomRoll(actor, GL::Level::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
+    EXPECT_NE(scene.GetCameraManager()->FindModifier<GL::Level::CameraZoomRollModifier>(), nullptr);
     NS::StopCameraEffects(actor);
-    EXPECT_EQ(scene.GetCameraManager()->FindModifier<NS::CameraZoomRollModifier>(), nullptr);
+    EXPECT_EQ(scene.GetCameraManager()->FindModifier<GL::Level::CameraZoomRollModifier>(), nullptr);
 
     // シーンに居ない SceneActor は窓口が何もしない
     NS::SceneActor loose;
     EXPECT_EQ(loose.GetCameraManager(), nullptr);
-    EXPECT_FALSE(NS::StartCameraZoomRoll(&loose, NS::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
+    EXPECT_FALSE(GL::Level::StartCameraZoomRoll(&loose, GL::Level::CameraZoomRollDesc{.zoom = 1.1f, .holdFrames = 5}));
 }
 
 // 世界が回っている間は、描画の入口が管理役の姿勢を実カメラへ書く。描画先が無くても書く

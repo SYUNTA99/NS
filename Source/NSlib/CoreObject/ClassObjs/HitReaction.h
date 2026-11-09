@@ -95,65 +95,6 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 画面を沈めて震わせる。同じ持ち主の「沈みを戻す」で跳ね返り、戻されなければ長さで終わる
-    //! ピクセルは高さ 1080 の画面で数える。カメラの位置と向きは変えない
-    struct HitCameraSinkInfo
-    {
-        std::string_view typeName = "CameraSink";
-        std::string_view label = "沈む揺れ";
-
-        void Start(const HitReactionStart& start) const;
-
-        float bottomPixels = 9.0f;   // 底の深さ (ピクセル)
-        int sinkFrames = 2;          // 底へ届くまでのフレーム数
-        float tremblePixels = 5.0f;  // 底での震えの最初の大きさ (ピクセル)
-        int trembleFrames = 6;       // 震えるフレーム数
-        int tremblePeriodFrames = 2; // 震えの 1 往復のフレーム数
-        float overshootRatio = 0.5f; // 跳ね返りで 0 を越えて上へ出る量の、底の深さに対する割合
-        int bouncePeriodFrames = 8;  // 跳ね返りの 1 往復のフレーム数
-
-        NS_REFLECT_BEGIN(HitCameraSinkInfo, void)
-        NS_FIELD(bottomPixels, "底の深さのピクセル")
-        NS_FIELD(sinkFrames, "沈むフレーム数")
-        NS_FIELD(tremblePixels, "震えの大きさ")
-        NS_FIELD(trembleFrames, "震えのフレーム数")
-        NS_FIELD(tremblePeriodFrames, "震えの 1 往復")
-        NS_FIELD(overshootRatio, "行き過ぎの割合")
-        NS_FIELD(bouncePeriodFrames, "跳ね返りの 1 往復")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 同じ持ち主が先に始めた沈む揺れを跳ね返す。新しい揺れは始めず、沈みが無ければ何もしない
-    struct HitCameraSinkReleaseInfo
-    {
-        std::string_view typeName = "CameraSinkRelease";
-        std::string_view label = "沈みを戻す";
-
-        void Start(const HitReactionStart& start) const;
-    };
-
-    //! カメラの寄りと傾き。項目の長さは保つフレーム数と戻すフレーム数の和
-    struct HitZoomRollInfo
-    {
-        std::string_view typeName = "ZoomRoll";
-        std::string_view label = "寄りと傾き";
-
-        void Start(const HitReactionStart& start) const;
-
-        float zoom = 1.15f;       // 寄りの倍率。1 は寄らない
-        float rollDegrees = 3.0f; // 傾き (度)。正は画面の上端を、相手がカメラの右なら右へ倒す
-        int returnFrames = 6;     // 長さのうち、元へ戻すのに使う末尾のフレーム数
-        //! 束を始めてから寄せ始めるまでのフレーム数。止めの間も数える
-        int delayFrames = 0;
-
-        NS_REFLECT_BEGIN(HitZoomRollInfo, void)
-        NS_FIELD(zoom, "寄りの倍率")
-        NS_FIELD(rollDegrees, "傾き")
-        NS_FIELD(returnFrames, "戻すフレーム数")
-        NS_FIELD(delayFrames, "始めるまでのフレーム数")
-        NS_REFLECT_END_VALUE()
-    };
-
     //! カメラのトラウマを足し、相手の側へ一撃を振る。揺れの途中なら前のトラウマに足す
     //! 揺れの長さは項目の長さでなく減る速さで決まる
     struct HitCameraTraumaInfo
@@ -183,37 +124,6 @@ namespace NS
         NS_FIELD(exponent, "指数")
         NS_FIELD(kickDegrees, "一撃の大きさ")
         NS_FIELD(kickPeakFrames, "一撃の山のフレーム")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! カメラの位置と注視点を、相手へ向かう水平の向きへ曲線の距離だけずらす。向きと地平線は変えない
-    struct HitCameraLurchInfo
-    {
-        std::string_view typeName = "CameraLurch";
-        std::string_view label = "つんのめり";
-
-        void Start(const HitReactionStart& start) const;
-
-        Curve distance{}; // ずらす距離 (m)。負は手前へ
-
-        NS_REFLECT_BEGIN(HitCameraLurchInfo, void)
-        NS_FIELD(distance, "ずらす距離")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! カメラの位置と注視点を、相手から離れる向きの画面方向へ曲線の距離だけずらす
-    //! 奥行きの成分は捨て、画面方向が無ければ揺らさない。向きと地平線は変えない
-    struct HitCameraAwaySwayInfo
-    {
-        std::string_view typeName = "CameraAwaySway";
-        std::string_view label = "離れる向きの揺れ";
-
-        void Start(const HitReactionStart& start) const;
-
-        Curve distance{}; // ずらす距離 (m)。負は相手へ向かう向き
-
-        NS_REFLECT_BEGIN(HitCameraAwaySwayInfo, void)
-        NS_FIELD(distance, "ずらす距離")
         NS_REFLECT_END_VALUE()
     };
 
@@ -305,15 +215,6 @@ namespace NS
         NS_FIELD(downLeft, "下の時の左の速さ")
         NS_FIELD(downRight, "下の時の右の速さ")
         NS_REFLECT_END_VALUE()
-    };
-
-    //! 長さの間、持ち主以外の世界を止める (Scene::RequestStopScene)。始めた歩の次の歩から止まる
-    struct HitOthersStopInfo
-    {
-        std::string_view typeName = "OthersStop";
-        std::string_view label = "自機以外の止め";
-
-        void Start(const HitReactionStart& start) const;
     };
 
     //! 持ち主のアクターへ渡す項目。名前と値を持ち主が読んで、持ち主の演出 (残像・エフェクトなど) を始める
@@ -642,7 +543,7 @@ namespace NS
     };
 
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
-    //! 揺れと寄りは CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
+    //! カメラの効果は CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
     //! 描く揺れ・形・震えは持ち主の Model、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
     //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
@@ -686,27 +587,10 @@ namespace NS
 
         // 下の関数の owner は管理クラスとカメラを引くアクターで、依頼の主にもなる。事前条件: nullptr でない
 
-        //! カメラの沈む揺れを始める
-        //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
-        //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
-        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartSink(const SceneActor* owner, const CameraSinkDesc& desc);
-
-        //! カメラのずれを始める。位置と注視点を同じだけずらし、向きは変えない
-        //! @param[in] desc ずらす向きと距離の曲線。フレーム数 0 以下ならずらさない
-        //! @return ずれを積んだか、フレーム数 0 以下でずらさなかった場合 true。
-        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartNudge(const SceneActor* owner, const CameraNudgeDesc& desc);
-
         //! カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
         //! @param[in] desc 足す量と揺れの形
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
         bool AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc);
-
-        //! カメラの寄りと傾きを始める
-        //! @param[in] desc 寄りと傾きの設定
-        //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
-        bool StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc);
 
         //! この部品が頼んだ歪みの輪を消す
         //! Stop は輪を消さない
@@ -723,7 +607,7 @@ namespace NS
         //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
         void ScaleRunning(const HitReactionSelf& owner, float scale);
 
-        //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外し、
+        //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、持ち主が頼んだカメラの効果のうちトラウマのほかを外し、
         //! 持ち主へ渡す項目を外す
         //! トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す

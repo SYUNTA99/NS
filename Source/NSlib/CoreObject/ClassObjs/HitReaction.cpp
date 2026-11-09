@@ -101,22 +101,6 @@ namespace NS
             return entry;
         }
 
-        // 揺れのフレーム数の上限。揺れの並びは始める時に全フレームぶんの領域を取るので、欄の打ち間違いの大きな値を止める
-        // 1 秒を超える揺れは当たりの返りではなく、画面が揺れ続けている状態
-        constexpr int k_MaxShakeFrames = 60;
-
-        // 上限を超えた長さは警告して断る。カメラの無い場面は黙って断る
-        bool CanStartCameraMotion(const SceneActor* owner, int frames)
-        {
-            if (frames > k_MaxShakeFrames)
-            {
-                NS_LOG_WARN(
-                    Scene, "揺れのフレーム数 {} が上限 {} を超えていて、揺らさなかった", frames, k_MaxShakeFrames);
-                return false;
-            }
-            return owner->GetCameraManager() != nullptr;
-        }
-
         // 丸めた整数を 32 ビットの符号なしへ写す。負の値も同じ値なら同じビットになる
         [[nodiscard]] uint32 RoundedBits(float value) noexcept
         {
@@ -264,45 +248,6 @@ namespace NS
                                               .bodyLength = start.bodyLength});
     }
 
-    void HitCameraSinkInfo::Start(const HitReactionStart& start) const
-    {
-        // 跳ね返りは同じ持ち主の「沈みを戻す」で始まる。来なければ底のまま長さで終わる
-        (void)start.reaction->StartSink(start.owner.actor,
-                                 CameraSinkDesc{.bottomPixels = bottomPixels,
-                                                .sinkFrames = sinkFrames,
-                                                .tremblePixels = tremblePixels,
-                                                .trembleFrames = trembleFrames,
-                                                .tremblePeriodFrames = tremblePeriodFrames,
-                                                .bounceStartFrame = start.length,
-                                                .overshootRatio = overshootRatio,
-                                                .bouncePeriodFrames = bouncePeriodFrames,
-                                                .frames = start.length});
-    }
-
-    void HitCameraSinkReleaseInfo::Start(const HitReactionStart& start) const
-    {
-        if (CameraManager* cameras = start.owner.actor->GetCameraManager())
-        {
-            cameras->ReleaseSink(start.owner.actor);
-        }
-    }
-
-    void HitZoomRollInfo::Start(const HitReactionStart& start) const
-    {
-        const int frames = std::max(start.length, 0);
-        CameraZoomRollDesc desc;
-        desc.zoom = zoom;
-        desc.rollDegrees = rollDegrees;
-        if (start.hasToward)
-        {
-            desc.rollDirection = start.towardOther;
-        }
-        desc.returnFrames = std::clamp(returnFrames, 0, frames);
-        desc.holdFrames = frames - desc.returnFrames;
-        desc.delayFrames = delayFrames;
-        (void)start.reaction->StartZoomRoll(start.owner.actor, desc);
-    }
-
     void HitCameraTraumaInfo::Start(const HitReactionStart& start) const
     {
         CameraTraumaDesc desc;
@@ -319,30 +264,6 @@ namespace NS
         // 一撃は相手から自分へ向かう画面の向きへ振る。相手が真正面で向きが決まらなければ振らない
         desc.kick.direction = Vector2{-start.side, -start.up};
         (void)start.reaction->AddTrauma(start.owner.actor, desc);
-    }
-
-    void HitCameraLurchInfo::Start(const HitReactionStart& start) const
-    {
-        if (!start.hasToward)
-        {
-            return;
-        }
-        (void)start.reaction->StartNudge(
-            start.owner.actor,
-            CameraNudgeDesc{
-                .direction = start.towardOther, .distance = distance, .frames = start.length, .onScreen = false});
-    }
-
-    void HitCameraAwaySwayInfo::Start(const HitReactionStart& start) const
-    {
-        if (!start.hasToward)
-        {
-            return;
-        }
-        (void)start.reaction->StartNudge(
-            start.owner.actor,
-            CameraNudgeDesc{
-                .direction = -start.towardOther, .distance = distance, .frames = start.length, .onScreen = true});
     }
 
     void HitFlashInfo::Start(const HitReactionStart& start) const
@@ -425,14 +346,6 @@ namespace NS
             }
             rumble->Start(start.owner.actor, vibration);
             started = true;
-        }
-    }
-
-    void HitOthersStopInfo::Start(const HitReactionStart& start) const
-    {
-        if (Scene* scene = start.owner.actor->OwningScene())
-        {
-            scene->RequestStopScene(start.owner.actor, start.length);
         }
     }
 
@@ -695,74 +608,6 @@ namespace NS
         return {m_ownerRuns.begin() + static_cast<std::ptrdiff_t>(first), m_ownerRuns.end()};
     }
 
-    bool HitReaction::StartSink(const SceneActor* owner, const CameraSinkDesc& desc)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartSink: 持ち主が null");
-        if (desc.frames <= 0)
-        {
-            return true;
-        }
-        if (!CanStartCameraMotion(owner, desc.frames))
-        {
-            return false;
-        }
-        if (!AddCameraModifier(owner, CameraSinkModifier::Create(desc)))
-        {
-            NS_LOG_WARN(Scene,
-                        "沈む揺れの設定が壊れていて、揺らさなかった: 深さ {} 震え {} 行き過ぎ {} フレーム数 {}",
-                        desc.bottomPixels,
-                        desc.tremblePixels,
-                        desc.overshootRatio,
-                        desc.frames);
-            return false;
-        }
-        return true;
-    }
-
-    bool HitReaction::StartNudge(const SceneActor* owner, const CameraNudgeDesc& desc)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartNudge: 持ち主が null");
-        if (desc.frames <= 0)
-        {
-            return true;
-        }
-        if (!CanStartCameraMotion(owner, desc.frames))
-        {
-            return false;
-        }
-        if (!AddCameraModifier(owner, CameraNudgeModifier::Create(desc)))
-        {
-            NS_LOG_WARN(Scene,
-                        "ずれの設定が壊れていて、ずらさなかった: 向き ({}, {}, {}) フレーム数 {}",
-                        desc.direction.x,
-                        desc.direction.y,
-                        desc.direction.z,
-                        desc.frames);
-            return false;
-        }
-        return true;
-    }
-
-    bool HitReaction::StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc)
-    {
-        NS_ASSERT(Scene, owner != nullptr, "HitReaction::StartZoomRoll: 持ち主が null");
-        if (owner->GetCameraManager() == nullptr)
-        {
-            return false;
-        }
-        if (!StartCameraZoomRoll(owner, desc))
-        {
-            NS_LOG_WARN(Scene,
-                        "寄りと傾きの設定が壊れていて、寄せなかった: 倍率 {} 傾き {} 保つ {} 戻す {}",
-                        desc.zoom,
-                        desc.rollDegrees,
-                        desc.holdFrames,
-                        desc.returnFrames);
-            return false;
-        }
-        return true;
-    }
-
     void HitReaction::StopDistortionRing(const SceneActor* owner) noexcept
     {
         NS_ASSERT(Scene, owner != nullptr, "HitReaction::StopDistortionRing: 持ち主が null");
@@ -812,10 +657,8 @@ namespace NS
         }
         if (CameraManager* cameras = owner->GetCameraManager())
         {
-            for (const void* kind : CameraHitEffectKinds())
-            {
-                cameras->RemoveModifiersOf(owner, kind);
-            }
+            // 持ち主が頼む効果は当たりの項目とトラウマだけ。トラウマは続けて当てると足されるので残す
+            cameras->RemoveModifiersOfExcept(owner, CameraTraumaModifier::StaticKind());
         }
         m_ownerRuns.clear();
     }
@@ -927,17 +770,11 @@ namespace NS
     NS_HIT_REACTION_ITEM(HitShapeInfo)
     NS_HIT_REACTION_ITEM(HitBodyShakeInfo)
     NS_HIT_REACTION_ITEM(HitBodyTremorInfo)
-    NS_HIT_REACTION_ITEM(HitCameraSinkInfo)
-    NS_HIT_REACTION_ITEM(HitCameraSinkReleaseInfo)
-    NS_HIT_REACTION_ITEM(HitZoomRollInfo)
     NS_HIT_REACTION_ITEM(HitCameraTraumaInfo)
-    NS_HIT_REACTION_ITEM(HitCameraLurchInfo)
-    NS_HIT_REACTION_ITEM(HitCameraAwaySwayInfo)
     NS_HIT_REACTION_ITEM(HitFlashInfo)
     NS_HIT_REACTION_ITEM(HitDistortionRingInfo)
     NS_HIT_REACTION_ITEM(HitGroundWaveInfo)
     NS_HIT_REACTION_ITEM(HitPadInfo)
-    NS_HIT_REACTION_ITEM(HitOthersStopInfo)
     NS_HIT_REACTION_ITEM(HitOwnerInfo)
     NS_HIT_REACTION_ITEM(HitSoundInfo)
     NS_HIT_REACTION_ITEM(HitEffectInfo)

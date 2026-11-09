@@ -1,3 +1,4 @@
+#include "Game/Level/CameraHitModifiers.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -183,17 +184,17 @@ TEST(CameraTrauma, ShakesTheDrawnPoseOnlyAndScalesBySetting)
     EXPECT_FALSE(cameras->AddTrauma(TraumaOf(-1.0f)));
 }
 
-// 次の当たりで揺れと寄りを止めても、トラウマは残って足される
-TEST(CameraTrauma, HitEffectsStopKeepsTheTrauma)
+// 頼んだ物の効果をトラウマのほかだけ外しても、トラウマは残って足される
+TEST(CameraTrauma, RemovingAllButTheTraumaKeepsTheTrauma)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
     NS::CameraManager* cameras = scene.GetCameraManager();
     ASSERT_NE(cameras, nullptr);
-    ASSERT_TRUE(cameras->AddTrauma(TraumaOf(0.4f)));
-    ASSERT_TRUE(cameras->StartZoomRoll(NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 5}));
-    NS::StopCameraHitEffects(&scene);
-    EXPECT_FLOAT_EQ(cameras->ZoomRoll().zoom, 1.0f);
+    ASSERT_TRUE(NS::AddCameraTrauma(&scene, TraumaOf(0.4f)));
+    ASSERT_TRUE(GL::Level::StartCameraZoomRoll(&scene, GL::Level::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 5}));
+    cameras->RemoveModifiersOfExcept(&scene, NS::CameraTraumaModifier::StaticKind());
+    EXPECT_FLOAT_EQ(GL::Level::CurrentCameraZoomRoll(*cameras).zoom, 1.0f);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.4f);
     NS::StopCameraEffects(&scene);
     EXPECT_FLOAT_EQ(cameras->Trauma(), 0.0f);

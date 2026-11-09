@@ -1,7 +1,9 @@
+#include "Game/Level/CameraHitModifiers.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <initializer_list>
 #include <limits>
 #include <memory>
@@ -43,11 +45,11 @@ namespace
 // 世界の向きのまま、曲線の距離だけ位置と注視点を同じだけずらす
 TEST(CameraNudge, WorldNudgeMovesPositionAndTargetByTheCurve)
 {
-    NS::CameraNudgeDesc desc;
+    GL::Level::CameraNudgeDesc desc;
     desc.direction = NS::Vector3{0.0f, 0.0f, 1.0f};
     desc.distance = CurveOf({{0.0f, 0.2f}, {2.0f, 0.3f}, {8.0f, 0.0f}});
     desc.frames = 9;
-    std::unique_ptr<NS::CameraNudgeModifier> nudge = NS::CameraNudgeModifier::Create(desc);
+    std::unique_ptr<GL::Level::CameraNudgeModifier> nudge = GL::Level::CameraNudgeModifier::Create(desc);
     ASSERT_NE(nudge, nullptr);
     const NS::CameraAxes axes;
 
@@ -67,14 +69,15 @@ TEST(CameraNudge, WorldNudgeMovesPositionAndTargetByTheCurve)
 // 画面へ写す形は、奥へ向かう分を捨て、画面の上で見える向きだけで曲線の距離ずらす
 TEST(CameraNudge, ScreenNudgeUsesOnlyTheDirectionSeenFromTheCamera)
 {
-    NS::CameraNudgeDesc desc;
+    GL::Level::CameraNudgeDesc desc;
     NS::Vector3 rightAndAway{1.0f, 0.0f, 1.0f};
     rightAndAway.Normalize();
     desc.direction = rightAndAway;
     desc.distance = CurveOf({{0.0f, -0.5f}});
     desc.frames = 4;
     desc.onScreen = true;
-    std::unique_ptr<NS::CameraNudgeModifier> nudge = NS::CameraNudgeModifier::Create(desc);
+    desc.minScreenShare = 0.2f;
+    std::unique_ptr<GL::Level::CameraNudgeModifier> nudge = GL::Level::CameraNudgeModifier::Create(desc);
     ASSERT_NE(nudge, nullptr);
 
     NS::CameraPose pose = PoseOf();
@@ -87,14 +90,18 @@ TEST(CameraNudge, ScreenNudgeUsesOnlyTheDirectionSeenFromTheCamera)
 }
 
 // 向きがほぼ真っすぐ画面の奥を指す時は、画面の上の向きが決まらないので動かさない
+// 画面へ写した向きの長さ 0.1 は、下限 0.2 以下なので動かさない
 TEST(CameraNudge, ScreenNudgeHoldsStillWhenTheDirectionPointsIntoTheScreen)
 {
-    NS::CameraNudgeDesc desc;
-    desc.direction = NS::Vector3{0.0f, 0.0f, 1.0f};
+    GL::Level::CameraNudgeDesc desc;
+    NS::Vector3 mostlyAway{0.1f, 0.0f, std::sqrt(1.0f - 0.1f * 0.1f)};
+    mostlyAway.Normalize();
+    desc.direction = mostlyAway;
     desc.distance = CurveOf({{0.0f, 0.5f}});
     desc.frames = 4;
     desc.onScreen = true;
-    std::unique_ptr<NS::CameraNudgeModifier> nudge = NS::CameraNudgeModifier::Create(desc);
+    desc.minScreenShare = 0.2f;
+    std::unique_ptr<GL::Level::CameraNudgeModifier> nudge = GL::Level::CameraNudgeModifier::Create(desc);
     ASSERT_NE(nudge, nullptr);
 
     NS::CameraPose pose = PoseOf();
@@ -106,27 +113,32 @@ TEST(CameraNudge, ScreenNudgeHoldsStillWhenTheDirectionPointsIntoTheScreen)
 // フレーム数を描き終えたら終わる。向きの無い・非数の・フレーム数 0 以下の設定は作らない
 TEST(CameraNudge, FinishesAfterItsFramesAndRefusesBrokenSettings)
 {
-    NS::CameraNudgeDesc desc;
+    GL::Level::CameraNudgeDesc desc;
     desc.direction = NS::Vector3{1.0f, 0.0f, 0.0f};
     desc.distance = CurveOf({{0.0f, 0.3f}});
     desc.frames = 3;
-    std::unique_ptr<NS::CameraNudgeModifier> nudge = NS::CameraNudgeModifier::Create(desc);
+    std::unique_ptr<GL::Level::CameraNudgeModifier> nudge = GL::Level::CameraNudgeModifier::Create(desc);
     ASSERT_NE(nudge, nullptr);
     AdvanceTo(*nudge, 2);
     EXPECT_FALSE(nudge->IsFinished());
     nudge->Tick();
     EXPECT_TRUE(nudge->IsFinished());
 
-    NS::CameraNudgeDesc noFrames = desc;
+    GL::Level::CameraNudgeDesc noFrames = desc;
     noFrames.frames = 0;
-    EXPECT_EQ(NS::CameraNudgeModifier::Create(noFrames), nullptr);
-    NS::CameraNudgeDesc noDirection = desc;
+    EXPECT_EQ(GL::Level::CameraNudgeModifier::Create(noFrames), nullptr);
+    GL::Level::CameraNudgeDesc noDirection = desc;
     noDirection.direction = NS::Vector3{0.0f, 0.0f, 0.0f};
-    EXPECT_EQ(NS::CameraNudgeModifier::Create(noDirection), nullptr);
-    NS::CameraNudgeDesc notANumber = desc;
+    EXPECT_EQ(GL::Level::CameraNudgeModifier::Create(noDirection), nullptr);
+    GL::Level::CameraNudgeDesc notANumber = desc;
     notANumber.direction.x = std::numeric_limits<float>::quiet_NaN();
-    EXPECT_EQ(NS::CameraNudgeModifier::Create(notANumber), nullptr);
-    NS::CameraNudgeDesc brokenCurve = desc;
+    EXPECT_EQ(GL::Level::CameraNudgeModifier::Create(notANumber), nullptr);
+    GL::Level::CameraNudgeDesc brokenCurve = desc;
     brokenCurve.distance.keys[0].y = std::numeric_limits<float>::infinity();
-    EXPECT_EQ(NS::CameraNudgeModifier::Create(brokenCurve), nullptr);
+    EXPECT_EQ(GL::Level::CameraNudgeModifier::Create(brokenCurve), nullptr);
+    // 画面へ写す形で下限が 0 以下だと、向きが奥を真っすぐ指した時に 0 で割るので作らない
+    GL::Level::CameraNudgeDesc noScreenShare = desc;
+    noScreenShare.onScreen = true;
+    noScreenShare.minScreenShare = 0.0f;
+    EXPECT_EQ(GL::Level::CameraNudgeModifier::Create(noScreenShare), nullptr);
 }

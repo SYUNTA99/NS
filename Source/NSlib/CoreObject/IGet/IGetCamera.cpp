@@ -17,13 +17,6 @@ namespace NS
         return cameras->AddModifier(std::move(modifier));
     }
 
-    bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->StartZoomRoll(desc, user);
-    }
-
     void StopCameraEffects(const IGetCamera* user) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
@@ -38,18 +31,6 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
         return cameras != nullptr && cameras->AddTrauma(desc, user);
-    }
-
-    void StopCameraHitEffects(const IGetCamera* user) noexcept
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (CameraManager* cameras = user->GetCameraManager())
-        {
-            for (const void* kind : CameraHitEffectKinds())
-            {
-                cameras->RemoveModifiers(kind);
-            }
-        }
     }
 
     float CalcCameraSideSign(const IGetCamera* user, const Vector3& direction) noexcept

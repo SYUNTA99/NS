@@ -112,19 +112,3 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
 }
-
-// 揺れと寄りは、頼んだ物だけがカメラの効果に積まれる
-TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionClassObj();
-    ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    EXPECT_TRUE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4}));
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_TRUE(reaction->StartZoomRoll(player, NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
-    EXPECT_FALSE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 61}));
-}
