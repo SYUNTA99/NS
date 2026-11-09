@@ -157,20 +157,23 @@ namespace NS
         }
 
         // 束を始める時の向きと位置を、2 つのセンサーと渡した位置から出す
-        [[nodiscard]] HitReactionStart MakeStart(HitReaction& reaction,
+        [[nodiscard]] HitReactionStart MakeStart(HitReaction* reaction,
                                                  const HitReactionSelf& self,
                                                  uint32 startCount,
                                                  const Vector3& position,
-                                                 const HitSensor& selfSensor,
-                                                 const HitSensor& other)
+                                                 const HitSensor* selfSensor,
+                                                 const HitSensor* other)
         {
+            NS_ASSERT(Scene, reaction != nullptr, "MakeStart: reaction が null");
+            NS_ASSERT(Scene, selfSensor != nullptr, "MakeStart: selfSensor が null");
+            NS_ASSERT(Scene, other != nullptr, "MakeStart: other が null");
             const SceneActor* owner = self.actor;
-            const SensorVolume selfVolume = HitSensorDirector::VolumeOf(&selfSensor);
+            const SensorVolume selfVolume = HitSensorDirector::VolumeOf(selfSensor);
             HitReactionStart context;
-            context.reaction = &reaction;
+            context.reaction = reaction;
             context.owner = self;
             context.position = position;
-            context.toOther = HitSensorDirector::VolumeOf(&other).Center() - selfVolume.Center();
+            context.toOther = HitSensorDirector::VolumeOf(other).Center() - selfVolume.Center();
             context.hasToward = TryNormalizeHorizontal(context.toOther, context.towardOther);
             const Vector3 forward = CalcCameraForwardHorizontal(owner);
             context.cameraRight = Vector3{forward.z, 0.0f, -forward.x};
@@ -485,7 +488,7 @@ namespace NS
             return std::nullopt;
         }
         ++m_startCount;
-        HitReactionStart start = MakeStart(*this, owner, m_startCount, position, *self, *other);
+        HitReactionStart start = MakeStart(this, owner, m_startCount, position, self, other);
         for (const HitReactionEntry& entry : set->entries)
         {
             start.length = entry.length;
