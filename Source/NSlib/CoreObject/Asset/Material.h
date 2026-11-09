@@ -84,7 +84,7 @@ namespace NS
         ~Material() noexcept override;
 
         [[nodiscard]] const std::string& Path() const noexcept;
-        //! 読めなかった名前のマテリアルの場合 true
+        //! 自分の D3DMaterial を持たない場合 true。読めなかった名前と空の名前の物
         [[nodiscard]] bool IsEmpty() const noexcept;
 
         //! 描く D3DMaterial。中身が空なら代わりのマテリアルの物を返す。どちらも無ければ nullptr
@@ -109,7 +109,10 @@ namespace NS
         //! @return FitsParam で合わない値は受けずに false
         bool SetParamValue(const Gfx::ShaderParam& param, const MaterialParamValue& value);
 
+        //! このマテリアルの .mat の色。インスペクタが読み書きし、保存する値
         [[nodiscard]] Color BaseColor() const noexcept;
+        //! 描く色。中身が空で代わりのマテリアルを指す時は、D3D と同じく代わりの色を返す
+        [[nodiscard]] Color DrawColor() const noexcept;
         //! 透明度は .mat に無いので捨てる
         void SetBaseColor(const Color& color) noexcept;
         [[nodiscard]] std::string BlendText() const;
@@ -139,6 +142,8 @@ namespace NS
         NS_REFLECT_END()
 
     private:
+        //! 描く時に読むマテリアル。中身が空で代わりを指す時は代わりの方 (D3D と DrawColor が同じ物を読む)
+        [[nodiscard]] const Material& MaterialToDraw() const noexcept;
         void SetTexturePathAt(std::size_t slot, const std::string& path);
 
         std::string m_path;

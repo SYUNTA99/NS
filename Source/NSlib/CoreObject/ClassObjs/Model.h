@@ -55,7 +55,7 @@ namespace NS
         //! 光の色とは別に掛かる。透明度は使わず rgb だけを描く
         void SetColorOverride(const std::optional<Color>& color) noexcept { m_colorOverride = color; }
         [[nodiscard]] const std::optional<Color>& ColorOverride() const noexcept { return m_colorOverride; }
-        //! 描く色。上書きが入っていればその色、空なら描くマテリアル (DrawnMaterial) の基本色。掛け合わせない
+        //! 描く色。上書きが入っていればその色、空なら欄のマテリアルの Material::DrawColor。掛け合わせない
         [[nodiscard]] Color DrawColor() const noexcept;
 
         //! 欄を替えずに、描くメッシュを替える。保存する名前は欄のメッシュのまま
@@ -71,17 +71,10 @@ namespace NS
         //! 名前のメッシュをその場で AssetManager::Get() から引き、欄に入れる
         void SetMeshRef(std::string_view ref);
 
-        //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は DrawnMaterial を描く
+        //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は灰色の既定で描く
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return AssetFieldName(m_material); }
         //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる
         void SetMaterialRef(std::string_view ref);
-
-        //! 描くマテリアル。欄が空でなければ欄の物、空なら描くメッシュが決めた物 (Mesh::UseUnsetMaterial)
-        //! 選び直すのは ChooseDrawnMaterial を呼んだ時だけ。保存はしない
-        [[nodiscard]] const Material* DrawnMaterial() const noexcept { return m_drawnMaterial; }
-        //! 今の欄と描くメッシュで、描くマテリアルを選び直す
-        //! 作る時・名前の欄を書いた時・SceneActor::ReloadAssets の最後に呼ぶ。マテリアルの無いファイルのモデルは、メッシュごとに 1 回 ERROR を出す
-        void ChooseDrawnMaterial();
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
@@ -212,18 +205,10 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        // 描く形と material の描く D3DMaterial が揃っている場合 true
-        [[nodiscard]] bool CanDraw(const Material* material) const noexcept;
-        // CanDraw が true の時だけ呼ぶ
-        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
-                                                     const Material* material,
-                                                     const Matrix& world) const noexcept;
-
         // 素材は AssetManager が持つ。欄は nullptr にならない
         Mesh* m_mesh = nullptr;              // メッシュの欄。m_shownMesh が無い間はこれを描く
         Material* m_material = nullptr;
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
-        Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
         std::optional<Color> m_colorOverride;
         bool m_drawsAfterSky = false; // 保存しない。決めるのはアクターのクラス
         bool m_neverCulled = false;   // 保存しない。決めるのはアクターのクラス

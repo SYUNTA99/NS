@@ -211,8 +211,7 @@ namespace NS
 
         // 骨付きの Mesh を作る。骨格の無いファイルは nullptr。描く形を GPU で作れなくても骨格は持つ
         [[nodiscard]] std::unique_ptr<Mesh> ReadSkinnedMesh(const std::string& key,
-                                                            const GltfFileDesc& file,
-                                                            MeshUnsetMaterial unset)
+                                                            const GltfFileDesc& file)
         {
             std::pair<SkinnedMeshGeometry, Anim::Skeleton> skinned = ParseGltfSkinnedMesh(file);
             const SkinnedMeshGeometry& geom = skinned.first;
@@ -236,12 +235,12 @@ namespace NS
 
             std::vector<BoneSphere> spheres =
                 ComputeBoneSpheres(geom.vertices.data(), geom.vertices.size(), skeleton.BoneCount());
-            return std::make_unique<Mesh>(key, std::move(mesh), std::move(skeleton), std::move(spheres), unset);
+            return std::make_unique<Mesh>(key, std::move(mesh), std::move(skeleton), std::move(spheres));
         }
 
         // key の glTF を読む。スキン付きのメッシュの node があれば骨付きの Mesh、無ければ描く形と当たりの Mesh
         // 読めない時は ERROR を出して nullptr
-        [[nodiscard]] std::unique_ptr<Mesh> ReadMeshFile(const std::string& key, MeshUnsetMaterial unset)
+        [[nodiscard]] std::unique_ptr<Mesh> ReadMeshFile(const std::string& key)
         {
             const std::optional<std::string> path = ResolveContentPath(key);
             if (!path)
@@ -250,10 +249,10 @@ namespace NS
                 return nullptr;
             }
             std::unique_ptr<Mesh> mesh =
-                WithGltfFile(*path, [&key, unset](const GltfFileDesc& file) -> std::unique_ptr<Mesh> {
+                WithGltfFile(*path, [&key](const GltfFileDesc& file) -> std::unique_ptr<Mesh> {
                     if (HasGltfSkin(file))
                     {
-                        return ReadSkinnedMesh(key, file, unset);
+                        return ReadSkinnedMesh(key, file);
                     }
                     const MeshGeometry geom = ParseGltfMesh(file);
                     if (geom.vertices.empty() || geom.indices.empty())
@@ -263,7 +262,7 @@ namespace NS
                     // 描く形と当たりのどちらを先に頼まれても両方ここで作る。GPU で作れなくても当たりは作る
                     // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
                     // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-                    return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom), unset);
+                    return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom));
                 });
             if (mesh == nullptr)
             {
@@ -360,24 +359,23 @@ namespace NS
 
     std::unique_ptr<Mesh> AssetManager::CreateMesh(const std::string& key)
     {
-        // 組み込みの形と、描く形も当たりも無いメッシュは灰色。何も描かないメッシュの ERROR は読む時に出す
-        const MeshUnsetMaterial gray{LoadMaterial(DefaultMaterialPath()), false};
         // 空の名前は「メッシュを選んでいない」で、誤りではない
         if (key.empty())
         {
-            return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
+            return std::make_unique<Mesh>(key, nullptr, nullptr);
         }
 
-        // 組み込みとファイルで違うのは、頂点の出どころと欄が空の時のマテリアルだけ
+        // 組み込みとファイルで違うのは頂点の出どころ。スキンのあるファイルだけは当たりの代わりに骨格を持つ
         if (const BuiltinShape* shape = FindBuiltinShape(key))
         {
             const MeshGeometry geom = shape->make(*shape);
-            return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom), gray);
+            return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom));
         }
-        std::unique_ptr<Mesh> file = ReadMeshFile(key, MeshUnsetMaterial{LoadMaterial(k_MissingMaterialPath), true});
+        // 読めない名前の ERROR は ReadMeshFile が出す
+        std::unique_ptr<Mesh> file = ReadMeshFile(key);
         if (file == nullptr)
         {
-            return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
+            return std::make_unique<Mesh>(key, nullptr, nullptr);
         }
         return file;
     }
@@ -498,10 +496,13 @@ namespace NS
 
     std::unique_ptr<Material> AssetManager::ReadMaterial(const std::string& key)
     {
-        // 空の名前は「マテリアルを選んでいない」で、誤りではない
+        // 空の名前は「マテリアルを選んでいない」で、誤りではない。中身は空のまま、既定の灰色を黙って描く
+        // 読めない名前がピンクを指すのと同じ形にして、欄の持ち主が空かを見分けずに済むようにする
         if (key.empty())
         {
-            return std::make_unique<Material>(key);
+            std::unique_ptr<Material> material = std::make_unique<Material>(key);
+            material->SetStandIn(LoadMaterial(DefaultMaterialPath()));
+            return material;
         }
         const std::optional<std::string> path = ResolveContentPath(key);
         if (!path)

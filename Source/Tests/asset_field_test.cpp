@@ -20,6 +20,7 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
 
@@ -295,8 +296,9 @@ TEST(AssetManagerLoad, PlayerAndShadowAreMaterialFilesThatCanBeWritten)
     EXPECT_EQ(log.ErrorCount(), 0);
 }
 
-// ピンクの ERROR はメッシュごとに 1 回で、読み直しても増えない
-TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh)
+// マテリアルの欄が空の Model は、メッシュが glb でも組み込みの形でも既定のマテリアルで描き、ERROR を出さない
+// 読めない名前の欄はピンクで描き、ERROR を出す。どちらも欄に保存する値は変えない
+TEST(AssetField, ModelWithoutAMaterialDrawsGrayAndAnUnreadableMaterialDrawsPink)
 {
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
@@ -305,17 +307,38 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_EQ(model->MaterialRef(), "");
-    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/default.mat"));
+    const NS::Gfx::D3DMaterial* gray = assets.LoadMaterial("Assets/Materials/default.mat")->D3D();
+    const NS::Gfx::D3DMaterial* pink = assets.LoadMaterial("Assets/Materials/missing.mat")->D3D();
+    ASSERT_NE(gray, nullptr);
+    ASSERT_NE(pink, nullptr);
+    ASSERT_NE(gray, pink);
+    // 灰色はマテリアルの側で持つ。空の名前のマテリアルは中身が空のまま、既定のマテリアルを描く
+    EXPECT_TRUE(assets.LoadMaterial("")->IsEmpty());
+    EXPECT_EQ(assets.LoadMaterial("")->D3D(), gray);
+    const NS::Gfx::RenderContext context{};
 
     const TestLogCapture log;
-    model->SetMeshRef("Assets/Models/CesiumMan.glb");
-    parts->ReloadAssets();
-    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/missing.mat"));
-    EXPECT_EQ(log.ErrorCount(), 1);
-    EXPECT_EQ(model->MaterialRef(), "");
+    for (const char* mesh : {"cube", "Assets/Models/GoalFlag.glb"})
+    {
+        model->SetMeshRef(mesh);
+        parts->ReloadAssets();
+        EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, gray) << mesh;
+        EXPECT_EQ(model->MaterialRef(), "") << mesh;
+    }
+    EXPECT_EQ(log.ErrorCount(), 0);
+    // 基本の色も既定のマテリアルから読む。描く形だけを既定にすると、default.mat の色を変えても空の欄に届かない
+    model->SetColorOverride(std::nullopt); // MapPartsActor.actor の基本色の上書きを外し、マテリアルの色を見る
+    assets.LoadMaterial("Assets/Materials/default.mat")->SetBaseColor(NS::Color{NS::Vector3{0.25f, 0.5f, 0.75f}});
+    EXPECT_FLOAT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).constants.baseColor.y, 0.5f);
 
-    model->SetMaterialRef("Assets/Materials/stone.mat");
-    EXPECT_EQ(model->DrawnMaterial(), assets.LoadMaterial("Assets/Materials/stone.mat"));
+    model->SetMaterialRef("Assets/Materials/__ns_missing__.mat");
+    EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, pink);
+    const int errors = log.ErrorCount();
+    EXPECT_GT(errors, 0); // 数は Core のファイルの読み方にも寄るので、出た事だけを見る
+    parts->ReloadAssets();
+    EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, pink);
+    EXPECT_EQ(log.ErrorCount(), errors); // 読めない名前の ERROR は名前ごとに 1 回で、読み直しても増えない
+    EXPECT_EQ(model->MaterialRef(), "Assets/Materials/__ns_missing__.mat");
 }
 
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)

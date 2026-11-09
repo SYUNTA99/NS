@@ -21,6 +21,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "Tests/TestCheckLayer.h"
@@ -715,7 +716,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 }
 
 // マテリアルを付けると、描くマテリアルが付けた物になる
-TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
+TEST(EditorInspector, MaterialApplyReachesTheModelDraw)
 {
     NS::Application app(HiddenAppDesc("マテリアルを付ける試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
@@ -729,7 +730,9 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
         const std::string stone = "Assets/Materials/stone.mat";
         ASSERT_TRUE(editor.ApplyMaterialToSelected(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone)));
-        EXPECT_EQ(parts->ModelClassObj()->DrawnMaterial(), app.Assets().LoadMaterial(stone));
+        const NS::Gfx::RenderContext context{};
+        EXPECT_EQ(parts->ModelClassObj()->MakeDrawItem(context, NS::Matrix::Identity).material,
+                  app.Assets().LoadMaterial(stone)->D3D());
     }));
     EXPECT_EQ(app.Run(), 0);
 }

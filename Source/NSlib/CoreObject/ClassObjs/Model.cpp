@@ -43,34 +43,16 @@ namespace NS
     {
         LoadAssetField(m_mesh, "");
         LoadAssetField(m_material, "");
-        ChooseDrawnMaterial();
     }
 
     void Model::SetMeshRef(std::string_view ref)
     {
         LoadAssetField(m_mesh, ref);
-        ChooseDrawnMaterial();
     }
 
     void Model::SetMaterialRef(std::string_view ref)
     {
         LoadAssetField(m_material, ref);
-        ChooseDrawnMaterial();
-    }
-
-    void Model::ChooseDrawnMaterial()
-    {
-        if (!m_material->Path().empty())
-        {
-            m_drawnMaterial = m_material;
-            return;
-        }
-        Mesh* mesh = m_shownMesh;
-        if (mesh == nullptr)
-        {
-            mesh = m_mesh;
-        }
-        m_drawnMaterial = mesh->UseUnsetMaterial();
     }
 
     const Mesh* Model::GetMesh() const noexcept
@@ -289,12 +271,12 @@ namespace NS
                         const RenderSource& source,
                         std::vector<Gfx::DrawItem>& out)
     {
-        if (!CanDraw(m_drawnMaterial))
+        if (!CanDraw())
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(source.root, context.alpha)));
+        out.push_back(MakeDrawItem(context, DrawWorldMatrix(source.root, context.alpha)));
     }
 
     Color Model::DrawColor() const noexcept
@@ -303,7 +285,7 @@ namespace NS
         {
             return *m_colorOverride;
         }
-        return m_drawnMaterial->BaseColor();
+        return m_material->DrawColor();
     }
 
     void Model::CollectDraws(const Gfx::RenderContext& context,
@@ -376,28 +358,16 @@ namespace NS
         return out;
     }
 
-    bool Model::CanDraw() const noexcept { return CanDraw(m_drawnMaterial); }
+    bool Model::CanDraw() const noexcept { return GetMesh()->D3D() != nullptr && m_material->D3D() != nullptr; }
 
     Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
-    {
-        return MakeDrawItem(context, m_drawnMaterial, world);
-    }
-
-    bool Model::CanDraw(const Material* material) const noexcept
-    {
-        return GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
-    }
-
-    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
-                                          const Material* material,
-                                          const Matrix& world) const noexcept
     {
         // context.resolvedSettings は project 既定に配置された平行光まで解決済
         const Gfx::RenderSettings& settings = context.resolvedSettings;
 
         Gfx::DrawItem item{};
         item.mesh = GetMesh()->D3D();
-        item.material = material->D3D();
+        item.material = m_material->D3D();
         item.blend = item.material->Blend();
         item.constants.world = world;
         item.constants.viewProj = context.viewProjection;
@@ -428,7 +398,7 @@ namespace NS
         {
             return Gfx::RenderPass::AfterSky;
         }
-        const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
+        const Gfx::D3DMaterial* material = m_material->D3D();
         if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
         {
             return Gfx::RenderPass::Opaque;
@@ -441,7 +411,7 @@ namespace NS
 
     int Model::SortPriority() const noexcept
     {
-        if (const Gfx::D3DMaterial* material = m_drawnMaterial->D3D())
+        if (const Gfx::D3DMaterial* material = m_material->D3D())
         {
             return material->RenderPriority();
         }

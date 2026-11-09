@@ -54,7 +54,7 @@ namespace NS
                 item.mesh = AssetManager::Get().LoadMesh("sphere")->D3D();
                 item.material = material->D3D();
                 item.constants.world = Matrix::Identity;
-                item.constants.baseColor = material->BaseColor().ToVector3();
+                item.constants.baseColor = material->DrawColor().ToVector3();
                 if (item.material != nullptr)
                 {
                     item.blend = item.material->Blend();

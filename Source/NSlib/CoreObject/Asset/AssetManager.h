@@ -86,8 +86,8 @@ namespace NS
         //! nullptr を返さない。空の名前と読めない名前は、描く形も当たりも無い中身の空のメッシュを返し、
         //! 何も描かない。読めない名前は ERROR を出す。空の名前は「選んでいない」で何も出さない
         //! 組み込みの形もファイルも、作る時に描く形と当たりを作る。D3DDevice の無い場では描く形を作らない
-        //! マテリアルの欄が空の時に描くマテリアルも作る時に決める (Mesh::UseUnsetMaterial)。
-        //! 組み込みの形と空のメッシュは灰色の既定 (DefaultMaterialPath)、ファイルのモデルはピンク (missing.mat) で ERROR を出す
+        //! スキン付きのメッシュの node がある glb は、当たりの代わりに骨格と骨ごとの影響の球を持つ骨付きのメッシュにする
+        //! マテリアルの名前が空の時に何で描くかはメッシュで決めない (LoadMaterial を見る)
         [[nodiscard]] Mesh* LoadMesh(std::string_view name);
 
         //! 欄の名前のメッシュの当たりを返す。名前の決まりは LoadMesh と同じ
@@ -113,11 +113,11 @@ namespace NS
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
         //! 組み込みの形が坂なら、頂点を作るのと同じ角度 (度)。坂でない名前と組み込みでない名前は nullopt
         [[nodiscard]] static std::optional<float> BuiltinSlopeAngleDegrees(std::string_view name) noexcept;
-        //! 組み込みの形と空のメッシュを、マテリアルの欄が空の時に描く灰色の既定のマテリアルの道筋
+        //! マテリアルの欄が空の時に描く灰色の既定のマテリアルの道筋
         [[nodiscard]] static std::string_view DefaultMaterialPath() noexcept;
         //! 欄の名前のマテリアルを返す。名前は ContentRoot からの .mat の道筋
         //! nullptr を返さない。読めない名前は中身の空のマテリアルを返してピンク (missing.mat) で描き、ERROR を出す
-        //! 空の名前は「選んでいない」で、中身の空のマテリアルを返す。何で描くかはメッシュが決める (Mesh::UseUnsetMaterial)
+        //! 空の名前は「選んでいない」で、灰色の既定 (DefaultMaterialPath) で描く中身の空のマテリアルを返し、何も出さない
         [[nodiscard]] Material* LoadMaterial(std::string_view name);
 
         //! material が .mat から読んだマテリアルなら、その値を .mat の JSON 文字列にする

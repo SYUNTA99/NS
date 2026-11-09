@@ -285,17 +285,15 @@ namespace NS
 
     bool Material::IsEmpty() const noexcept { return m_material == nullptr; }
 
-    Gfx::D3DMaterial* Material::D3D() const noexcept
+    Gfx::D3DMaterial* Material::D3D() const noexcept { return MaterialToDraw().m_material.get(); }
+
+    const Material& Material::MaterialToDraw() const noexcept
     {
-        if (m_material != nullptr)
+        if (m_material == nullptr && m_standIn != nullptr)
         {
-            return m_material.get();
+            return m_standIn->MaterialToDraw();
         }
-        if (m_standIn != nullptr)
-        {
-            return m_standIn->D3D();
-        }
-        return nullptr;
+        return *this;
     }
 
     void Material::SetStandIn(const Material* standIn) noexcept
@@ -360,6 +358,8 @@ namespace NS
     }
 
     Color Material::BaseColor() const noexcept { return Color{m_file.baseColor}; }
+
+    Color Material::DrawColor() const noexcept { return MaterialToDraw().BaseColor(); }
 
     void Material::SetBaseColor(const Color& color) noexcept
     {
