@@ -484,7 +484,7 @@ TEST(PlayerAirDashTest, TheDashRunsItsFramesWithoutItsAction)
     EXPECT_FALSE(player->IsAirDashing());
 }
 
-// 途中で欄「エアダッシュのフレーム数」を書き換えても、そのダッシュの速さと終わる歩は始めた時のまま
+// 途中で欄「エアダッシュのフレーム数」を書き換えても、そのダッシュの速さは始めた時のまま
 TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
 {
     NS::Scene scene;
@@ -501,12 +501,6 @@ TEST(PlayerAirDashTest, TheDashSpeedHoldsWhenTheLengthChangesMidway)
     player->Update(false);
     ASSERT_TRUE(player->IsAirDashing());
     EXPECT_NEAR(player->Body().Velocity().x, speed, 1.0e-3f);
-    // 書き換えた 10 歩を越えても、入った時の歩の数まで続く
-    for (int step = 3; step < 12; ++step)
-    {
-        player->Update(false);
-    }
-    EXPECT_TRUE(player->IsAirDashing());
 }
 
 // 途中で動作が止まっても (.actor の読み直し)、ダッシュは欄のフレーム数で終わる

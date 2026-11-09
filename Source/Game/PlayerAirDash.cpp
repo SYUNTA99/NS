@@ -225,7 +225,7 @@ std::optional<int> PlayerActor::AirDashStepsLeft() const noexcept
     {
         return std::nullopt;
     }
-    return std::max(m_airDash.m_dashFrames - static_cast<int>(steps), 0);
+    return std::max(m_params->m_airDashFrames - static_cast<int>(steps), 0);
 }
 
 bool PlayerActor::IsAirDashOver() const noexcept
@@ -236,9 +236,8 @@ bool PlayerActor::IsAirDashOver() const noexcept
 
 void PlayerActor::StartAirDashAction() noexcept
 {
-    // 速さと終わる歩の数は状態に入った時に控え、途中で欄を書き換えても変えない
+    // 速さは状態に入った時に控え、途中で欄を書き換えても変えない
     m_airDash.m_dashSpeed = AirDashSpeed();
-    m_airDash.m_dashFrames = m_params->m_airDashFrames;
     // 動作は事象を置く所で、ダッシュの長さを持たない。無くてもダッシュは続け、StartStateAction の WARN だけを残す
     (void)StartStateAction(AirDashActionName());
 }

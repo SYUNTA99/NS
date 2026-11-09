@@ -108,14 +108,14 @@ public:
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
-    //! ダッシュの速さと終わる歩の数を控え、エアダッシュの動作 ("AirDash") を今の状態に結んで始める
+    //! ダッシュの速さを控え、エアダッシュの動作 ("AirDash") を今の状態に結んで始める
     //! 動作が無くてもダッシュは続く (WARN だけを出す)
     void StartAirDashAction() noexcept;
     //! 重力を掛けずに、向き × 控えたダッシュの速さを身体に書く
     void KeepAirDashSpeed() noexcept;
     //! 当たらずに終わったエアダッシュの勢いを残す
     void KeepAirDashExitSpeed() noexcept;
-    //! エアダッシュの状態で、入った時に控えたエアダッシュのフレーム数の歩を進めた場合 true
+    //! エアダッシュの状態で、PlayerParams のエアダッシュのフレーム数の歩を進めた場合 true
     [[nodiscard]] bool IsAirDashOver() const noexcept;
     //! 接地していれば歩きへ、空中なら落下へ移す
     void ChangeToWalkOrFall() noexcept;
