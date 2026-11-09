@@ -27,7 +27,8 @@ namespace NS
         //! collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
         void UseCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
 
-        //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
+        //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / 描く形かマテリアルの D3DMaterial が無ければ何も積まない
+        //! マテリアルの欄が空の時は、ほかのマテリアルの欄と同じく既定の灰色 (default.mat) で描く
         void Collect(const Gfx::RenderContext& context,
                      const RenderSource& source,
                      std::vector<Gfx::DrawItem>& out) override;
