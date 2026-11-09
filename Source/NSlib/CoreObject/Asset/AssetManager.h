@@ -59,8 +59,6 @@ namespace NS
     //! 本体か外部のバッファを読めない時と、中身が壊れている時はログを出して空を返す
     [[nodiscard]] MeshGeometry LoadGltfMesh(std::string_view path);
     //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
-    [[nodiscard]] SkinnedMeshData LoadGltfSkinnedMesh(std::string_view path);
-    //! 読み方と失敗の扱いは LoadGltfMesh と同じ。失敗した時は IsValid() が false
     [[nodiscard]] AnimSource LoadGltfAnimationSource(std::string_view path);
 
     //! アプリ寿命で素材を重複なく持つ。素材の種類ごとに表を 1 本持つ

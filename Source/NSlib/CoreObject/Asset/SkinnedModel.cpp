@@ -8,8 +8,8 @@ namespace NS
 {
     SkinnedModel::SkinnedModel(std::string path) noexcept : m_path(std::move(path)) {}
 
-    SkinnedModel::SkinnedModel(std::string path, std::unique_ptr<Mesh> mesh, Anim::Skeleton skeleton) noexcept
-        : m_path(std::move(path)), m_mesh(std::move(mesh)), m_skeleton(std::move(skeleton))
+    SkinnedModel::SkinnedModel(std::string path, std::unique_ptr<Mesh> mesh) noexcept
+        : m_path(std::move(path)), m_mesh(std::move(mesh))
     {
     }
 
@@ -25,6 +25,6 @@ namespace NS
         {
             return nullptr;
         }
-        return &m_skeleton;
+        return m_mesh->Skeleton();
     }
 } // namespace NS

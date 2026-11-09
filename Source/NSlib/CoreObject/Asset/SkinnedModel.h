@@ -18,7 +18,8 @@ namespace NS
     public:
         //! 中身の空のモデル
         explicit SkinnedModel(std::string path) noexcept;
-        SkinnedModel(std::string path, std::unique_ptr<Mesh> mesh, Anim::Skeleton skeleton) noexcept;
+        //! mesh は骨格を持つ骨付きのメッシュ
+        SkinnedModel(std::string path, std::unique_ptr<Mesh> mesh) noexcept;
         ~SkinnedModel() noexcept override;
 
         [[nodiscard]] const std::string& Path() const noexcept;
@@ -32,6 +33,5 @@ namespace NS
     private:
         std::string m_path;
         std::unique_ptr<Mesh> m_mesh;
-        Anim::Skeleton m_skeleton;
     };
 } // namespace NS

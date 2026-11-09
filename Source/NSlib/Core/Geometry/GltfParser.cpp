@@ -920,12 +920,39 @@ namespace NS
             }
             return true;
         }
+
+        // スキン付きのメッシュの node のうち先頭の物。無ければ nullptr
+        // スキンの有無の見分けと骨付きの読み込みが、同じ node を選ぶ
+        const cgltf_node* FindSkinnedMeshNode(const cgltf_data& model) noexcept
+        {
+            for (cgltf_size n = 0; n < model.nodes_count; ++n)
+            {
+                const cgltf_node& node = model.nodes[n];
+                if (node.mesh != nullptr && node.skin != nullptr)
+                {
+                    return &node;
+                }
+            }
+            return nullptr;
+        }
     } // namespace
 
-    SkinnedMeshData ParseGltfSkinnedMesh(const GltfFileDesc& file)
+    bool HasGltfSkin(const GltfFileDesc& file)
+    {
+        // スキンの有無は JSON の node だけで分かるので、バッファを読まずに見る
+        cgltf_options options{};
+        CgltfGuard guard;
+        if (cgltf_parse(&options, file.bytes.data(), file.bytes.size(), &guard.data) != cgltf_result_success)
+        {
+            return false;
+        }
+        return FindSkinnedMeshNode(*guard.data) != nullptr;
+    }
+
+    std::pair<SkinnedMeshGeometry, Anim::Skeleton> ParseGltfSkinnedMesh(const GltfFileDesc& file)
     {
         const std::string path{file.name};
-        SkinnedMeshData data;
+        std::pair<SkinnedMeshGeometry, Anim::Skeleton> data;
 
         CgltfGuard guard;
         if (!OpenGltf(file, "LoadGltfSkinnedMesh", guard))
@@ -940,16 +967,7 @@ namespace NS
             return data;
         }
 
-        const cgltf_node* skinnedNode = nullptr;
-        for (cgltf_size n = 0; n < model.nodes_count; ++n)
-        {
-            const cgltf_node& node = model.nodes[n];
-            if (node.mesh != nullptr && node.skin != nullptr)
-            {
-                skinnedNode = &node;
-                break;
-            }
-        }
+        const cgltf_node* skinnedNode = FindSkinnedMeshNode(model);
         if (skinnedNode == nullptr)
         {
             NS_LOG_ERROR(Graphics, "LoadGltfSkinnedMesh: skin 付き mesh node が無い (path={})", path);
@@ -1005,10 +1023,10 @@ namespace NS
             }
         }
 
-        data.vertices = std::move(vertices);
-        data.indices = std::move(indices);
-        data.skeleton = Anim::Skeleton(std::move(bones));
-        data.skeleton.SetRootTransform(ComputeSkeletonRootTransform(skin));
+        data.first.vertices = std::move(vertices);
+        data.first.indices = std::move(indices);
+        data.second = Anim::Skeleton(std::move(bones));
+        data.second.SetRootTransform(ComputeSkeletonRootTransform(skin));
         return data;
     }
 

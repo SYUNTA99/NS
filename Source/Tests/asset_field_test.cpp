@@ -217,7 +217,7 @@ TEST(AssetManagerLoad, FileMeshWithoutADeviceHasOnlyCollisionAndLogsNoError)
     ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
-    const NS::Mesh* mesh = assets.LoadMesh("Assets/Models/CesiumMan.glb");
+    const NS::Mesh* mesh = assets.LoadMesh("Assets/Models/GoalFlag.glb");
     EXPECT_EQ(mesh->D3D(), nullptr);
     EXPECT_NE(mesh->Collision(), nullptr);
     EXPECT_EQ(log.ErrorCount(), 0);

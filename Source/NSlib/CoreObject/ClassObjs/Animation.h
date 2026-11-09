@@ -25,8 +25,8 @@ namespace NS
         Animation();
         ~Animation();
 
-        //! 非所有。nullptr の間は姿勢を適用しない
-        void SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept;
+        //! 非所有。nullptr の間は姿勢を適用しない。今の姿勢の境界は mesh の影響の球から組む
+        void SetMesh(const Mesh* mesh) noexcept;
         //! 非所有。nullptr の間は姿勢を適用しない
         void SetSkeleton(const Anim::Skeleton* skeleton) noexcept;
         [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
@@ -79,7 +79,7 @@ namespace NS
         // 今のクリップのトラックの骨を、今の骨格で名前から引き直す
         void FindClipBones();
 
-        Gfx::D3DSkeletalMesh* m_mesh = nullptr;
+        const Mesh* m_mesh = nullptr;
         SkinnedModel* m_model = nullptr;
         const Anim::Skeleton* m_skeleton = nullptr;
         const Anim::AnimClip* m_clip = nullptr;

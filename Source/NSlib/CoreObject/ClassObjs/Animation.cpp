@@ -21,7 +21,7 @@ namespace NS
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept { m_mesh = mesh; }
+    void Animation::SetMesh(const Mesh* mesh) noexcept { m_mesh = mesh; }
 
     void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
     {
@@ -121,7 +121,7 @@ namespace NS
         if (mesh != nullptr)
         {
             SetSkeleton(m_model->GetSkeleton());
-            SetMesh(mesh->D3DSkeletal());
+            SetMesh(mesh);
 
             // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
             renderer->SetMesh(mesh);
@@ -215,7 +215,8 @@ namespace NS
 
     void Animation::ApplyPose(Model* renderer)
     {
-        if (m_mesh == nullptr)
+        // 描く形の無いメッシュ (D3DDevice の無い場) は、描かないので姿勢も適用しない
+        if (m_mesh == nullptr || m_mesh->LocalBounds() == nullptr)
         {
             return;
         }
@@ -240,8 +241,8 @@ namespace NS
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
-        const AABB localBounds = Gfx::MergeSkinnedBounds(
-            m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
+        const AABB localBounds =
+            MergeSkinnedBounds(m_mesh->BoneSpheres(), m_palette.bones, k_MaxBones, *m_mesh->LocalBounds());
         renderer->SetLocalBoundsOverride(localBounds);
     }
 } // namespace NS
