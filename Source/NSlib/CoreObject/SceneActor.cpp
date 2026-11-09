@@ -682,7 +682,7 @@ namespace NS
         {
             for (const HitReactionEntry& entry : set.entries)
             {
-                if (const HitSoundInfo* sound = std::get_if<HitSoundInfo>(&entry.item))
+                if (const HitSoundInfo* sound = entry.item.As<HitSoundInfo>())
                 {
                     m_sound->Preload(&AssetManager::Get(), sound->sound.name);
                 }

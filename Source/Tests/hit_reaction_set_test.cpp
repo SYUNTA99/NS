@@ -138,7 +138,23 @@ TEST(HitReactionSet, ValueTypeFieldsRoundTripThroughJson)
 TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
 {
     const NS::HitReactionSet written = MakeEveryKindSet();
-    ASSERT_EQ(written.entries.size(), std::variant_size_v<NS::HitReactionEntryInfo>);
+    // 登録した種類 (テストだけで登録した種類を除く) が全部、束に 1 つずつある
+    std::vector<std::string_view> kinds;
+    for (const NS::HitReactionItemKind& kind : NS::HitReactionItemRegistry::Get().Kinds())
+    {
+        if (!kind.typeName.starts_with("Test"))
+        {
+            kinds.push_back(kind.typeName);
+        }
+    }
+    std::vector<std::string_view> writtenKinds;
+    for (const NS::HitReactionEntry& entry : written.entries)
+    {
+        writtenKinds.push_back(entry.item.TypeName());
+    }
+    std::sort(kinds.begin(), kinds.end());
+    std::sort(writtenKinds.begin(), writtenKinds.end());
+    ASSERT_EQ(writtenKinds, kinds);
     const nlohmann::json doc = NS::HitReactionSetToJson(written);
     EXPECT_EQ(doc["name"].get<std::string>(), "TackleCenter");
     EXPECT_EQ(doc["stopFrames"].get<int>(), 12);
@@ -160,23 +176,23 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     for (std::size_t i = 0; i < written.entries.size(); ++i)
     {
         SCOPED_TRACE(i);
-        EXPECT_EQ(read->entries[i].item.index(), written.entries[i].item.index());
+        EXPECT_EQ(read->entries[i].item.TypeName(), written.entries[i].item.TypeName());
         EXPECT_EQ(read->entries[i].length, written.entries[i].length);
     }
     EXPECT_EQ(NS::HitReactionSetToJson(*read), doc);
 
-    const NS::HitPadInfo* pad = std::get_if<NS::HitPadInfo>(&read->entries[12].item);
+    const NS::HitPadInfo* pad = read->entries[12].item.As<NS::HitPadInfo>();
     ASSERT_NE(pad, nullptr);
     EXPECT_TRUE(pad->byDirection);
-    EXPECT_EQ(pad->upLeft, std::get<NS::HitPadInfo>(written.entries[12].item).upLeft);
-    const NS::HitZoomRollInfo* zoom = std::get_if<NS::HitZoomRollInfo>(&read->entries[5].item);
+    EXPECT_EQ(pad->upLeft, written.entries[12].item.As<NS::HitPadInfo>()->upLeft);
+    const NS::HitZoomRollInfo* zoom = read->entries[5].item.As<NS::HitZoomRollInfo>();
     ASSERT_NE(zoom, nullptr);
     EXPECT_EQ(zoom->delayFrames, 6);
-    const NS::HitOwnerInfo* ghost = std::get_if<NS::HitOwnerInfo>(&read->entries[14].item);
+    const NS::HitOwnerInfo* ghost = read->entries[14].item.As<NS::HitOwnerInfo>();
     ASSERT_NE(ghost, nullptr);
     EXPECT_EQ(ghost->name, "Ghost");
-    EXPECT_EQ(ghost->values, std::get<NS::HitOwnerInfo>(written.entries[14].item).values);
-    const NS::HitSoundInfo* sound = std::get_if<NS::HitSoundInfo>(&read->entries[15].item);
+    EXPECT_EQ(ghost->values, written.entries[14].item.As<NS::HitOwnerInfo>()->values);
+    const NS::HitSoundInfo* sound = read->entries[15].item.As<NS::HitSoundInfo>();
     ASSERT_NE(sound, nullptr);
     EXPECT_EQ(sound->sound.name, "Player/Hit");
     EXPECT_FLOAT_EQ(sound->volume, 0.4f);
@@ -195,9 +211,9 @@ TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
     const std::optional<NS::HitReactionSet> read = NS::ParseHitReactionSet(doc, error);
     ASSERT_TRUE(read.has_value()) << error;
     ASSERT_EQ(read->entries.size(), 3u);
-    EXPECT_FLOAT_EQ(std::get<NS::HitFlashInfo>(read->entries[0].item).alpha, 0.3f);
-    EXPECT_EQ(std::get<NS::HitZoomRollInfo>(read->entries[1].item).delayFrames, NS::HitZoomRollInfo{}.delayFrames);
-    const NS::HitOwnerInfo& owner = std::get<NS::HitOwnerInfo>(read->entries[2].item);
+    EXPECT_FLOAT_EQ(read->entries[0].item.As<NS::HitFlashInfo>()->alpha, 0.3f);
+    EXPECT_EQ(read->entries[1].item.As<NS::HitZoomRollInfo>()->delayFrames, NS::HitZoomRollInfo{}.delayFrames);
+    const NS::HitOwnerInfo& owner = *read->entries[2].item.As<NS::HitOwnerInfo>();
     EXPECT_EQ(owner.name, "HitEffect");
     EXPECT_TRUE(owner.values.empty());
     // 知らない欄は束の頭と項目の欄の 2 か所で知らせて飛ばす
@@ -1015,7 +1031,7 @@ namespace
     {
         for (const NS::HitReactionEntry& entry : set.entries)
         {
-            if (std::holds_alternative<Item>(entry.item))
+            if (entry.item.As<Item>() != nullptr)
             {
                 return &entry;
             }
@@ -1028,7 +1044,7 @@ namespace
     {
         for (const NS::HitReactionEntry& entry : set.entries)
         {
-            const NS::HitOwnerInfo* owner = std::get_if<NS::HitOwnerInfo>(&entry.item);
+            const NS::HitOwnerInfo* owner = entry.item.As<NS::HitOwnerInfo>();
             if (owner != nullptr && owner->name == name)
             {
                 return &entry;
@@ -1059,7 +1075,7 @@ TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
     ASSERT_EQ(terrainShift->entries.size(), 1u);
     const NS::HitReactionEntry* shiftPad = FindEntry<NS::HitPadInfo>(*terrainShift);
     ASSERT_NE(shiftPad, nullptr);
-    EXPECT_TRUE(std::get<NS::HitPadInfo>(shiftPad->item).layered);
+    EXPECT_TRUE(shiftPad->item.As<NS::HitPadInfo>()->layered);
 }
 
 // 束の値をフレーム数に読む時、非数・無限・負・int に入らない値は WARN を出して既定の数にする。
@@ -1082,4 +1098,54 @@ TEST(HitOwnerFrames, ValuesOutsideTheFrameRangeFallBack)
         EXPECT_EQ(GL::Level::HitOwnerFrames(item, name, 5), 5);
     }
     EXPECT_EQ(log.WarningCount(), 4);
+}
+
+// 項目の型を登録する口。NSlib が知らない型も、登録すれば .actor の形から読み、書き戻し、束を始めると始まる
+namespace
+{
+    int g_countedFrames = 0; // 数える項目が始まった時に足した数
+
+    // テストの中だけで登録する項目。始めると、数 × 長さを足す
+    struct CountingItem
+    {
+        std::string_view typeName = "TestCounting";
+        std::string_view label = "数える項目";
+
+        int amount = 1;
+
+        NS_REFLECT_BEGIN(CountingItem, void)
+        NS_FIELD(amount, "数")
+        NS_REFLECT_END_VALUE()
+
+        void Start(const NS::HitReactionStart& start) const { g_countedFrames += amount * start.length; }
+    };
+} // namespace
+
+NS_HIT_REACTION_ITEM(CountingItem)
+
+TEST(HitReactionItemRegistry, ARegisteredItemReadsWritesAndStarts)
+{
+    const nlohmann::json doc = nlohmann::json::parse(
+        R"({"name": "Count", "stopFrames": 0, "items": [{"type": "TestCounting", "length": 3, "fields": {"数": 2}}]})");
+    std::string error;
+    const std::optional<NS::HitReactionSet> set = NS::ParseHitReactionSet(doc, error);
+    ASSERT_TRUE(set.has_value()) << error;
+    ASSERT_EQ(set->entries.size(), 1u);
+    const CountingItem* item = set->entries[0].item.As<CountingItem>();
+    ASSERT_NE(item, nullptr);
+    EXPECT_EQ(item->amount, 2);
+    EXPECT_EQ(set->entries[0].item.TypeName(), "TestCounting");
+    EXPECT_EQ(set->entries[0].item.Label(), "数える項目");
+    EXPECT_EQ(NS::HitReactionSetToJson(*set), doc);
+
+    // 登録していない名前は読まない
+    nlohmann::json unknown = doc;
+    unknown["items"][0]["type"] = "TestNotRegistered";
+    EXPECT_FALSE(NS::ParseHitReactionSet(unknown, error).has_value());
+
+    ProbeScene probes({*set}, NS::Vector3{0.0f, 1.0f, 4.0f});
+    ASSERT_NE(probes.self, nullptr);
+    g_countedFrames = 0;
+    ASSERT_TRUE(probes.Start(probes.self, "Count", NS::Vector3{}));
+    EXPECT_EQ(g_countedFrames, 6);
 }
