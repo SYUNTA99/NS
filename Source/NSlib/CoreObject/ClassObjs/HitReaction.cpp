@@ -137,6 +137,7 @@ namespace NS
         // 持ち主のシーンの白い光。シーンに入っていなければ nullptr
         [[nodiscard]] ScreenFlashDirector* ScreenFlashOf(const SceneActor* owner) noexcept
         {
+            NS_ASSERT(Scene, owner != nullptr, "ScreenFlashOf: owner が null");
             Scene* scene = owner->OwningScene();
             if (scene == nullptr)
             {

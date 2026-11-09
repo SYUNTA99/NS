@@ -145,6 +145,7 @@ namespace NS
 
     void CameraManager::RemoveModifiersOfExcept(const IGetCamera* requester, const void* keptKind) noexcept
     {
+        NS_ASSERT(Scene, requester != nullptr, "RemoveModifiersOfExcept: 頼んだ物が null");
         std::erase_if(m_modifiers, [requester, keptKind](const std::unique_ptr<CameraModifier>& m) {
             return m->Requester() == requester && m->Kind() != keptKind;
         });

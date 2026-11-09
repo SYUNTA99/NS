@@ -4,6 +4,7 @@
 #include "Game/Level/CameraHitModifiers.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/HitScreenDirector.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
@@ -25,6 +26,7 @@ namespace GL
             // 設定が壊れていれば知らせる。カメラの無い場面 (試しの台) は黙って何もしない
             void StartCameraNudge(const NS::SceneActor* owner, const CameraNudgeDesc& desc)
             {
+                NS_ASSERT(Game, owner != nullptr, "StartCameraNudge: owner が null");
                 if (desc.frames <= 0 || owner->GetCameraManager() == nullptr)
                 {
                     return;
