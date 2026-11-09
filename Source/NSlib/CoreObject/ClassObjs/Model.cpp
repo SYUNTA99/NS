@@ -9,7 +9,6 @@
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include <algorithm>
-#include <bit>
 #include <cmath>
 
 namespace
@@ -260,9 +259,9 @@ namespace NS
             {
                 item.constants.groundWaveStrength = 0.0f;
             }
-            if (!draw.tremor)
+            if (!draw.objectValues)
             {
-                item.constants.tremor = Gfx::TremorCB{};
+                item.constants.objectValues = {};
             }
             out.push_back(item);
         }
@@ -337,7 +336,7 @@ namespace NS
         item.constants.groundWaveCenterZ = context.groundWave.centerZ;
         item.constants.groundWaveRadius = context.groundWave.radius;
         item.constants.groundWaveStrength = context.groundWave.strength;
-        item.constants.tremor = std::bit_cast<Gfx::TremorCB>(m_drawValues);
+        item.constants.objectValues = m_drawValues;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;

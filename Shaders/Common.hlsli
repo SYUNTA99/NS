@@ -17,15 +17,8 @@ cbuffer FrameCB : register(b0)
     float  g_groundWaveStrength;
     float3 g_groundColor;
     float  g_exposure;
-    // 物の震え。 C++ の TremorCB と同じ並び
-    float3 g_tremorContactOffset;
-    float  g_tremorAmplitude;
-    float3 g_tremorRight;
-    float  g_tremorElapsedFrames;
-    float3 g_tremorUp;
-    float  g_tremorFramesPerMeter;
-    float  g_tremorRingFrames;
-    float3 g_tremorPad;
+    // 名前の無い物ごとの 4 つの値。 C++ の FrameCB::objectValues と同じ並び。 意味は口のファイル SurfaceHooks.hlsli が決める
+    float4 g_objectValues[4];
     // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
     float  g_opacity;
     float3 g_opacityPad;
@@ -33,26 +26,8 @@ cbuffer FrameCB : register(b0)
     float  g_sceneTimeSeconds;
 };
 
-// 物の震えで世界の位置へ足すずれ。 衝突点から遠い所ほど遅れて震え始め、 1 か所は g_tremorRingFrames で弱まって止まる
-// 経過の小数は距離から来るので、 ほとんど動かない帯が衝突点から裏へ走り、 波に見える
-float3 TremorOffset(float3 worldPos)
-{
-    if (g_tremorAmplitude <= 0.0 || g_tremorRingFrames <= 0.0)
-    {
-        return float3(0.0, 0.0, 0.0);
-    }
-    // 衝突点は描く形と一緒に動く。 world 行列の位置からのずれで持つ
-    float3 contact = world[3].xyz + g_tremorContactOffset;
-    float t = g_tremorElapsedFrames - distance(worldPos, contact) * g_tremorFramesPerMeter;
-    if (t < 0.0 || t >= g_tremorRingFrames)
-    {
-        return float3(0.0, 0.0, 0.0);
-    }
-    // 1 フレームに半周する。 横は cos で始まりのフレームから振れ幅いっぱい、 縦はその半分の速さ
-    const float k_Pi = 3.14159265;
-    float envelope = 1.0 - t / g_tremorRingFrames;
-    return (g_tremorRight * cos(k_Pi * t) + g_tremorUp * sin(k_Pi * t * 0.5)) * g_tremorAmplitude * envelope;
-}
+// 物ごとの見た目の口。 シェーダを読む時に渡したフォルダから先に探すので、 Game が中身を書いた物に差し替わる
+#include "SurfaceHooks.hlsli"
 
 // standard.vs / skinned.vs が出力し PS が受け取る補間子
 struct SurfaceInterp

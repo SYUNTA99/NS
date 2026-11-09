@@ -5,12 +5,11 @@
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
 #include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
-#include <bit>
+#include <array>
 #include <cmath>
 #include <limits>
 
@@ -236,8 +235,8 @@ TEST(BodyShake, TremorRunStartsAtFrameZeroAndEndsAtTheLength)
     EXPECT_FLOAT_EQ(GL::Level::BodyTremor::FromDrawValues(model->DrawValues()).amplitude, 0.0f);
 }
 
-// 震えの並びは頂点シェーダーへ渡す震えの定数 (Gfx::TremorCB) と同じ位置に欄を置く
-TEST(BodyShake, TremorDrawValuesLineUpWithTheShaderConstants)
+// 震えの並びは DrawValues と FromDrawValues で行き来しても欄が変わらない。シェーダの側の並びは TremorShader.* が見る
+TEST(BodyShake, TremorDrawValuesRoundTrip)
 {
     const GL::Level::BodyTremor tremor{.contactOffset = NS::Vector3{1.0f, 2.0f, 3.0f},
                                        .amplitude = 4.0f,
@@ -246,16 +245,16 @@ TEST(BodyShake, TremorDrawValuesLineUpWithTheShaderConstants)
                                        .up = NS::Vector3{9.0f, 10.0f, 11.0f},
                                        .framesPerMeter = 12.0f,
                                        .ringFrames = 13.0f};
-    const NS::Gfx::TremorCB constants = std::bit_cast<NS::Gfx::TremorCB>(tremor.DrawValues());
-    EXPECT_TRUE(constants.contactOffset == tremor.contactOffset);
-    EXPECT_FLOAT_EQ(constants.amplitude, 4.0f);
-    EXPECT_TRUE(constants.right == tremor.right);
-    EXPECT_FLOAT_EQ(constants.elapsedFrames, 8.0f);
-    EXPECT_TRUE(constants.up == tremor.up);
-    EXPECT_FLOAT_EQ(constants.framesPerMeter, 12.0f);
-    EXPECT_FLOAT_EQ(constants.ringFrames, 13.0f);
-    const GL::Level::BodyTremor back = GL::Level::BodyTremor::FromDrawValues(tremor.DrawValues());
+    const std::array<NS::Vector4, 4> values = tremor.DrawValues();
+    EXPECT_FLOAT_EQ(values[0].w, 4.0f);
+    EXPECT_FLOAT_EQ(values[3].x, 13.0f);
+    const GL::Level::BodyTremor back = GL::Level::BodyTremor::FromDrawValues(values);
+    EXPECT_TRUE(back.contactOffset == tremor.contactOffset);
+    EXPECT_FLOAT_EQ(back.amplitude, 4.0f);
+    EXPECT_TRUE(back.right == tremor.right);
+    EXPECT_FLOAT_EQ(back.elapsedFrames, 8.0f);
     EXPECT_TRUE(back.up == tremor.up);
+    EXPECT_FLOAT_EQ(back.framesPerMeter, 12.0f);
     EXPECT_FLOAT_EQ(back.ringFrames, 13.0f);
 }
 

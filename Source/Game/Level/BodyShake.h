@@ -69,7 +69,7 @@ namespace GL
             float bodyLength = 0.0f;      // 衝突点から裏まで届く長さ (m)。0 以下なら全体が同時に震え始める
         };
 
-        //! 1 フレームの震え。Model の描く値 (Model::SetDrawValues) の 4 つの Vector4 に並べて頂点シェーダーへ渡す
+        //! 1 フレームの震え。Model の描く値 (Model::SetDrawValues) の 4 つの Vector4 に並べ、Shaders/Game/SurfaceHooks.hlsli が読む
         //! 並びは [contactOffset, amplitude] [right, elapsedFrames] [up, framesPerMeter] [ringFrames, 0, 0, 0]
         struct BodyTremor
         {

@@ -1,4 +1,6 @@
+#include "Game/Level/BodyShake.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/FrameConstants.h"
 
 #include <gtest/gtest.h>
@@ -12,8 +14,9 @@
 #include <string>
 #include <vector>
 
-// 衝撃の震えは頂点のシェーダーが描く形をずらす。窓の要らないソフトウェアの描画装置 (WARP) で standard.vs.hlsl を
-// コンパイルし、頂点のシェーダーの出力を流し出して読む。world を平行移動だけ、viewProj を単位行列にすると、
+// 衝撃の震えは、Game の口のファイル (Shaders/Game/SurfaceHooks.hlsli) が頂点のシェーダーの描く形をずらす。
+// 窓の要らないソフトウェアの描画装置 (WARP) で standard.vs.hlsl を Game のフォルダから先に口のファイルを探してコンパイルし、
+// 頂点のシェーダーの出力を流し出して読む。world を平行移動だけ、viewProj を単位行列にすると、
 // 出力の位置が世界の位置に震えのずれを足した物になる
 
 namespace
@@ -32,7 +35,7 @@ namespace
 
     // 試しの側で書いた震えの式。シェーダーの式と別に書き、出力と比べる
     // 衝突点は world 行列の位置 origin からのずれ
-    NS::Vector3 ExpectedOffset(const NS::Gfx::TremorCB& tremor, const NS::Vector3& origin, const NS::Vector3& pos)
+    NS::Vector3 ExpectedOffset(const GL::Level::BodyTremor& tremor, const NS::Vector3& origin, const NS::Vector3& pos)
     {
         if (!(tremor.amplitude > 0.0f) || !(tremor.ringFrames > 0.0f))
         {
@@ -52,7 +55,7 @@ namespace
     class TremorShaderRig
     {
     public:
-        TremorShaderRig()
+        explicit TremorShaderRig(const std::vector<std::string>& includeDirectories)
         {
             HRESULT hr = ::D3D11CreateDevice(nullptr,
                                              D3D_DRIVER_TYPE_WARP,
@@ -68,24 +71,10 @@ namespace
             {
                 return;
             }
-            ComPtr<ID3DBlob> errors;
-            hr = ::D3DCompileFromFile(L"Shaders/standard.vs.hlsl",
-                                      nullptr,
-                                      D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                                      "VSMain",
-                                      "vs_5_0",
-                                      0,
-                                      0,
-                                      m_blob.GetAddressOf(),
-                                      errors.GetAddressOf());
-            if (FAILED(hr))
+            m_blob = NS::Gfx::CompileShaderFile("Shaders/standard.vs.hlsl", "VSMain", "vs_5_0", includeDirectories);
+            if (m_blob == nullptr)
             {
-                if (errors != nullptr)
-                {
-                    m_compileError.assign(static_cast<const char*>(errors->GetBufferPointer()),
-                                          errors->GetBufferSize());
-                }
-                m_blob.Reset();
+                m_compileError = "standard.vs.hlsl をコンパイルできなかった。中身はログの ERROR にある";
                 return;
             }
             (void)m_device->CreateVertexShader(
@@ -115,7 +104,7 @@ namespace
         [[nodiscard]] const std::string& CompileError() const { return m_compileError; }
 
         // points は模型の空間の位置。world は origin への平行移動にし、出力は世界の位置
-        std::vector<NS::Vector3> Run(const NS::Gfx::TremorCB& tremor,
+        std::vector<NS::Vector3> Run(const GL::Level::BodyTremor& tremor,
                                      const NS::Vector3& origin,
                                      const std::vector<NS::Vector3>& points)
         {
@@ -123,7 +112,7 @@ namespace
             NS::Gfx::FrameCB constants{};
             constants.world = NS::Matrix::CreateTranslation(origin);
             constants.viewProj = NS::Matrix::Identity;
-            constants.tremor = tremor;
+            constants.objectValues = tremor.DrawValues();
 
             D3D11_BUFFER_DESC cbDesc{};
             cbDesc.ByteWidth = sizeof(constants);
@@ -216,9 +205,9 @@ namespace
     };
 
     // 半径 0.5 の玉の表面。衝突点は -X の端、一番遠い所は +X の端で、衝突点から 1 m。衝突点は玉の中心からのずれ
-    NS::Gfx::TremorCB BallTremor(float elapsedFrames)
+    GL::Level::BodyTremor BallTremor(float elapsedFrames)
     {
-        NS::Gfx::TremorCB tremor;
+        GL::Level::BodyTremor tremor;
         tremor.contactOffset = NS::Vector3{-0.5f, 0.0f, 0.0f};
         tremor.amplitude = 0.01f;
         tremor.right = NS::Vector3{0.0f, 0.0f, -1.0f};
@@ -228,6 +217,9 @@ namespace
         tremor.ringFrames = 8.0f;
         return tremor;
     }
+
+    // Game の口のファイルを先に探すフォルダ。テストの実行ファイルの隣へ Shaders をコピーしてある
+    const std::vector<std::string> k_GameShaders{"Shaders/Game"};
 
     std::vector<NS::Vector3> BallPoints()
     {
@@ -241,16 +233,16 @@ namespace
     }
 } // namespace
 
-// 震えの欄は物ごとの定数の照明の後、不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
+// 名前の無い物ごとの値の欄は物ごとの定数の照明の後、不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
 TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
 {
-    EXPECT_EQ(sizeof(NS::Gfx::TremorCB), 64u);
-    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, tremor), 208u);
+    EXPECT_EQ(sizeof(NS::Gfx::FrameCB::objectValues), 64u);
+    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, objectValues), 208u);
     EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 272u);
     EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 304u);
-    // 書いていない震えは振れ幅 0 で、どの物も震えない。書いていない不透明度は 1
+    // 書いていない値は全部 0 で、震えの振れ幅も 0。書いていない不透明度は 1
     const NS::Gfx::FrameCB constants{};
-    EXPECT_FLOAT_EQ(constants.tremor.amplitude, 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::BodyTremor::FromDrawValues(constants.objectValues).amplitude, 0.0f);
     EXPECT_FLOAT_EQ(constants.opacity, 1.0f);
 }
 
@@ -258,7 +250,7 @@ TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
 // 始まりのフレームは衝突点の所だけ、届くフレーム数で一番遠い所まで、その後は弱まって 0 になる
 TEST(TremorShader, VertexShaderDelaysTheTremorByTheDistanceFromTheContact)
 {
-    TremorShaderRig rig;
+    TremorShaderRig rig(k_GameShaders);
     if (!rig.HasDevice())
     {
         GTEST_SKIP() << "WARP の描画装置を作れなかった";
@@ -275,7 +267,7 @@ TEST(TremorShader, VertexShaderDelaysTheTremorByTheDistanceFromTheContact)
     for (int frame = 0; frame <= 16; ++frame)
     {
         SCOPED_TRACE(frame);
-        const NS::Gfx::TremorCB tremor = BallTremor(static_cast<float>(frame));
+        const GL::Level::BodyTremor tremor = BallTremor(static_cast<float>(frame));
         const std::vector<NS::Vector3> moved = rig.Run(tremor, origin, points);
         ASSERT_EQ(moved.size(), points.size());
         for (std::size_t i = 0; i < points.size(); ++i)
@@ -312,7 +304,7 @@ TEST(TremorShader, VertexShaderDelaysTheTremorByTheDistanceFromTheContact)
     }
 
     // 振れ幅 0 の物は震えない
-    NS::Gfx::TremorCB still = BallTremor(2.0f);
+    GL::Level::BodyTremor still = BallTremor(2.0f);
     still.amplitude = 0.0f;
     const std::vector<NS::Vector3> unmoved = rig.Run(still, origin, points);
     ASSERT_EQ(unmoved.size(), points.size());
@@ -321,5 +313,26 @@ TEST(TremorShader, VertexShaderDelaysTheTremorByTheDistanceFromTheContact)
         EXPECT_FLOAT_EQ(unmoved[i].x, origin.x + points[i].x);
         EXPECT_FLOAT_EQ(unmoved[i].y, origin.y + points[i].y);
         EXPECT_FLOAT_EQ(unmoved[i].z, origin.z + points[i].z);
+    }
+}
+
+// Game のフォルダを渡さなければ NSlib の何もしない口のファイルを読み、値を書いても形は動かない
+TEST(TremorShader, WithoutTheGameHooksTheValuesMoveNothing)
+{
+    TremorShaderRig rig({});
+    if (!rig.HasDevice())
+    {
+        GTEST_SKIP() << "WARP の描画装置を作れなかった";
+    }
+    ASSERT_TRUE(rig.Valid()) << rig.CompileError();
+    const NS::Vector3 origin{2.0f, 1.0f, -3.0f};
+    const std::vector<NS::Vector3> points = BallPoints();
+    const std::vector<NS::Vector3> moved = rig.Run(BallTremor(0.0f), origin, points);
+    ASSERT_EQ(moved.size(), points.size());
+    for (std::size_t i = 0; i < points.size(); ++i)
+    {
+        EXPECT_FLOAT_EQ(moved[i].x, origin.x + points[i].x);
+        EXPECT_FLOAT_EQ(moved[i].y, origin.y + points[i].y);
+        EXPECT_FLOAT_EQ(moved[i].z, origin.z + points[i].z);
     }
 }

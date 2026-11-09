@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstring>
 #include <functional>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -99,8 +100,84 @@ namespace NS
                              msg);
             }
 
-            // D3DCompile のソース名は char* のみで、非 ASCII を含むパスは #include の基準として扱えない
-            // Common.hlsli が解決できずコンパイルが失敗するため、wide のまま渡せる D3DCompileFromFile を使う
+            // D3DShader の作成と読み直しが #include を先に探すフォルダ。SetShaderIncludeDirectories が書く
+            [[nodiscard]] std::vector<std::string>& IncludeDirectories() noexcept
+            {
+                static std::vector<std::string> s_directories;
+                return s_directories;
+            }
+
+            // #include を、渡したフォルダから先に探し、無ければ include したファイルのフォルダから探す
+            // 読んだ中身は Close まで持つ。中身の番地から、その中の #include を探すフォルダを引く
+            class SearchingInclude final : public ID3DInclude
+            {
+            public:
+                SearchingInclude(std::string rootDirectory, std::span<const std::string> searchDirectories)
+                    : m_rootDirectory(std::move(rootDirectory)), m_searchDirectories(searchDirectories)
+                {
+                }
+
+                HRESULT __stdcall Open(D3D_INCLUDE_TYPE,
+                                       LPCSTR fileName,
+                                       LPCVOID parentData,
+                                       LPCVOID* outData,
+                                       UINT* outBytes) override
+                {
+                    std::string parentDirectory = m_rootDirectory;
+                    for (const std::unique_ptr<Opened>& opened : m_opened)
+                    {
+                        if (opened->text.data() == parentData)
+                        {
+                            parentDirectory = opened->directory;
+                        }
+                    }
+                    std::vector<std::string> candidates;
+                    for (const std::string& directory : m_searchDirectories)
+                    {
+                        candidates.push_back(OS::FileSystem::Combine(directory, fileName));
+                    }
+                    candidates.push_back(OS::FileSystem::Combine(parentDirectory, fileName));
+                    for (const std::string& candidate : candidates)
+                    {
+                        if (!OS::FileSystem::Exists(candidate))
+                        {
+                            continue;
+                        }
+                        std::optional<std::string> text = OS::FileSystem::ReadAllText(candidate);
+                        if (!text.has_value())
+                        {
+                            continue;
+                        }
+                        std::unique_ptr<Opened> opened = std::make_unique<Opened>(
+                            Opened{.text = std::move(*text), .directory = OS::FileSystem::ParentDirectory(candidate)});
+                        *outData = opened->text.data();
+                        *outBytes = static_cast<UINT>(opened->text.size());
+                        m_opened.push_back(std::move(opened));
+                        return S_OK;
+                    }
+                    // 見つからない事はコンパイラがエラーの文に書き、呼び手が ERROR で出す
+                    return E_FAIL;
+                }
+
+                HRESULT __stdcall Close(LPCVOID data) override
+                {
+                    std::erase_if(m_opened, [data](const std::unique_ptr<Opened>& opened) {
+                        return opened->text.data() == data;
+                    });
+                    return S_OK;
+                }
+
+            private:
+                struct Opened
+                {
+                    std::string text;
+                    std::string directory; // この中の #include を探すフォルダ
+                };
+                std::string m_rootDirectory;
+                std::span<const std::string> m_searchDirectories;
+                std::vector<std::unique_ptr<Opened>> m_opened;
+            };
+
             [[nodiscard]] ComPtr<ID3DBlob> CompileStage(std::string_view path,
                                                         const char* entryPoint,
                                                         const char* target) noexcept
@@ -109,29 +186,7 @@ namespace NS
                 {
                     return nullptr;
                 }
-                if (!OS::FileSystem::Exists(path))
-                {
-                    NS_LOG_ERROR(Graphics, "D3DShader file not found: {}", path);
-                    return nullptr;
-                }
-                const std::wstring widePath = OS::StringUtils::WideFromUtf8(path);
-                ComPtr<ID3DBlob> blob;
-                ComPtr<ID3DBlob> errorBlob;
-                const HRESULT hr = D3DCompileFromFile(widePath.c_str(),
-                                                      nullptr,
-                                                      D3D_COMPILE_STANDARD_FILE_INCLUDE,
-                                                      entryPoint,
-                                                      target,
-                                                      CompileFlags(),
-                                                      0u,
-                                                      blob.GetAddressOf(),
-                                                      errorBlob.GetAddressOf());
-                if (FAILED(hr))
-                {
-                    LogCompileFailure(entryPoint, target, hr, errorBlob);
-                    return nullptr;
-                }
-                return blob;
+                return CompileShaderFile(path, entryPoint, target, IncludeDirectories());
             }
 
             [[nodiscard]] ComPtr<ID3DBlob> CompileFallbackStage(const char* entryPoint, const char* target) noexcept
@@ -522,6 +577,46 @@ namespace NS
             }
             return std::span<const std::byte>(static_cast<const std::byte*>(m_vsBytecode->GetBufferPointer()),
                                               m_vsBytecode->GetBufferSize());
+        }
+
+        void SetShaderIncludeDirectories(std::vector<std::string> directories)
+        {
+            IncludeDirectories() = std::move(directories);
+        }
+
+        // #include を自前で探すので、ソースの名前は ERROR の文にだけ使う。非 ASCII のパスでも探す所は変わらない
+        ComPtr<ID3DBlob> CompileShaderFile(std::string_view hlslPath,
+                                           const char* entryPoint,
+                                           const char* target,
+                                           std::span<const std::string> includeDirectories) noexcept
+        {
+            const std::optional<std::string> source = OS::FileSystem::ReadAllText(hlslPath);
+            if (!source.has_value())
+            {
+                NS_LOG_ERROR(Graphics, "D3DShader file not found: {}", hlslPath);
+                return nullptr;
+            }
+            SearchingInclude include(OS::FileSystem::ParentDirectory(hlslPath), includeDirectories);
+            const std::string sourceName{hlslPath};
+            ComPtr<ID3DBlob> blob;
+            ComPtr<ID3DBlob> errorBlob;
+            const HRESULT hr = D3DCompile(source->data(),
+                                          source->size(),
+                                          sourceName.c_str(),
+                                          nullptr,
+                                          &include,
+                                          entryPoint,
+                                          target,
+                                          CompileFlags(),
+                                          0u,
+                                          blob.GetAddressOf(),
+                                          errorBlob.GetAddressOf());
+            if (FAILED(hr))
+            {
+                LogCompileFailure(entryPoint, target, hr, errorBlob);
+                return nullptr;
+            }
+            return blob;
         }
     } // namespace Gfx
 } // namespace NS

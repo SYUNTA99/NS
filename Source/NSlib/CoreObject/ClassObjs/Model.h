@@ -27,7 +27,7 @@ namespace NS
         std::optional<Vector3> offset;
         float opacity = 1.0f;
         bool groundWave = true;
-        bool tremor = true;
+        bool objectValues = true; // 偽なら名前の無い物ごとの値を全部 0 で渡す
     };
 
     namespace Gfx
@@ -128,8 +128,7 @@ namespace NS
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawShapeScale(const Vector3& scale) noexcept;
         //! シェーダへ渡す、名前の無い物ごとの 4 つの値を書く。補間しない
-        //! 意味は値を書く走る物と、シェーダの口のファイルが決める。
-        //! 今は頂点シェーダーの震えの欄 (Gfx::TremorCB) に並べて渡す
+        //! 意味は値を書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める。描く 1 回ごとに FrameCB::objectValues へ渡す
         void SetDrawValues(const std::array<Vector4, 4>& values) noexcept { m_drawValues = values; }
         //! SetDrawValues で書いた値。書かれていなければ全部 0
         [[nodiscard]] const std::array<Vector4, 4>& DrawValues() const noexcept { return m_drawValues; }

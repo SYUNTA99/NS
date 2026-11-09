@@ -2,7 +2,9 @@
 
 #include "Game/Level/GameScene.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/Gfx/D3DShader.h"
 
 Game* Game::s_instance = nullptr;
 
@@ -10,6 +12,9 @@ Game::Game(std::string_view startSceneName, StartScene startScene)
     : NS::Layer("Game"), m_startSceneName(startSceneName), m_startScene(startScene)
 {
     s_instance = this;
+    // 物ごとの見た目の口のファイル (SurfaceHooks.hlsli) を Game の物から先に読ませる。シーンの素材を読む前に渡す
+    NS::Gfx::SetShaderIncludeDirectories(
+        {NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Shaders/Game")});
 }
 
 Game::~Game()

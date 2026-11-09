@@ -204,7 +204,7 @@ namespace GL
                 m_draws.push_back(NS::ModelDraw{.world = m_afterimageWorld,
                                                 .opacity = m_afterimageOpacity,
                                                 .groundWave = false,
-                                                .tremor = false});
+                                                .objectValues = false});
             }
         }
 
