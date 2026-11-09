@@ -43,6 +43,13 @@ namespace NS
     //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
     [[nodiscard]] std::optional<CameraPose> GetCameraViewPose(const IGetCamera* user) noexcept;
 
+    //! 高さ referenceHeight を基準にしたピクセル数を、世界の位置 at の奥行きで m に直す
+    //! at がカメラの後ろなら距離で測る。基準の高さかカメラの向きが不正なら 0
+    [[nodiscard]] float ScreenPixelsToMeters(float pixels,
+                                             const CameraPose& pose,
+                                             const Vector3& at,
+                                             float referenceHeight = 720.0f) noexcept;
+
     // 仮想カメラは、アクターを作る時 (OnInit) に部品を作る行の隣で InitVirtualCamera を 1 回呼んで入れ、
     // アクターが終わる時 (OnEndPlay) に EndVirtualCamera で外す。出る・消える時は入れたまま
     // EnableVirtualCamera・DisableVirtualCamera で切り替える。管理役が無ければどれも何もしない

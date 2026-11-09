@@ -525,14 +525,10 @@ bool PlayerActor::CanMoveBody() const noexcept
 
 void PlayerActor::StopTackleHitEffects() noexcept
 {
-    if (NS::Model* model = ModelClassObj())
-    {
-        model->StopDrawShake();
-        model->StopDrawTremor();
-        model->StopDrawShape();
-    }
     if (NS::HitReaction* reaction = HitReactionClassObj())
     {
+        // 自機が預ける走る物は、当たりの束が描く形へ書く見た目だけなので、全部を止める
+        reaction->StopRuns(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()});
         reaction->StopGroundWave(this);
         reaction->StopDistortionRing(this);
     }

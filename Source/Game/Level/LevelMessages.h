@@ -1,7 +1,6 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Message/Message.h"
 #include "NSlib/CoreObject/ActorJson.h"
 

@@ -1,3 +1,4 @@
+#include "Game/Level/BodyShake.h"
 #include "Game/Level/CameraHitModifiers.h"
 #include "Game/Level/HitReactionItems.h"
 #include "Game/Level/LevelMessages.h"
@@ -49,16 +50,16 @@ namespace
         set.name = "TackleCenter";
         set.stopFrames = 12;
 
-        NS::HitShapeInfo shape;
+        GL::Level::HitShapeInfo shape;
         shape.along.count = 2;
         shape.along.keys[0] = NS::Curve::Key{0.0f, 0.7f};
         shape.along.keys[1] = NS::Curve::Key{11.0f, 0.7f};
         shape.height.count = 1;
         shape.height.keys[0] = NS::Curve::Key{0.0f, 1.1f};
-        NS::HitBodyShakeInfo shake;
+        GL::Level::HitBodyShakeInfo shake;
         shake.amplitudePixels = 45.0f;
         shake.flipFrames = 2;
-        NS::HitBodyTremorInfo tremor;
+        GL::Level::HitBodyTremorInfo tremor;
         tremor.amplitudePixels = 1.5f;
         tremor.radiusRatio = 0.2f;
         GL::Level::HitCameraSinkInfo sink;
@@ -604,7 +605,7 @@ TEST(HitReactionStart, TheStopHoldsStateAndBodyButNotTheDirectors)
 {
     NS::HitFlashInfo flash;
     flash.alpha = 1.0f;
-    NS::HitBodyShakeInfo shake;
+    GL::Level::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 3, {{flash, 6}, {shake, 6}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -692,9 +693,9 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
     zoom.zoom = 1.1f;
     zoom.rollDegrees = 3.0f;
     zoom.returnFrames = 1;
-    NS::HitBodyShakeInfo shake;
+    GL::Level::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
-    NS::HitBodyTremorInfo tremor;
+    GL::Level::HitBodyTremorInfo tremor;
     NS::HitDistortionRingInfo ring;
     ring.radius = ConstantCurve(0.2f);
     ring.push = ConstantCurve(0.1f);
@@ -722,7 +723,8 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         EXPECT_EQ(probes.scene.GetSceneRenderer()->DistortionRingShown().center, contact);
         probes.Step();
         EXPECT_LT(probes.self->ModelClassObj()->GetDrawOffset().x * side, 0.0f);
-        const NS::Vector3 offset = probes.self->ModelClassObj()->GetDrawTremor().contactOffset;
+        const NS::Vector3 offset =
+            GL::Level::BodyTremor::FromDrawValues(probes.self->ModelClassObj()->DrawValues()).contactOffset;
         EXPECT_NEAR((offset - (contact - probes.self->Root().Position())).Length(), 0.0f, 1.0e-5f);
     }
 }
@@ -783,7 +785,7 @@ TEST(HitReactionStart, DirectionWeightsBlendTheTwoNeighborsByAngle)
 // 束を始めた後に止めの残りを上書きすると、止めの長さだけが替わり、揺れの長さは束のまま
 TEST(HitReactionStart, OverridingTheStopChangesOnlyTheStop)
 {
-    NS::HitBodyShakeInfo shake;
+    GL::Level::HitBodyShakeInfo shake;
     shake.amplitudePixels = 20.0f;
     ProbeScene probes({SetOf("Hit", 2, {{shake, 2}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -869,7 +871,7 @@ TEST(HitReactionStart, TraumaStacksOnTheNextSet)
 // 持ち主が書いた倍率に掛かり、止めの間も進む
 TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
 {
-    NS::HitShapeInfo shape;
+    GL::Level::HitShapeInfo shape;
     shape.along = ConstantCurve(0.8f);
     shape.height.count = 2;
     shape.height.keys[0] = NS::Curve::Key{0.0f, 2.0f};
@@ -910,7 +912,7 @@ TEST(HitReactionStart, TheShapeFollowsItsCurvesForItsLength)
 // 形を止めると、描く倍率は持ち主の書いた倍率へその場で戻る
 TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
 {
-    NS::HitShapeInfo shape;
+    GL::Level::HitShapeInfo shape;
     shape.height = ConstantCurve(2.0f);
     ProbeScene probes({SetOf("Hit", 0, {{shape, 10}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
@@ -918,7 +920,7 @@ TEST(HitReactionStart, StoppingTheShapeRestoresTheDrawScale)
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     probes.Step();
     ASSERT_FLOAT_EQ(model.GetDrawScale().y, 2.0f);
-    model.StopDrawShape();
+    probes.self->HitReactionClassObj()->StopRuns(NS::HitReactionSelf{.actor = probes.self, .model = &model});
     EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
     probes.Step();
     EXPECT_TRUE(model.GetDrawScale() == (NS::Vector3{1.0f, 1.0f, 1.0f}));
@@ -1168,7 +1170,10 @@ namespace
     class ProbeRun final : public NS::HitReactionRun
     {
     public:
-        ProbeRun(RunLog* log, int length) noexcept : m_log(log), m_length(length) {}
+        ProbeRun(RunLog* log, int length, const void* kind = nullptr) noexcept
+            : m_log(log), m_length(length), m_kind(kind)
+        {
+        }
 
         bool Advance(const NS::HitReactionSelf& owner) override
         {
@@ -1182,11 +1187,16 @@ namespace
             (void)owner;
             ++m_log->stops;
         }
+        const void* Kind() const noexcept override { return m_kind; }
 
     private:
         RunLog* m_log = nullptr;
         int m_length = 0;
+        const void* m_kind = nullptr;
     };
+
+    // 走る物の種類の識別値に使う番地
+    const int k_ProbeKind = 0;
 } // namespace
 
 // 預けた走る物は、持ち主の体を動かした後に毎フレーム進み、偽を返したフレームで止められて外れる
@@ -1220,6 +1230,46 @@ TEST(HitReactionRun, ScaleAndStopReachTheRuns)
     EXPECT_FLOAT_EQ(log.scale, 0.5f);
     reaction->Stop(self);
     EXPECT_EQ(log.stops, 1);
+    probes.Step();
+    EXPECT_EQ(log.advances, 0);
+}
+
+// 同じ種類の識別値の物を預けると、前の物は止めずに外れ、新しい物だけが進む。識別値の無い物は並んで進む
+TEST(HitReactionRun, AddingTheSameKindReplacesTheOlderRunWithoutStoppingIt)
+{
+    ProbeScene probes({}, NS::Vector3{0.0f, 1.0f, 2.0f});
+    ASSERT_NE(probes.self, nullptr);
+    NS::HitReaction* reaction = probes.self->HitReactionClassObj();
+    RunLog older;
+    RunLog newer;
+    RunLog plainA;
+    RunLog plainB;
+    reaction->AddRun(std::make_unique<ProbeRun>(&older, 10, &k_ProbeKind));
+    reaction->AddRun(std::make_unique<ProbeRun>(&plainA, 10));
+    reaction->AddRun(std::make_unique<ProbeRun>(&newer, 10, &k_ProbeKind));
+    reaction->AddRun(std::make_unique<ProbeRun>(&plainB, 10));
+    probes.Step();
+    EXPECT_EQ(older.advances, 0);
+    EXPECT_EQ(older.stops, 0);
+    EXPECT_EQ(newer.advances, 1);
+    EXPECT_EQ(plainA.advances, 1);
+    EXPECT_EQ(plainB.advances, 1);
+}
+
+// 走る物だけを止めると、預けた物は止められて外れ、持ち主へ渡す項目は残る
+TEST(HitReactionRun, StopRunsStopsOnlyTheRuns)
+{
+    NS::HitOwnerInfo owner;
+    owner.name = "Owner";
+    ProbeScene probes({SetOf("Hit", 0, {{owner, 5}})}, NS::Vector3{0.0f, 1.0f, 2.0f});
+    ASSERT_NE(probes.self, nullptr);
+    NS::HitReaction* reaction = probes.self->HitReactionClassObj();
+    ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
+    RunLog log;
+    reaction->AddRun(std::make_unique<ProbeRun>(&log, 10));
+    reaction->StopRuns(NS::HitReactionSelf{.actor = probes.self, .model = probes.self->ModelClassObj()});
+    EXPECT_EQ(log.stops, 1);
+    EXPECT_EQ(reaction->OwnerRuns().size(), 1u);
     probes.Step();
     EXPECT_EQ(log.advances, 0);
 }

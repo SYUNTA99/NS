@@ -5,11 +5,11 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include <algorithm>
+#include <bit>
 #include <cmath>
 
 namespace
@@ -137,103 +137,6 @@ namespace NS
         }
         m_drawShapeScale = scale;
         return true;
-    }
-
-    void Model::StartDrawShake(const DrawShakeDesc& desc) noexcept
-    {
-        m_shake = ShakeRun{.desc = desc, .frame = 0, .active = true};
-    }
-
-    void Model::StopDrawShake() noexcept
-    {
-        m_shake.active = false;
-        m_drawOffset = Vector3{0.0f, 0.0f, 0.0f};
-    }
-
-    void Model::StartDrawShape(const DrawShapeDesc& desc) noexcept
-    {
-        m_shape = ShapeRun{.desc = desc, .frame = -1, .active = true};
-    }
-
-    void Model::StopDrawShape() noexcept
-    {
-        m_shape.active = false;
-        m_drawShapeScale = k_NoDrawScale;
-    }
-
-    void Model::StartDrawTremor(const DrawTremorDesc& desc) noexcept
-    {
-        m_tremor = TremorRun{.desc = desc, .elapsed = -1, .active = true};
-    }
-
-    void Model::StopDrawTremor() noexcept
-    {
-        m_tremor.active = false;
-        m_drawTremor = Gfx::TremorCB{};
-    }
-
-    void Model::ScaleDrawShaking(float scale) noexcept
-    {
-        m_shake.desc.amplitude *= scale;
-        m_tremor.desc.amplitudePixels *= scale;
-        m_tremor.desc.amplitudeRatio *= scale;
-    }
-
-    void Model::AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition)
-    {
-        NS_ASSERT(Scene, camera != nullptr, "Model::AdvanceDraw: カメラの窓口が null");
-        if (m_shake.active)
-        {
-            ++m_shake.frame;
-            const Vector3 offset = m_shake.desc.OffsetAt(m_shake.frame);
-            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
-            if (IsFinite(offset))
-            {
-                m_drawOffset = offset;
-            }
-            // 奥揺れは長さのフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
-            if (m_shake.frame > m_shake.desc.length)
-            {
-                m_shake.active = false;
-            }
-        }
-        if (m_shape.active)
-        {
-            ++m_shape.frame;
-            if (m_shape.frame >= m_shape.desc.length)
-            {
-                StopDrawShape();
-            }
-            else
-            {
-                const Vector3 scale = m_shape.desc.ScaleAt(m_shape.frame);
-                // 有限の正でない倍率は描く形を消すので控えず、前の倍率のまま描く
-                if (IsPositiveFiniteScale(scale))
-                {
-                    m_drawShapeScale = scale;
-                }
-            }
-        }
-        if (m_tremor.active)
-        {
-            ++m_tremor.elapsed;
-            Gfx::TremorCB tremor{};
-            // 振れ幅はカメラとの距離で決まる
-            const std::optional<CameraPose> pose = GetCameraViewPose(camera);
-            if (pose.has_value())
-            {
-                tremor = MakeTremor(m_tremor.desc, m_tremor.elapsed, rootPosition, *pose);
-            }
-            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
-            if (IsFiniteTremor(tremor))
-            {
-                m_drawTremor = tremor;
-            }
-            if (m_tremor.elapsed >= m_tremor.desc.length)
-            {
-                m_tremor.active = false;
-            }
-        }
     }
 
     bool Model::SetLocalScale(const Vector3& scale) noexcept
@@ -434,7 +337,7 @@ namespace NS
         item.constants.groundWaveCenterZ = context.groundWave.centerZ;
         item.constants.groundWaveRadius = context.groundWave.radius;
         item.constants.groundWaveStrength = context.groundWave.strength;
-        item.constants.tremor = m_drawTremor;
+        item.constants.tremor = std::bit_cast<Gfx::TremorCB>(m_drawValues);
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;

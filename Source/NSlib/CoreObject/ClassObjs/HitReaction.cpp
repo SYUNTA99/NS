@@ -5,7 +5,6 @@
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
@@ -181,72 +180,6 @@ namespace NS
             return context;
         }
     } // namespace
-
-    void HitShapeInfo::Start(const HitReactionStart& start) const
-    {
-        Model* model = start.owner.model;
-        if (model == nullptr || start.length <= 0)
-        {
-            return;
-        }
-        // 向きが決まらない時は水平の倍率を掛けず、高さだけを変える
-        Vector3 alongDirection{};
-        if (start.hasToward)
-        {
-            alongDirection = start.towardOther;
-        }
-        model->StartDrawShape(DrawShapeDesc{.along = along,
-                                            .height = height,
-                                            .side = side,
-                                            .alongDirection = alongDirection,
-                                            .length = start.length});
-    }
-
-    void HitBodyShakeInfo::Start(const HitReactionStart& start) const
-    {
-        const SceneActor* actor = start.owner.actor;
-        Model* model = start.owner.model;
-        if (model == nullptr || start.length <= 0 || !std::isfinite(amplitudePixels))
-        {
-            return;
-        }
-        const std::optional<CameraPose> pose = GetCameraViewPose(actor);
-        if (!pose.has_value())
-        {
-            return;
-        }
-        // 画面の横を床に沿わせた向きで揺らし、最初は相手と逆の側へ振る。正面の相手は右から
-        float firstSign = 1.0f;
-        if (HasPositiveMagnitude(Dot(start.toOther, start.cameraRight)))
-        {
-            firstSign = -1.0f;
-        }
-        model->StartDrawShake(
-            DrawShakeDesc{.shape = DrawShakeShape::Side,
-                          .axis = start.cameraRight,
-                          .amplitude = ScreenPixelsToMeters(amplitudePixels, *pose, actor->Root().Position()),
-                          .length = start.length,
-                          .seed = start.seed,
-                          .firstSign = firstSign,
-                          .flipFrames = flipFrames});
-    }
-
-    void HitBodyTremorInfo::Start(const HitReactionStart& start) const
-    {
-        Model* model = start.owner.model;
-        if (model == nullptr || start.length <= 0)
-        {
-            return;
-        }
-        // 裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
-        model->StartDrawTremor(DrawTremorDesc{.contactOffset = start.position - start.owner.actor->Root().Position(),
-                                              .amplitudePixels = amplitudePixels,
-                                              .amplitudeRatio = radiusRatio,
-                                              .reachFrames = std::min(reachFrames, start.length / 2),
-                                              .length = start.length,
-                                              .referenceHeight = referenceHeight,
-                                              .bodyLength = start.bodyLength});
-    }
 
     void HitCameraTraumaInfo::Start(const HitReactionStart& start) const
     {
@@ -638,10 +571,6 @@ namespace NS
         {
             rumble->Scale(owner.actor, scale);
         }
-        if (owner.model != nullptr)
-        {
-            owner.model->ScaleDrawShaking(scale);
-        }
         for (const std::unique_ptr<HitReactionRun>& run : m_runs)
         {
             run->Scale(scale);
@@ -665,6 +594,11 @@ namespace NS
             cameras->RemoveModifiersOfExcept(owner.actor, CameraTraumaModifier::StaticKind());
         }
         m_ownerRuns.clear();
+        StopRuns(owner);
+    }
+
+    void HitReaction::StopRuns(const HitReactionSelf& owner) noexcept
+    {
         for (const std::unique_ptr<HitReactionRun>& run : m_runs)
         {
             run->Stop(owner);
@@ -674,10 +608,17 @@ namespace NS
 
     void HitReaction::AddRun(std::unique_ptr<HitReactionRun> run)
     {
-        if (run != nullptr)
+        if (run == nullptr)
         {
-            m_runs.push_back(std::move(run));
+            return;
         }
+        // 前の物を止めると、当たりを体の後に受けたフレームだけ見た目が元へ戻って描かれる。止めずに新しい物に書き直させる
+        if (const void* kind = run->Kind(); kind != nullptr)
+        {
+            std::erase_if(m_runs,
+                          [kind](const std::unique_ptr<HitReactionRun>& added) { return added->Kind() == kind; });
+        }
+        m_runs.push_back(std::move(run));
     }
 
     void HitReaction::AdvanceRuns(const HitReactionSelf& owner)
@@ -798,9 +739,6 @@ namespace NS
                 ActorFileHitReactions(actorFile), sets, &ParseHitReactionSet, &HitReactionSetToJson, "束"));
     }
 
-    NS_HIT_REACTION_ITEM(HitShapeInfo)
-    NS_HIT_REACTION_ITEM(HitBodyShakeInfo)
-    NS_HIT_REACTION_ITEM(HitBodyTremorInfo)
     NS_HIT_REACTION_ITEM(HitCameraTraumaInfo)
     NS_HIT_REACTION_ITEM(HitFlashInfo)
     NS_HIT_REACTION_ITEM(HitDistortionRingInfo)

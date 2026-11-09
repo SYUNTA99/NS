@@ -1,12 +1,17 @@
 #include "Game/Level/HitReactionItems.h"
 
+#include "Game/Level/BodyShake.h"
 #include "Game/Level/CameraHitModifiers.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
+#include <cmath>
+#include <memory>
+#include <optional>
 
 namespace GL
 {
@@ -33,6 +38,70 @@ namespace GL
                 }
             }
         } // namespace
+
+        void HitShapeInfo::Start(const NS::HitReactionStart& start) const
+        {
+            if (start.owner.model == nullptr || start.length <= 0)
+            {
+                return;
+            }
+            // 向きが決まらない時は水平の倍率を掛けず、高さだけを変える
+            NS::Vector3 alongDirection{};
+            if (start.hasToward)
+            {
+                alongDirection = start.towardOther;
+            }
+            start.reaction->AddRun(std::make_unique<BodyShapeRun>(BodyShapeDesc{.along = along,
+                                                                                .height = height,
+                                                                                .side = side,
+                                                                                .alongDirection = alongDirection,
+                                                                                .length = start.length}));
+        }
+
+        void HitBodyShakeInfo::Start(const NS::HitReactionStart& start) const
+        {
+            const NS::SceneActor* actor = start.owner.actor;
+            if (start.owner.model == nullptr || start.length <= 0 || !std::isfinite(amplitudePixels))
+            {
+                return;
+            }
+            const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(actor);
+            if (!pose.has_value())
+            {
+                return;
+            }
+            // 画面の横を床に沿わせた向きで揺らし、最初は相手と逆の側へ振る。正面の相手は右から
+            float firstSign = 1.0f;
+            if (NS::HasPositiveMagnitude(NS::Dot(start.toOther, start.cameraRight)))
+            {
+                firstSign = -1.0f;
+            }
+            start.reaction->AddRun(std::make_unique<BodyShakeRun>(
+                BodyShakeDesc{.axis = start.cameraRight,
+                              .amplitude = NS::ScreenPixelsToMeters(amplitudePixels, *pose, actor->Root().Position()),
+                              .length = start.length,
+                              .seed = start.seed,
+                              .firstSign = firstSign,
+                              .flipFrames = flipFrames,
+                              .amplitudeSpread = amplitudeSpread}));
+        }
+
+        void HitBodyTremorInfo::Start(const NS::HitReactionStart& start) const
+        {
+            if (start.owner.model == nullptr || start.length <= 0)
+            {
+                return;
+            }
+            // 裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
+            start.reaction->AddRun(std::make_unique<BodyTremorRun>(
+                BodyTremorDesc{.contactOffset = start.position - start.owner.actor->Root().Position(),
+                               .amplitudePixels = amplitudePixels,
+                               .amplitudeRatio = radiusRatio,
+                               .reachFrames = std::min(reachFrames, start.length / 2),
+                               .length = start.length,
+                               .referenceHeight = referenceHeight,
+                               .bodyLength = start.bodyLength}));
+        }
 
         void HitCameraSinkInfo::Start(const NS::HitReactionStart& start) const
         {
@@ -132,6 +201,9 @@ namespace GL
             }
         }
 
+        NS_HIT_REACTION_ITEM(HitShapeInfo)
+        NS_HIT_REACTION_ITEM(HitBodyShakeInfo)
+        NS_HIT_REACTION_ITEM(HitBodyTremorInfo)
         NS_HIT_REACTION_ITEM(HitCameraSinkInfo)
         NS_HIT_REACTION_ITEM(HitCameraSinkReleaseInfo)
         NS_HIT_REACTION_ITEM(HitZoomRollInfo)

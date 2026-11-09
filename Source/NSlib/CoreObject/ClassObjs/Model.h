@@ -4,7 +4,6 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/D3DShader.h"
@@ -35,7 +34,6 @@ namespace NS
     {
         class D3DBuffer;
     }
-    class IGetCamera;
 } // namespace NS
 
 namespace NS
@@ -117,50 +115,29 @@ namespace NS
         [[nodiscard]] const Vector3& LocalScale() const noexcept { return m_localScale; }
 
         //! 形の下端中央を中心に世界の軸で掛ける、描く時だけの倍率を書く。固定更新の間を補間する
-        //! 形の再生 (StartDrawShape) の間は、その倍率を掛けて描く
+        //! SetDrawShapeScale で書いた倍率も掛けて描く
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawScale(const Vector3& scale) noexcept;
         //! 描く時だけの倍率を、補間せずに切り替える
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         bool SnapDrawScale(const Vector3& scale) noexcept;
-        //! 描く形だけの揺れを始める。次の AdvanceDraw を 1 フレーム目に数える
-        void StartDrawShake(const DrawShakeDesc& desc) noexcept;
-        //! 揺れを止めて、ずれを 0 に戻す
-        void StopDrawShake() noexcept;
-        //! 描く倍率の曲線の再生を始める。前の再生が残っていても始め直す
-        //! 次の AdvanceDraw を 0 フレーム目に数え、長さのフレームで元の倍率へ戻す
-        void StartDrawShape(const DrawShapeDesc& desc) noexcept;
-        //! 形の再生を止めて、描く倍率を SetDrawScale で書いた倍率へ戻す
-        void StopDrawShape() noexcept;
-        //! 形の再生の途中の場合 true。StartDrawShape から、長さを過ぎた AdvanceDraw か StopDrawShape までの間
-        [[nodiscard]] bool IsDrawingShape() const noexcept { return m_shape.active; }
-        //! 頂点の震えを始める。次の AdvanceDraw を 0 フレーム目に数え、AdvanceDraw が受けるカメラの視点で振れ幅を決める
-        void StartDrawTremor(const DrawTremorDesc& desc) noexcept;
-        //! 震えを止めて、振れ幅を 0 に戻す
-        void StopDrawTremor() noexcept;
-        //! 走っている揺れと震えの振れ幅に scale を掛ける。次の AdvanceDraw から効く
-        void ScaleDrawShaking(float scale) noexcept;
-        //! 揺れ・形の再生・震えを 1 フレーム進める
-        //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
-        //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める
-        void AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition);
         //! 描く姿勢へ足す世界のずれ (m) を書く。補間しない。当たりの見た目の走る物が毎フレーム書く
         //! @return 全成分が有限の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawOffset(const Vector3& offset) noexcept;
-        //! SetDrawScale の倍率に掛ける、形の再生の倍率を書く。描く倍率は 2 つの積
+        //! SetDrawScale の倍率に掛ける、当たりの見た目の形の倍率を書く。補間する。描く倍率は 2 つの積
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawShapeScale(const Vector3& scale) noexcept;
         //! シェーダへ渡す、名前の無い物ごとの 4 つの値を書く。補間しない
-        //! 意味は値を書く走る物と、シェーダの口のファイルが決める
+        //! 意味は値を書く走る物と、シェーダの口のファイルが決める。
+        //! 今は頂点シェーダーの震えの欄 (Gfx::TremorCB) に並べて渡す
         void SetDrawValues(const std::array<Vector4, 4>& values) noexcept { m_drawValues = values; }
         //! SetDrawValues で書いた値。書かれていなければ全部 0
         [[nodiscard]] const std::array<Vector4, 4>& DrawValues() const noexcept { return m_drawValues; }
         //! 描く姿勢へ足す世界のずれ (m)。補間しない
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
-        //! 今の固定フレームの描く時だけの倍率。SetDrawScale で書いた倍率と形の再生の倍率の積で、どちらも無ければ (1, 1, 1)
+        //! 今の固定フレームの描く時だけの倍率。SetDrawScale と SetDrawShapeScale で書いた倍率の積。
+        //! どちらも無ければ (1, 1, 1)
         [[nodiscard]] Vector3 GetDrawScale() const noexcept { return m_drawScale * m_drawShapeScale; }
-        //! 頂点シェーダーへ渡す震え。補間しない
-        [[nodiscard]] const Gfx::TremorCB& GetDrawTremor() const noexcept { return m_drawTremor; }
 
         //! 局所回転と描画倍率を補間した描画姿勢を返す。世界座標のずれは補間後に足す
         //! 描画倍率は形の下端中央を中心に世界の軸で掛ける。境界がなければ根を中心にする
@@ -258,36 +235,10 @@ namespace NS
         // 描く時だけの姿勢。根の Transform と当たりには効かず、保存しない
         Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};      // SetDrawScale で書いた倍率
-        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // 形の再生の倍率。書くのは形の再生と SetDrawShapeScale
+        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // SetDrawShapeScale で書いた倍率
         // 補間の始点。GetDrawScale の積を、固定更新の頭と SnapDrawScale で控える
         Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f};
-        Gfx::TremorCB m_drawTremor{};
         std::array<Vector4, 4> m_drawValues{}; // シェーダへ渡す名前の無い物ごとの値
-
-        // 揺れ。始めた後の最初の AdvanceDraw を 1 フレーム目に数える
-        struct ShakeRun
-        {
-            DrawShakeDesc desc{};
-            int frame = 0;
-            bool active = false;
-        };
-        ShakeRun m_shake;
-        // 形の再生。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
-        struct ShapeRun
-        {
-            DrawShapeDesc desc{};
-            int frame = -1;
-            bool active = false;
-        };
-        ShapeRun m_shape;
-        // 震え。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
-        struct TremorRun
-        {
-            DrawTremorDesc desc{};
-            int elapsed = -1;
-            bool active = false;
-        };
-        TremorRun m_tremor;
     };
 #pragma warning(pop)
 } // namespace NS

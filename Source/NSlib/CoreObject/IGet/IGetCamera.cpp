@@ -3,6 +3,8 @@
 
 #include "NSlib/CoreObject/System/CameraManager.h"
 
+#include <cmath>
+
 namespace NS
 {
     bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier)
@@ -64,6 +66,26 @@ namespace NS
             return std::nullopt;
         }
         return cameras->ViewPose();
+    }
+
+    float ScreenPixelsToMeters(float pixels, const CameraPose& pose, const Vector3& at, float referenceHeight) noexcept
+    {
+        if (!std::isfinite(referenceHeight) || referenceHeight <= 0.0f)
+        {
+            return 0.0f;
+        }
+        Vector3 forward = pose.target - pose.position;
+        if (!HasPositiveMagnitude(forward))
+        {
+            return 0.0f;
+        }
+        forward.Normalize();
+        float depth = Dot(at - pose.position, forward);
+        if (!IsPositive(depth))
+        {
+            depth = (at - pose.position).Length();
+        }
+        return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / referenceHeight;
     }
 
     void InitVirtualCamera(const IGetCamera* user, VirtualCamera* vcam)

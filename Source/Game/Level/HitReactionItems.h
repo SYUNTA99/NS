@@ -13,6 +13,72 @@ namespace GL
 {
     namespace Level
     {
+        //! 持ち主の描く形の倍率。縮み・潰れ・伸びを 1 本の流れで持つ
+        //! 向きの倍率は 2 つのセンサーを結ぶ水平の向きで x と z へ分ける。同じ持ち主の前の形は差し替える
+        struct HitShapeInfo
+        {
+            std::string_view typeName = "Shape"; // ファイルに書く種類の名前
+            std::string_view label = "描く形";   // 窓とインスペクタに出す名前
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            NS::Curve along{};  // 相手へ向かう向きの倍率。元の形が 1
+            NS::Curve height{}; // 高さの倍率。元の形が 1
+            NS::Curve side{};   // 相手へ向かう向きに直角な水平の横の倍率。点が無ければ 1
+
+            NS_REFLECT_BEGIN(HitShapeInfo, void)
+            NS_FIELD(along, "突進の向きの倍率")
+            NS_FIELD(height, "高さの倍率")
+            NS_FIELD(side, "横の倍率")
+            NS_REFLECT_END_VALUE()
+        };
+
+        //! 持ち主の描く形を、床に沿う画面の横方向へ揺らす。最初の振れは相手と逆の側。同じ持ち主の前の揺れは差し替える
+        struct HitBodyShakeInfo
+        {
+            std::string_view typeName = "BodyShake";
+            std::string_view label = "横揺れ";
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            //! 最初の振れ幅。高さ 720 ピクセルの画面の上のピクセル数で持つ
+            //! 始めたフレームに、カメラとの距離からゲームの中の距離を出す
+            float amplitudePixels = 10.0f;
+            int flipFrames = 1;           // 左右を入れ替えるフレーム数。1 未満は 1
+            float amplitudeSpread = 0.3f; // 振れ幅のばらつきの割合。フレームごとに振れ幅へ (1 − これ) 〜 1 を掛ける
+
+            NS_REFLECT_BEGIN(HitBodyShakeInfo, void)
+            NS_FIELD(amplitudePixels, "振れ幅のピクセル")
+            NS_FIELD(flipFrames, "左右を入れ替えるフレーム数")
+            NS_FIELD(amplitudeSpread, "振れ幅のばらつき")
+            NS_REFLECT_END_VALUE()
+        };
+
+        //! 渡した位置から持ち主の体の裏へ震えを伝える。描く形だけを揺らし、当たりと根の位置は動かさない
+        //! 同じ持ち主の前の震えは差し替える
+        struct HitBodyTremorInfo
+        {
+            std::string_view typeName = "BodyTremor";
+            std::string_view label = "衝撃の震え";
+
+            void Start(const NS::HitReactionStart& start) const;
+
+            //! 振れ幅。基準の高さの画面の上のピクセル数で持ち、毎フレームカメラとの距離からゲームの中の距離を出す
+            float amplitudePixels = 3.0f;
+            //! 渡した位置から体の一番遠い所へ届くまでのフレーム数。長さの半分を超える分は使わない
+            int reachFrames = 6;
+            //! 振れ幅の、体の半径に対する割合。正ならピクセルの欄の代わりに使う
+            float radiusRatio = 0.0f;
+            float referenceHeight = 720.0f; // ピクセルの欄を数える画面の高さ
+
+            NS_REFLECT_BEGIN(HitBodyTremorInfo, void)
+            NS_FIELD(amplitudePixels, "振れ幅のピクセル")
+            NS_FIELD(reachFrames, "裏まで届くフレーム数")
+            NS_FIELD(radiusRatio, "体の半径に対する振れ幅の割合")
+            NS_FIELD(referenceHeight, "ピクセルを数える画面の高さ")
+            NS_REFLECT_END_VALUE()
+        };
+
         //! 画面を沈めて震わせる。同じ持ち主の「沈みを戻す」で跳ね返り、戻されなければ長さで終わる
         //! カメラの位置と向きは変えない
         struct HitCameraSinkInfo

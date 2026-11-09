@@ -1,5 +1,6 @@
 #include "Game/Level/LevelMessages.h"
 
+#include "Game/Level/BodyShake.h"
 #include "Game/Level/TackleGhost.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
@@ -53,7 +54,7 @@ namespace GL
         {
             NS_ASSERT(Game, ghost != nullptr, "残像が渡されていない");
             NS_ASSERT(Game, model != nullptr, "残像の元の Model が渡されていない");
-            (void)ghost->SetSpread(axis * NS::BodyShakeReach(frame, stopLength, spread));
+            (void)ghost->SetSpread(axis * BodyShakeReach(frame, stopLength, spread));
             (void)ghost->SetSideOpacity(sideOpacity);
             if (frame == stopLength)
             {

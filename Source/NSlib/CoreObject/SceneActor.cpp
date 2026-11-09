@@ -769,7 +769,6 @@ namespace NS
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
-        if (m_model) { m_model->AdvanceDraw(this, Root().Position()); }
         // clang-format on
         for (const std::unique_ptr<SceneActor>& child : m_children)
         {

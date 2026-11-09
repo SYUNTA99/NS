@@ -33,69 +33,6 @@ namespace NS
     // 向きを使う項目は、束を始める時に渡す 2 つのセンサーの位置から向きを出す。
     // 種類の型は NS_HIT_REACTION_ITEM で登録し、束を始めたフレームに Start が 1 回呼ばれる
 
-    //! 持ち主の描く形の倍率。縮み・潰れ・伸びを 1 本の流れで持つ
-    //! 向きの倍率は 2 つのセンサーを結ぶ水平の向きで x と z へ分ける
-    struct HitShapeInfo
-    {
-        std::string_view typeName = "Shape"; // ファイルに書く種類の名前
-        std::string_view label = "描く形";   // 窓とインスペクタに出す名前
-
-        void Start(const HitReactionStart& start) const;
-
-        Curve along{};  // 相手へ向かう向きの倍率。元の形が 1
-        Curve height{}; // 高さの倍率。元の形が 1
-        Curve side{};   // 相手へ向かう向きに直角な水平の横の倍率。点が無ければ 1
-
-        NS_REFLECT_BEGIN(HitShapeInfo, void)
-        NS_FIELD(along, "突進の向きの倍率")
-        NS_FIELD(height, "高さの倍率")
-        NS_FIELD(side, "横の倍率")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 持ち主の描く形を、床に沿う画面の横方向へ揺らす。最初の振れは相手と逆の側
-    struct HitBodyShakeInfo
-    {
-        std::string_view typeName = "BodyShake";
-        std::string_view label = "横揺れ";
-
-        void Start(const HitReactionStart& start) const;
-
-        //! 最初の振れ幅。高さ 720 ピクセルの画面の上のピクセル数で持つ
-        //! 始めたフレームに、カメラとの距離からゲームの中の距離を出す
-        float amplitudePixels = 10.0f;
-        int flipFrames = 1; // 左右を入れ替えるフレーム数。1 未満は 1
-
-        NS_REFLECT_BEGIN(HitBodyShakeInfo, void)
-        NS_FIELD(amplitudePixels, "振れ幅のピクセル")
-        NS_FIELD(flipFrames, "左右を入れ替えるフレーム数")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置から持ち主の体の裏へ震えを伝える。描く形だけを揺らし、当たりと根の位置は動かさない
-    struct HitBodyTremorInfo
-    {
-        std::string_view typeName = "BodyTremor";
-        std::string_view label = "衝撃の震え";
-
-        void Start(const HitReactionStart& start) const;
-
-        //! 振れ幅。基準の高さの画面の上のピクセル数で持ち、毎フレームカメラとの距離からゲームの中の距離を出す
-        float amplitudePixels = 3.0f;
-        //! 渡した位置から体の一番遠い所へ届くまでのフレーム数。長さの半分を超える分は使わない
-        int reachFrames = 6;
-        //! 振れ幅の、体の半径に対する割合。正ならピクセルの欄の代わりに使う
-        float radiusRatio = 0.0f;
-        float referenceHeight = 720.0f; // ピクセルの欄を数える画面の高さ
-
-        NS_REFLECT_BEGIN(HitBodyTremorInfo, void)
-        NS_FIELD(amplitudePixels, "振れ幅のピクセル")
-        NS_FIELD(reachFrames, "裏まで届くフレーム数")
-        NS_FIELD(radiusRatio, "体の半径に対する振れ幅の割合")
-        NS_FIELD(referenceHeight, "ピクセルを数える画面の高さ")
-        NS_REFLECT_END_VALUE()
-    };
-
     //! カメラのトラウマを足し、相手の側へ一撃を振る。揺れの途中なら前のトラウマに足す
     //! 揺れの長さは項目の長さでなく減る速さで決まる
     struct HitCameraTraumaInfo
@@ -560,11 +497,16 @@ namespace NS
 
         //! 持ち主の Model へ書いた見た目を元へ戻す。呼んだ後に HitReaction が外す
         virtual void Stop(const HitReactionSelf& owner) noexcept = 0;
+
+        //! 同じ種類で差し替える物の識別値。HitReaction::AddRun が、同じ識別値の物を前の物と差し替える
+        //! 前の物は Stop を呼ばずに外すので、識別値を返す物は前の物と同じ見た目を書き、書けないフレームは前の値のまま描かれる
+        //! @return 識別値の番地。nullptr の物は差し替えず、並べて進める
+        [[nodiscard]] virtual const void* Kind() const noexcept { return nullptr; }
     };
 
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
     //! カメラの効果は CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れ・形・震えは持ち主の Model、始めた後も進む見た目は預かった HitReactionRun、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
+    //! 始めた後も進む見た目は預かった HitReactionRun、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
     //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
@@ -606,6 +548,8 @@ namespace NS
         void AdvanceOwnerRuns() noexcept;
 
         //! 始めた後も進む見た目を預かる。nullptr は何もしない
+        //! 同じ識別値 (HitReactionRun::Kind、nullptr 以外) の物が預けてあれば、その物の Stop を呼ばずに外してから足す。
+        //! 同じ種類の見た目は、新しい物が次の Advance で書き直す
         void AddRun(std::unique_ptr<HitReactionRun> run);
 
         //! 預かった見た目を預けた順に 1 フレーム進め、終わった物を外す
@@ -628,10 +572,9 @@ namespace NS
         void StopGroundWave(const SceneActor* owner) noexcept;
 
         //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
-        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅・
-        //! 預かった見た目 (HitReactionRun::Scale)。
-        //! 震えの線・描く形の倍率・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
-        //! @param[in] owner 頼んだ持ち主と、揺れと震えを書いた先
+        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・預かった見た目 (HitReactionRun::Scale)。
+        //! 震えの線・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
+        //! @param[in] owner 頼んだ持ち主
         //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
         void ScaleRunning(const HitReactionSelf& owner, float scale);
 
@@ -640,6 +583,9 @@ namespace NS
         //! トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す
         void Stop(const HitReactionSelf& owner);
+
+        //! 預かった見た目だけを止めて外す。画面の演出・振動・カメラの効果・持ち主へ渡す項目は残す
+        void StopRuns(const HitReactionSelf& owner) noexcept;
 
         //! Stop に加えて、この部品が頼んだカメラの効果をトラウマも含めて全部外す。途中で外れても効果を残さない
         void StopAll(const HitReactionSelf& owner);
