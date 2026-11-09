@@ -126,7 +126,7 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     EXPECT_EQ(NS::ActorActionInfoToJson(*read), doc);
 }
 
-// 当たりの反応の種類 (白い光・自機以外の止め・形・持ち主へ渡す項目) は動作の項目ではないので、動作ごと読まない
+// 当たりの反応の種類 (白い光・持ち主以外の止め・形・持ち主へ渡す項目) は動作の項目ではないので、動作ごと読まない
 TEST(ActorActionInfo, HitReactionItemKindsAreNotActionItems)
 {
     for (const char* type : {"Flash", "OthersStop", "Shape", "Owner"})
