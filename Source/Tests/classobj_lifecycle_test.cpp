@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "TestRegistrations.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -66,8 +67,8 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Scene scene;
     // 地形の部品は模型を描く物に、当たりを物理に入れる。ゴールは模型を描く物に、体のセンサーをセンサーに入れる
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
-    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
+    GL::Level::GoalActor* goal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, parts), (EnabledRegistrations{.renderables = 1, .bodies = 1}));
     EXPECT_EQ(RegisteredWhileAppeared(scene, goal), (EnabledRegistrations{.renderables = 1, .sensors = 1}));
 }
@@ -78,7 +79,7 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     // 描く物は体の Model と影の 2 つ。残像は体の Model の写しなので数に入らない
     EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 2, .worldLines = 1, .sensors = 1}));
 
@@ -91,7 +92,7 @@ TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    NS::LightActor* light = scene.SpawnActor<NS::LightActor>("LightActor");
+    NS::LightActor* light = SpawnFromActorFile<NS::LightActor>(scene, "LightActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, light), EnabledRegistrations{.lights = 1});
     EXPECT_EQ(scene.GetSceneRenderer()->LightCount(), 1u);
 
@@ -109,7 +110,7 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 TEST(ClassObjLifecycle, FollowCameraStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    GL::Level::FollowCameraActor* camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* camera = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor");
     const NS::CameraManager* cameras = scene.GetCameraManager();
     EXPECT_EQ(RegisteredWhileAppeared(scene, camera), EnabledRegistrations{.cameras = 1});
     EXPECT_EQ(cameras->VirtualCameraCount(), 1u);

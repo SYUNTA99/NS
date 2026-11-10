@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "TestSpawn.h"
 #include <filesystem>
 #include <iterator>
 #include <map>
@@ -259,7 +260,7 @@ TEST(ActorFile, SpawnedByTypeGetsActorFile)
     NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f)));
 
     NS::Scene scene;
-    const NS::SceneActor* actor = scene.SpawnActor<PlayerActor>("PlayerActor");
+    const NS::SceneActor* actor = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }

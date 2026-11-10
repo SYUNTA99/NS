@@ -24,6 +24,7 @@
 #include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 #include "TestViewCamera.h"
 
 #include <gtest/gtest.h>
@@ -442,7 +443,7 @@ namespace
         nlohmann::json actorFile = CodeValuesActorFile(k_ProbeName);
         NS::WriteHitReactionSets(actorFile, sets);
         const ScopedActorFile scoped(k_ProbeName, std::move(actorFile));
-        ReactionProbeActor* probe = scene.SpawnActor<ReactionProbeActor>(k_ProbeName);
+        ReactionProbeActor* probe = SpawnFromActorFile<ReactionProbeActor>(scene, k_ProbeName);
         if (probe != nullptr)
         {
             probe->Root().SetPosition(position);

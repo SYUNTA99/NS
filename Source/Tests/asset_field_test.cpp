@@ -349,7 +349,7 @@ TEST(AssetField, EmptyModelLeavesNoSkeleton)
     EXPECT_EQ(field->type, NS::FieldType::Asset);
 
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    PlayerActor* player = SpawnTestAnimatedPlayer(scene);
     ASSERT_NE(player, nullptr);
     NS::Animation* animation = player->AnimationClassObj();
     const NS::Anim::Skeleton skeleton;

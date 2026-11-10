@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -29,6 +30,8 @@ namespace
     // センサーを宣言しない試しの SceneActor。部品の親にだけ使う
     class SensorsOwnerActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(SensorsOwnerActor, NS::SceneActor)
     };
 
     [[nodiscard]] std::size_t ListedCount(const NS::Scene& scene, const NS::HitSensor* sensor)
@@ -69,11 +72,13 @@ namespace
     }
 } // namespace
 
+NS_CLASS(SensorsOwnerActor)
+
 // 作ったセンサーは名前・種類・形・親を持ち、管理クラスへ 1 回だけ入る
 TEST(HitSensorsObj, AddShapeMakesANamedSensorListedOnce)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     NS::HitSensorsObj sensors;
 
@@ -94,7 +99,7 @@ TEST(HitSensorsObj, AddShapeMakesANamedSensorListedOnce)
 TEST(HitSensorsObj, AddFollowMakesANamedSensorThatReadsTheVolume)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     NS::HitSensorsObj sensors;
 
@@ -118,7 +123,7 @@ TEST(HitSensorsObj, AddFollowMakesANamedSensorThatReadsTheVolume)
 TEST(HitSensorsObj, SecondSensorOfTheSameNameIsRefused)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     NS::HitSensorsObj sensors;
     NS::ShapeHitSensor* first = sensors.AddShape(owner, "Body", SensorKind::Area, NS::HitSensorShape::Box);
@@ -139,7 +144,7 @@ TEST(HitSensorsObj, SecondSensorOfTheSameNameIsRefused)
 TEST(HitSensorsObj, EnableDisableAndEndReachEverySensor)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     const std::size_t before = scene.HitSensors().Sensors().size();
     NS::HitSensorsObj sensors;
@@ -250,7 +255,7 @@ TEST(HitSensorsObj, ReloadValuesResetsASensorMissingFromTheFile)
 TEST(HitSensorsObj, WriteValuesKeepsEntriesItDidNotRead)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     NS::HitSensorsObj sensors;
     ASSERT_NE(sensors.AddShape(owner, "Body", SensorKind::Area, NS::HitSensorShape::Sphere), nullptr);
@@ -284,7 +289,7 @@ TEST(HitSensorsObj, ShippedGoalAndDeathZoneKeepTheirSensorSizes)
 TEST(HitSensorsObj, WriteValuesWritesTheSameShapeItReads)
 {
     NS::Scene scene;
-    SensorsOwnerActor* owner = scene.SpawnActor<SensorsOwnerActor>("SensorsOwnerActor");
+    SensorsOwnerActor* owner = SpawnFromActorFile<SensorsOwnerActor>(scene, "SensorsOwnerActor");
     ASSERT_NE(owner, nullptr);
     NS::HitSensorsObj sensors;
     NS::ShapeHitSensor* body = sensors.AddShape(owner, "Body", SensorKind::Area, NS::HitSensorShape::Capsule);

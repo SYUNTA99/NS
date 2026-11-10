@@ -31,6 +31,7 @@
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -722,7 +723,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
     ASSERT_EQ(objects.size(), 2u);
     EXPECT_EQ(objects[1], NS::SceneJsonActors(doc)[1]);
 
-    const NS::SceneActor* added = scene.SpawnActor<GL::Level::GoalActor>("Added");
+    const NS::SceneActor* added = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "Added");
     ASSERT_NE(added, nullptr);
     EXPECT_GT(added->Id(), 7u);
 }
@@ -769,11 +770,35 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
     EXPECT_EQ(NS::ActorJsonId(NS::SceneJsonActors(saved)[0]), 2u);
 }
 
+// テストもゲームと同じく .actor を通して入れる。.actor の値にシーンの上書きを重ね、新しい id を振る
+TEST(SceneActor, SpawnFromActorFileWritesTheSceneOverridesOverTheActorFile)
+{
+    NS::Scene scene;
+    const nlohmann::json overrides = {{"Transform", {{"位置", {1.0f, 2.0f, 3.0f}}}}};
+    const GL::Level::GoalActor* goal =
+        SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "Goal", overrides);
+    ASSERT_NE(goal, nullptr);
+    EXPECT_EQ(goal->ActorFileName(), "GoalActor");
+    EXPECT_FLOAT_EQ(goal->Root().Position().y, 2.0f);
+    EXPECT_NE(goal->Id(), 0u);
+    EXPECT_EQ(scene.Actors().ActorCount(), 1u);
+}
+
+// .actor の無い名前は、シーンを読む時と同じく作らずに ERROR を出す。コードの値だけで作る道は無い
+TEST(SceneActor, SpawnFromActorFileWithoutTheActorFileReportsAnErrorAndMakesNothing)
+{
+    const TestLogCapture log;
+    NS::Scene scene;
+    EXPECT_EQ(SpawnFromActorFile<NS::SceneActor>(scene, "NoSuchActor"), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 1);
+    EXPECT_EQ(scene.Actors().ActorCount(), 0u);
+}
+
 TEST(SceneActor, ActorMadeFromATypeAnswersTheActorFileOfItsClass)
 {
     // 型から作るアクターは、クラスと同じ名前の .actor を敷く
     NS::Scene scene;
-    const NS::SceneActor* spawned = scene.SpawnActor<GL::Level::GoalActor>("Spawned");
+    const NS::SceneActor* spawned = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "Spawned");
     ASSERT_NE(spawned, nullptr);
     EXPECT_EQ(spawned->ActorFileName(), "GoalActor");
     const std::unique_ptr<GL::Level::GoalActor> made = NS::CreateActor<GL::Level::GoalActor>();

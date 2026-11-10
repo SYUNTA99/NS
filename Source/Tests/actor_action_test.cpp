@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -430,7 +431,7 @@ namespace
             nlohmann::json actorFile = CodeValuesActorFile(k_ActionProbeName);
             NS::WriteActorActions(actorFile, actions);
             const ScopedActorFile scoped(k_ActionProbeName, std::move(actorFile));
-            self = scene.SpawnActor<ActionProbeActor>("Self");
+            self = SpawnFromActorFile<ActionProbeActor>(scene, "ActionProbeActor", "Self");
         }
 
         // self の状態を動作の状態へ移す予約をする。次の Step の頭で入る

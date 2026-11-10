@@ -2,9 +2,11 @@
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/IGet/IGetCollision.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -40,6 +42,8 @@ namespace
     }
 } // namespace
 
+NS_CLASS(CollisionProbeActor)
+
 TEST(CollisionWindow, CapsuleOverlapIsFalseOutsideAScene)
 {
     const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
@@ -54,7 +58,7 @@ TEST(CollisionWindow, CapsuleOverlapUsesTheRealShapeOfATurnedBox)
     const NS::Quaternion turn = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, NS::k_Pi / 4.0f);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 0.0f, 0.0f}, turn, NS::Vector3{1.0f, 1.0f, 1.0f}),
                            NS::Phys::k_TerrainObjectLayer);
-    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     // 外接箱の角 (1.414, 1.414) の近くは、回した箱の面から 1 m ほど離れている
     const NS::Phys::Capsule nearTheBoundsCorner{.center = NS::Vector3{1.2f, 0.0f, 1.2f}, .halfHeight = 0.2f, .radius = 0.2f};
     const NS::Phys::Capsule acrossTheFace{.center = NS::Vector3{1.3f, 0.0f, 0.0f}, .halfHeight = 0.2f, .radius = 0.2f};
@@ -70,7 +74,7 @@ TEST(CollisionWindow, CapsuleCastFindsTheFacingWallAndSkipsTheFloorItTouches)
                            NS::Phys::k_TerrainObjectLayer);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, -1.4f, 0.0f}, NS::Quaternion::Identity, NS::Vector3{8.0f, 1.0f, 8.0f}),
                            NS::Phys::k_TerrainObjectLayer);
-    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.4f};
 
     NS::Phys::CapsuleCastHit hit{};
@@ -93,7 +97,7 @@ TEST(CollisionWindow, CapsuleCastAtABoxEdgeReturnsAFaceNormalLikeTheMovingBody)
     // 柱の左の面は x = 0.4、手前の面は z = 3
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{1.4f, 0.0f, 4.0f}, NS::Quaternion::Identity, NS::Vector3{1.0f, 3.0f, 1.0f}),
                            NS::Phys::k_TerrainObjectLayer);
-    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     const NS::Phys::Capsule ball{.center = NS::Vector3{0.0f, 0.0f, 0.0f}, .halfHeight = 0.0f, .radius = 0.65f};
 
     NS::Phys::CapsuleCastHit hit{};
@@ -114,7 +118,7 @@ TEST(CollisionWindow, ColliderAnswersWithItsOwnersPhysicsScene)
     EXPECT_EQ(looseWindow.GetPhysicsScene(), nullptr);
 
     NS::Scene scene;
-    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     const NS::IGetCollision& placedWindow = *placed->collider;
     EXPECT_EQ(placedWindow.GetPhysicsScene(), &scene.Physics());
 }
@@ -127,7 +131,7 @@ TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 
     NS::Scene scene;
-    CollisionProbeActor* placed = scene.SpawnActor<CollisionProbeActor>("CollisionProbeActor");
+    CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     const NS::Vector3 above{0.0f, 2.0f, 0.0f};
     EXPECT_FALSE(HitsDownFrom(scene, above));
     placed->sphere->SyncToPhysics(placed->Root().WorldMatrix(), placed);
