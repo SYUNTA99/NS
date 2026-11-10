@@ -429,6 +429,8 @@ namespace NS
         // clang-format on
         // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
         SnapshotForInterpolation();
+        // 影も出た所の地面を探す。歩の外で出た物は、歩の最後の SyncShadows より先に描かれる
+        UpdateShadowGround();
     }
 
     void SceneActor::OnDisappear() noexcept
@@ -781,6 +783,14 @@ namespace NS
         if (m_hitStopFrames > 0)
         {
             --m_hitStopFrames;
+        }
+    }
+
+    void SceneActor::UpdateShadowGround() noexcept
+    {
+        if (m_shadow && m_scene)
+        {
+            m_shadow->Update(m_scene, Root().Position());
         }
     }
 

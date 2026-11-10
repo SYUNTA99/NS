@@ -118,7 +118,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
-    NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
+    NS::InitDraw(this, m_shadow.get(), &Root());
     m_ghost = CreateChildActor<GL::Level::TackleGhost>();
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);
@@ -461,9 +461,10 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 void PlayerActor::Restart() noexcept
 {
     // 出現位置はカプセル中心の世界座標。コースが始まる前は、シーンに置いた位置のまま
+    // 出ている自機は Appear が前の位置をそろえないので、戻した直後の 1 歩が元の位置から補間されないように前の位置も書く
     if (m_courseStartPosition.has_value())
     {
-        Root().SetPosition(*m_courseStartPosition);
+        Root().Teleport(*m_courseStartPosition);
     }
     ResetState();
     ResetHealth();

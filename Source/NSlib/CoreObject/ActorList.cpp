@@ -259,6 +259,20 @@ namespace NS
         }
     }
 
+    void ActorList::SyncShadows()
+    {
+        for (const std::unique_ptr<SceneActor>& actor : m_actors)
+        {
+            actor->VisitSelfAndDescendants([](SceneActor* current) {
+                // 消えている物の影は描かないので探さない。出す時は基底の OnAppear が探す
+                if (current->IsAppeared())
+                {
+                    current->UpdateShadowGround();
+                }
+            });
+        }
+    }
+
     void ActorList::SnapshotActors()
     {
         for (std::unique_ptr<SceneActor>& obj : m_actors)

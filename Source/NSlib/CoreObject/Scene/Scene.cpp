@@ -403,6 +403,7 @@ namespace NS
         {
             m_actors.SnapshotActors();
             m_actors.SyncCollisions();
+            m_actors.SyncShadows();
             return;
         }
 
@@ -412,6 +413,7 @@ namespace NS
             {
                 m_actors.SnapshotActors();
                 m_actors.SyncCollisions();
+                m_actors.SyncShadows();
                 return;
             }
             // コマ送りは実時間の 1 歩
@@ -436,6 +438,8 @@ namespace NS
         }
         m_actors.EndStep();
         m_actors.RemoveDestroyed();
+        // 影は、動く床・物理・ゲームの流れの瞬間移動まで全部動いた後の地面を探す。歩の途中で出た物もここで探す
+        m_actors.SyncShadows();
         // 歩の途中で CancelStopScene が解いた時は数えない
         if (m_stopSceneSteps > 0)
         {

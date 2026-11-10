@@ -67,6 +67,10 @@ namespace NS
         //! 世界が止まっていて Actor の Update が回らない歩に、編集で動いた当たりを揃える
         void SyncCollisions();
 
+        //! 出ていて影を持つ Actor に、根の真下の地面の高さを探させる
+        //! Scene が歩ごとに 1 回、アクター・物理・ゲームの流れが全部動いた後に呼ぶ。世界を止めている歩も呼ぶ
+        void SyncShadows();
+
         //! 全アクターの補間の前の値を控える。根の Transform と Model の previous を current へ揃える
         void SnapshotActors();
 

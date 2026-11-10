@@ -1,7 +1,6 @@
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
 #include "NSlib/Core/Assert.h"
 
-#include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 
 namespace NS
@@ -15,13 +14,6 @@ namespace NS
         {
             renderer->RegisterRenderable(renderable, root);
         }
-    }
-
-    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root, const IGetCollision* collision)
-    {
-        NS_ASSERT(Scene, shadow != nullptr, "InitDraw: 影が null");
-        shadow->UseCollision(collision);
-        InitDraw(user, static_cast<IRenderable*>(shadow), root);
     }
 
     void ShowModel(const IGetRenderer* user, const IRenderable* renderable) noexcept

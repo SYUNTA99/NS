@@ -5,10 +5,8 @@ namespace NS
     class DirectionalLight;
     class IOverlay;
     class IRenderable;
-    class IGetCollision;
     class Model;
     class SceneRenderer;
-    class Shadow;
     class Transform;
 
     //! 所属シーンの描く物の管理クラスを取得するインターフェース
@@ -29,9 +27,6 @@ namespace NS
     //! 描く物 renderable を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
     //! renderable と root は EndDraw まで生きていること
     void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root);
-    //! 影を入れる。collision は影が描くたびに真下の地面を探すシーンで、影が持つ
-    //! collision も EndDraw まで生きていること
-    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root, const IGetCollision* collision);
 
     //! 入れた描く物を描き始める。入れていない物は何もしない
     void ShowModel(const IGetRenderer* user, const IRenderable* renderable) noexcept;

@@ -372,6 +372,8 @@ namespace NS
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
+        //! 影があれば、根の真下の地面の高さを探させる。ActorList::SyncShadows と基底の OnAppear が呼ぶ。シーンに居なければ何もしない
+        void UpdateShadowGround() noexcept;
         void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         // member を指すアクターの表の行。表に無ければ nullptr

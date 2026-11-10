@@ -1,6 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/IRenderable.h"
@@ -96,15 +97,11 @@ namespace NS
         }
 
         //! 根の行列の前に掛ける描画用の局所回転。固定更新間を補間する
-        void SetLocalRotation(const Quaternion& rotation) noexcept { m_localRotation = rotation; }
+        void SetLocalRotation(const Quaternion& rotation) noexcept { m_localRotation.Set(rotation); }
         //! 補間せずに局所回転を切り替える
-        void SnapLocalRotation(const Quaternion& rotation) noexcept
-        {
-            m_localRotation = rotation;
-            m_previousLocalRotation = rotation;
-        }
+        void SnapLocalRotation(const Quaternion& rotation) noexcept { m_localRotation.Teleport(rotation); }
         //! 今のフレームの局所の回転を返す。書かれていなければ単位回転
-        [[nodiscard]] const Quaternion& LocalRotation() const noexcept { return m_localRotation; }
+        [[nodiscard]] const Quaternion& LocalRotation() const noexcept { return m_localRotation.Current(); }
 
         //! 形の原点を中心に、局所の回転より先に掛ける倍率を設定する。補間しない
         //! 差したメッシュの大きさを合わせる倍率で、根の倍率と描く倍率とは別に掛かる
@@ -136,7 +133,7 @@ namespace NS
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
         //! 今の固定フレームの描く時だけの倍率。SetDrawScale と SetDrawShapeScale で書いた倍率の積。
         //! どちらも無ければ (1, 1, 1)
-        [[nodiscard]] Vector3 GetDrawScale() const noexcept { return m_drawScale * m_drawShapeScale; }
+        [[nodiscard]] const Vector3& GetDrawScale() const noexcept { return m_shownDrawScale.Current(); }
 
         //! 局所回転と描画倍率を補間した描画姿勢を返す。世界座標のずれは補間後に足す
         //! 描画倍率は形の下端中央を中心に世界の軸で掛ける。境界がなければ根を中心にする
@@ -225,8 +222,7 @@ namespace NS
         bool m_hasLocalBoundsOverride = false;
 
         // 描く時だけの局所の回転。同居する部品が毎フレーム書き直すので保存しない
-        Quaternion m_localRotation = Quaternion::Identity;
-        Quaternion m_previousLocalRotation = Quaternion::Identity; // 前のフレームの値。補間の始点
+        Interpolated<Quaternion> m_localRotation{Quaternion::Identity};
 
         // 差したメッシュに合わせる局所の倍率。メッシュを差す部品が書くので保存しない
         Vector3 m_localScale{1.0f, 1.0f, 1.0f};
@@ -235,8 +231,8 @@ namespace NS
         Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};      // SetDrawScale で書いた倍率
         Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // SetDrawShapeScale で書いた倍率
-        // 補間の始点。GetDrawScale の積を、固定更新の頭と SnapDrawScale で控える
-        Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f};
+        // 描く倍率 (2 つの倍率の積) の前と今。倍率を書くたびに今の値を積で書き直す
+        Interpolated<Vector3> m_shownDrawScale{Vector3{1.0f, 1.0f, 1.0f}};
         std::array<Vector4, 4> m_drawValues{}; // シェーダへ渡す名前の無い物ごとの値
     };
 #pragma warning(pop)

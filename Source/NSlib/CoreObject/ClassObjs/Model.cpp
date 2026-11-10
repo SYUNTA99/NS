@@ -94,8 +94,8 @@ namespace NS
 
     void Model::Snapshot() noexcept
     {
-        m_previousLocalRotation = m_localRotation;
-        m_previousDrawScale = GetDrawScale();
+        m_localRotation.Snapshot();
+        m_shownDrawScale.Snapshot();
     }
 
     bool Model::SetDrawScale(const Vector3& scale) noexcept
@@ -105,6 +105,7 @@ namespace NS
             return false;
         }
         m_drawScale = scale;
+        m_shownDrawScale.Set(m_drawScale * m_drawShapeScale);
         return true;
     }
 
@@ -114,7 +115,7 @@ namespace NS
         {
             return false;
         }
-        m_previousDrawScale = GetDrawScale();
+        m_shownDrawScale.Teleport(GetDrawScale());
         return true;
     }
 
@@ -135,6 +136,7 @@ namespace NS
             return false;
         }
         m_drawShapeScale = scale;
+        m_shownDrawScale.Set(m_drawScale * m_drawShapeScale);
         return true;
     }
 
@@ -164,7 +166,7 @@ namespace NS
 
     Matrix Model::DrawWorldMatrixWithOffset(const Matrix& root, float alpha, const Vector3& offset) const noexcept
     {
-        const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
+        const Quaternion local = m_localRotation.Lerp(alpha);
         const Matrix localMatrix = WithLocalScale(m_localScale, Matrix::CreateFromQuaternion(local));
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
         Matrix drawn = localMatrix * root;
@@ -176,7 +178,7 @@ namespace NS
         {
             shift = Matrix::CreateTranslation(offset);
         }
-        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, GetDrawScale(), alpha);
+        const Vector3 scale = m_shownDrawScale.Lerp(alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -384,7 +386,7 @@ namespace NS
         DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, source.root));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const Vector3 scale = Vector3::Max(m_previousDrawScale, GetDrawScale());
+        const Vector3 scale = Vector3::Max(m_shownDrawScale.Previous(), GetDrawScale());
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;

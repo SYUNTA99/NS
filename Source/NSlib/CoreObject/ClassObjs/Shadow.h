@@ -6,6 +6,7 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 
+#include <optional>
 #include <vector>
 
 namespace NS
@@ -16,16 +17,21 @@ namespace NS
 namespace NS
 {
     //! 真下の地形へ丸影を描く。地面がなければ描かず、高さに応じて薄く小さくする
-    //! 位置は描画時に衝突へ問い合わせ、過去の命中位置を保持しない
+    //! 地面の高さは歩ごとの Update で探して持ち、描く時は当たりを調べない
     class Shadow : public Object, public IRenderable
     {
     public:
         //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
         Shadow();
 
-        //! 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
-        //! collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
-        void UseCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
+        //! origin の真下 maxDrop 以内の地面の高さを collision で探して持つ。歩ごとに ActorList::SyncShadows が呼ぶ
+        void Update(const IGetCollision* collision, const Vector3& origin) noexcept;
+        //! 前の Update で真下に地面が見つかったか
+        [[nodiscard]] bool HasGround() const noexcept { return m_hasGround; }
+        //! 前の Update で探した地面のワールドの高さ (m)。地面が無ければ 0
+        [[nodiscard]] float GroundHeight() const noexcept { return m_groundY; }
+        //! 根の位置 origin の真下の、前の Update で探した地面の高さに影の板を置く行列。地面が無いか薄くて見えなければ無し
+        [[nodiscard]] std::optional<Matrix> DrawWorldMatrix(const Vector3& origin) const noexcept;
 
         //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / リソース未設定なら何も積まない
         void Collect(const Gfx::RenderContext& context,
@@ -60,6 +66,16 @@ namespace NS
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
-        const IGetCollision* m_collision = nullptr; // 真下の地面を探すシーン (非所有)
+        //! 影の板 1 枚の置き場所と濃さ
+        struct Plane
+        {
+            Matrix world = Matrix::Identity;
+            float opacity = 0.0f;
+        };
+        //! 根の位置 origin の真下に置く板。濃さは origin と地面の高さの差で決める。地面が無いか薄くて見えなければ無し
+        [[nodiscard]] std::optional<Plane> PlaneAt(const Vector3& origin) const noexcept;
+
+        float m_groundY = 0.0f;        // 前の Update で探した地面のワールドの高さ。描く時はこの高さに置く。保存しない
+        bool m_hasGround = false;      // 前の Update で地面が見つかったか。保存しない
     };
 } // namespace NS
