@@ -41,8 +41,8 @@ namespace NS
 
         virtual void OnTick() {}
 
-        //! 世界と重ね描きの部品を描いた後の画面へ重ねて描く
-        virtual void OnRenderOverlay(const Gfx::RenderContext& context);
+        //! 世界と、線の部品と白い光を描いた後の画面へ重ねて描く
+        virtual void OnDraw(const Gfx::RenderContext& context);
 
         //! 描く順。小さいほど先に描き、後から描く物が上に重なる
         [[nodiscard]] virtual int DrawOrder() const noexcept { return 0; }

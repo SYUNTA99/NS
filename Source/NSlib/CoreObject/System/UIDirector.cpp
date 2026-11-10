@@ -55,7 +55,7 @@ namespace NS
         }
         for (UIActor* screen : DrawOrdered())
         {
-            screen->OnRenderOverlay(context);
+            screen->OnDraw(context);
         }
     }
 } // namespace NS

@@ -10,7 +10,6 @@ namespace GL
         void WaterActor::OnInit()
         {
             CreateClassObj(m_model);
-            InitDraw(this, m_model.get(), &Root());
             m_model->SetDrawsAfterSky();
             m_model->SetNeverCulled();
         }

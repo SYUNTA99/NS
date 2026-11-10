@@ -42,13 +42,13 @@ TEST(PlayerJudges, UpwardReboundCannotLandOnStaleGroundFlag)
 
 TEST(PlayerJudges, JumpKeepsCoyoteBufferAndRemainingCountBoundaries)
 {
-    EXPECT_TRUE(GL::Player::PlayerJudgeJump::Judge(true, 0.0f, 1, true, 0.0f));
-    EXPECT_TRUE(GL::Player::PlayerJudgeJump::Judge(false, 0.001f, 1, false, 0.001f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, 0.0f, 1, true, 1.0f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1.0f, 0, true, 1.0f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1.0f, -1, true, 1.0f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 0.0f, 1, false, 0.0f));
-    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, std::numeric_limits<float>::quiet_NaN(), 1, true, 0.0f));
+    EXPECT_TRUE(GL::Player::PlayerJudgeJump::Judge(true, 0, 1, true, 0));
+    EXPECT_TRUE(GL::Player::PlayerJudgeJump::Judge(false, 1, 1, false, 1));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, 0, 1, true, 1));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1, 0, true, 1));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 1, -1, true, 1));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(true, 0, 1, false, 0));
+    EXPECT_FALSE(GL::Player::PlayerJudgeJump::Judge(false, -1, 1, true, 0));
 }
 
 TEST(PlayerJudges, LedgeEligibilityPreservesGroundAndUpwardExclusions)

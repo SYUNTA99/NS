@@ -7,6 +7,8 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "TestSpawn.h"
+#include "Tests/TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -66,3 +68,8 @@ namespace
     const ::testing::Environment* const k_ActorFileEnvironment =
         ::testing::AddGlobalTestEnvironment(new ActorFileEnvironment);
 } // namespace
+
+// テストの共通の型の登録
+NS_CLASS(TestEmptyActor)
+NS_CLASS(TestBoxActor)
+NS_CLASS(TestViewCameraHostActor)

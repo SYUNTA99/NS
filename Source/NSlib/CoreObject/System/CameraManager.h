@@ -85,12 +85,26 @@ namespace NS
         //! requester が頼んだモディファイアを全て外す。ほかの物が頼んだ物は残す
         void RemoveModifiersOf(const IGetCamera* requester) noexcept;
 
-        //! requester が頼んだ沈む揺れを跳ね返す。requester の沈みが無ければ何もしない
-        //! 跳ね返りは次に進めたフレームから始まる
-        void ReleaseSink(const IGetCamera* requester) noexcept;
+        //! requester が頼んだモディファイアのうち、種類のタグが keptKind でない物を外す。ほかの物が頼んだ物は残す
+        void RemoveModifiersOfExcept(const IGetCamera* requester, const void* keptKind) noexcept;
 
         //! 積んだモディファイアを全て外す。プレイを終えた後の視点に効果が残らないようにする
         void ClearModifiers() noexcept;
+
+        //! requester が頼んだ、種類のタグが kind のモディファイア。kind の省略時は T::StaticKind、無ければ nullptr
+        //! 書き換えるために引くので const でない管理役から引く
+        template <class T>
+        [[nodiscard]] T* FindModifierOf(const IGetCamera* requester, const void* kind = T::StaticKind()) noexcept
+        {
+            for (const std::unique_ptr<CameraModifier>& modifier : m_modifiers)
+            {
+                if (modifier->Requester() == requester && modifier->Kind() == kind)
+                {
+                    return static_cast<T*>(modifier.get());
+                }
+            }
+            return nullptr;
+        }
 
         //! kind は検索する種類の識別値。省略時は T::StaticKind、未登録なら nullptr
         template <class T> [[nodiscard]] const T* FindModifier(const void* kind = T::StaticKind()) const noexcept
@@ -104,16 +118,6 @@ namespace NS
             }
             return nullptr;
         }
-
-        //! 寄りと傾きを始める。戻しの途中なら新しい倍率と傾きから始め直す
-        //! 寄りと傾きのモディファイアを作って積む補助。傾きの向きは、始めた時のカメラの右と
-        //! rollDirection の内積が負なら上端を左へ、それ以外は右へ倒す
-        //! @param[in] requester 頼んだ物。nullptr は頼んだ物を問わない寄り
-        //! @return 始めた場合 true、壊れた設定で何も変えなかった場合は false
-        bool StartZoomRoll(const CameraZoomRollDesc& desc, const IGetCamera* requester = nullptr);
-
-        //! 今のフレームの寄りと傾き。始めていない時と戻し終えた後は倍率 1・傾き 0
-        [[nodiscard]] CameraZoomRoll ZoomRoll() const noexcept;
 
         //! トラウマを足す。トラウマの揺れが積まれていなければ積む
         //! 揺れの途中なら今のトラウマに足す (上限 1)。続けて当てた時に揺れが重なる。

@@ -15,7 +15,7 @@ namespace GL
         void WalkPlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            player->TickTimers(dt);
+            player->TickTimers();
             const NS::Body& body = player->Body();
             const PlayerParams& params = player->Params();
             const bool hasInput =

@@ -10,7 +10,6 @@ namespace GL
         void RuinDecorationActor::OnInit()
         {
             CreateClassObj(m_model);
-            InitDraw(this, m_model.get(), &Root());
         }
 
         NS_PLACEABLE(RuinDecorationActor, "Ruin decoration")

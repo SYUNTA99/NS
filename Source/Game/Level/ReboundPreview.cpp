@@ -1,8 +1,6 @@
 #include "Game/Level/ReboundPreview.h"
 
-#include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Render/ScreenOverlay.h"
+#include "NSlib/Core/Assert.h"
 
 #include <cmath>
 
@@ -20,7 +18,7 @@ namespace GL
                        std::isfinite(desc.headAngleDegrees);
             }
 
-            // 1 本の矢印の形。長さは世界の m、太さは画面のピクセル
+            // 1 本の矢印の形。長さは世界の m、太さは描画先の高さに対する割合
             struct ArrowLook
             {
                 float length;
@@ -28,81 +26,61 @@ namespace GL
                 NS::Color color;
             };
 
-            // 当たる点から direction へ伸びる矢印の、軸と矢じりの 2 本を足す。カメラの後ろに出る矢印と、
-            // 画面に映った長さが太さより短い矢印 (カメラへまっすぐ向く物) は足さない
+            // 矢じりを開く向き。矢印の向きと世界の上向きに垂直な向きで、矢印が上か下を向く時は世界の X 軸
+            [[nodiscard]] NS::Vector3 HeadSide(const NS::Vector3& direction) noexcept
+            {
+                const NS::Vector3 side = NS::Vector3::Up.Cross(direction);
+                const float length = side.Length();
+                if (!NS::HasPositiveMagnitude(length))
+                {
+                    return NS::Vector3{1.0f, 0.0f, 0.0f};
+                }
+                return side / length;
+            }
+
+            // 当たる点から direction へ伸びる矢印の、軸と矢じりの 2 本を足す
             void AppendArrow(const NS::Vector3& origin,
                              const NS::Vector3& direction,
                              const ArrowLook& look,
-                             const NS::Matrix& viewProjection,
-                             NS::Size2D targetSize,
                              const ReboundPreviewDesc& desc,
-                             std::vector<ReboundArrowLine>& outLines)
+                             std::vector<NS::WorldLine>& outLines)
             {
-                const float width = static_cast<float>(targetSize.width);
-                const float height = static_cast<float>(targetSize.height);
-                NS::Vector2 start{};
-                NS::Vector2 tip{};
-                float startW = 0.0f;
-                float tipW = 0.0f;
-                if (!NS::Gfx::TryProjectToPixels(viewProjection, origin, width, height, start, startW) ||
-                    !NS::Gfx::TryProjectToPixels(
-                        viewProjection, origin + direction * look.length, width, height, tip, tipW))
-                {
-                    return;
-                }
-                const NS::Vector2 shaft = tip - start;
-                const float shaftLength = shaft.Length();
-                if (shaftLength < look.thickness)
-                {
-                    return;
-                }
-                outLines.push_back(ReboundArrowLine{.startX = start.x,
-                                                    .startY = start.y,
-                                                    .endX = tip.x,
-                                                    .endY = tip.y,
-                                                    .thickness = look.thickness,
-                                                    .color = look.color});
+                const NS::Vector3 tip = origin + direction * look.length;
+                outLines.push_back(
+                    NS::WorldLine{.start = origin, .end = tip, .thickness = look.thickness, .color = look.color});
                 // 矢じりは先から軸を戻る向きを、左右へ開いた 2 本
-                const NS::Vector2 back = shaft * (-desc.headLengthRatio);
+                const float headLength = look.length * desc.headLengthRatio;
                 const float open = NS::DegreesToRadians(desc.headAngleDegrees);
+                const NS::Vector3 side = HeadSide(direction);
                 for (const float angle : {open, -open})
                 {
-                    const float c = std::cos(angle);
-                    const float s = std::sin(angle);
-                    const NS::Vector2 head{back.x * c - back.y * s, back.x * s + back.y * c};
-                    outLines.push_back(ReboundArrowLine{.startX = tip.x,
-                                                        .startY = tip.y,
-                                                        .endX = tip.x + head.x,
-                                                        .endY = tip.y + head.y,
-                                                        .thickness = look.thickness,
-                                                        .color = look.color});
+                    const NS::Vector3 head = (side * std::sin(angle) - direction * std::cos(angle)) * headLength;
+                    outLines.push_back(NS::WorldLine{
+                        .start = tip, .end = tip + head, .thickness = look.thickness, .color = look.color});
                 }
             }
         } // namespace
 
         bool BuildReboundArrowLines(const ReboundPreviewArrows& arrows,
-                                    const NS::Matrix& viewProjection,
-                                    NS::Size2D targetSize,
                                     const ReboundPreviewDesc& desc,
-                                    std::vector<ReboundArrowLine>& outLines)
+                                    std::vector<NS::WorldLine>& outLines)
         {
-            if (!IsValidDesc(desc) || targetSize.width <= 0 || targetSize.height <= 0)
+            if (!IsValidDesc(desc))
             {
                 return false;
             }
-            const float pixelScale = static_cast<float>(targetSize.height) / desc.referenceHeight;
             const ArrowLook choice{.length = desc.choiceLength,
-                                   .thickness = desc.choiceThickness * pixelScale,
+                                   .thickness = desc.choiceThickness / desc.referenceHeight,
                                    .color = desc.choiceColor};
             const ArrowLook assigned{.length = desc.assignedLength,
-                                     .thickness = desc.assignedThickness * pixelScale,
+                                     .thickness = desc.assignedThickness / desc.referenceHeight,
                                      .color = desc.assignedColor};
             outLines.clear();
             for (const NS::Vector3& direction : arrows.choices)
             {
-                AppendArrow(arrows.origin, direction, choice, viewProjection, targetSize, desc, outLines);
+                AppendArrow(arrows.origin, direction, choice, desc, outLines);
             }
-            AppendArrow(arrows.origin, arrows.assigned, assigned, viewProjection, targetSize, desc, outLines);
+            AppendArrow(arrows.origin, arrows.assigned, assigned, desc, outLines);
             return true;
         }
 
@@ -126,20 +104,14 @@ namespace GL
             return &m_shown;
         }
 
-        void ReboundPreview::OnRenderOverlay(const NS::Gfx::RenderContext& context)
+        void ReboundPreview::WriteLines(NS::WorldLines* lines)
         {
-            if (!m_hasShown || context.device == nullptr || context.overlay == nullptr)
+            NS_ASSERT(Game, lines != nullptr, "ReboundPreview::WriteLines: 線の部品が null");
+            if (!m_hasShown || !BuildReboundArrowLines(m_shown, m_desc, m_lineScratch))
             {
-                return;
+                m_lineScratch.clear();
             }
-            if (!BuildReboundArrowLines(m_shown, context.viewProjection, context.device->Size(), m_desc, m_lineScratch))
-            {
-                return;
-            }
-            for (const ReboundArrowLine& line : m_lineScratch)
-            {
-                context.overlay->DrawScreenLine(line.startX, line.startY, line.endX, line.endY, line.thickness, line.color);
-            }
+            lines->SetLines(m_lineScratch);
         }
     } // namespace Level
 } // namespace GL

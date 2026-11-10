@@ -160,7 +160,7 @@ namespace GL
                 m_reboundAnchor = head;
                 if (m_hasLook)
                 {
-                    m_reboundAnchor = m_look;
+                    m_reboundAnchor = m_look.Current();
                 }
                 m_reboundAnchorVelocity = NS::Vector3{0.0f, 0.0f, 0.0f};
                 // 入った時の遅れが反動の上限より大きくても、それを上限の初めにして、切って跳ばさない
@@ -175,7 +175,7 @@ namespace GL
                 if (m_reboundReturnFrames > 0 && m_hasLook)
                 {
                     m_reboundPhase = ReboundPhase::Returning;
-                    m_reboundReturnOffset = m_look - head;
+                    m_reboundReturnOffset = m_look.Current() - head;
                     m_reboundReturnFrame = 0;
                 }
                 else
@@ -198,12 +198,12 @@ namespace GL
                                                          float verticalLean,
                                                          float dt) noexcept
         {
-            m_previousLook = m_look;
+            m_look.Snapshot();
             m_hasLook = true;
             if (m_reboundPhase == ReboundPhase::None)
             {
-                m_look = head;
-                return m_look;
+                m_look.Set(head);
+                return m_look.Current();
             }
 
             if (m_reboundPhase == ReboundPhase::Returning)
@@ -212,13 +212,13 @@ namespace GL
                 const float t = static_cast<float>(m_reboundReturnFrame) / static_cast<float>(m_reboundReturnFrames);
                 if (t >= 1.0f)
                 {
-                    m_look = head;
+                    m_look.Set(head);
                 }
                 else
                 {
-                    m_look = head + m_reboundReturnOffset * (1.0f - NS::SmoothStep(t));
+                    m_look.Set(head + m_reboundReturnOffset * (1.0f - NS::SmoothStep(t)));
                 }
-                return m_look;
+                return m_look.Current();
             }
 
             // 横と前後は臨界減衰のバネで遅れて付いていき、遅れは上限の内に留める
@@ -244,7 +244,7 @@ namespace GL
             {
                 m_reboundAnchor -= NS::HorizontalPart(away) * (lagAway - awayCap);
             }
-            m_look = m_reboundAnchor;
+            m_look.Set(m_reboundAnchor);
 
             // 追う相手が画面の上下の帯を越えそうな時だけ、
             // 越えない所まで位置と注視点をカメラの上の向きへ動かす
@@ -254,7 +254,7 @@ namespace GL
             if (m_reboundScreenBand > 0.0f && viewFov > 0.0f)
             {
                 const ViewAxes axes = ViewAxesFromYawPitch(m_yaw, FollowPositionPitch());
-                const NS::Vector3 toBall = ball - (m_look - axes.forward * ShownDistance());
+                const NS::Vector3 toBall = ball - (m_look.Current() - axes.forward * ShownDistance());
                 const float depth = NS::Dot(toBall, axes.forward);
                 if (depth > 0.0f)
                 {
@@ -264,15 +264,15 @@ namespace GL
                     const float height = NS::Dot(toBall, axes.up) - center;
                     if (height > limit)
                     {
-                        m_look += axes.up * (height - limit);
+                        m_look.Set(m_look.Current() + axes.up * (height - limit));
                     }
                     else if (height < -limit)
                     {
-                        m_look += axes.up * (height + limit);
+                        m_look.Set(m_look.Current() + axes.up * (height + limit));
                     }
                 }
             }
-            return m_look;
+            return m_look.Current();
         }
 
         void ThirdPersonFollow::ResetPose() noexcept
@@ -576,7 +576,7 @@ namespace GL
             // 固定更新で決めた注視点を描画時に補間する。
             if (m_reboundPhase != ReboundPhase::None)
             {
-                headPos = m_previousLook * (1.0f - alpha) + m_look * alpha;
+                headPos = m_look.Lerp(alpha);
             }
             const NS::Vector3 camPos = headPos - axes.forward * ShownDistance();
 

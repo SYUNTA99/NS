@@ -19,7 +19,6 @@ namespace GL
             m_bodyHitSensor = m_hitSensors->AddShape(this, "Body", SensorKind::Area, NS::HitSensorShape::Sphere);
             CreateClassObj(m_params);
             CreateClassObj(m_model);
-            NS::InitDraw(this, m_model.get(), &Root());
         }
 
         void GoalActor::OnSensorEnter(NS::HitSensor* self, NS::HitSensor* other)

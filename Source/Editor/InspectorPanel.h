@@ -21,11 +21,11 @@ namespace NS
     {
         class D3DRenderTarget;
         class Skybox;
-        struct DrawItem;
     } // namespace Gfx
     namespace Editor
     {
         class LevelEditorController;
+        struct AssetPreviewItem;
 
         //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
         class InspectorPanel : public NonCopyable
@@ -45,7 +45,7 @@ namespace NS
             void DrawSelectedAsset(LevelEditorController& editor, Object& asset);
             void DrawMaterialPreview(const Material& material);
             void DrawMeshPreview(const Mesh& mesh);
-            void DrawAssetPreview(const Gfx::DrawItem& item);
+            void DrawAssetPreview(const AssetPreviewItem& item);
             //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor
             //! が無ければ何も描かない
             void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);

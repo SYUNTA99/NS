@@ -53,10 +53,10 @@ float4 PSMain(SurfaceInterp input) : SV_TARGET
     {
         discard;
     }
-    // 床の波は上を向く面だけ、 斜面の向きで明暗を付け、 頂へ光を足す
-    float3 normal = GroundWaveNormal(input.worldPos, input.worldNormal);
+    // 光を受ける面の向きと、 足す光は口のファイル SurfaceHooks.hlsli が決める
+    float3 normal = SurfaceNormal(input.worldPos, input.worldNormal);
     float3 lit = texel.rgb * baseColor * DirectionalLight(normal) +
-                 GroundWaveGlow(input.worldPos, input.worldNormal) * g_lightColor;
+                 SurfaceAddedLight(input.worldPos, input.worldNormal);
     float haze = smoothstep(k_HazeStart, k_HazeEnd, distance(input.worldPos, g_cameraPosition)) * k_HazeMax;
     return float4(lerp(ToDisplay(lit), k_HazeColor, haze), saturate(g_opacity));
 }

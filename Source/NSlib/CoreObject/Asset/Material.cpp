@@ -5,7 +5,7 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DMaterial.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 
 #include "NSlib/Core/Types.h"
 #include <array>
@@ -151,11 +151,11 @@ namespace NS
                       sources.vertexShader != nullptr && sources.pixelShader != nullptr,
                       "マテリアルにシェーダーが無い");
 
-            // 定数バッファは Model が流す FrameCB に合わせる
+            // 定数バッファは Model が送る物ごとの定数 ObjectConstants に合わせる
             Gfx::D3DMaterialDesc desc{};
             desc.vertexShader = sources.vertexShader->D3D();
             desc.pixelShader = sources.pixelShader->D3D();
-            desc.constantBufferSize = sizeof(Gfx::FrameCB);
+            desc.constantBufferSize = sizeof(Gfx::ObjectConstants);
             desc.materialParamsSize = sources.layout->bufferSize;
             desc.blend = sources.blend;
             std::unique_ptr<Gfx::D3DMaterial> material = Gfx::D3DMaterial::Create(desc);

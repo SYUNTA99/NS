@@ -11,8 +11,8 @@ namespace GL
         void FallPlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            player->TickTimers(dt);
-            player->AdvanceAirControlReturn(dt);
+            player->TickTimers();
+            player->AdvanceAirControlReturn();
             player->AccelerateToInputDirection(dt);
             player->Jump(dt);
             player->CutJumpRelease();

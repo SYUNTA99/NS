@@ -20,9 +20,10 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/Render/RenderContext.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -67,10 +68,12 @@ namespace
     };
 } // namespace
 
+NS_CLASS(AssetFieldProbeActor)
+
 TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 {
     NS::Scene scene;
-    const AssetFieldProbeActor* actor = scene.SpawnActor<AssetFieldProbeActor>("AssetFieldProbeActor");
+    const AssetFieldProbeActor* actor = SpawnFromActorFile<AssetFieldProbeActor>(scene, "AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* sphere = NS::AssetManager::Get().LoadMesh("sphere");
     EXPECT_EQ(actor->part->asset, sphere);
@@ -81,7 +84,7 @@ TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 TEST(AssetField, ReloadAssetsReadsTheNewName)
 {
     NS::Scene scene;
-    AssetFieldProbeActor* actor = scene.SpawnActor<AssetFieldProbeActor>("AssetFieldProbeActor");
+    AssetFieldProbeActor* actor = SpawnFromActorFile<AssetFieldProbeActor>(scene, "AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* cube = NS::AssetManager::Get().LoadMesh("cube");
     (void)NS::ApplyJsonFields(actor->part.get(), nlohmann::json{{"素材", "cube"}});
@@ -303,7 +306,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayAndAnUnreadableMaterialDrawsPink)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_EQ(model->MaterialRef(), "");
@@ -315,28 +318,27 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayAndAnUnreadableMaterialDrawsPink)
     // 灰色はマテリアルの側で持つ。空の名前のマテリアルは中身が空のまま、既定のマテリアルを描く
     EXPECT_TRUE(assets.LoadMaterial("")->IsEmpty());
     EXPECT_EQ(assets.LoadMaterial("")->D3D(), gray);
-    const NS::Gfx::RenderContext context{};
 
     const TestLogCapture log;
     for (const char* mesh : {"cube", "Assets/Models/GoalFlag.glb"})
     {
         model->SetMeshRef(mesh);
         parts->ReloadAssets();
-        EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, gray) << mesh;
+        EXPECT_EQ(model->MakeDrawItem(NS::Matrix::Identity).material, gray) << mesh;
         EXPECT_EQ(model->MaterialRef(), "") << mesh;
     }
     EXPECT_EQ(log.ErrorCount(), 0);
     // 基本の色も既定のマテリアルから読む。描く形だけを既定にすると、default.mat の色を変えても空の欄に届かない
     model->SetColorOverride(std::nullopt); // MapPartsActor.actor の基本色の上書きを外し、マテリアルの色を見る
     assets.LoadMaterial("Assets/Materials/default.mat")->SetBaseColor(NS::Color{NS::Vector3{0.25f, 0.5f, 0.75f}});
-    EXPECT_FLOAT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).constants.baseColor.y, 0.5f);
+    EXPECT_FLOAT_EQ(model->MakeDrawItem(NS::Matrix::Identity).constants.baseColor.y, 0.5f);
 
     model->SetMaterialRef("Assets/Materials/__ns_missing__.mat");
-    EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, pink);
+    EXPECT_EQ(model->MakeDrawItem(NS::Matrix::Identity).material, pink);
     const int errors = log.ErrorCount();
     EXPECT_GT(errors, 0); // 数は Core のファイルの読み方にも寄るので、出た事だけを見る
     parts->ReloadAssets();
-    EXPECT_EQ(model->MakeDrawItem(context, NS::Matrix::Identity).material, pink);
+    EXPECT_EQ(model->MakeDrawItem(NS::Matrix::Identity).material, pink);
     EXPECT_EQ(log.ErrorCount(), errors); // 読めない名前の ERROR は名前ごとに 1 回で、読み直しても増えない
     EXPECT_EQ(model->MaterialRef(), "Assets/Materials/__ns_missing__.mat");
 }
@@ -344,7 +346,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayAndAnUnreadableMaterialDrawsPink)
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)
 {
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
     ASSERT_NE(parts, nullptr);
     const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
@@ -364,7 +366,7 @@ TEST(AssetField, AnimationReadsTheSkeletonOfTheModelMesh)
         actorFile["classObjs"]["Model"]["メッシュ"] = "Assets/Models/Xbot.glb";
     });
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+    PlayerActor* player = SpawnTestAnimatedPlayer(scene);
     ASSERT_NE(player, nullptr);
     const NS::Mesh* xbotMesh = NS::AssetManager::Get().LoadMesh("Assets/Models/Xbot.glb");
     ASSERT_NE(xbotMesh->Skeleton(), nullptr);
@@ -392,7 +394,7 @@ TEST(AssetField, PlayerLooksHoldTheirAssetsInAssetFields)
 TEST(AssetField, PlayerLookWritesItsScaleToTheModel)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(player, nullptr);
     GL::Player::PlayerAppearance* appearance = &player->Appearance();
     const NS::Model* model = player->ModelClassObj();

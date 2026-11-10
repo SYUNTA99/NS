@@ -1,4 +1,5 @@
 #include "Editor/InspectorReflection.h"
+#include "Game/Level/HitReactionItems.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
@@ -27,7 +28,7 @@ namespace
         HeadlessImGui& operator=(const HeadlessImGui&) = delete;
 
         // 窓を 1 つ開いて項目の欄を描く。focusFirst なら最初の欄を打ち込みの状態にする
-        NS::Editor::ValueEditResult Frame(NS::HitFlashInfo& flash, bool focusFirst)
+        NS::Editor::ValueEditResult Frame(GL::Level::HitFlashInfo& flash, bool focusFirst)
         {
             ImGui::NewFrame();
             ImGui::Begin("値の欄");
@@ -50,7 +51,7 @@ namespace
 TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 {
     HeadlessImGui gui;
-    NS::HitFlashInfo flash;
+    GL::Level::HitFlashInfo flash;
     flash.alpha = 0.5f;
 
     // フォーカスの頼みは次のフレームの頭で効き、欄が打ち込みの状態になる。打つのはその後
@@ -78,7 +79,7 @@ TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
 TEST(EditorValueFields, DrawingAloneLeavesTheValue)
 {
     HeadlessImGui gui;
-    NS::HitFlashInfo flash;
+    GL::Level::HitFlashInfo flash;
     flash.alpha = 0.5f;
     const NS::Editor::ValueEditResult result = gui.Frame(flash, false);
     EXPECT_FALSE(result.changed);

@@ -28,18 +28,11 @@ namespace NS
     //! モディファイアを積む。管理役が無ければ何もせず false
     bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier);
 
-    //! 寄りと傾きを始める。管理役が無いか壊れた設定なら false
-    bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc);
-
     //! 積んだ効果を、頼んだ物を問わず全て止める
     void StopCameraEffects(const IGetCamera* user) noexcept;
 
     //! トラウマを足す。管理役が無いか壊れた量なら false
     bool AddCameraTrauma(const IGetCamera* user, const CameraTraumaDesc& desc);
-
-    //! 当たりで始めた揺れ・ずれ・寄りを、頼んだ物を問わず止める。トラウマは残す
-    //! 次の当たりは前の当たりの揺れと寄りを止めてから始めるが、トラウマは続けて当てると足される
-    void StopCameraHitEffects(const IGetCamera* user) noexcept;
 
     //! 今のカメラの画面で direction が右と左のどちらの側か。左なら -1、それ以外と管理役が無い時は 1
     [[nodiscard]] float CalcCameraSideSign(const IGetCamera* user, const Vector3& direction) noexcept;
@@ -49,6 +42,13 @@ namespace NS
 
     //! 効果を掛ける前の、遊びが読む視点。管理役か選べる仮想カメラが無ければ nullopt
     [[nodiscard]] std::optional<CameraPose> GetCameraViewPose(const IGetCamera* user) noexcept;
+
+    //! 高さ referenceHeight を基準にしたピクセル数を、世界の位置 at の奥行きで m に直す
+    //! at がカメラの後ろなら距離で測る。基準の高さかカメラの向きが不正なら 0
+    [[nodiscard]] float ScreenPixelsToMeters(float pixels,
+                                             const CameraPose& pose,
+                                             const Vector3& at,
+                                             float referenceHeight = 720.0f) noexcept;
 
     // 仮想カメラは、アクターを作る時 (OnInit) に部品を作る行の隣で InitVirtualCamera を 1 回呼んで入れ、
     // アクターが終わる時 (OnEndPlay) に EndVirtualCamera で外す。出る・消える時は入れたまま

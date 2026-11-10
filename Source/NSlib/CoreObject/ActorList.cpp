@@ -66,26 +66,9 @@ namespace NS
             // 全てのアクターが開始してから、揃っている前提の用意をさせる
             for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
-                objPtr->VisitSelfAndDescendants([](SceneActor* actor) { actor->InitAfterPlacement(); });
+                objPtr->InitAfterPlacement();
             }
         }
-    }
-
-    SceneActor* ActorList::AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-        obj->SetId(AllocateActorId());
-
-        // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
-        RenameActor(obj.get(), name);
-        SceneActor* raw = obj.get();
-        m_actors.push_back(std::move(obj));
-        MarkIndexDirty();
-        ResolveActorRefs();
-        return raw;
     }
 
     void ActorList::RemoveByActorId(uint32 objectId)
@@ -239,7 +222,7 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->VisitSelfAndDescendants([](SceneActor* current) { current->ResolveActorRefs(); });
+            actor->ResolveActorRefs();
         }
     }
 
@@ -249,13 +232,23 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->VisitSelfAndDescendants([](SceneActor* current) {
-                Collision* collision = current->CollisionClassObj();
-                if (collision != nullptr && current->IsAppeared())
-                {
-                    collision->SyncToPhysics(current->Root().WorldMatrix(), current);
-                }
-            });
+            Collision* collision = actor->CollisionClassObj();
+            if (collision != nullptr && actor->IsAppeared())
+            {
+                collision->SyncToPhysics(actor->Root().WorldMatrix(), actor.get());
+            }
+        }
+    }
+
+    void ActorList::SyncShadows()
+    {
+        for (const std::unique_ptr<SceneActor>& actor : m_actors)
+        {
+            // 消えている物の影は描かないので探さない。出す時は基底の OnAppear が探す
+            if (actor->IsAppeared())
+            {
+                actor->UpdateShadowGround();
+            }
         }
     }
 

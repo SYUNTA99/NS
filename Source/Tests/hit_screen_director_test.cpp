@@ -1,15 +1,15 @@
 #include "Editor/EditorActors.h"
+#include "Game/Level/GameScene.h"
+#include "Game/Level/HitScreenDirector.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
-#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
+#include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
-
 
 namespace
 {
@@ -24,116 +24,69 @@ namespace
     }
 } // namespace
 
-// 頼んだフレームは始めの濃さのまま。次の更新から、残りのフレーム数に比例して薄れる
-TEST(HitScreenDirector, FlashStartsAtFullAlphaAndFadesFromTheNextTick)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceTwo(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-
-    screen->StartFlash(player, 3, 0.9f);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
-    EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.9f);
-    screen->OnTick();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
-    EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.9f);
-    screen->OnTick();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
-    EXPECT_NEAR(screen->FlashAlpha(), 0.6f, 0.0001f);
-    screen->OnTick();
-    screen->OnTick();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_FLOAT_EQ(screen->FlashAlpha(), 0.0f);
-}
-
-// 止めると、止めた物が頼んだ白だけが消える。ほかの物が頼んだ物は残る
-TEST(HitScreenDirector, StopClearsOnlyWhatTheRequesterStarted)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceTwo(scene);
-    ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
-    ASSERT_NE(rock, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-
-    screen->StartFlash(rock, 3, 1.0f);
-    screen->Stop(player);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
-    screen->Stop(rock);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-}
-
-TEST(HitScreenDirector, HitReactionStopsThroughTheDirector)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlaceTwo(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionClassObj();
-    ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    screen->StartFlash(player, 4, 1.0f);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 4);
-    reaction->Stop(player);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-}
-
-// シーンがアクターを組み直すと、前の世界で頼んだ白・床の波・振動を次の世界へ残さない。
+// シーンがアクターを組み直すと、前の世界で頼んだ輪・床の波・振動を次の世界へ残さない。
 // 頼み手は、消える時に自分で止めないゴールにする
 TEST(HitScreenDirector, RebuildingTheSceneClearsEverything)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     ASSERT_NE(PlaceTwo(scene), nullptr);
-    const NS::SceneActor* rock = scene.Actors().FindByActorId(2);
-    ASSERT_NE(rock, nullptr);
-    NS::HitScreenDirector& screen = scene.HitScreen();
-    screen.StartFlash(rock, 30, 1.0f);
-    NS::HitGroundWaveDesc wave;
+    const NS::SceneActor* goal = scene.Actors().FindByActorId(2);
+    ASSERT_NE(goal, nullptr);
+    GL::Level::HitScreenDirector& screen = scene.HitScreen();
+    GL::Level::HitGroundWaveDesc wave;
     wave.strength.count = 1;
     wave.strength.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     wave.frames = 30;
-    screen.StartGroundWave(rock, wave);
-    ASSERT_GT(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    screen.StartGroundWave(goal, wave);
+    ASSERT_GT(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.0f);
+    GL::Level::HitDistortionRingDesc ring;
+    ring.push.count = 1;
+    ring.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
+    ring.frames = 30;
+    screen.StartDistortionRing(goal, ring);
+    ASSERT_GT(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
     NS::PadRumbleDesc pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 1.0f};
     pad.frames = 30;
-    scene.PadRumble().Start(rock, pad);
+    scene.PadRumble().Start(goal, pad);
     ASSERT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 1.0f);
 
     scene.ResetFromJson(NS::MakeSceneJson());
-    EXPECT_EQ(screen.FlashFramesRemaining(), 0);
-    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->GroundWaveShown().strength, 0.0f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.0f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
     EXPECT_FLOAT_EQ(NS::OS::Input::Get().Gamepad().Vibration().left, 0.0f);
 }
 
-// シーンが止まっている歩も StepViewStopped で進むので、止めている間も薄れる
-TEST(HitScreenDirector, FlashKeepsFadingWhileTheSceneIsStopped)
+// シーンが止まっている歩でも、GameScene が StepViewEffects で輪を進める
+TEST(HitScreenDirector, DistortionRingKeepsGoingWhileTheSceneIsStopped)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
+    GL::Level::HitDistortionRingDesc desc;
+    desc.radius.count = 2;
+    desc.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
+    desc.radius.keys[1] = NS::Curve::Key{10.0f, 1.0f};
+    desc.push.count = 1;
+    desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
+    desc.frames = 10;
     scene.RequestStopScene(player, 10);
-    screen->StartFlash(player, 3, 1.0f);
+    scene.HitScreen().StartDistortionRing(player, desc);
     scene.OnUpdate();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().radius, 0.0f);
     scene.OnUpdate();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
+    ASSERT_TRUE(scene.IsSceneStopped());
+    EXPECT_NEAR(scene.GetSceneRenderer()->DistortionRingShown().radius, 0.1f, 1.0e-6f);
 }
 
 TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    NS::HitDistortionRingDesc desc;
+    GL::Level::HitScreenDirector* screen = &scene.HitScreen();
+    GL::Level::HitDistortionRingDesc desc;
     desc.center = NS::Vector3{1.0f, 2.0f, 3.0f};
     desc.radius.count = 2;
     desc.radius.keys[0] = NS::Curve::Key{0.0f, 0.0f};
@@ -167,29 +120,60 @@ TEST(HitScreenDirector, DistortionRingWritesTheSceneForItsFrames)
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
 }
 
-// 歪みの輪は、頼んだ物が止めた時だけ消える
+// 歪みの輪は、頼んだ物が止めた時だけ消える。持ち主の HitReaction::Stop では消えない
 TEST(HitScreenDirector, DistortionRingStopsOnlyForItsRequester)
 {
-    NS::Scene scene;
+    GL::Level::GameScene scene;
     PlayerActor* player = PlaceTwo(scene);
     ASSERT_NE(player, nullptr);
-    NS::SceneActor* rock = scene.Actors().FindByActorId(2);
-    ASSERT_NE(rock, nullptr);
+    NS::SceneActor* goal = scene.Actors().FindByActorId(2);
+    ASSERT_NE(goal, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    NS::HitDistortionRingDesc desc;
+    GL::Level::HitScreenDirector* screen = &scene.HitScreen();
+    GL::Level::HitDistortionRingDesc desc;
     desc.push.count = 1;
     desc.push.keys[0] = NS::Curve::Key{0.0f, 0.03f};
     desc.frames = 10;
 
     screen->StartDistortionRing(player, desc);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
-    screen->StopDistortionRing(rock);
+    screen->StopDistortionRing(goal);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.03f);
-    reaction->StopDistortionRing(player);
+    screen->StopDistortionRing(player);
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.0f);
+}
+
+// 弱めると、頼んだ物の輪の押し出しと波の強さだけに倍率が掛かり、始め直さずに続く
+TEST(HitScreenDirector, ScaleWeakensOnlyTheRequestersRingAndWave)
+{
+    GL::Level::GameScene scene;
+    PlayerActor* player = PlaceTwo(scene);
+    ASSERT_NE(player, nullptr);
+    NS::SceneActor* goal = scene.Actors().FindByActorId(2);
+    ASSERT_NE(goal, nullptr);
+    GL::Level::HitScreenDirector& screen = scene.HitScreen();
+    GL::Level::HitDistortionRingDesc ring;
+    ring.push.count = 1;
+    ring.push.keys[0] = NS::Curve::Key{0.0f, 0.1f};
+    ring.frames = 10;
+    GL::Level::HitGroundWaveDesc wave;
+    wave.strength.count = 1;
+    wave.strength.keys[0] = NS::Curve::Key{0.0f, 0.8f};
+    wave.frames = 10;
+    screen.StartDistortionRing(player, ring);
+    screen.StartGroundWave(player, wave);
+
+    screen.Scale(goal, 0.5f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.1f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.8f);
+    screen.Scale(player, 0.5f);
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.05f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.4f);
+    screen.OnTick();
+    screen.OnTick();
+    EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->DistortionRingShown().push, 0.05f);
+    EXPECT_FLOAT_EQ(GL::Level::HitScreenDirector::GroundWaveShown(*scene.GetSceneRenderer()).strength, 0.4f);
 }

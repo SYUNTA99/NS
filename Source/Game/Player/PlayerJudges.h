@@ -13,10 +13,9 @@ namespace GL
             //! 接地かコヨーテの猶予の間で跳べる回数が残り、押したか先行入力の猶予の間の場合 true、それ以外の場合は
             //! false
             [[nodiscard]] static bool Judge(
-                bool grounded, float coyoteRemaining, int jumpsRemaining, bool pressed, float bufferRemaining) noexcept
+                bool grounded, int coyoteRemaining, int jumpsRemaining, bool pressed, int bufferRemaining) noexcept
             {
-                return (grounded || coyoteRemaining > 0.0f) && jumpsRemaining > 0 &&
-                       (pressed || bufferRemaining > 0.0f);
+                return (grounded || coyoteRemaining > 0) && jumpsRemaining > 0 && (pressed || bufferRemaining > 0);
             }
         };
 

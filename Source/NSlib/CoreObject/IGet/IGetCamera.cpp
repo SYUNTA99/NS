@@ -3,6 +3,8 @@
 
 #include "NSlib/CoreObject/System/CameraManager.h"
 
+#include <cmath>
+
 namespace NS
 {
     bool AddCameraModifier(const IGetCamera* user, std::unique_ptr<CameraModifier> modifier)
@@ -15,13 +17,6 @@ namespace NS
         }
         modifier->SetRequester(user);
         return cameras->AddModifier(std::move(modifier));
-    }
-
-    bool StartCameraZoomRoll(const IGetCamera* user, const CameraZoomRollDesc& desc)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        CameraManager* cameras = user->GetCameraManager();
-        return cameras != nullptr && cameras->StartZoomRoll(desc, user);
     }
 
     void StopCameraEffects(const IGetCamera* user) noexcept
@@ -38,18 +33,6 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         CameraManager* cameras = user->GetCameraManager();
         return cameras != nullptr && cameras->AddTrauma(desc, user);
-    }
-
-    void StopCameraHitEffects(const IGetCamera* user) noexcept
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (CameraManager* cameras = user->GetCameraManager())
-        {
-            for (const void* kind : CameraHitEffectKinds())
-            {
-                cameras->RemoveModifiers(kind);
-            }
-        }
     }
 
     float CalcCameraSideSign(const IGetCamera* user, const Vector3& direction) noexcept
@@ -83,6 +66,26 @@ namespace NS
             return std::nullopt;
         }
         return cameras->ViewPose();
+    }
+
+    float ScreenPixelsToMeters(float pixels, const CameraPose& pose, const Vector3& at, float referenceHeight) noexcept
+    {
+        if (!std::isfinite(referenceHeight) || referenceHeight <= 0.0f)
+        {
+            return 0.0f;
+        }
+        Vector3 forward = pose.target - pose.position;
+        if (!HasPositiveMagnitude(forward))
+        {
+            return 0.0f;
+        }
+        forward.Normalize();
+        float depth = Dot(at - pose.position, forward);
+        if (!IsPositive(depth))
+        {
+            depth = (at - pose.position).Length();
+        }
+        return pixels * 2.0f * depth * std::tan(pose.fovY.value * 0.5f) / referenceHeight;
     }
 
     void InitVirtualCamera(const IGetCamera* user, VirtualCamera* vcam)

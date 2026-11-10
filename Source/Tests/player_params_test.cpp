@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -53,7 +54,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     player.ResetHealth();
@@ -83,8 +84,8 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"頂点滞空 Vy", 1.0f},
                                      {"頂点滞空倍率", 0.5f},
                                      {"ジャンプ離し倍率", 0.6f},
-                                     {"コヨーテ時間", 0.025f},
-                                     {"先行入力時間", 0.25f},
+                                     {"コヨーテのフレーム数", 1},
+                                     {"先行入力のフレーム数", 15},
                                      {"歩き速度", 4.0f},
                                      {"走行速度", 8.0f},
                                      {"加速度", 40.0f},
@@ -97,7 +98,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
                                      {"登れる段の高さ", 0.25f},
                                      {"掴める縁の下向き距離", 0.5f},
                                      {"縁へ手を伸ばす距離", 0.3f},
-                                     {"よじ登りの所要時間", 0.25f},
+                                     {"よじ登りのフレーム数", 15},
                                      {"縁の横移動速度", 2.0f},
                                      {"振り向きの速さ", 970.0f}};
     for (nlohmann::json::const_iterator it = expected.begin(); it != expected.end(); ++it)
@@ -121,7 +122,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();

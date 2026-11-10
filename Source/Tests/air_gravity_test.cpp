@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -42,7 +43,7 @@ TEST(AirGravityTest, PlayerActorGravityMatchesTheSharedChoice)
     {
         // 回ごとにシーンを分け、前の回の自機の状態を持ち越さない
         NS::Scene scene;
-        PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+        PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
         ASSERT_NE(spawned, nullptr);
         PlayerActor& player = *spawned;
         if (pass == 1)

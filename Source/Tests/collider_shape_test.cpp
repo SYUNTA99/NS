@@ -10,10 +10,12 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "TestLogCapture.h"
 #include "Tests/TestSceneSetup.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -48,6 +50,9 @@ namespace
     // 球の当たりを持ち、体のセンサー "Body" はその球を毎回映す
     class FollowSphereActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(FollowSphereActor, NS::SceneActor)
+
     protected:
         void OnInit() override
         {
@@ -62,6 +67,8 @@ namespace
         }
     };
 } // namespace
+
+NS_CLASS(FollowSphereActor)
 
 TEST(ColliderShape, AnswersFromItsOwnFieldsWithoutOwner)
 {
@@ -178,7 +185,7 @@ TEST(ColliderShape, FollowBodySensorFollowsACollisionRadiusEdit)
 {
     // 当たりの球を映す体のセンサーは、球をその場で映す。配置の後に半径を変えても割れない
     NS::Scene scene;
-    NS::SceneActor* placed = scene.SpawnActor<FollowSphereActor>("FollowSphereActor");
+    NS::SceneActor* placed = SpawnFromActorFile<FollowSphereActor>(scene, "FollowSphereActor");
     ASSERT_NE(placed, nullptr);
     placed->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());

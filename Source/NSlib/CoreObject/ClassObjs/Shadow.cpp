@@ -17,15 +17,14 @@ namespace NS
         LoadAssetField(m_material, "Assets/Materials/shadow.mat");
     }
 
-    Vector3 Shadow::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
-
-    AABB Shadow::WorldBounds(const RenderSource& source) const noexcept
+    Gfx::RenderBounds Shadow::Bounds(const Matrix& root) const noexcept
     {
-        const Vector3 origin = source.root.Translation();
+        const Vector3 origin = root.Translation();
         // 影は根の直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
         const Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
         const Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
-        return AABB{center, extents};
+        return Gfx::RenderBounds{
+            .bounds = AABB{center, extents}, .sortCenter = origin, .pass = Gfx::RenderPass::Transparent};
     }
 
     float Shadow::ComputeFade(float dist, float maxDist) noexcept
@@ -37,44 +36,68 @@ namespace NS
         return Clamp(1.0f - dist / maxDist, 0.0f, 1.0f);
     }
 
-    void Shadow::Collect(const Gfx::RenderContext& context,
-                         const RenderSource& source,
-                         std::vector<Gfx::DrawItem>& out)
+    void Shadow::Update(const IGetCollision* collision, const Vector3& origin) noexcept
     {
-        NS_ASSERT(Graphics, m_collision != nullptr, "Shadow::Collect: 地面を探すシーンを InitDraw で受けていない");
-        if (m_collision == nullptr || m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
-        {
-            return;
-        }
-        const Vector3 origin = source.root.Translation();
-
+        NS_ASSERT(Scene, collision != nullptr, "Shadow::Update: 地面を探すシーンが null");
         float dist = 0.0f;
-        if (!RaycastCollision(m_collision, origin, Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist))
+        m_hasGround = RaycastCollision(collision, origin, Vector3{0.0f, -1.0f, 0.0f}, m_maxDrop, dist);
+        m_groundY = 0.0f;
+        if (m_hasGround)
         {
-            return; // 真下 maxDrop 以内に地面が無ければ描かない
+            m_groundY = origin.y - dist;
         }
+    }
 
-        const float fade = ComputeFade(dist, m_maxDrop);
-        const float alpha = fade * m_baseAlpha;
-        if (alpha <= 0.0f)
+    std::optional<Shadow::Plane> Shadow::PlaneAt(const Vector3& origin) const noexcept
+    {
+        if (!m_hasGround) // 真下 maxDrop 以内に地面が無ければ描かない
+        {
+            return std::nullopt;
+        }
+        const float fade = ComputeFade(origin.y - m_groundY, m_maxDrop);
+        const float opacity = fade * m_baseAlpha;
+        if (opacity <= 0.0f)
+        {
+            return std::nullopt;
+        }
+        const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
+        return Plane{.world = Matrix::CreateScale(scale, 1.0f, scale) *
+                              Matrix::CreateTranslation(origin.x, m_groundY + m_surfaceOffset, origin.z),
+                     .opacity = opacity};
+    }
+
+    std::optional<Matrix> Shadow::DrawWorldMatrix(const Vector3& origin) const noexcept
+    {
+        const std::optional<Plane> plane = PlaneAt(origin);
+        if (!plane.has_value())
+        {
+            return std::nullopt;
+        }
+        return plane->world;
+    }
+
+    void Shadow::Collect([[maybe_unused]] const Gfx::RenderContext& context,
+                         const Matrix& root,
+                         std::vector<Gfx::DrawItem>& out) const
+    {
+        // 影の板の値は物ごとの定数だけで決まり、ビューの値は SceneRenderer がビューごとの定数で送る。引数は Model::Collect と同じ形にそろえる
+        if (m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
         {
             return;
         }
-
-        const float scale = m_baseDiameter * (0.6f + 0.4f * fade); // 高いほど小さく
-        const float groundY = origin.y - dist;
-
-        const Matrix world = Matrix::CreateScale(scale, 1.0f, scale) *
-                                 Matrix::CreateTranslation(origin.x, groundY + m_surfaceOffset, origin.z);
+        const std::optional<Plane> plane = PlaneAt(root.Translation());
+        if (!plane.has_value())
+        {
+            return;
+        }
 
         Gfx::DrawItem item{};
         item.mesh = m_mesh->D3D();
         item.material = m_material->D3D();
         item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
-        item.constants.world = world;
-        item.constants.viewProj = context.viewProjection;
+        item.constants.world = plane->world;
         item.constants.baseColor = m_material->DrawColor().ToVector3();
-        item.constants.opacity = alpha;
+        item.constants.opacity = plane->opacity;
         out.push_back(item);
     }
 } // namespace NS

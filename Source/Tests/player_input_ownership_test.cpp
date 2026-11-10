@@ -3,13 +3,14 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Core/Windows/Input.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
 TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
@@ -30,7 +31,7 @@ TEST(PlayerInputOwnership, MovementReadsTheInputWithoutAnActorRelayTick)
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
@@ -56,7 +57,7 @@ TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
 TEST(PlayerInputOwnership, RestartClearsSharedInputAndHeldJumpCutsOnlyOnce)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
@@ -83,7 +84,7 @@ TEST(PlayerInputOwnership, SlamTappedBetweenPlayerStepsIsSeenOnce)
     // 自機が読む歩の間に押して放した突進を、次に読む歩で 1 回押したと見せる
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     NS::PlayerInput* input = &player.Input();
@@ -101,7 +102,7 @@ TEST(PlayerInputOwnership, JumpTappedBetweenPlayerUpdatesIsReadByTheNextUpdate)
     // 自機は自分の更新の中で機器を読む。前の更新から後に押して離した跳びを、次の更新が拾う
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     NS::Body& movement = player.Body();
@@ -118,7 +119,7 @@ TEST(PlayerInputOwnership, PressDuringALockWithNoReadIsNotSeenAfterUnlock)
     // 入力を止めている間 (SetLocked) は自機が読まない。その間に押して放した跳びを、止めを解いた後の跳びにしない
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     NS::PlayerInput* input = &spawned->Input();
     input->SetLocked(true);
@@ -134,7 +135,7 @@ TEST(PlayerInputOwnership, JumpPressedDuringHitStopIsKeptUntilTheStateRuns)
     // 当たりの止めの間は状態を進めないので、止めの間に読んだ押しを下ろさずに止めの明けへ持ち越す
     NS::OS::Input& platform = NS::OS::Input::Get();
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     player.RequestHitStop(2);

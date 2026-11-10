@@ -3,6 +3,7 @@
 #include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/Render/RenderSettings.h"
 
+#include <array>
 #include <cmath>
 
 namespace NS
@@ -11,15 +12,6 @@ namespace NS
     {
         class D3DDevice;
         class ScreenOverlay;
-
-        //! 上向きの面に広がる光の輪 (ピクセルシェーダーで表現)
-        struct GroundWave
-        {
-            float centerX = 0.0f;  // 中心のワールド X 座標
-            float centerZ = 0.0f;  // 中心のワールド Z 座標
-            float radius = 0.0f;   // 半径 (m)
-            float strength = 0.0f; // 強さ (0 以下で無効)
-        };
 
         //! ワールド座標の点を中心に画面上で広がる歪みの輪 (各長さは描画先の高さに対する比率)
         struct DistortionRing
@@ -39,7 +31,7 @@ namespace NS
             float alpha = 1.0f; // 固定ステップ更新と描画の補間係数 (0.0 〜 1.0)
             float sceneTimeSeconds = 0.0f; // SceneRenderer が固定更新で進める経過秒。ゲームを止めている間は進まない
             RenderSettings resolvedSettings{};
-            GroundWave groundWave{};
+            std::array<Vector4, 2> sceneValues{}; // 名前の無いシーンの値。意味はシェーダの口のファイル SurfaceHooks.hlsli が決める
             DistortionRing distortionRing{};
         };
 

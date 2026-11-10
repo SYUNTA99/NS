@@ -47,7 +47,7 @@ namespace
 
     PlayerActor& SpawnAnimatedPlayer(NS::Scene& scene)
     {
-        PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+        PlayerActor* spawned = SpawnTestAnimatedPlayer(scene);
         NS_ASSERT(Game, spawned != nullptr, "SpawnAnimatedPlayer: 自機を置けなかった");
         return *spawned;
     }

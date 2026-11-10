@@ -5,7 +5,6 @@
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
@@ -77,8 +76,8 @@ namespace NS
 
     void Model::Snapshot() noexcept
     {
-        m_previousLocalRotation = m_localRotation;
-        m_previousDrawScale = GetDrawScale();
+        m_localRotation.Snapshot();
+        m_shownDrawScale.Snapshot();
     }
 
     bool Model::SetDrawScale(const Vector3& scale) noexcept
@@ -88,6 +87,7 @@ namespace NS
             return false;
         }
         m_drawScale = scale;
+        m_shownDrawScale.Set(m_drawScale * m_drawShapeScale);
         return true;
     }
 
@@ -97,105 +97,29 @@ namespace NS
         {
             return false;
         }
-        m_previousDrawScale = GetDrawScale();
+        m_shownDrawScale.Teleport(GetDrawScale());
         return true;
     }
 
-    void Model::StartDrawShake(const DrawShakeDesc& desc) noexcept
+    bool Model::SetDrawOffset(const Vector3& offset) noexcept
     {
-        m_shake = ShakeRun{.desc = desc, .frame = 0, .active = true};
-    }
-
-    void Model::StopDrawShake() noexcept
-    {
-        m_shake.active = false;
-        m_drawOffset = Vector3{0.0f, 0.0f, 0.0f};
-    }
-
-    void Model::StartDrawShape(const DrawShapeDesc& desc) noexcept
-    {
-        m_shape = ShapeRun{.desc = desc, .frame = -1, .active = true};
-    }
-
-    void Model::StopDrawShape() noexcept
-    {
-        m_shape.active = false;
-        m_drawShapeScale = k_NoDrawScale;
-    }
-
-    void Model::StartDrawTremor(const DrawTremorDesc& desc) noexcept
-    {
-        m_tremor = TremorRun{.desc = desc, .elapsed = -1, .active = true};
-    }
-
-    void Model::StopDrawTremor() noexcept
-    {
-        m_tremor.active = false;
-        m_drawTremor = Gfx::TremorCB{};
-    }
-
-    void Model::ScaleDrawShaking(float scale) noexcept
-    {
-        m_shake.desc.amplitude *= scale;
-        m_tremor.desc.amplitudePixels *= scale;
-        m_tremor.desc.amplitudeRatio *= scale;
-    }
-
-    void Model::AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition)
-    {
-        NS_ASSERT(Scene, camera != nullptr, "Model::AdvanceDraw: カメラの窓口が null");
-        if (m_shake.active)
+        if (!IsFinite(offset))
         {
-            ++m_shake.frame;
-            const Vector3 offset = m_shake.desc.OffsetAt(m_shake.frame);
-            // 有限でないずれは描く形を消すので控えず、前のずれのまま描く
-            if (IsFinite(offset))
-            {
-                m_drawOffset = offset;
-            }
-            // 奥揺れは長さのフレームまで揺れるので、長さの次のフレームで 0 を書いてから止める
-            if (m_shake.frame > m_shake.desc.length)
-            {
-                m_shake.active = false;
-            }
+            return false;
         }
-        if (m_shape.active)
+        m_drawOffset = offset;
+        return true;
+    }
+
+    bool Model::SetDrawShapeScale(const Vector3& scale) noexcept
+    {
+        if (!IsPositiveFiniteScale(scale))
         {
-            ++m_shape.frame;
-            if (m_shape.frame >= m_shape.desc.length)
-            {
-                StopDrawShape();
-            }
-            else
-            {
-                const Vector3 scale = m_shape.desc.ScaleAt(m_shape.frame);
-                // 有限の正でない倍率は描く形を消すので控えず、前の倍率のまま描く
-                if (IsPositiveFiniteScale(scale))
-                {
-                    m_drawShapeScale = scale;
-                }
-            }
+            return false;
         }
-        if (m_tremor.active)
-        {
-            ++m_tremor.elapsed;
-            Gfx::TremorCB tremor{};
-            // 振れ幅はカメラとの距離で決まる
-            const std::optional<CameraPose> pose = GetCameraViewPose(camera);
-            if (pose.has_value())
-            {
-                tremor = MakeTremor(m_tremor.desc, m_tremor.elapsed, rootPosition, *pose);
-            }
-            // 有限でない震えは描く形を消すので控えず、前の震えのまま描く
-            if (IsFiniteTremor(tremor))
-            {
-                m_drawTremor = tremor;
-            }
-            if (m_tremor.elapsed >= m_tremor.desc.length)
-            {
-                m_tremor.active = false;
-            }
-        }
+        m_drawShapeScale = scale;
+        m_shownDrawScale.Set(m_drawScale * m_drawShapeScale);
+        return true;
     }
 
     bool Model::SetLocalScale(const Vector3& scale) noexcept
@@ -224,7 +148,7 @@ namespace NS
 
     Matrix Model::DrawWorldMatrixWithOffset(const Matrix& root, float alpha, const Vector3& offset) const noexcept
     {
-        const Quaternion local = Quaternion::Slerp(m_previousLocalRotation, m_localRotation, alpha);
+        const Quaternion local = m_localRotation.Lerp(alpha);
         const Matrix localMatrix = WithLocalScale(m_localScale, Matrix::CreateFromQuaternion(local));
         // 回転を先に掛ける。根のスケールは根の軸に残り、局所の回転と一緒に回らない
         Matrix drawn = localMatrix * root;
@@ -236,7 +160,7 @@ namespace NS
         {
             shift = Matrix::CreateTranslation(offset);
         }
-        const Vector3 scale = Vector3::Lerp(m_previousDrawScale, GetDrawScale(), alpha);
+        const Vector3 scale = m_shownDrawScale.Lerp(alpha);
         // 倍率が 1 でも、下端の真ん中へ移して戻す足し引きが下の桁を丸めることがある。倍率の無い間は掛けずに返す
         if (scale == k_NoDrawScale)
         {
@@ -267,16 +191,37 @@ namespace NS
         return scaled;
     }
 
-    void Model::Collect(const Gfx::RenderContext& context,
-                        const RenderSource& source,
-                        std::vector<Gfx::DrawItem>& out)
+    void Model::Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const
     {
         if (!CanDraw())
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, DrawWorldMatrix(source.root, context.alpha)));
+        out.push_back(MakeDrawItem(DrawWorldMatrix(root, context.alpha)));
+    }
+
+    void Model::SetCopies(std::span<const ModelDraw> copies, int priority)
+    {
+        m_copies.assign(copies.begin(), copies.end());
+        m_copyPriority = priority;
+    }
+
+    Gfx::RenderBounds Model::CopiesBounds(const Matrix& root) const noexcept
+    {
+        NS_ASSERT(Graphics, DrawsCopies(), "Model::CopiesBounds: 写しを描かない Model で呼んでいる");
+        return Gfx::RenderBounds{.bounds = DrawsWorldBounds(root, m_copies),
+                                 .sortCenter = root.Translation(),
+                                 .sortPriority = m_copyPriority,
+                                 .pass = Gfx::RenderPass::Transparent};
+    }
+
+    void Model::CollectCopies(const Gfx::RenderContext& context,
+                              const Matrix& root,
+                              std::vector<Gfx::DrawItem>& out) const
+    {
+        NS_ASSERT(Graphics, DrawsCopies(), "Model::CollectCopies: 写しを描かない Model で呼んでいる");
+        CollectDraws(context, root, m_copies, out);
     }
 
     Color Model::DrawColor() const noexcept
@@ -289,15 +234,15 @@ namespace NS
     }
 
     void Model::CollectDraws(const Gfx::RenderContext& context,
-                             const RenderSource& source,
-                             std::span<const ModelDraw> draws,
+                             const Matrix& root,
+                             std::span<const ModelDraw> copies,
                              std::vector<Gfx::DrawItem>& out) const
     {
         if (!CanDraw())
         {
             return;
         }
-        for (const ModelDraw& draw : draws)
+        for (const ModelDraw& draw : copies)
         {
             Matrix world = Matrix::Identity;
             if (draw.world.has_value())
@@ -306,32 +251,32 @@ namespace NS
             }
             else if (draw.offset.has_value())
             {
-                world = DrawWorldMatrixWithOffset(source.root, context.alpha, *draw.offset);
+                world = DrawWorldMatrixWithOffset(root, context.alpha, *draw.offset);
             }
             else
             {
-                world = DrawWorldMatrix(source.root, context.alpha);
+                world = DrawWorldMatrix(root, context.alpha);
             }
-            Gfx::DrawItem item = MakeDrawItem(context, world);
+            Gfx::DrawItem item = MakeDrawItem(world);
             item.blend = Gfx::BlendMode::Alpha;
             item.constants.opacity = draw.opacity;
-            if (!draw.groundWave)
+            if (!draw.sceneValues)
             {
-                item.constants.groundWaveStrength = 0.0f;
+                item.constants.sceneValuesWeight = 0.0f;
             }
-            if (!draw.tremor)
+            if (!draw.objectValues)
             {
-                item.constants.tremor = Gfx::TremorCB{};
+                item.constants.objectValues = {};
             }
             out.push_back(item);
         }
     }
 
-    AABB Model::DrawsWorldBounds(const RenderSource& source, std::span<const ModelDraw> draws) const noexcept
+    AABB Model::DrawsWorldBounds(const Matrix& root, std::span<const ModelDraw> copies) const noexcept
     {
-        const AABB base = WorldBounds(source);
+        const AABB base = WorldBounds(root);
         AABB out = base;
-        for (const ModelDraw& draw : draws)
+        for (const ModelDraw& draw : copies)
         {
             AABB bounds = base;
             if (draw.world.has_value())
@@ -360,31 +305,16 @@ namespace NS
 
     bool Model::CanDraw() const noexcept { return GetMesh()->D3D() != nullptr && m_material->D3D() != nullptr; }
 
-    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
+    Gfx::DrawItem Model::MakeDrawItem(const Matrix& world) const noexcept
     {
-        // context.resolvedSettings は project 既定に配置された平行光まで解決済
-        const Gfx::RenderSettings& settings = context.resolvedSettings;
-
+        // 光・カメラ・シーンの値はビューごとの定数で SceneRenderer が送るので、ここでは物の値だけを書く
         Gfx::DrawItem item{};
         item.mesh = GetMesh()->D3D();
         item.material = m_material->D3D();
         item.blend = item.material->Blend();
         item.constants.world = world;
-        item.constants.viewProj = context.viewProjection;
-        item.constants.cameraPosition = context.cameraPosition;
-        item.constants.sceneTimeSeconds = context.sceneTimeSeconds;
-        item.constants.lightDir = settings.lightDir;
-        item.constants.lightDir.Normalize();
         item.constants.baseColor = DrawColor().ToVector3();
-        item.constants.lightColor = settings.lightColor;
-        item.constants.ambientColor = settings.ambientColor;
-        item.constants.groundColor = settings.groundColor;
-        item.constants.exposure = settings.exposure;
-        item.constants.groundWaveCenterX = context.groundWave.centerX;
-        item.constants.groundWaveCenterZ = context.groundWave.centerZ;
-        item.constants.groundWaveRadius = context.groundWave.radius;
-        item.constants.groundWaveStrength = context.groundWave.strength;
-        item.constants.tremor = m_drawTremor;
+        item.constants.objectValues = m_drawValues;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;
         item.extraVsSize = m_perObjectVsSize;
@@ -392,33 +322,26 @@ namespace NS
         return item;
     }
 
-    Gfx::RenderPass Model::Bucket() const noexcept
+    Gfx::RenderBounds Model::Bounds(const Matrix& root) const noexcept
     {
+        Gfx::RenderBounds out{.bounds = WorldBounds(root), .sortCenter = root.Translation()};
+        const Gfx::D3DMaterial* material = m_material->D3D();
+        if (material != nullptr)
+        {
+            out.sortPriority = material->RenderPriority();
+        }
         if (m_drawsAfterSky)
         {
-            return Gfx::RenderPass::AfterSky;
+            out.pass = Gfx::RenderPass::AfterSky;
         }
-        const Gfx::D3DMaterial* material = m_material->D3D();
-        if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
+        else if (material != nullptr && material->Blend() != Gfx::BlendMode::Opaque)
         {
-            return Gfx::RenderPass::Opaque;
+            out.pass = Gfx::RenderPass::Transparent;
         }
-
-        return Gfx::RenderPass::Transparent;
+        return out;
     }
 
-    Vector3 Model::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
-
-    int Model::SortPriority() const noexcept
-    {
-        if (const Gfx::D3DMaterial* material = m_material->D3D())
-        {
-            return material->RenderPriority();
-        }
-        return 0;
-    }
-
-    AABB Model::WorldBounds(const RenderSource& source) const noexcept
+    AABB Model::WorldBounds(const Matrix& root) const noexcept
     {
         if (m_neverCulled)
         {
@@ -432,10 +355,10 @@ namespace NS
         }
         AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
-        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, source.root));
+        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, root));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
-        const Vector3 scale = Vector3::Max(m_previousDrawScale, GetDrawScale());
+        const Vector3 scale = Vector3::Max(m_shownDrawScale.Previous(), GetDrawScale());
         if (scale != k_NoDrawScale)
         {
             const float bottom = out.Center.y - out.Extents.y;

@@ -1,107 +1,97 @@
 #include "NSlib/CoreObject/IGet/IGetRenderer.h"
 #include "NSlib/Core/Assert.h"
 
-#include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 
 namespace NS
 {
-    void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root)
+    void ShowModel(const IGetRenderer* user, const Model* model) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, renderable != nullptr, "InitDraw: 描く物が null");
-        NS_ASSERT(Scene, root != nullptr, "InitDraw: 持ち主の根が null");
+        NS_ASSERT(Scene, model != nullptr, "ShowModel: Model が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->RegisterRenderable(renderable, root);
+            renderer->SetModelEnabled(model, true);
         }
     }
 
-    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root, const IGetCollision* collision)
-    {
-        NS_ASSERT(Scene, shadow != nullptr, "InitDraw: 影が null");
-        shadow->UseCollision(collision);
-        InitDraw(user, static_cast<IRenderable*>(shadow), root);
-    }
-
-    void ShowModel(const IGetRenderer* user, const IRenderable* renderable) noexcept
+    void ShowModel(const IGetRenderer* user, const Shadow* shadow) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, renderable != nullptr, "ShowModel: 描く物が null");
+        NS_ASSERT(Scene, shadow != nullptr, "ShowModel: Shadow が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetRenderableEnabled(renderable, true);
+            renderer->SetShadowEnabled(shadow, true);
         }
     }
 
-    void HideModel(const IGetRenderer* user, const IRenderable* renderable) noexcept
+    void HideModel(const IGetRenderer* user, const Model* model) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, renderable != nullptr, "HideModel: 描く物が null");
+        NS_ASSERT(Scene, model != nullptr, "HideModel: Model が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetRenderableEnabled(renderable, false);
+            renderer->SetModelEnabled(model, false);
         }
     }
 
-    void EndDraw(const IGetRenderer* user, const IRenderable* renderable) noexcept
+    void HideModel(const IGetRenderer* user, const Shadow* shadow) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, renderable != nullptr, "EndDraw: 描く物が null");
+        NS_ASSERT(Scene, shadow != nullptr, "HideModel: Shadow が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->UnregisterRenderable(renderable);
+            renderer->SetShadowEnabled(shadow, false);
         }
     }
 
-    void InitOverlay(const IGetRenderer* user, IOverlay* overlay)
+    void EndDraw(const IGetRenderer* user, const Model* model) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "InitOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, model != nullptr, "EndDraw: Model が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->RegisterOverlay(overlay);
+            renderer->UnregisterModel(model);
         }
     }
 
-    void ShowOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
+    void EndDraw(const IGetRenderer* user, const Shadow* shadow) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "ShowOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, shadow != nullptr, "EndDraw: Shadow が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetOverlayEnabled(overlay, true);
+            renderer->UnregisterShadow(shadow);
         }
     }
 
-    void HideOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
+    void ShowModel(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "HideOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, lines != nullptr, "ShowModel: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetOverlayEnabled(overlay, false);
+            renderer->SetWorldLinesEnabled(lines, true);
         }
     }
 
-    void EndOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
+    void HideModel(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "EndOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, lines != nullptr, "HideModel: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->UnregisterOverlay(overlay);
+            renderer->SetWorldLinesEnabled(lines, false);
         }
     }
 
-    void InitLight(const IGetRenderer* user, DirectionalLight* light, const Transform* root)
+    void EndDraw(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, light != nullptr, "InitLight: 平行光が null");
-        NS_ASSERT(Scene, root != nullptr, "InitLight: 持ち主の根が null");
+        NS_ASSERT(Scene, lines != nullptr, "EndDraw: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->RegisterLight(light, root);
+            renderer->UnregisterWorldLines(lines);
         }
     }
 

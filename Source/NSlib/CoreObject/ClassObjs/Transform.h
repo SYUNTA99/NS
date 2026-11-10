@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
@@ -31,22 +32,21 @@ namespace NS
         //! 今の位置と前フレームの位置を同じだけずらす
         //! 補間には動きとして映らない。前フレームから今までに動いた分はそのまま補間される
         void ShiftPosition(const Vector3& delta) noexcept;
+        //! 今の位置と前フレームの位置を同じ位置にする。移った分は補間に動きとして映らない
+        void Teleport(const Vector3& position) noexcept;
 
-        [[nodiscard]] const Vector3& Position() const noexcept { return m_position; }
-        [[nodiscard]] const Quaternion& Rotation() const noexcept { return m_rotation; }
-        [[nodiscard]] const Vector3& Scale() const noexcept { return m_scale; }
+        [[nodiscard]] const Vector3& Position() const noexcept { return m_position.Current(); }
+        [[nodiscard]] const Quaternion& Rotation() const noexcept { return m_rotation.Current(); }
+        [[nodiscard]] const Vector3& Scale() const noexcept { return m_scale.Current(); }
 
         //! 補間用の前の値。Snapshot が控える
-        [[nodiscard]] const Vector3& PreviousPosition() const noexcept { return m_previousPosition; }
-        [[nodiscard]] const Quaternion& PreviousRotation() const noexcept { return m_previousRotation; }
-        [[nodiscard]] const Vector3& PreviousScale() const noexcept { return m_previousScale; }
+        [[nodiscard]] const Vector3& PreviousPosition() const noexcept { return m_position.Previous(); }
+        [[nodiscard]] const Quaternion& PreviousRotation() const noexcept { return m_rotation.Previous(); }
+        [[nodiscard]] const Vector3& PreviousScale() const noexcept { return m_scale.Previous(); }
 
         //! 現在 PRS を previous に退避する。Scene::OnUpdate 先頭で全 Transform に一括実行する
         //! 各個体の更新前に同じ固定フレームの値を控える
         void Snapshot() noexcept;
-
-        //! 現在と補間前の姿勢を一緒に写す。追従先と同じ軌道で補間される
-        void CopyFrom(const Transform& source) noexcept;
 
         [[nodiscard]] Matrix WorldMatrix() const noexcept;
         //! 個体の前後の姿勢を補間したシーン内の行列
@@ -62,12 +62,8 @@ namespace NS
         //! 欄から来る大きさを書く。0 と負は描画と当たり判定を壊すので、最小の正の値で止める
         void SetScaleField(const Vector3& scale) noexcept;
 
-        Vector3 m_position{0.0f, 0.0f, 0.0f};
-        Quaternion m_rotation{};
-        Vector3 m_scale{1.0f, 1.0f, 1.0f};
-
-        Vector3 m_previousPosition{0.0f, 0.0f, 0.0f};
-        Quaternion m_previousRotation{};
-        Vector3 m_previousScale{1.0f, 1.0f, 1.0f};
+        Interpolated<Vector3> m_position{Vector3{0.0f, 0.0f, 0.0f}};
+        Interpolated<Quaternion> m_rotation{Quaternion{}};
+        Interpolated<Vector3> m_scale{Vector3{1.0f, 1.0f, 1.0f}};
     };
 } // namespace NS

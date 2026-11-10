@@ -1,9 +1,11 @@
 #include "Game/Level/SensorKinds.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensorsObj.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -33,6 +35,8 @@ namespace
     class StopProbeActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(StopProbeActor, NS::SceneActor)
+
         void OnSensorStay(NS::HitSensor* self, NS::HitSensor* other) override
         {
             (void)self;
@@ -102,9 +106,9 @@ namespace
     {
         StopWorld()
         {
-            mover = scene.SpawnActor<StopProbeActor>("Mover");
-            first = scene.SpawnActor<StopProbeActor>("First");
-            second = scene.SpawnActor<StopProbeActor>("Second");
+            mover = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Mover");
+            first = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "First");
+            second = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Second");
             for (int i = 0; i < 3; ++i)
             {
                 scene.OnUpdate();
@@ -117,6 +121,8 @@ namespace
         StopProbeActor* second = nullptr;
     };
 } // namespace
+
+NS_CLASS(StopProbeActor)
 
 // 止めを頼んだ歩は最後まで進む。次の歩から頼んだ歩数だけ止まり、その次の歩で戻る
 TEST(SceneStop, ARequestStopsTheSceneFromTheNextStepForTheRequestedSteps)
@@ -247,8 +253,8 @@ TEST(SceneStop, NoActorIsTheMoverWhileNothingStopsTheScene)
 TEST(SceneStop, TheFirstMoverKeepsTheStopUntilItEndsOrCancelsIt)
 {
     NS::Scene scene;
-    const NS::SceneActor* first = scene.SpawnActor<NS::SceneActor>("First");
-    const NS::SceneActor* second = scene.SpawnActor<NS::SceneActor>("Second");
+    const NS::SceneActor* first = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "First");
+    const NS::SceneActor* second = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Second");
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
     scene.RequestStopScene(first, 10);
@@ -272,14 +278,14 @@ TEST(SceneStop, TheFirstMoverKeepsTheStopUntilItEndsOrCancelsIt)
 TEST(SceneStop, RemovingTheMoverKeepsTheSceneStoppedUntilTheStopEnds)
 {
     NS::Scene scene;
-    const NS::SceneActor* mover = scene.SpawnActor<NS::SceneActor>("Mover");
+    const NS::SceneActor* mover = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Mover");
     ASSERT_NE(mover, nullptr);
     scene.RequestStopScene(mover, 2);
     scene.OnUpdate();
     ASSERT_TRUE(scene.IsSceneStopped());
 
     scene.RemoveActor(mover->Id());
-    const NS::SceneActor* late = scene.SpawnActor<NS::SceneActor>("Late");
+    const NS::SceneActor* late = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Late");
     ASSERT_NE(late, nullptr);
     EXPECT_TRUE(scene.IsSceneStopped());
     EXPECT_FALSE(scene.IsStopSceneMover(late));
@@ -292,7 +298,7 @@ TEST(SceneStop, RemovingTheMoverKeepsTheSceneStoppedUntilTheStopEnds)
 TEST(SceneStop, ZeroStepsAndRestartingThePlayDropTheRequest)
 {
     NS::Scene scene;
-    const NS::SceneActor* mover = scene.SpawnActor<NS::SceneActor>("Mover");
+    const NS::SceneActor* mover = SpawnFromActorFile<StopProbeActor>(scene, "StopProbeActor", "Mover");
     ASSERT_NE(mover, nullptr);
     scene.RequestStopScene(mover, k_StopSteps);
     scene.RequestStopScene(mover, 0);

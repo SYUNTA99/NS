@@ -36,6 +36,7 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "TestSpawn.h"
 #include <filesystem>
 #include <iterator>
 #include <map>
@@ -259,7 +260,7 @@ TEST(ActorFile, SpawnedByTypeGetsActorFile)
     NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f)));
 
     NS::Scene scene;
-    const NS::SceneActor* actor = scene.SpawnActor<PlayerActor>("PlayerActor");
+    const NS::SceneActor* actor = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }
@@ -1257,6 +1258,17 @@ TEST(ActorFile, ShippedActorFilesLoad)
     ASSERT_NE(playerOwned, nullptr);
     const NS::SceneActor& player = *playerOwned;
     EXPECT_NE(player.ShadowClassObj(), nullptr);
+}
+
+// 光の .actor は鍵 "DirectionalLight" のまま、基底の平行光に値が届く
+TEST(ActorFile, ShippedLightActorFileFillsTheBaseLight)
+{
+    NS::ActorFileLibrary::Get().Reload();
+    const std::unique_ptr<NS::SceneActor> lightOwned = ActorFromFile("ApricotLight");
+    ASSERT_NE(lightOwned, nullptr);
+    const NS::DirectionalLight* light = lightOwned->LightClassObj();
+    ASSERT_NE(light, nullptr);
+    EXPECT_FLOAT_EQ(light->Exposure(), 1.1f);
 }
 
 // 遺跡の自機とカメラは元の .actor との差だけを持つ。元の項目と束と動作は、差を重ねた形で遺跡のアクターに届く

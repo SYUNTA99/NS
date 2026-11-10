@@ -5,11 +5,11 @@
 namespace NS
 {
 
-    void Transform::SetPosition(const Vector3& position) noexcept { m_position = position; }
+    void Transform::SetPosition(const Vector3& position) noexcept { m_position.Set(position); }
 
-    void Transform::SetRotation(const Quaternion& rotation) noexcept { m_rotation = rotation; }
+    void Transform::SetRotation(const Quaternion& rotation) noexcept { m_rotation.Set(rotation); }
 
-    void Transform::SetScale(const Vector3& scale) noexcept { m_scale = scale; }
+    void Transform::SetScale(const Vector3& scale) noexcept { m_scale.Set(scale); }
 
     void Transform::SetScaleField(const Vector3& scale) noexcept
     {
@@ -18,53 +18,25 @@ namespace NS
             Vector3{std::max(scale.x, k_MinScale), std::max(scale.y, k_MinScale), std::max(scale.z, k_MinScale)});
     }
 
-    void Transform::ShiftPosition(const Vector3& delta) noexcept
-    {
-        m_position += delta;
-        m_previousPosition += delta;
-    }
+    void Transform::ShiftPosition(const Vector3& delta) noexcept { m_position.Shift(delta); }
+
+    void Transform::Teleport(const Vector3& position) noexcept { m_position.Teleport(position); }
 
     void Transform::Snapshot() noexcept
     {
-        m_previousPosition = m_position;
-        m_previousRotation = m_rotation;
-        m_previousScale = m_scale;
+        m_position.Snapshot();
+        m_rotation.Snapshot();
+        m_scale.Snapshot();
     }
 
-    void Transform::CopyFrom(const Transform& source) noexcept
-    {
-        m_position = source.m_position;
-        m_rotation = source.m_rotation;
-        m_scale = source.m_scale;
-        m_previousPosition = source.m_previousPosition;
-        m_previousRotation = source.m_previousRotation;
-        m_previousScale = source.m_previousScale;
-    }
-
-    Matrix Transform::WorldMatrix() const noexcept
-    {
-        const Matrix scale = Matrix::CreateScale(m_scale);
-        const Matrix rotate = Matrix::CreateFromQuaternion(m_rotation);
-        const Matrix translate = Matrix::CreateTranslation(m_position);
-        return scale * rotate * translate;
-    }
+    Matrix Transform::WorldMatrix() const noexcept { return InterpolatedWorldMatrix(1.0f); }
 
     Matrix Transform::InterpolatedWorldMatrix(float alpha) const noexcept
     {
-        // 前 + (今 − 前) は丸めで今からずれる
-        // 止めた世界を描く割合 1 の絵が、前の値の違いで変わらないようにする
-        if (alpha >= 1.0f)
-        {
-            return WorldMatrix();
-        }
-        const Vector3 position = Vector3::Lerp(m_previousPosition, m_position, alpha);
-        const Quaternion rotation = Quaternion::Slerp(m_previousRotation, m_rotation, alpha);
-        const Vector3 scale = Vector3::Lerp(m_previousScale, m_scale, alpha);
-
-        const Matrix scaleM = Matrix::CreateScale(scale);
-        const Matrix rotateM = Matrix::CreateFromQuaternion(rotation);
-        const Matrix translateM = Matrix::CreateTranslation(position);
-        return scaleM * rotateM * translateM;
+        const Matrix scale = Matrix::CreateScale(m_scale.Lerp(alpha));
+        const Matrix rotate = Matrix::CreateFromQuaternion(m_rotation.Lerp(alpha));
+        const Matrix translate = Matrix::CreateTranslation(m_position.Lerp(alpha));
+        return scale * rotate * translate;
     }
 
 } // namespace NS

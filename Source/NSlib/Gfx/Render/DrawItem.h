@@ -1,7 +1,7 @@
 #pragma once
 
 #include "NSlib/Core/Types.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
 
@@ -26,7 +26,7 @@ namespace NS
             Transparent
         };
 
-        // FrameCB の 16 バイト整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
+        // ObjectConstants の 16 バイト整列を値で抱えるため DrawItem に想定どおりのパディングが入る。C4324 を黙らせる
 #pragma warning(push)
 #pragma warning(disable : 4324)
         struct DrawItem
@@ -36,7 +36,7 @@ namespace NS
             BlendMode blend = BlendMode::Opaque;
             bool occludedOnly = false; // true のとき手前の物に隠れた画素のみを半透明・深度書き込みなしで描く
             bool twoSided = false;
-            FrameCB constants{};
+            ObjectConstants constants{}; // 物ごとの定数。ビューごとの定数は SceneRenderer がビューを描き始める時に送る
 
             // 頂点シェーダーへの追加定数バッファ (スキンメッシュのボーンパレット等)
             const D3DBuffer* extraVsCb = nullptr;

@@ -80,7 +80,7 @@ TEST(PadRumbleDirector, HitReactionStopWritesZero)
     ASSERT_NE(reaction, nullptr);
     scene.PadRumble().Start(player, FadingLeft(1.0f, 4));
     EXPECT_FLOAT_EQ(PadLeft(), 1.0f);
-    reaction->Stop(player);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 

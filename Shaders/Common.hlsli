@@ -1,58 +1,48 @@
 #ifndef NS_COMMON_HLSLI
 #define NS_COMMON_HLSLI
 
-// 全 mesh 描画が共有する毎フレーム定数。 C++ の FrameCB と 1 対 1 に対応する 304 byte
+// 物ごとの定数。 C++ の ObjectConstants と 1 対 1 に対応する 160 byte。 描く 1 回ごとに材質の定数バッファで送る
 // row-major LH に揃え mul(float4(pos,1), world) の行ベクトル流派で使う
-cbuffer FrameCB : register(b0)
+cbuffer ObjectCB : register(b0)
 {
     row_major float4x4 world;
-    row_major float4x4 viewProj;
-    float3 lightDir;
-    float  g_groundWaveCenterX;
     float3 baseColor;
-    float  g_groundWaveCenterZ;
-    float3 g_lightColor;
-    float  g_groundWaveRadius;
-    float3 g_ambientColor;
-    float  g_groundWaveStrength;
-    float3 g_groundColor;
-    float  g_exposure;
-    // 物の震え。 C++ の TremorCB と同じ並び
-    float3 g_tremorContactOffset;
-    float  g_tremorAmplitude;
-    float3 g_tremorRight;
-    float  g_tremorElapsedFrames;
-    float3 g_tremorUp;
-    float  g_tremorFramesPerMeter;
-    float  g_tremorRingFrames;
-    float3 g_tremorPad;
     // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
     float  g_opacity;
-    float3 g_opacityPad;
+    // 名前の無い物ごとの 4 つの値。 C++ の ObjectConstants::objectValues と同じ並び。 意味は口のファイル SurfaceHooks.hlsli が決める
+    float4 g_objectValues[4];
+    // ビューごとのシーンの値に掛ける重み。 1 なら効き、 0 なら効かない。 読むのは SceneValue だけ
+    float  g_sceneValuesWeight;
+    float3 g_objectPad;
+};
+
+// ビューごとの定数。 C++ の ViewConstants と 1 対 1 に対応する 176 byte。 SceneRenderer がビューを描き始める時に 1 回送る
+// 空・エフェクト・画面の処理が b0 を差し直すので、 b3 に置く
+cbuffer ViewCB : register(b3)
+{
+    row_major float4x4 viewProj;
+    float3 lightDir;
+    float  g_lightDirPad;
+    float3 g_lightColor;
+    float  g_lightColorPad;
+    float3 g_ambientColor;
+    float  g_ambientColorPad;
+    float3 g_groundColor;
+    float  g_exposure;
+    // 名前の無いシーンの値 2 つ。 C++ の ViewConstants::sceneValues と同じ並び。 物の重みを掛けて読むので、 SceneValue から読む
+    float4 g_sceneValues[2];
     float3 g_cameraPosition;
     float  g_sceneTimeSeconds;
 };
 
-// 物の震えで世界の位置へ足すずれ。 衝突点から遠い所ほど遅れて震え始め、 1 か所は g_tremorRingFrames で弱まって止まる
-// 経過の小数は距離から来るので、 ほとんど動かない帯が衝突点から裏へ走り、 波に見える
-float3 TremorOffset(float3 worldPos)
+// 名前の無いシーンの値の index 番目に、物の重みを掛けて返す。 残像のコピーは重みが 0 なので、 シーンの値が効かない
+float4 SceneValue(uint index)
 {
-    if (g_tremorAmplitude <= 0.0 || g_tremorRingFrames <= 0.0)
-    {
-        return float3(0.0, 0.0, 0.0);
-    }
-    // 衝突点は描く形と一緒に動く。 world 行列の位置からのずれで持つ
-    float3 contact = world[3].xyz + g_tremorContactOffset;
-    float t = g_tremorElapsedFrames - distance(worldPos, contact) * g_tremorFramesPerMeter;
-    if (t < 0.0 || t >= g_tremorRingFrames)
-    {
-        return float3(0.0, 0.0, 0.0);
-    }
-    // 1 フレームに半周する。 横は cos で始まりのフレームから振れ幅いっぱい、 縦はその半分の速さ
-    const float k_Pi = 3.14159265;
-    float envelope = 1.0 - t / g_tremorRingFrames;
-    return (g_tremorRight * cos(k_Pi * t) + g_tremorUp * sin(k_Pi * t * 0.5)) * g_tremorAmplitude * envelope;
+    return g_sceneValues[index] * g_sceneValuesWeight;
 }
+
+// 物ごとの見た目とシーンの値の使い方の口。 シェーダを読む時に渡したフォルダから先に探すので、 Game が中身を書いた物に差し替わる
+#include "SurfaceHooks.hlsli"
 
 // standard.vs / skinned.vs が出力し PS が受け取る補間子
 struct SurfaceInterp
@@ -62,56 +52,6 @@ struct SurfaceInterp
     float3 worldNormal : NORMAL;
     float3 worldPos    : TEXCOORD1;
 };
-
-// 床の波の輪の半分の幅 (m)。 真後ろのカメラから床を斜めに見下ろした時に、 輪が線ではなく帯に見える幅
-static const float k_GroundWaveHalfWidth = 0.7;
-
-// 床の波の輪の中の位置。 輪の真ん中が 0、 内の縁が -1、 外の縁が +1。 輪の外か上を向かない面は 2 を返す
-// 床は頂点の少ない箱なので形は曲げず、 光と面の向きだけで、 波が床を走って見せる
-float GroundWaveSlot(float3 worldPos, float3 worldNormal, out float3 outward)
-{
-    outward = float3(0.0, 0.0, 0.0);
-    if (g_groundWaveStrength <= 0.0 || worldNormal.y < 0.5)
-    {
-        return 2.0;
-    }
-    float2 fromCenter = worldPos.xz - float2(g_groundWaveCenterX, g_groundWaveCenterZ);
-    float distanceFromCenter = length(fromCenter);
-    float slot = (distanceFromCenter - g_groundWaveRadius) / k_GroundWaveHalfWidth;
-    if (abs(slot) >= 1.0)
-    {
-        return 2.0;
-    }
-    float2 direction = fromCenter / max(distanceFromCenter, 1.0e-4);
-    outward = float3(direction.x, 0.0, direction.y);
-    return slot;
-}
-
-// 床の波の盛り上がりの斜面の向き。 内の斜面は中心へ、 外の斜面は外へ倒す。 光の当たり方が輪の前後で入れ替わる
-float3 GroundWaveNormal(float3 worldPos, float3 worldNormal)
-{
-    float3 outward;
-    float slot = GroundWaveSlot(worldPos, worldNormal, outward);
-    if (slot >= 1.0)
-    {
-        return worldNormal;
-    }
-    const float k_Pi = 3.14159265;
-    return normalize(worldNormal + outward * sin(k_Pi * slot) * g_groundWaveStrength);
-}
-
-// 床の波の頂に足す光の量。 輪の真ん中が一番明るく、 縁で 0
-float GroundWaveGlow(float3 worldPos, float3 worldNormal)
-{
-    float3 outward;
-    float slot = GroundWaveSlot(worldPos, worldNormal, outward);
-    if (slot >= 1.0)
-    {
-        return 0.0;
-    }
-    float crest = 1.0 - slot * slot;
-    return crest * crest * g_groundWaveStrength * 0.6;
-}
 
 // 上下 2 色の環境光に平行光を足して返す。 albedo と baseColor は呼び出し側で掛ける
 float3 DirectionalLight(float3 worldNormal)

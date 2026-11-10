@@ -9,10 +9,10 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 #include "NSlib/Phys/PhysicsScene.h"
@@ -67,8 +67,8 @@ namespace NS
         //! 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! 描く物・重ね描き・平行光の管理クラス
-        //! アクターが OnInit で InitDraw・InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
+        //! 描く物・線の部品・平行光の管理クラス
+        //! 描く部品・線の部品・平行光は基底の SceneActor が OnInit の直後に入れ、OnEndPlay で外す。
         //! 出る・消える時は、入れたまま組の有効と無効を切り替える
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 
@@ -96,9 +96,9 @@ namespace NS
         [[nodiscard]] UIDirector& UI() noexcept { return m_ui; }
         [[nodiscard]] const UIDirector& UI() const noexcept { return m_ui; }
 
-        //! 当たりの画面の演出 (白・震えの線・歪みの輪・床の波)。HitReaction が頼む
-        [[nodiscard]] HitScreenDirector& HitScreen() noexcept { return m_hitScreen; }
-        [[nodiscard]] const HitScreenDirector& HitScreen() const noexcept { return m_hitScreen; }
+        //! 画面全体の白い光。動作の事象と当たりの反応の項目が頼む
+        [[nodiscard]] ScreenFlashDirector& ScreenFlash() noexcept { return m_screenFlash; }
+        [[nodiscard]] const ScreenFlashDirector& ScreenFlash() const noexcept { return m_screenFlash; }
 
         //! パッドの振動。HitReaction が頼む
         [[nodiscard]] PadRumbleDirector& PadRumble() noexcept { return m_padRumble; }
@@ -166,18 +166,6 @@ namespace NS
         //! 描く補間の割合 0〜1。frameAlpha をそのまま返し、世界を回さない間と時間停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
-        //! 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
-        //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
-        template <class T, class... Args> T* SpawnActor(std::string name, Args&&... args)
-        {
-            const ActorInitInfo info{.scene = this};
-            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
-            T* raw = obj.get();
-            AdoptActor(std::move(obj), std::move(name));
-            return raw;
-        }
-
         //! アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
@@ -221,6 +209,13 @@ namespace NS
         //! 同じ歩のアクターとセンサーが書いた知らせを読める
         virtual void StepGame() {}
 
+        //! 普段の歩とシーンが止まっている歩の両方で、アクターの PrepareRender の後に 1 回呼ぶ。
+        //! 派生はシーンに 1 つの画面の演出をここで 1 フレーム進める
+        virtual void StepViewEffects() {}
+        //! アクターを組み直す前と終わる時に、アクターを捨てる前に 1 回呼ぶ。派生は StepViewEffects で進める物を全部消す。
+        //! 基底の破棄の中では派生がもう無いので呼ばれない
+        virtual void ClearViewEffects() {}
+
     private:
         // 状態ごとの 1 歩。OnUpdate が StepWorld か StepStopped を選んで呼び、回す物と順番はこの 4 つが決める。
         // 中で止めを確かめない
@@ -253,9 +248,6 @@ namespace NS
         //! ApplyFromJson の作り直す道。同じ id のアクターを外して replaced へ渡し、同じ並びの位置へ JSON から作って入れる
         SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced);
 
-        // SpawnActor の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        SceneActor* AdoptActor(std::unique_ptr<SceneActor> obj, std::string name);
-
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);
 
@@ -268,9 +260,9 @@ namespace NS
         Gfx::ScreenFade m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
-        // 作る時に m_sceneRenderer へ重ね描きを入れ、破棄で外すので、m_sceneRenderer より後に宣言する。
-        // アクターの HitReaction が頼むので、アクターより先に宣言して後に破棄する
-        HitScreenDirector m_hitScreen{*this};
+        // 白い光の濃さを m_sceneRenderer へ書くので、m_sceneRenderer より後に宣言する。
+        // アクターの動作と HitReaction が頼むので、アクターより先に宣言して後に破棄する
+        ScreenFlashDirector m_screenFlash{m_sceneRenderer};
         PadRumbleDirector m_padRumble;
 
         //! 衝突判定の PhysicsScene。Collision が出る時と動いた歩に body を入れる

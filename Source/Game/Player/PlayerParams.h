@@ -52,15 +52,15 @@ namespace GL
             NS_FIELD(m_apexHangVy, "頂点滞空 Vy")
             NS_FIELD(m_apexHangScale, "頂点滞空倍率")
             NS_FIELD(m_jumpReleaseScale, "ジャンプ離し倍率")
-            NS_FIELD(m_coyoteTime, "コヨーテ時間")
-            NS_FIELD(m_jumpBufferTime, "先行入力時間")
+            NS_FIELD(m_coyoteFrames, "コヨーテのフレーム数")
+            NS_FIELD(m_jumpBufferFrames, "先行入力のフレーム数")
             NS_GROUP("移動")
             NS_FIELD(m_walkSpeed, "歩き速度")
             NS_FIELD(m_runSpeed, "走行速度")
             NS_FIELD(m_acceleration, "加速度")
             NS_FIELD(m_airAcceleration, "空中の加速度")
             NS_FIELD(m_turningDrag, "曲がる時の抵抗")
-            NS_FIELD(m_airControlReturnSeconds, "ダッシュと反動の後に空中の操作が戻る秒")
+            NS_FIELD(m_airControlReturnFrames, "ダッシュと反動の後に空中の操作が戻るフレーム数")
             NS_FIELD(m_friction, "手を放した時の減速度")
             NS_FIELD(m_deceleration, "ブレーキの減速度")
             NS_FIELD(m_brakeThreshold, "ブレーキのしきい値")
@@ -73,10 +73,11 @@ namespace GL
             NS_FIELD(m_ledgeGrabBelowHand, "掴める縁の下向き距離")
             NS_FIELD(m_ledgeReach, "縁へ手を伸ばす距離")
             NS_FIELD(m_ledgeHoldAboveHand, "掴まっている縁の上向きの許し")
-            NS_FIELD(m_ledgeClimbDuration, "よじ登りの所要時間")
+            NS_FIELD(m_ledgeClimbFrames, "よじ登りのフレーム数")
             NS_FIELD(m_ledgeShimmySpeed, "縁の横移動速度")
             NS_GROUP("エアダッシュ")
             NS_FIELD(m_airDashDistance, "エアダッシュの距離", NS::FieldRange::Positive())
+            NS_FIELD(m_airDashFrames, "エアダッシュのフレーム数")
             NS_FIELD(m_airDashExitSpeed, "エアダッシュ後に残る速さ")
             NS_GROUP("地形の反動")
             NS_FIELD(m_reboundTableDivisions, "向きの表の分割数")
@@ -92,8 +93,8 @@ namespace GL
             NS_FIELD(m_reboundStopMinFrames, "反動の止めの最短のフレーム数")
             NS_FIELD(m_reboundStopMaxFrames, "反動の止めの上限のフレーム数")
             NS_FIELD(m_reboundStopStickChange, "スティックが動いているとみなす変化", NS::FieldRange::NonNegative())
-            NS_FIELD(m_reboundLockSeconds, "反動の操作なしの秒")
-            NS_FIELD(m_reboundSteerEndSeconds, "反動の補正が終わる秒")
+            NS_FIELD(m_reboundLockFrames, "反動の操作なしのフレーム数")
+            NS_FIELD(m_reboundSteerEndFrames, "反動の補正が終わるフレーム数")
             NS_FIELD(m_dashReboundGravity, "地形の反動の重力")
             NS_FIELD(m_dashReboundDeceleration, "地形の反動の減速度")
             NS_FIELD(m_reboundSteerLimitRatio, "曲げの上限の段の割合")
@@ -111,15 +112,15 @@ namespace GL
             float m_apexHangVy = 1.0f;
             float m_apexHangScale = 0.5f;
             float m_jumpReleaseScale = 0.6f;
-            float m_coyoteTime = 0.025f;
-            float m_jumpBufferTime = 0.25f;
+            int m_coyoteFrames = 1;      // 足場を離れても跳べる、宙のフレーム数
+            int m_jumpBufferFrames = 15; // 着地の前に押した跳ぶ入力を覚えておくフレーム数
             float m_walkSpeed = 4.0f;
             float m_runSpeed = 8.0f;
             float m_acceleration = 40.0f;
             float m_airAcceleration = 40.0f;
             float m_turningDrag = 40.0f;
-            // ダッシュと反動の後の落下で、空中の加速度と曲がる時の抵抗が 0 から全部へ戻るまでの秒
-            float m_airControlReturnSeconds = 0.5f;
+            // ダッシュと反動の後の落下で、空中の加速度と曲がる時の抵抗が 0 から全部へ戻るまでのフレーム数
+            int m_airControlReturnFrames = 30;
             float m_friction = 40.0f;
             float m_deceleration = 40.0f;
             float m_brakeThreshold = -0.8f;
@@ -132,10 +133,11 @@ namespace GL
             float m_ledgeReach = 0.3f;
             // 掴まっている間に測り直す上面が、手より上に出てよい高さ (m)。撃った線の誤差で手を放さないための余白
             float m_ledgeHoldAboveHand = 0.01f;
-            float m_ledgeClimbDuration = 0.25f;
+            int m_ledgeClimbFrames = 15;
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
-            float m_airDashDistance = 4.4f;   // m。当たらなければ、動作 "AirDash" の length の歩でこの距離を進む
+            float m_airDashDistance = 4.4f;   // m。当たらなければ、m_airDashFrames の歩でこの距離を進む
+            int m_airDashFrames = 29;         // 当たらなかったダッシュが終わるまでの状態の歩の数
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
@@ -154,8 +156,8 @@ namespace GL
             int m_reboundStopMaxFrames = 12;      // スティックが動いている間は、ここまで止めを延ばす
             // 1 フレームの左スティックの位置の差がこれより大きいと、動いているとみなす。止めの延長と、押したフレームのエアダッシュの向きに使う
             float m_reboundStopStickChange = 0.05f;
-            float m_reboundLockSeconds = 0.15f;    // 反動を始めてから操作が戻るまで
-            float m_reboundSteerEndSeconds = 0.6f; // 反動を始めてから補正の段が終わるまで
+            int m_reboundLockFrames = 9;      // 反動を始めてから操作が戻るまで
+            int m_reboundSteerEndFrames = 36; // 反動を始めてから補正の段が終わるまで
             float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)
             float m_dashReboundDeceleration = 6.0f; // 補正の段の水平の減速度 (m/s²)
             float m_reboundSteerLimitRatio = 0.45f; // 曲げの累計の上限を 1 段の角度に対する割合で。0.5 未満へ丸める

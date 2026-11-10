@@ -4,8 +4,8 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
+#include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "Tests/TestSceneSetup.h"
 
@@ -48,7 +48,7 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
+    NS::ScreenFlashDirector* screen = &scene.ScreenFlash();
     NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
@@ -63,22 +63,22 @@ TEST(HitReactionChannels, StartingOneChannelLeavesTheOthersRunning)
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
 
-    screen->StartFlash(player, 3, 1.0f);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
+    screen->Start(player, 3, 1.0f);
+    EXPECT_EQ(screen->FramesRemaining(), 3);
     tick();
-    EXPECT_EQ(screen->FlashFramesRemaining(), 3);
+    EXPECT_EQ(screen->FramesRemaining(), 3);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
 
     pad->Start(player, FadingLeft(0.5f, 2));
     tick();
     // 振動は頼んだフレームの姿のまま、白は薄れる
-    EXPECT_EQ(screen->FlashFramesRemaining(), 2);
+    EXPECT_EQ(screen->FramesRemaining(), 2);
     EXPECT_FLOAT_EQ(PadLeft(), 0.5f);
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
 
-    reaction->Stop(player);
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
+    reaction->Stop(NS::HitReactionSelf{.actor = player, .model = player->ModelClassObj()});
+    EXPECT_EQ(screen->FramesRemaining(), 0);
     EXPECT_FLOAT_EQ(PadLeft(), 0.0f);
 }
 
@@ -90,7 +90,7 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
     ASSERT_NE(player, nullptr);
     NS::HitReaction* reaction = player->HitReactionClassObj();
     ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
+    NS::ScreenFlashDirector* screen = &scene.ScreenFlash();
     NS::PadRumbleDirector* pad = &scene.PadRumble();
     ASSERT_NE(screen, nullptr);
     ASSERT_NE(pad, nullptr);
@@ -100,31 +100,15 @@ TEST(HitReactionChannels, ScalingKeepsTheRunningEffectsGoingAtTheNewStrength)
     };
 
     pad->Start(player, FadingLeft(1.0f, 4));
-    screen->StartFlash(player, 4, 1.0f);
+    screen->Start(player, 4, 1.0f);
     tick();
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.75f);
-    const float flash = screen->FlashAlpha();
+    const float flash = screen->Alpha();
 
     reaction->ScaleRunning(NS::HitReactionSelf{.actor = player}, 0.5f);
     EXPECT_FLOAT_EQ(PadLeft(), 0.375f);
-    EXPECT_FLOAT_EQ(screen->FlashAlpha(), flash * 0.5f);
+    EXPECT_FLOAT_EQ(screen->Alpha(), flash * 0.5f);
     tick();
     EXPECT_FLOAT_EQ(PadLeft(), 0.25f);
-}
-
-// 揺れと寄りは、頼んだ物だけがカメラの効果に積まれる
-TEST(HitReactionChannels, ShakeAndZoomStartSeparately)
-{
-    NS::Scene scene;
-    PlayerActor* player = PlacePlayer(scene);
-    ASSERT_NE(player, nullptr);
-    NS::HitReaction* reaction = player->HitReactionClassObj();
-    ASSERT_NE(reaction, nullptr);
-    NS::HitScreenDirector* screen = &scene.HitScreen();
-    ASSERT_NE(screen, nullptr);
-    EXPECT_TRUE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 4}));
-    EXPECT_EQ(screen->FlashFramesRemaining(), 0);
-    EXPECT_TRUE(reaction->StartZoomRoll(player, NS::CameraZoomRollDesc{.zoom = 1.2f, .holdFrames = 2, .returnFrames = 2}));
-    EXPECT_FALSE(reaction->StartSink(player, NS::CameraSinkDesc{.bottomPixels = 9.0f, .frames = 61}));
 }

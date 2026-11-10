@@ -2,42 +2,50 @@
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
+#include "NSlib/Gfx/Render/RenderBounds.h"
 
+#include <optional>
 #include <vector>
 
 namespace NS
 {
     class IGetCollision;
+    namespace Gfx
+    {
+        struct RenderContext;
+    }
 } // namespace NS
 
 namespace NS
 {
     //! 真下の地形へ丸影を描く。地面がなければ描かず、高さに応じて薄く小さくする
-    //! 位置は描画時に衝突へ問い合わせ、過去の命中位置を保持しない
-    class Shadow : public Object, public IRenderable
+    //! 地面の高さは歩ごとの Update で探して持ち、描く時は当たりを調べない
+    class Shadow : public Object
     {
     public:
         //! 板とマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
         Shadow();
 
-        //! 描くたびに真下の地面を探すシーンを書く。書くのは補助関数 InitDraw だけ
-        //! collision は影を外すまで生きていること。書かずに描くのは呼び手のバグで、NS_ASSERT が止める
-        void UseCollision(const IGetCollision* collision) noexcept { m_collision = collision; }
+        //! origin の真下 maxDrop 以内の地面の高さを collision で探して持つ。歩ごとに ActorList::SyncShadows が呼ぶ
+        void Update(const IGetCollision* collision, const Vector3& origin) noexcept;
+        //! 前の Update で真下に地面が見つかったか
+        [[nodiscard]] bool HasGround() const noexcept { return m_hasGround; }
+        //! 前の Update で探した地面のワールドの高さ (m)。地面が無ければ 0
+        [[nodiscard]] float GroundHeight() const noexcept { return m_groundY; }
+        //! 根の位置 origin の真下の、前の Update で探した地面の高さに影の板を置く行列。地面が無いか薄くて見えなければ無し
+        [[nodiscard]] std::optional<Matrix> DrawWorldMatrix(const Vector3& origin) const noexcept;
 
-        //! 根の真下の地面に影クアッドの DrawItem を積む。地面が無い / 描く形かマテリアルの D3DMaterial が無ければ何も積まない
+        //! 根の真下の地面に影の板の DrawItem を積む。地面が無い・素材が描けない時は何も積まない
         //! マテリアルの欄が空の時は、ほかのマテリアルの欄と同じく既定の灰色 (default.mat) で描く
-        void Collect(const Gfx::RenderContext& context,
-                     const RenderSource& source,
-                     std::vector<Gfx::DrawItem>& out) override;
-        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override { return Gfx::RenderPass::Transparent; }
-        //! 半透明の並べ替えに使う中心として、根の世界座標の位置を返す
-        [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
-
-        //! 根の直下の落下可動域を丸ごと覆う AABB。影がどこに落ちても視錐台判定で外さない
-        [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
+        //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
+        void Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
+        //! 段は Transparent、中心は根の位置、優先度は 0
+        //! 箱は根の直下の落ちる範囲を全部覆う。影がどこに落ちても視錐台で外さない
+        //! @param[in] root 持ち主の根の今の固定フレームの世界行列
+        [[nodiscard]] Gfx::RenderBounds Bounds(const Matrix& root) const noexcept;
 
         //! 落下距離 dist に対する高さフェード係数 [0,1]。dist=0 で 1、dist>=maxDist で 0
         [[nodiscard]] static float ComputeFade(float dist, float maxDist) noexcept;
@@ -61,6 +69,16 @@ namespace NS
         float m_maxDrop = 12.0f;       // 影が消える最大落下距離
         float m_surfaceOffset = 0.02f; // 地面へめり込ませない浮かせ量
         float m_baseAlpha = 0.5f;      // 接地時の不透明度
-        const IGetCollision* m_collision = nullptr; // 真下の地面を探すシーン (非所有)
+        //! 影の板 1 枚の置き場所と濃さ
+        struct Plane
+        {
+            Matrix world = Matrix::Identity;
+            float opacity = 0.0f;
+        };
+        //! 根の位置 origin の真下に置く板。濃さは origin と地面の高さの差で決める。地面が無いか薄くて見えなければ無し
+        [[nodiscard]] std::optional<Plane> PlaneAt(const Vector3& origin) const noexcept;
+
+        float m_groundY = 0.0f;        // 前の Update で探した地面のワールドの高さ。描く時はこの高さに置く。保存しない
+        bool m_hasGround = false;      // 前の Update で地面が見つかったか。保存しない
     };
 } // namespace NS

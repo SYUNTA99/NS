@@ -32,7 +32,7 @@ namespace NS
         [[nodiscard]] const Anim::Skeleton* Skeleton() const noexcept { return m_skeleton; }
 
         void Play() noexcept;
-        //! @brief clip を今のクリップにして、時刻を 0 から再生する。今と同じクリップなら何もしない
+        //! @brief clip を今のクリップにして、時刻とループの回数を 0 から再生する。今と同じクリップなら何もしない
         //! @details clip のトラックの骨を、今の骨格で名前から 1 回だけ引いて控える。clip の寿命は AssetManager が保つ
         //! nullptr を渡すとクリップを外し、骨格の基準の姿勢を描く
         //! blendSeconds が正なら、最後に作った姿勢を保存し、そこから clip の姿勢へ blendSeconds かけて混ぜる。秒は dt
@@ -50,6 +50,8 @@ namespace NS
 
         [[nodiscard]] const Anim::AnimClip* CurrentClip() const noexcept { return m_clip; }
         [[nodiscard]] float Time() const noexcept;
+        //! 今のクリップをループして頭へ戻った回数。Play で別のクリップにすると 0 に戻る
+        [[nodiscard]] uint32 LoopCount() const noexcept { return m_loopCount; }
         //! 現在クリップの尺 (秒)。無ければ 0
         [[nodiscard]] float Duration() const noexcept;
         [[nodiscard]] bool IsPlaying() const noexcept;
@@ -79,6 +81,7 @@ namespace NS
         const Anim::AnimClip* m_clip = nullptr;
         std::vector<int> m_clipBones; // トラックごとのボーン番号 (-1 は骨格に無いボーン)
         float m_time = 0.0f;          // 秒
+        uint32 m_loopCount = 0;
         float m_speed = 1.0f;
         bool m_playing = true;
         bool m_looping = true;

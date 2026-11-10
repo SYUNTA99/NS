@@ -2,7 +2,8 @@
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/MaterialFile.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/D3DShader.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 
 #include <gtest/gtest.h>
 
@@ -26,6 +27,13 @@
 
 namespace
 {
+    // 描く 1 回の物ごとの定数とビューごとの定数の組。シェーダの b0 と b3 に差す
+    struct DrawValues
+    {
+        NS::Gfx::ObjectConstants object{};
+        NS::Gfx::ViewConstants view{};
+    };
+
     using Microsoft::WRL::ComPtr;
 
     constexpr std::array<float, 4> k_Cleared{0.25f, 0.5f, 0.75f, -1.0f};
@@ -250,7 +258,7 @@ VSOut VSMain(VSIn input)
 
         Pixel Draw(ID3D11PixelShader* shader,
                    const SurfaceInput& input,
-                   const NS::Gfx::FrameCB& frame,
+                   const DrawValues& frame,
                    std::span<const std::byte> materialParams,
                    ID3D11ShaderResourceView* texture)
         {
@@ -267,8 +275,10 @@ VSOut VSMain(VSIn input)
             ComPtr<ID3D11Buffer> vertexBuffer;
             EXPECT_TRUE(SUCCEEDED(m_device->CreateBuffer(&vertexDesc, &vertexData, vertexBuffer.GetAddressOf())));
 
-            const ComPtr<ID3D11Buffer> frameBuffer =
-                MakeConstantBuffer(*m_device.Get(), std::as_bytes(std::span<const NS::Gfx::FrameCB, 1>(&frame, 1)));
+            const ComPtr<ID3D11Buffer> objectBuffer = MakeConstantBuffer(
+                *m_device.Get(), std::as_bytes(std::span<const NS::Gfx::ObjectConstants, 1>(&frame.object, 1)));
+            const ComPtr<ID3D11Buffer> viewBuffer = MakeConstantBuffer(
+                *m_device.Get(), std::as_bytes(std::span<const NS::Gfx::ViewConstants, 1>(&frame.view, 1)));
             ComPtr<ID3D11Buffer> materialBuffer;
             if (!materialParams.empty())
             {
@@ -289,9 +299,11 @@ VSOut VSMain(VSIn input)
             m_context->IASetVertexBuffers(0, 1, vertexBuffers, &stride, &offset);
             m_context->VSSetShader(m_vertexShader.Get(), nullptr, 0);
             m_context->PSSetShader(shader, nullptr, 0);
-            ID3D11Buffer* frameBuffers[] = {frameBuffer.Get()};
+            ID3D11Buffer* objectBuffers[] = {objectBuffer.Get()};
+            ID3D11Buffer* viewBuffers[] = {viewBuffer.Get()};
             ID3D11Buffer* materialBuffers[] = {materialBuffer.Get()};
-            m_context->PSSetConstantBuffers(0, 1, frameBuffers);
+            m_context->PSSetConstantBuffers(NS::Gfx::k_DrawConstantsSlot, 1, objectBuffers);
+            m_context->PSSetConstantBuffers(NS::Gfx::k_ViewConstantsSlot, 1, viewBuffers);
             m_context->PSSetConstantBuffers(2, 1, materialBuffers);
             ID3D11ShaderResourceView* views[] = {texture};
             ID3D11SamplerState* samplers[] = {m_sampler.Get()};
@@ -332,11 +344,11 @@ VSOut VSMain(VSIn input)
         return std::as_bytes(std::span<const Params, 1>(&params, 1));
     }
 
-    NS::Gfx::FrameCB WhiteLightFrame()
+    DrawValues WhiteLightFrame()
     {
-        NS::Gfx::FrameCB frame{};
-        frame.lightDir = NS::Vector3{0.0f, -1.0f, 0.0f};
-        frame.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
+        DrawValues frame{};
+        frame.view.lightDir = NS::Vector3{0.0f, -1.0f, 0.0f};
+        frame.object.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
         return frame;
     }
 
@@ -364,7 +376,7 @@ TEST_F(SurfaceShaderTest, LitTilesByTheWorldPositionAlongTheSurface)
     const ComPtr<ID3D11PixelShader> shader = CompilePixelShader(L"Shaders/lit.ps.hlsl");
     ASSERT_NE(shader, nullptr);
     const ComPtr<ID3D11ShaderResourceView> texture = MakeTexture(k_CheckerTexels);
-    const NS::Gfx::FrameCB frame = WhiteLightFrame();
+    const DrawValues frame = WhiteLightFrame();
 
     const LitParams byUv{};
     const Pixel dark = Draw(shader.Get(), SurfaceInput{.u = 0.25f, .v = 0.25f}, frame, ParamBytes(byUv), texture.Get());
@@ -423,7 +435,7 @@ TEST_F(SurfaceShaderTest, LitDiscardsTexelsThinnerThanAlphaCutoff)
     ASSERT_NE(shader, nullptr);
     const ComPtr<ID3D11ShaderResourceView> texture =
         MakeTexture({255, 255, 255, 0, 255, 255, 255, 255, 255, 255, 255, 0, 255, 255, 255, 255});
-    const NS::Gfx::FrameCB frame = WhiteLightFrame();
+    const DrawValues frame = WhiteLightFrame();
     const SurfaceInput thin{.u = 0.25f, .v = 0.25f};
     const SurfaceInput solid{.u = 0.75f, .v = 0.25f};
 
@@ -442,8 +454,8 @@ TEST_F(SurfaceShaderTest, LitFadesTowardTheHazeColorFarFromTheCamera)
     ASSERT_NE(shader, nullptr);
     const ComPtr<ID3D11ShaderResourceView> texture = MakeTexture(k_CheckerTexels);
     const LitParams params{};
-    NS::Gfx::FrameCB frame = WhiteLightFrame();
-    frame.cameraPosition = NS::Vector3{500.0f, 0.0f, 0.0f};
+    DrawValues frame = WhiteLightFrame();
+    frame.view.cameraPosition = NS::Vector3{500.0f, 0.0f, 0.0f};
     const SurfaceInput near0{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 0.0f}};
     const SurfaceInput near99{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 99.0f}};
     const SurfaceInput far400{.u = 0.25f, .v = 0.25f, .worldPos = NS::Vector3{500.0f, 0.0f, 400.0f}};
@@ -466,19 +478,19 @@ TEST_F(SurfaceShaderTest, LitFollowsTheLightAndAmbientColors)
     const LitParams params{};
     const SurfaceInput input{.u = 0.5f, .v = 0.5f};
 
-    NS::Gfx::FrameCB dark = WhiteLightFrame();
-    dark.lightColor = NS::Vector3{0.0f, 0.0f, 0.0f};
-    dark.ambientColor = NS::Vector3{0.0f, 0.0f, 0.0f};
+    DrawValues dark = WhiteLightFrame();
+    dark.view.lightColor = NS::Vector3{0.0f, 0.0f, 0.0f};
+    dark.view.ambientColor = NS::Vector3{0.0f, 0.0f, 0.0f};
     const Pixel darkPixel = Draw(shader.Get(), input, dark, ParamBytes(params), texture.Get());
 
-    NS::Gfx::FrameCB redLight = dark;
-    redLight.lightColor = NS::Vector3{0.5f, 0.0f, 0.0f};
+    DrawValues redLight = dark;
+    redLight.view.lightColor = NS::Vector3{0.5f, 0.0f, 0.0f};
     const Pixel redPixel = Draw(shader.Get(), input, redLight, ParamBytes(params), texture.Get());
     EXPECT_GT(redPixel.r, darkPixel.r + 0.1f);
     EXPECT_NEAR(redPixel.g, darkPixel.g, 1.0e-3f);
 
-    NS::Gfx::FrameCB greenAmbient = dark;
-    greenAmbient.ambientColor = NS::Vector3{0.0f, 0.5f, 0.0f};
+    DrawValues greenAmbient = dark;
+    greenAmbient.view.ambientColor = NS::Vector3{0.0f, 0.5f, 0.0f};
     const Pixel greenPixel = Draw(shader.Get(), input, greenAmbient, ParamBytes(params), texture.Get());
     EXPECT_GT(greenPixel.g, darkPixel.g + 0.1f);
     EXPECT_NEAR(greenPixel.r, darkPixel.r, 1.0e-3f);
@@ -489,10 +501,10 @@ TEST_F(SurfaceShaderTest, UnlitReplacesTheActorColorWithFixedColor)
 {
     const ComPtr<ID3D11PixelShader> shader = CompilePixelShader(L"Shaders/unlit.ps.hlsl");
     ASSERT_NE(shader, nullptr);
-    NS::Gfx::FrameCB red{};
-    red.baseColor = NS::Vector3{1.0f, 0.0f, 0.0f};
-    NS::Gfx::FrameCB blue{};
-    blue.baseColor = NS::Vector3{0.0f, 0.0f, 1.0f};
+    DrawValues red{};
+    red.object.baseColor = NS::Vector3{1.0f, 0.0f, 0.0f};
+    DrawValues blue{};
+    blue.object.baseColor = NS::Vector3{0.0f, 0.0f, 1.0f};
 
     const UnlitParams actorColor{};
     const Pixel redPixel = Draw(shader.Get(), SurfaceInput{}, red, ParamBytes(actorColor), nullptr);
@@ -529,8 +541,8 @@ TEST_F(SurfaceShaderTest, MissingMaterialStaysPinkWhateverTheActorColorIs)
         .useFixedColor = static_cast<NS::uint32>(desc.params.at("useFixedColor").numbers[0]),
     };
 
-    NS::Gfx::FrameCB green{};
-    green.baseColor = NS::Vector3{0.0f, 1.0f, 0.0f};
+    DrawValues green{};
+    green.object.baseColor = NS::Vector3{0.0f, 1.0f, 0.0f};
     const Pixel pixel = Draw(shader.Get(), SurfaceInput{}, green, ParamBytes(params), nullptr);
     EXPECT_GT(pixel.r, 0.5f);
     EXPECT_NEAR(pixel.g, 0.0f, 1.0e-3f);
@@ -542,9 +554,9 @@ TEST_F(SurfaceShaderTest, SoftCircleFadesFromOpacityAtTheCenter)
 {
     const ComPtr<ID3D11PixelShader> shader = CompilePixelShader(L"Shaders/soft_circle.ps.hlsl");
     ASSERT_NE(shader, nullptr);
-    NS::Gfx::FrameCB frame{};
-    frame.baseColor = NS::Vector3{0.0f, 0.0f, 0.0f};
-    frame.opacity = 0.4f;
+    DrawValues frame{};
+    frame.object.baseColor = NS::Vector3{0.0f, 0.0f, 0.0f};
+    frame.object.opacity = 0.4f;
 
     const SoftCircleParams params{};
     const std::span<const std::byte> strengthOne = ParamBytes(params);
@@ -556,8 +568,8 @@ TEST_F(SurfaceShaderTest, SoftCircleFadesFromOpacityAtTheCenter)
     const Pixel outside = Draw(shader.Get(), SurfaceInput{.u = 1.0f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(outside.a, 0.0f, 1.0e-3f);
 
-    frame.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
-    frame.opacity = 1.0f;
+    frame.object.baseColor = NS::Vector3{1.0f, 1.0f, 1.0f};
+    frame.object.opacity = 1.0f;
     const Pixel white = Draw(shader.Get(), SurfaceInput{.u = 0.5f, .v = 0.5f}, frame, strengthOne, nullptr);
     EXPECT_NEAR(white.a, 1.0f, 1.0e-3f);
     EXPECT_GT(white.r, 0.5f);

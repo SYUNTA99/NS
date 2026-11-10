@@ -10,7 +10,9 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "TestAnimatedPlayerActor.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
 
@@ -25,6 +27,8 @@ namespace
     class ConstantSpeedActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(ConstantSpeedActor, NS::SceneActor)
+
         static constexpr float k_Speed = 6.0f;
 
     protected:
@@ -49,6 +53,9 @@ namespace
     }
 } // namespace
 
+NS_CLASS(ConstantSpeedActor)
+NS_CLASS(TestAnimatedPlayerActor)
+
 TEST(ActorBodyTime, ScaleOneGivesTheFixedStep)
 {
     NS::SceneActor actor;
@@ -62,8 +69,8 @@ TEST(ActorBodyTime, ActorAtScaleTwoMovesTwoStepsInOne)
     NS::Scene fast;
     PlaceBodies(normal, false);
     PlaceBodies(fast, true);
-    ConstantSpeedActor* slowActor = normal.SpawnActor<ConstantSpeedActor>("ConstantSpeedActor");
-    ConstantSpeedActor* fastActor = fast.SpawnActor<ConstantSpeedActor>("ConstantSpeedActor");
+    ConstantSpeedActor* slowActor = SpawnFromActorFile<ConstantSpeedActor>(normal, "ConstantSpeedActor");
+    ConstantSpeedActor* fastActor = SpawnFromActorFile<ConstantSpeedActor>(fast, "ConstantSpeedActor");
     PlayerActor* player = PlayerOf(fast);
     ASSERT_NE(slowActor, nullptr);
     ASSERT_NE(fastActor, nullptr);
@@ -92,7 +99,7 @@ TEST(ActorBodyTime, PlayerAtScaleTwoAdvancesAnimationTwoSteps)
         // 回ごとにシーンを分け、前の回の自機の状態を持ち越さない
         const ScopedPlayerActionClips clips({{"Run", "Assets/Models/Xbot.glb#run"}});
         NS::Scene scene;
-        PlayerActor* spawned = scene.SpawnActor<TestAnimatedPlayerActor>("TestAnimatedPlayerActor");
+        PlayerActor* spawned = SpawnTestAnimatedPlayer(scene);
         ASSERT_NE(spawned, nullptr);
         PlayerActor& player = *spawned;
         NS::Animation* animation = player.AnimationClassObj();

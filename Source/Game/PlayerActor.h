@@ -74,9 +74,9 @@ public:
     // =========================================================================
     [[nodiscard]] GL::Player::PlayerAppearance& Appearance() noexcept { return *m_appearance; }
     [[nodiscard]] GL::Level::ReboundPreview& ReboundIndicator() noexcept { return *m_reboundPreview; }
-    //! エアダッシュの残像の子。OnInit で作り、自機と一緒に終わる
-    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost; }
-    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost; }
+    //! エアダッシュの残像の部品。OnInit で作り、写しは自機の Model に書く
+    [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost.get(); }
+    [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost.get(); }
 
     // =========================================================================
     // 更新・アニメーション・移動入力・ジャンプ状態
@@ -91,8 +91,8 @@ public:
     void OnEndPlay() override;
 
     [[nodiscard]] int JumpsRemaining() const noexcept { return m_jumpsRemaining; }
-    //! コヨーテ猶予の残り秒。0 以下なら宙からは跳べない
-    [[nodiscard]] float CoyoteRemaining() const noexcept { return m_coyoteTimer; }
+    //! コヨーテ猶予の残りのフレーム数。0 以下なら宙からは跳べない
+    [[nodiscard]] int CoyoteRemaining() const noexcept { return m_coyoteTimer; }
     //! 走行速度を最高速度として返す (m/s、下限 0)
     [[nodiscard]] float MaxSpeed() const noexcept;
     [[nodiscard]] float RunSpeed() const noexcept;
@@ -108,12 +108,15 @@ public:
     [[nodiscard]] bool IsAirDashing() const noexcept;
     [[nodiscard]] bool IsDashRebounding() const noexcept;
     [[nodiscard]] const GL::Player::AirDashStatus& AirDash() const noexcept { return m_airDash; }
-    //! エアダッシュの動作 ("AirDash") を今の状態に結んで始める。タイムラインが無いか開始できなければ false
-    [[nodiscard]] bool StartAirDashAction() noexcept;
+    //! ダッシュの速さを控え、エアダッシュの動作 ("AirDash") を今の状態に結んで始める
+    //! 動作が無くてもダッシュは続く (WARN だけを出す)
+    void StartAirDashAction() noexcept;
     //! 重力を掛けずに、向き × 控えたダッシュの速さを身体に書く
     void KeepAirDashSpeed() noexcept;
     //! 当たらずに終わったエアダッシュの勢いを残す
     void KeepAirDashExitSpeed() noexcept;
+    //! エアダッシュの状態で、PlayerParams のエアダッシュのフレーム数の歩を進めた場合 true
+    [[nodiscard]] bool IsAirDashOver() const noexcept;
     //! 接地していれば歩きへ、空中なら落下へ移す
     void ChangeToWalkOrFall() noexcept;
     //! 地形の反動の 1 フレームを進める
@@ -128,11 +131,11 @@ public:
     // 物理挙動・速度制御（重力・加速・減速・ジャンプ）
     // =========================================================================
     //! 先行入力とコヨーテ猶予のタイマーを 1 フレーム進める
-    void TickTimers(float dt) noexcept;
+    void TickTimers() noexcept;
     //! 入力の向きへ加速する。加速の上限は MaxSpeed × 倒し具合で、歩き速度を下回らない
     void AccelerateToInputDirection(float dt) noexcept;
     //! ダッシュと反動の後の落下で、空中の操作が戻る経過を 1 フレーム進める
-    void AdvanceAirControlReturn(float dt) noexcept;
+    void AdvanceAirControlReturn() noexcept;
     //! 次の落下の空中の操作を 0 から戻し直す
     void StartAirControlReturn() noexcept;
     void ApplyFriction(float dt) noexcept;
@@ -157,7 +160,7 @@ public:
     void Shimmy(float dt) noexcept;
     //! よじ登りを始め、登りの状態へ移る
     void ClimbLedge() noexcept;
-    void UpdateLedgeClimb(float dt) noexcept;
+    void UpdateLedgeClimb() noexcept;
     //! 手を放し、その場から落下させる
     void DropLedge() noexcept;
 
@@ -200,8 +203,6 @@ protected:
 
     void OnInit() override;
     void OnAssetsLoaded() override;
-    void OnAppear() override;
-    void OnDisappear() noexcept override;
     void DecideStep() override;
     void AfterStateStep() override;
     void BodyStep() override;
@@ -228,6 +229,8 @@ private:
     void UpdateReboundPreview();
 #endif
     [[nodiscard]] float AirDashSpeed() const noexcept;
+    // 今のエアダッシュの残りの歩の数。移る予約の間 (状態の歩の数が uint32 の最大) と状態機械が無い時は値なし
+    [[nodiscard]] std::optional<int> AirDashStepsLeft() const noexcept;
     void TryBeginTerrainRebound() noexcept;
     //! @brief 遮った面 normal で反動を始める
     //! 向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
@@ -310,7 +313,7 @@ private:
     std::unique_ptr<GL::Player::PlayerSounds> m_playerSounds;
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
-    GL::Level::TackleGhost* m_ghost = nullptr;        // 子として基底が所有する
+    std::unique_ptr<GL::Level::TackleGhost> m_ghost;
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================
@@ -320,10 +323,10 @@ private:
     bool m_stateStepPrepared = false;
     bool m_prevJumpHeld = false;
     int m_jumpsRemaining = 1;
-    float m_coyoteTimer = 0.0f; // コヨーテ猶予の残り秒
-    float m_bufferTimer = 0.0f; // 先行ジャンプ入力の残り秒
+    int m_coyoteTimer = 0; // コヨーテ猶予の残りのフレーム数
+    int m_bufferTimer = 0; // 先行ジャンプ入力の残りのフレーム数
     bool m_airControlReturning = false;
-    float m_airControlReturnElapsed = 0.0f; // 秒
+    int m_airControlReturnElapsed = 0; // フレーム数
 
     GL::Player::AirDashStatus m_airDash;
 
@@ -333,7 +336,7 @@ private:
     NS::Vector3 m_ledgeFaceNormal{0.0f, 0.0f, 0.0f}; // 掴んでいる面の外向き水平法線
     NS::Vector3 m_ledgeMantleStart{0.0f, 0.0f, 0.0f};
     NS::Vector3 m_ledgeMantleEnd{0.0f, 0.0f, 0.0f};
-    float m_ledgeMantleTimer = 0.0f; // 秒
+    int m_ledgeMantleTimer = 0; // よじ登りを始めてからのフレーム数
 
     GL::Player::PlayerEvents m_playerEvents;
 };

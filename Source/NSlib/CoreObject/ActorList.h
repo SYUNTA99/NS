@@ -67,6 +67,10 @@ namespace NS
         //! 世界が止まっていて Actor の Update が回らない歩に、編集で動いた当たりを揃える
         void SyncCollisions();
 
+        //! 出ていて影を持つ Actor に、根の真下の地面の高さを探させる
+        //! Scene が歩ごとに 1 回、アクター・物理・ゲームの流れが全部動いた後に呼ぶ。世界を止めている歩も呼ぶ
+        void SyncShadows();
+
         //! 全アクターの補間の前の値を控える。根の Transform と Model の previous を current へ揃える
         void SnapshotActors();
 
@@ -125,10 +129,6 @@ namespace NS
         void PrepareRenderActors();
         //! 出ているアクターを並びの順に m_scheduled へ積み直す
         void ScheduleAppeared();
-
-        //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
-        //! シーンへの付けと開始は呼び手が済ませる
-        SceneActor* AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 組み直さずに 1 体だけ入れる。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
         //! シーンへの接続と開始は呼び手が済ませる

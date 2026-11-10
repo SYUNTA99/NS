@@ -11,6 +11,7 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -30,27 +31,16 @@ namespace
     constexpr int k_Width = 160;
     constexpr int k_Height = 90;
 
-    class BoxActor : public NS::SceneActor
+    // 立方体を .actor から作り、position へ置く。作れなければ nullptr
+    TestBoxActor* SpawnBoxAt(NS::Scene& scene, const NS::Vector3& position)
     {
-    public:
-        explicit BoxActor(const NS::Vector3& position) : m_position(position) {}
-
-        [[nodiscard]] NS::Model* Body() const { return m_body; }
-
-    protected:
-        void OnInit() override
+        TestBoxActor* box = SpawnFromActorFile<TestBoxActor>(scene, "TestBoxActor");
+        if (box != nullptr)
         {
-            m_body = CreateClassObj(m_model);
-            NS::InitDraw(this, m_body, &Root());
-            m_body->SetMeshRef("cube");
-            m_body->SetMaterialRef("Assets/Materials/player.mat");
-            Root().SetPosition(m_position);
+            box->Root().SetPosition(position);
         }
-
-    private:
-        NS::Vector3 m_position{};
-        NS::Model* m_body = nullptr;
-    };
+        return box;
+    }
 
     // 型を行の順に 1 画素 1 バイトで読む。読めなければ空
     std::vector<NS::uint8> ReadMask(const NS::Gfx::D3DTexture& mask)
@@ -112,10 +102,14 @@ namespace
             NS::Scene scene;
             const NS::AssetManagerScope useAssets{m_assets};
             scene.GetSceneRenderer()->SetDevice(&m_device);
-            BoxActor* maskedBox = scene.SpawnActor<BoxActor>("BoxActor", masked);
+            TestBoxActor* maskedBox = SpawnBoxAt(scene, masked);
+            if (maskedBox == nullptr)
+            {
+                return {};
+            }
             if (other.has_value())
             {
-                (void)scene.SpawnActor<BoxActor>("BoxActor", *other);
+                (void)SpawnBoxAt(scene, *other);
             }
             scene.GetSceneRenderer()->SetBodyMask({maskedBox->Body()});
             // 有効な間は前の固定ステップとの補間で描くので、無効にして今の位置で描く
@@ -127,6 +121,7 @@ namespace
             m_device.BeginFrame();
             scene.GetSceneRenderer()->SetSceneViews({NS::SceneView{m_target.get(), pose}});
             scene.OnRender();
+            m_viewConstantsSent = scene.GetSceneRenderer()->ViewConstantsSentCount();
             scene.GetSceneRenderer()->SetSceneViews({});
             const NS::Gfx::D3DTexture* mask = scene.GetSceneRenderer()->BodyMaskShown(0);
             if (mask == nullptr)
@@ -136,7 +131,11 @@ namespace
             return ReadMask(*mask);
         }
 
+        //! 前の Render でビューごとの定数を送った回数
+        [[nodiscard]] std::size_t ViewConstantsSent() const { return m_viewConstantsSent; }
+
     private:
+        std::size_t m_viewConstantsSent = 0;
         NS::OS::Window m_window;
         NS::Gfx::D3DDevice m_device;
         NS::AssetManager m_assets;
@@ -240,4 +239,13 @@ TEST(BodyMask, EndReturnsToTheTargetsBeforeBegin)
     ASSERT_EQ(viewportCount, 1u);
     EXPECT_FLOAT_EQ(viewport.Width, 12.0f);
     EXPECT_FLOAT_EQ(viewport.Height, 10.0f);
+}
+
+// ビューごとの定数は、物をいくつ描いても 1 つのビューにつき 1 回だけ送る
+TEST(BodyMask, ViewConstantsAreSentOncePerView)
+{
+    BodyMaskRig rig;
+    ASSERT_TRUE(rig.Valid());
+    (void)rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{3.0f, 0.0f, 0.0f});
+    EXPECT_EQ(rig.ViewConstantsSent(), 1u);
 }

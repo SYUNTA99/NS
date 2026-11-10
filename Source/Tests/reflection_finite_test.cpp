@@ -1,9 +1,11 @@
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -88,11 +90,13 @@ namespace
     }
 } // namespace
 
+NS_CLASS(FiniteBoxActor)
+
 // インスペクタ・.actor・シーンに置いたアクターの値は欄の set を通る。非有限の半径は捨て、前の半径を残す
 TEST(ReflectionFinite, BoxHalfExtentsFieldKeepsPreviousValueOnNonFinite)
 {
     NS::Scene scene;
-    FiniteBoxActor* actor = scene.SpawnActor<FiniteBoxActor>("FiniteBoxActor");
+    FiniteBoxActor* actor = SpawnFromActorFile<FiniteBoxActor>(scene, "FiniteBoxActor");
     ASSERT_NE(actor, nullptr);
     NS::BoxCollision* box = NS::Cast<NS::BoxCollision>(actor->CollisionClassObj());
     ASSERT_NE(box, nullptr);

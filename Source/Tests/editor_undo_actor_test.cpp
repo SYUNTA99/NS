@@ -11,10 +11,13 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "TestRegistrations.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -33,33 +36,70 @@ namespace
         undo.Push(std::make_unique<NS::Editor::ActorSnapshotCommand>(scene, id, std::move(before), std::nullopt));
     }
 
-    // 履歴が持つアクターを解放したかを見るためのゴール。JSON は GoalActor として書くので、作り直すと GoalActor になる
+    // 履歴が持つアクターを解放したかを見るためのゴール。数えるのは counted を立てた物だけで、
+    // JSON から作り直した CountedGoal は数えない
     class CountedGoal final : public GL::Level::GoalActor
     {
     public:
-        ~CountedGoal() override { ++s_destroyed; }
+        NS_REFLECT_NONE(CountedGoal, GL::Level::GoalActor)
+
+        ~CountedGoal() override
+        {
+            if (counted)
+            {
+                ++s_destroyed;
+            }
+        }
 
         void OnEndPlay() override
         {
-            ++s_endPlays;
+            if (counted)
+            {
+                ++s_endPlays;
+            }
             GL::Level::GoalActor::OnEndPlay();
         }
 
+        bool counted = false;
         static int s_endPlays;
         static int s_destroyed;
     };
 
     int CountedGoal::s_endPlays = 0;
     int CountedGoal::s_destroyed = 0;
+
+    // GoalActor の .actor をクラスだけ替えて CountedGoal の .actor に敷き、数える CountedGoal を作って id を返す
+    NS::uint32 SpawnCountedGoal(NS::Scene& scene)
+    {
+        const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
+        EXPECT_NE(goal, nullptr);
+        if (goal == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        nlohmann::json actorFile = *goal;
+        NS::SetActorFileClass(actorFile, "CountedGoal");
+        EXPECT_TRUE(NS::ActorFileLibrary::Get().Set("CountedGoal", std::move(actorFile)));
+        CountedGoal* spawned = SpawnFromActorFile<CountedGoal>(scene, "CountedGoal", "GoalActor");
+        EXPECT_NE(spawned, nullptr);
+        if (spawned == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        spawned->counted = true;
+        return spawned->Id();
+    }
 } // namespace
+
+NS_CLASS(CountedGoal)
 
 // 消した操作を元に戻すと、消す前と同じアクターが同じ並びの位置に戻り、登録も消す前と同じ数になる
 TEST(EditorUndoActor, UndoDeleteRestoresTheSameActor)
 {
     NS::Scene scene;
-    (void)scene.SpawnActor<GL::Level::GoalActor>("A");
-    GL::Level::GoalActor* middle = scene.SpawnActor<GL::Level::GoalActor>("B");
-    (void)scene.SpawnActor<GL::Level::GoalActor>("C");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "A");
+    GL::Level::GoalActor* middle = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "B");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "C");
     const NS::uint32 id = middle->Id();
     const std::size_t index = scene.Actors().IndexOfActorId(id);
     const Registrations before = CountRegistrations(scene);
@@ -79,13 +119,13 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
 {
     NS::Scene scene;
     // 当たりの画面と振動の管理クラスは持ち主が消えても残るので、残すアクターに先に作らせてから数える
-    (void)scene.SpawnActor<PlayerActor>("Keep");
+    (void)SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "Keep");
     const Registrations kept = CountRegistrations(scene);
 
-    const NS::uint32 goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor")->Id();
-    const NS::uint32 player = scene.SpawnActor<PlayerActor>("PlayerActor")->Id();
-    const NS::uint32 light = scene.SpawnActor<NS::LightActor>("LightActor")->Id();
-    const NS::uint32 camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor")->Id();
+    const NS::uint32 goal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor")->Id();
+    const NS::uint32 player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor")->Id();
+    const NS::uint32 light = SpawnFromActorFile<NS::LightActor>(scene, "LightActor")->Id();
+    const NS::uint32 camera = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor")->Id();
 
     NS::Editor::UndoStack undo;
     DeleteActor(undo, scene, goal);
@@ -101,8 +141,8 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
 TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
 {
     GL::Level::GameScene scene;
-    (void)scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    const NS::uint32 id = scene.SpawnActor<CountedGoal>("GoalActor")->Id();
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    const NS::uint32 id = SpawnCountedGoal(scene);
     LevelEditorController editor(scene);
     const Registrations before = CountRegistrations(scene);
     CountedGoal::s_endPlays = 0;
@@ -127,7 +167,7 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
 TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
 {
     NS::Scene scene;
-    const NS::uint32 id = scene.SpawnActor<CountedGoal>("GoalActor")->Id();
+    const NS::uint32 id = SpawnCountedGoal(scene);
     CountedGoal::s_endPlays = 0;
     CountedGoal::s_destroyed = 0;
 

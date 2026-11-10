@@ -13,7 +13,7 @@ namespace GL
         void BrakePlayerState::OnStep(::PlayerActor* player, float dt)
         {
             NS_ASSERT(Game, player != nullptr, "状態の持ち主が無い");
-            player->TickTimers(dt);
+            player->TickTimers();
             player->ApplyBrake(dt);
             player->Jump(dt);
             player->CutJumpRelease();

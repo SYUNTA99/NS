@@ -369,7 +369,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawAssetPreview(const Gfx::DrawItem& item)
+        void InspectorPanel::DrawAssetPreview(const AssetPreviewItem& item)
         {
             Application* app = Application::Get();
             if (app == nullptr || !app->IsValid())
@@ -397,7 +397,7 @@ namespace NS
 
         void InspectorPanel::DrawMaterialPreview(const Material& material)
         {
-            const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(material);
+            const std::optional<AssetPreviewItem> item = MakeAssetPreviewItem(material);
             if (!item)
             {
                 ImGui::TextDisabled("このマテリアルのプレビューには対応していません");
@@ -416,7 +416,7 @@ namespace NS
                 m_previewZoom = 1.0f;
             }
 
-            const std::optional<Gfx::DrawItem> item =
+            const std::optional<AssetPreviewItem> item =
                 MakeAssetPreviewItem(mesh, AssetPreviewPose{m_previewYaw, m_previewPitch, m_previewZoom});
             if (!item)
             {
@@ -507,7 +507,7 @@ namespace NS
                                 committed |= fields.committed;
                             }
                             // 値の表は欄の表に載らないので、名前ごとに数の欄を出す。名前の足し引きはしない
-                            HitOwnerInfo* owner = std::get_if<HitOwnerInfo>(&entry.item);
+                            HitOwnerInfo* owner = entry.item.As<HitOwnerInfo>();
                             if (owner != nullptr && !owner->values.empty() && BeginFieldTable("##ownerValues"))
                             {
                                 for (std::pair<const std::string, float>& ownerValue : owner->values)

@@ -170,30 +170,13 @@ namespace NS
         return frameAlpha;
     }
 
-    SceneActor* Scene::AdoptActor(std::unique_ptr<SceneActor> obj, std::string name)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-
-        // シーンは SpawnActor の作る関数が OnInit の前に決めている
-        SceneActor* raw = m_actors.AppendWithNewId(std::move(obj), std::move(name));
-        if (raw == nullptr)
-        {
-            return nullptr;
-        }
-        StartSpawned(raw);
-        return raw;
-    }
-
     void Scene::StartSpawned(SceneActor* obj)
     {
         NS_ASSERT(Scene, obj != nullptr, "Scene::StartSpawned: 開始するアクターが無い");
         // 素材は作る関数の Init が読み終えている
         obj->Start();
         // 後から入る物は他のアクターが既に揃っている
-        obj->VisitSelfAndDescendants([](SceneActor* actor) { actor->InitAfterPlacement(); });
+        obj->InitAfterPlacement();
     }
 
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)
@@ -368,7 +351,8 @@ namespace NS
     void Scene::ClearWorld()
     {
         // 前の世界のアクターが頼んだ演出と振動を、次の世界へ持ち越さない
-        m_hitScreen.Clear();
+        m_screenFlash.Clear();
+        ClearViewEffects();
         m_padRumble.Clear();
         Fade().Cancel();
         m_actors.Clear();
@@ -402,6 +386,7 @@ namespace NS
         {
             m_actors.SnapshotActors();
             m_actors.SyncCollisions();
+            m_actors.SyncShadows();
             return;
         }
 
@@ -411,6 +396,7 @@ namespace NS
             {
                 m_actors.SnapshotActors();
                 m_actors.SyncCollisions();
+                m_actors.SyncShadows();
                 return;
             }
             // コマ送りは実時間の 1 歩
@@ -435,6 +421,8 @@ namespace NS
         }
         m_actors.EndStep();
         m_actors.RemoveDestroyed();
+        // 影は、動く床・物理・ゲームの流れの瞬間移動まで全部動いた後の地面を探す。歩の途中で出た物もここで探す
+        m_actors.SyncShadows();
         // 歩の途中で CancelStopScene が解いた時は数えない
         if (m_stopSceneSteps > 0)
         {
@@ -474,7 +462,8 @@ namespace NS
         m_fade.Advance(OS::FrameTimer::FixedDelta());
         // 画面の演出と振動は、アクターの PrepareRender の後に進める
         m_actors.PrepareRenderActors();
-        m_hitScreen.OnTick();
+        m_screenFlash.OnTick();
+        StepViewEffects();
         m_padRumble.OnTick();
     }
 
@@ -486,9 +475,6 @@ namespace NS
 
     void Scene::OnRender()
     {
-        // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
-        m_sceneRenderer.SyncRenderBounds();
-
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
         const float alpha = RenderAlpha(OS::FrameTimer::Alpha());

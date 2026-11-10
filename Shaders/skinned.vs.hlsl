@@ -30,7 +30,7 @@ SurfaceInterp VSMain(VSIn input)
 
     SurfaceInterp output;
     float4 worldPos = mul(skinnedPos, world);
-    worldPos.xyz += TremorOffset(worldPos.xyz);
+    worldPos.xyz += SurfaceVertexOffset(worldPos.xyz);
     output.pos = mul(worldPos, viewProj);
     output.uv = input.uv;
     output.worldPos = worldPos.xyz;

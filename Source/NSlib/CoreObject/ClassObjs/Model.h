@@ -1,15 +1,16 @@
 #pragma once
 
 #include "NSlib/Core/AABB.h"
+#include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/IRenderable.h"
-#include "NSlib/CoreObject/ClassObjs/ModelShake.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
+#include "NSlib/Gfx/Render/RenderBounds.h"
 
+#include <array>
 #include <optional>
 #include <span>
 #include <string>
@@ -26,15 +27,15 @@ namespace NS
         //! 世界座標の描画ずれを置き換える。省略時は元のModelのずれを使う
         std::optional<Vector3> offset;
         float opacity = 1.0f;
-        bool groundWave = true;
-        bool tremor = true;
+        bool sceneValues = true;  // 偽なら名前の無いシーンの値を全部 0 で渡す
+        bool objectValues = true; // 偽なら名前の無い物ごとの値を全部 0 で渡す
     };
 
     namespace Gfx
     {
         class D3DBuffer;
-    }
-    class IGetCamera;
+        struct RenderContext;
+    } // namespace Gfx
 } // namespace NS
 
 namespace NS
@@ -45,7 +46,8 @@ namespace NS
     //! メッシュとマテリアルを描画する部品
     //! 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない。
     //! 根の行列は覚えず、描く物の管理クラスと持ち主のアクターが渡す
-    class Model : public Object, public IRenderable
+    //! 姿を読む元の Model を差した Model は自分の体を描かず、元の Model の写しだけを描く
+    class Model : public Object
     {
     public:
         //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
@@ -92,15 +94,11 @@ namespace NS
         }
 
         //! 根の行列の前に掛ける描画用の局所回転。固定更新間を補間する
-        void SetLocalRotation(const Quaternion& rotation) noexcept { m_localRotation = rotation; }
+        void SetLocalRotation(const Quaternion& rotation) noexcept { m_localRotation.Set(rotation); }
         //! 補間せずに局所回転を切り替える
-        void SnapLocalRotation(const Quaternion& rotation) noexcept
-        {
-            m_localRotation = rotation;
-            m_previousLocalRotation = rotation;
-        }
+        void SnapLocalRotation(const Quaternion& rotation) noexcept { m_localRotation.Teleport(rotation); }
         //! 今のフレームの局所の回転を返す。書かれていなければ単位回転
-        [[nodiscard]] const Quaternion& LocalRotation() const noexcept { return m_localRotation; }
+        [[nodiscard]] const Quaternion& LocalRotation() const noexcept { return m_localRotation.Current(); }
 
         //! 形の原点を中心に、局所の回転より先に掛ける倍率を設定する。補間しない
         //! 差したメッシュの大きさを合わせる倍率で、根の倍率と描く倍率とは別に掛かる
@@ -111,39 +109,28 @@ namespace NS
         [[nodiscard]] const Vector3& LocalScale() const noexcept { return m_localScale; }
 
         //! 形の下端中央を中心に世界の軸で掛ける、描く時だけの倍率を書く。固定更新の間を補間する
-        //! 形の再生 (StartDrawShape) の間は、その倍率を掛けて描く
+        //! SetDrawShapeScale で書いた倍率も掛けて描く
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawScale(const Vector3& scale) noexcept;
         //! 描く時だけの倍率を、補間せずに切り替える
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         bool SnapDrawScale(const Vector3& scale) noexcept;
-        //! 描く形だけの揺れを始める。次の AdvanceDraw を 1 フレーム目に数える
-        void StartDrawShake(const DrawShakeDesc& desc) noexcept;
-        //! 揺れを止めて、ずれを 0 に戻す
-        void StopDrawShake() noexcept;
-        //! 描く倍率の曲線の再生を始める。前の再生が残っていても始め直す
-        //! 次の AdvanceDraw を 0 フレーム目に数え、長さのフレームで元の倍率へ戻す
-        void StartDrawShape(const DrawShapeDesc& desc) noexcept;
-        //! 形の再生を止めて、描く倍率を SetDrawScale で書いた倍率へ戻す
-        void StopDrawShape() noexcept;
-        //! 形の再生の途中の場合 true。StartDrawShape から、長さを過ぎた AdvanceDraw か StopDrawShape までの間
-        [[nodiscard]] bool IsDrawingShape() const noexcept { return m_shape.active; }
-        //! 頂点の震えを始める。次の AdvanceDraw を 0 フレーム目に数え、AdvanceDraw が受けるカメラの視点で振れ幅を決める
-        void StartDrawTremor(const DrawTremorDesc& desc) noexcept;
-        //! 震えを止めて、振れ幅を 0 に戻す
-        void StopDrawTremor() noexcept;
-        //! 走っている揺れと震えの振れ幅に scale を掛ける。次の AdvanceDraw から効く
-        void ScaleDrawShaking(float scale) noexcept;
-        //! 揺れ・形の再生・震えを 1 フレーム進める
-        //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。震えは動かした後の根で書く。
-        //! 震えの振れ幅は camera の視点から rootPosition (持ち主の根の位置) までの距離で決める
-        void AdvanceDraw(const IGetCamera* camera, const Vector3& rootPosition);
+        //! 描く姿勢へ足す世界のずれ (m) を書く。補間しない。当たりの見た目の走る物が毎フレーム書く
+        //! @return 全成分が有限の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetDrawOffset(const Vector3& offset) noexcept;
+        //! SetDrawScale の倍率に掛ける、当たりの見た目の形の倍率を書く。補間する。描く倍率は 2 つの積
+        //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
+        [[nodiscard]] bool SetDrawShapeScale(const Vector3& scale) noexcept;
+        //! シェーダへ渡す、名前の無い物ごとの 4 つの値を書く。補間しない
+        //! 意味は値を書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める。描く 1 回ごとに ObjectConstants::objectValues へ渡す
+        void SetDrawValues(const std::array<Vector4, 4>& values) noexcept { m_drawValues = values; }
+        //! SetDrawValues で書いた値。書かれていなければ全部 0
+        [[nodiscard]] const std::array<Vector4, 4>& DrawValues() const noexcept { return m_drawValues; }
         //! 描く姿勢へ足す世界のずれ (m)。補間しない
         [[nodiscard]] const Vector3& GetDrawOffset() const noexcept { return m_drawOffset; }
-        //! 今の固定フレームの描く時だけの倍率。SetDrawScale で書いた倍率と形の再生の倍率の積で、どちらも無ければ (1, 1, 1)
-        [[nodiscard]] Vector3 GetDrawScale() const noexcept { return m_drawScale * m_drawShapeScale; }
-        //! 頂点シェーダーへ渡す震え。補間しない
-        [[nodiscard]] const Gfx::TremorCB& GetDrawTremor() const noexcept { return m_drawTremor; }
+        //! 今の固定フレームの描く時だけの倍率。SetDrawScale と SetDrawShapeScale で書いた倍率の積。
+        //! どちらも無ければ (1, 1, 1)
+        [[nodiscard]] const Vector3& GetDrawScale() const noexcept { return m_shownDrawScale.Current(); }
 
         //! 局所回転と描画倍率を補間した描画姿勢を返す。世界座標のずれは補間後に足す
         //! 描画倍率は形の下端中央を中心に世界の軸で掛ける。境界がなければ根を中心にする
@@ -155,45 +142,44 @@ namespace NS
 
         //! 描く形と欄のマテリアルの描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw() const noexcept;
-        //! 描くマテリアルと DrawColor で、world に描く DrawItem を作る
+        //! 欄のマテリアルと DrawColor で、world に描く DrawItem を作る
         //! 混ぜ方はマテリアルの物。CanDraw が true の時だけ呼ぶ
-        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept;
+        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Matrix& world) const noexcept;
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        //! 指定ごとに半透明の描画を積む。メッシュ・マテリアル・骨格の定数は共有する
-        //! worldを指定しても骨格の姿勢は固定しない。描けないModelでは何も積まない
-        void CollectDraws(const Gfx::RenderContext& context,
-                          const RenderSource& source,
-                          std::span<const ModelDraw> draws,
-                          std::vector<Gfx::DrawItem>& out) const;
-        //! 固定した世界行列も含めて、全ての描画指定を包む
-        [[nodiscard]] AABB DrawsWorldBounds(const RenderSource& source,
-                                            std::span<const ModelDraw> draws) const noexcept;
+        //! 体を描く段と順と箱。root は持ち主の根の今の固定フレームの世界行列
+        //! 段は、SetDrawsAfterSky の後は AfterSky、他は欄のマテリアルの混ぜ方が不透明なら Opaque、それ以外は Transparent
+        //! 中心は根の位置、優先度は欄のマテリアルの renderPriority
+        //! 箱は、SetNeverCulled の後は原点を中心に全域を覆い、他は描く形の局所の境界を根で包む。
+        //! 描く倍率は前と今の大きい方で包み、描く時だけのずれを足す。描くメッシュが無ければ空の箱
+        [[nodiscard]] Gfx::RenderBounds Bounds(const Matrix& root) const noexcept;
+        //! DrawWorldMatrix(root, context.alpha) の体の DrawItem を out に積む。描けなければ何も積まない
+        //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
+        void Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
 
-        //! DrawWorldMatrix(source.root, context.alpha) を詰めた DrawItem を out に積む
-        void Collect(const Gfx::RenderContext& context,
-                     const RenderSource& source,
-                     std::vector<Gfx::DrawItem>& out) override;
+        //! 体と一緒に描く写しの列と、半透明の段で中心の距離が同じ時の優先度を書く。前の列は捨てる
+        //! 写しはこの Model のメッシュ・マテリアル・骨格の定数・姿で、半透明で描く
+        void SetCopies(std::span<const ModelDraw> copies, int priority);
+        //! SetCopies で書いた写しの列。書かれていなければ空
+        [[nodiscard]] std::span<const ModelDraw> Copies() const noexcept { return m_copies; }
+        //! SetCopies で書いた優先度。書かれていなければ 0
+        [[nodiscard]] int CopyPriority() const noexcept { return m_copyPriority; }
+        //! 写しを描くか。写しの列が空でなければ真
+        [[nodiscard]] bool DrawsCopies() const noexcept { return !m_copies.empty(); }
+        //! 写しの組の段と順と箱。DrawsCopies が真の時だけ呼ぶ。段は Transparent、中心は根の位置、優先度は CopyPriority
+        //! 箱は、体の箱と、写しごとの箱 (行列を控えた写しはその行列、ずれの写しはずれの分を広げた体の箱) を包む
+        //! @param[in] root 持ち主の根の今の固定フレームの世界行列
+        [[nodiscard]] Gfx::RenderBounds CopiesBounds(const Matrix& root) const noexcept;
+        //! 写しごとに半透明の DrawItem を積む。骨格の姿は写しの行列に合わせない。DrawsCopies が真の時だけ呼ぶ
+        //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
+        void CollectCopies(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
 
         //! 空の後の段で描く。画面の深度と空のキューブマップを読むシェーダーの物が呼ぶ
         void SetDrawsAfterSky() noexcept { m_drawsAfterSky = true; }
 
         //! 視錐台で間引かない。頂点シェーダーがメッシュの範囲の外へ動かす物が呼ぶ
         void SetNeverCulled() noexcept { m_neverCulled = true; }
-
-        //! SetDrawsAfterSky の後は AfterSky。他は D3DMaterial の BlendMode から段を返し、
-        //! Opaque 以外は Transparent。D3DMaterial 不在は Opaque
-        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override;
-        //! 根の世界行列の平行移動成分で半透明ソート用の中心
-        [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
-        //! D3DMaterial の renderPriority で距離同値時のタイブレークに使う
-        [[nodiscard]] int SortPriority() const noexcept override;
-
-        //! SetNeverCulled の後は根もメッシュも見ず、原点を中心に全域を覆う箱を返す
-        //! 他は上書き境界を優先し、メッシュの境界を根の世界行列で包む
-        //! 描画倍率は前後の大きい方で包み、描画用のずれを加える。描くメッシュがなければ原点の半幅 1
-        [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
 
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
@@ -205,6 +191,20 @@ namespace NS
         NS_REFLECT_END()
 
     private:
+        // 体の箱。Bounds の箱の決まりで作る
+        [[nodiscard]] AABB WorldBounds(const Matrix& root) const noexcept;
+        // copies の写しごとに、この Model の姿で半透明の DrawItem を積む。描けなければ何も積まない
+        void CollectDraws(const Gfx::RenderContext& context,
+                          const Matrix& root,
+                          std::span<const ModelDraw> copies,
+                          std::vector<Gfx::DrawItem>& out) const;
+        // 体の箱と copies の写しごとの箱を包む
+        [[nodiscard]] AABB DrawsWorldBounds(const Matrix& root, std::span<const ModelDraw> copies) const noexcept;
+
+        // 描く写しの列と優先度。写しを決めるアクターが毎ステップ書き直すので保存しない
+        std::vector<ModelDraw> m_copies;
+        int m_copyPriority = 0;
+
         // 素材は AssetManager が持つ。欄は nullptr にならない
         Mesh* m_mesh = nullptr;              // メッシュの欄。m_shownMesh が無い間はこれを描く
         Material* m_material = nullptr;
@@ -224,8 +224,7 @@ namespace NS
         bool m_hasLocalBoundsOverride = false;
 
         // 描く時だけの局所の回転。同居する部品が毎フレーム書き直すので保存しない
-        Quaternion m_localRotation = Quaternion::Identity;
-        Quaternion m_previousLocalRotation = Quaternion::Identity; // 前のフレームの値。補間の始点
+        Interpolated<Quaternion> m_localRotation{Quaternion::Identity};
 
         // 差したメッシュに合わせる局所の倍率。メッシュを差す部品が書くので保存しない
         Vector3 m_localScale{1.0f, 1.0f, 1.0f};
@@ -233,35 +232,10 @@ namespace NS
         // 描く時だけの姿勢。根の Transform と当たりには効かず、保存しない
         Vector3 m_drawOffset{0.0f, 0.0f, 0.0f};
         Vector3 m_drawScale{1.0f, 1.0f, 1.0f};      // SetDrawScale で書いた倍率
-        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // 形の再生の倍率。書くのは形の再生だけ
-        // 補間の始点。GetDrawScale の積を、固定更新の頭と SnapDrawScale で控える
-        Vector3 m_previousDrawScale{1.0f, 1.0f, 1.0f};
-        Gfx::TremorCB m_drawTremor{};
-
-        // 揺れ。始めた後の最初の AdvanceDraw を 1 フレーム目に数える
-        struct ShakeRun
-        {
-            DrawShakeDesc desc{};
-            int frame = 0;
-            bool active = false;
-        };
-        ShakeRun m_shake;
-        // 形の再生。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
-        struct ShapeRun
-        {
-            DrawShapeDesc desc{};
-            int frame = -1;
-            bool active = false;
-        };
-        ShapeRun m_shape;
-        // 震え。始めた後の最初の AdvanceDraw を 0 フレーム目に数える
-        struct TremorRun
-        {
-            DrawTremorDesc desc{};
-            int elapsed = -1;
-            bool active = false;
-        };
-        TremorRun m_tremor;
+        Vector3 m_drawShapeScale{1.0f, 1.0f, 1.0f}; // SetDrawShapeScale で書いた倍率
+        // 描く倍率 (2 つの倍率の積) の前と今。倍率を書くたびに今の値を積で書き直す
+        Interpolated<Vector3> m_shownDrawScale{Vector3{1.0f, 1.0f, 1.0f}};
+        std::array<Vector4, 4> m_drawValues{}; // シェーダへ渡す名前の無い物ごとの値
     };
 #pragma warning(pop)
 } // namespace NS

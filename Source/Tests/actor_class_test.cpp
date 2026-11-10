@@ -18,6 +18,7 @@
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -76,10 +77,11 @@ TEST(ActorClass, LightHasDirectionalLight)
 TEST(ActorClass, LightShinesAlongItsRotation)
 {
     NS::Scene scene;
-    NS::LightActor* lightActor = scene.SpawnActor<NS::LightActor>("LightActor");
+    NS::LightActor* lightActor = SpawnFromActorFile<NS::LightActor>(scene, "LightActor");
     ASSERT_NE(lightActor, nullptr);
     NS::LightActor& light = *lightActor;
-    const NS::DirectionalLight* sun = &light.Light();
+    const NS::DirectionalLight* sun = light.LightClassObj();
+    ASSERT_NE(sun, nullptr);
 
     NS::Vector3 initial{-0.3f, -1.0f, -0.2f};
     initial.Normalize();

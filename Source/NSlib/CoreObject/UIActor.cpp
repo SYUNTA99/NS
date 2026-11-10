@@ -10,7 +10,7 @@ namespace NS
         Close();
     }
 
-    void UIActor::OnRenderOverlay(const Gfx::RenderContext& context)
+    void UIActor::OnDraw(const Gfx::RenderContext& context)
     {
         if (context.overlay == nullptr || m_scene == nullptr)
         {

@@ -31,12 +31,15 @@ namespace NS
     class Model;
     class Animation;
     class Shadow;
+    class DirectionalLight;
+    class WorldLines;
     class Collision;
     class EffectObj;
     class Sound;
     class HitReaction;
     struct HitOwnerRun;
     class ActorAction;
+    struct ActionClock;
     class Message;
     class Scene;
     struct ActorInitInfo;
@@ -82,7 +85,6 @@ namespace NS
         //! 世界から外し、その歩を回し終えた後に解放させる。2 回目からは何もしない
         //! その場では解放しないので、同じ歩の中では指したまま読める。やり直しの知らせは
         //! 届かず戻らないので、戻す物は Disappear を使う
-        //! 子は親と一緒に終わるので、子に呼ぶと ERROR を出して何もしない。親が持つ子の番地を古くしないため
         void Destroy() noexcept;
         //! このアクターがシーンに出ているか
         [[nodiscard]] bool IsAppeared() const noexcept { return m_presence == Presence::Appeared; }
@@ -91,19 +93,6 @@ namespace NS
 
         //! 入るシーン。作る時の ActorInitInfo::scene で、OnInit の前から決まっている。シーンへ入らない物は nullptr
         [[nodiscard]] Scene* OwningScene() const noexcept { return m_scene; }
-
-        //! コードで作る子は親が所有し、シーンの配置一覧や独立した保存項目には入らない
-        [[nodiscard]] SceneActor* ParentActor() noexcept { return m_parent; }
-        [[nodiscard]] const SceneActor* ParentActor() const noexcept { return m_parent; }
-        //! 自分と子孫の全部に fn を 1 回ずつ呼ぶ。親を子より先に、子は作った順に呼ぶ
-        template <class F> void VisitSelfAndDescendants(F&& fn)
-        {
-            fn(this);
-            for (const std::unique_ptr<SceneActor>& child : m_children)
-            {
-                child->VisitSelfAndDescendants(fn);
-            }
-        }
 
         [[nodiscard]] CameraManager* GetCameraManager() const noexcept override;
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
@@ -134,6 +123,12 @@ namespace NS
         [[nodiscard]] const Animation* AnimationClassObj() const noexcept { return m_animation.get(); }
         [[nodiscard]] Shadow* ShadowClassObj() noexcept { return m_shadow.get(); }
         [[nodiscard]] const Shadow* ShadowClassObj() const noexcept { return m_shadow.get(); }
+        //! シーンを照らす平行光。光を持つクラスが OnInit で作る。持たないクラスでは nullptr
+        [[nodiscard]] DirectionalLight* LightClassObj() noexcept { return m_light.get(); }
+        [[nodiscard]] const DirectionalLight* LightClassObj() const noexcept { return m_light.get(); }
+        //! 世界の座標の線。作っていない種類は nullptr
+        [[nodiscard]] WorldLines* WorldLinesClassObj() noexcept { return m_worldLines.get(); }
+        [[nodiscard]] const WorldLines* WorldLinesClassObj() const noexcept { return m_worldLines.get(); }
         [[nodiscard]] Collision* CollisionClassObj() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collision* CollisionClassObj() const noexcept { return m_collision.get(); }
         //! センサーを名前つきで持つ部品。センサーを持つクラスが OnInit で作る。持たないクラスでは nullptr
@@ -143,8 +138,8 @@ namespace NS
         [[nodiscard]] const HitReaction* HitReactionClassObj() const noexcept { return m_hitReaction.get(); }
         [[nodiscard]] ActorAction* ActorActionClassObj() noexcept { return m_actorAction.get(); }
         [[nodiscard]] const ActorAction* ActorActionClassObj() const noexcept { return m_actorAction.get(); }
-        //! 名前の動作を始め、自分のアニメーションを流した秒で進める。始まった項目は自分の部品へ頼む
-        //! フレーム 0 の項目はこの呼び出しの中で頼む
+        //! 名前の動作を始め、自分のアニメーションのクリップの時刻で進める。始まった項目は自分の部品へ頼む
+        //! フレーム 0 の項目はこの呼び出しの中で頼み、頼んだ後に流れているクリップに動作を結ぶ
         //! @return 始めた場合 true。ActorAction を持たない・その名前の動作が無い場合は WARN を出して false
         bool StartAction(std::string_view name);
         //! 名前の動作を自分の今の状態に結んで始め、状態の歩数で進める。状態の OnEnter で呼ぶ
@@ -192,7 +187,7 @@ namespace NS
         //! - IsStopped でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
         //!   AfterStateStep を 1 回ずつ
         //! - IsStopped でなければ BodyStep を 1 回 (状態機械の中で当たりの止めが始まったフレームは呼ばない)
-        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震え、子、VisualStep の順に進める
+        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震え、VisualStep の順に進める
         //! - 止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
@@ -229,7 +224,7 @@ namespace NS
             (void)other;
         }
 
-        //! 親から子の順に、一度だけ開始する
+        //! 一度だけ開始する
         void Start();
         virtual void OnStart();
         //! Disappear で世界から外し、基底のメンバーの部品 (Model・Shadow・当たり・センサー)
@@ -248,23 +243,6 @@ namespace NS
         void ReloadAssets();
 
     protected:
-        //! OnInit で子を作る。何体でも作れ、子の OnInit からは孫を作れる。開始後なら作らずに nullptr
-        //! 子は親と一緒に始まり、出入りし、更新され、終わる。子だけを Destroy では消せない
-        //! 子の Transform は世界座標のまま。親の姿勢を使う子は ParentActor から取得する
-        template <class T, class... TArgs>
-            requires std::derived_from<T, SceneActor>
-        T* CreateChildActor(TArgs&&... args)
-        {
-            if (m_started)
-            {
-                return nullptr;
-            }
-            std::unique_ptr<T> child = std::make_unique<T>(std::forward<TArgs>(args)...);
-            T* raw = child.get();
-            InitChild(std::move(child));
-            return raw;
-        }
-
         //! 知らせを受け取る。応じた場合 true、知らない知らせと応じなかった知らせは false
         //! 呼べるのは SendMsg と SendMsgToActor だけ。sender と receiver は知らせを運んだセンサーで、
         //! センサーを介さない知らせでは nullptr
@@ -336,9 +314,9 @@ namespace NS
 
     private:
         // 動作の時計を 1 フレーム進め、記録した物を自分の部品へ頼む。呼ぶのは Update と StartAction だけ
-        void AdvanceAction(float playbackSeconds);
-        // 1 回の Update で自分のアニメーションを流す秒。結ばない動作の時計を進める
-        [[nodiscard]] float ActionPlaybackSeconds() const noexcept;
+        void AdvanceAction();
+        // 自分の状態機械と、自分のアニメーションの今のクリップと時刻とループの回数
+        [[nodiscard]] ActionClock CurrentActionClock() const noexcept;
         // 動作の部品が記録した、センサーの入り切りと始まった事象の項目を、自分の部品へ頼む
         void RunActionOutputs();
         // 動作の効果音の項目の音を、自分の Sound に読んでおく
@@ -350,8 +328,6 @@ namespace NS
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
-        template <class T, class... TArgs>
-        friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
         friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
@@ -366,11 +342,16 @@ namespace NS
         //! OnInit で部品とセンサーを作るだけで、.actor も素材も読まない。項目の値はコンストラクタと OnInit が書いた物。
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
-        void InitChild(std::unique_ptr<SceneActor> child);
+        //! OnInit が作った Model・Shadow・平行光・線を根と組にしてシーンの描く仕組みへ入れる
+        //! 隠れていれば隠れた組で入る。Init が OnInit の直後に 1 回呼ぶ
+        //! シーンに居なければ入れない
+        void RegisterDrawParts();
         //! 補間の前の値として、根の Transform と Model の今の値を控える
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
         void SnapshotForInterpolation() noexcept;
+        //! 影があれば、根の真下の地面の高さを探させる。ActorList::SyncShadows と基底の OnAppear が呼ぶ。シーンに居なければ何もしない
+        void UpdateShadowGround() noexcept;
         void SetId(uint32 id) noexcept { m_id = id; }
         void SetName(std::string name) noexcept { m_name = std::move(name); }
         // member を指すアクターの表の行。表に無ければ nullptr
@@ -412,7 +393,7 @@ namespace NS
             [[nodiscard]] std::strong_ordering operator<=>(const SceneOverrideKey& other) const noexcept = default;
         };
         std::set<SceneOverrideKey> m_sceneOverrides; // シーンで上書きしている (部品の鍵, 欄の名前)
-        Scene* m_scene = nullptr;                    // 入るシーン。子は InitChild で親と同じシーンに結び付ける
+        Scene* m_scene = nullptr;                    // 入るシーン
         Presence m_presence = Presence::Disappeared;
         std::unique_ptr<Transform> m_transform;
 
@@ -420,6 +401,8 @@ namespace NS
         std::unique_ptr<Model> m_model;
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
+        std::unique_ptr<DirectionalLight> m_light;
+        std::unique_ptr<WorldLines> m_worldLines;
         std::unique_ptr<Collision> m_collision;
         std::unique_ptr<HitSensorsObj> m_hitSensors;
         std::unique_ptr<HitReaction> m_hitReaction;
@@ -434,8 +417,6 @@ namespace NS
         int m_hitStopFrames = 0;      // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
         bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
         bool m_started = false;
-        SceneActor* m_parent = nullptr;
-        std::vector<std::unique_ptr<SceneActor>> m_children; // 親の部品より先に壊すので最後に置く
     };
 
     //! 体の倍率を返す。1 が等速
@@ -448,7 +429,7 @@ namespace NS
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
     //! T を作り、部品・クラスと同じ名前の .actor・素材まで済ませて返す
-    //! Scene の中に作る時は Scene::SpawnActor を使う (中でこの関数を呼ぶ)。
+    //! シーンへ入れるアクターは .actor から作る (Scene::SpawnFromJson)。この関数で作った物はシーンへ入らない。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
@@ -456,18 +437,6 @@ namespace NS
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
         base.Init(nullptr);
-        return actor;
-    }
-
-    //! T を作り、info で部品・.actor・配置の上書き・素材まで済ませて返す
-    //! シーンへ入れる口 (Scene::SpawnActor) が呼ぶ。シーンの一覧に入る前に素材を読み終える
-    template <class T, class... TArgs>
-    [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
-    {
-        static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
-        std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
-        SceneActor& base = *actor;
-        base.Init(&info);
         return actor;
     }
 

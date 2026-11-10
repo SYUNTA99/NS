@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DMaterial.h"
@@ -40,9 +41,10 @@ namespace NS
             }
         }
 
-        std::optional<Gfx::DrawItem> MakeAssetPreviewItem(const Object& asset, const AssetPreviewPose& pose)
+        std::optional<AssetPreviewItem> MakeAssetPreviewItem(const Object& asset, const AssetPreviewPose& pose)
         {
             Gfx::DrawItem item{};
+            Gfx::ViewConstants view{};
             float distance = 1.8f;
             if (const Material* material = Cast<Material>(&asset))
             {
@@ -74,11 +76,10 @@ namespace NS
                 {
                     return std::nullopt;
                 }
-                const Gfx::RenderContext context{};
-                item = model->MakeDrawItem(context, *world);
+                item = model->MakeDrawItem(*world);
                 item.twoSided = true;
-                item.constants.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
-                item.constants.groundColor = Vector3{0.6f, 0.6f, 0.6f};
+                view.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
+                view.groundColor = Vector3{0.6f, 0.6f, 0.6f};
                 distance = 3.2f;
             }
             else if (const Mesh* mesh = Cast<Mesh>(&asset))
@@ -98,24 +99,24 @@ namespace NS
                 item.twoSided = true;
                 item.constants.world = *world;
                 item.constants.baseColor = Vector3{0.85f, 0.85f, 0.85f};
-                item.constants.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
-                item.constants.groundColor = Vector3{0.6f, 0.6f, 0.6f};
+                view.ambientColor = Vector3{0.8f, 0.8f, 0.8f};
+                view.groundColor = Vector3{0.6f, 0.6f, 0.6f};
                 distance = 3.2f;
             }
             else
             {
                 return std::nullopt;
             }
-            item.constants.viewProj =
-                Matrix::CreateLookAt(Vector3{0.0f, 0.0f, -distance}, Vector3::Zero, Vector3::Up) *
-                Matrix::CreatePerspectiveFieldOfView(0.7853982f, 1.0f, 0.1f, 10.0f);
-            item.constants.lightDir.Normalize();
-            return item;
+            view.viewProj = Matrix::CreateLookAt(Vector3{0.0f, 0.0f, -distance}, Vector3::Zero, Vector3::Up) *
+                            Matrix::CreatePerspectiveFieldOfView(0.7853982f, 1.0f, 0.1f, 10.0f);
+            view.lightDir.Normalize();
+            return AssetPreviewItem{.item = item, .view = view};
         }
 
         bool RenderAssetPreview(Gfx::D3DDevice& device, Gfx::D3DRenderTarget& target,
-                                const Gfx::DrawItem& item) noexcept
+                                const AssetPreviewItem& preview) noexcept
         {
+            const Gfx::DrawItem& item = preview.item;
             if (!device.IsValid() || !target.IsValid() || item.material == nullptr || !item.material->IsValid() ||
                 item.material->IsUsingFallback() || item.mesh == nullptr || !item.mesh->IsValid())
             {
@@ -127,6 +128,17 @@ namespace NS
             commands.SetViewport(static_cast<float>(size.width), static_cast<float>(size.height));
             commands.ClearRenderTarget(target.Color()->Rtv(), 0.12f, 0.12f, 0.14f, 1.0f);
             commands.ClearDepth(target.Depth()->Dsv());
+            // 見本はシーンの外で描くので、ビューごとの定数を描くたびにここで作って送る。作るのはエディタの見本だけで、ゲームの描画では作らない
+            const std::unique_ptr<Gfx::D3DBuffer> viewConstants =
+                Gfx::D3DBuffer::Create(Gfx::MakeConstantBufferDesc(sizeof(Gfx::ViewConstants)));
+            if (!viewConstants->IsValid())
+            {
+                device.BindBackbuffer();
+                return false;
+            }
+            commands.UpdateSubresource(*viewConstants, &preview.view, sizeof(preview.view));
+            commands.VSSetConstantBuffer(*viewConstants, Gfx::k_ViewConstantsSlot);
+            commands.PSSetConstantBuffer(*viewConstants, Gfx::k_ViewConstantsSlot);
             Gfx::IssueDrawItem(device, item);
             device.BindBackbuffer();
             return true;

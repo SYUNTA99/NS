@@ -9,8 +9,10 @@
 
 namespace NS
 {
-    // .actor の項目の並び (当たりの束の項目・動作の事象の項目) を std::variant で持つ型に共通の関数。
-    // 種類の型は typeName (ファイルの種類の名前) と label (エディタに出す名前) を持ち、欄は NS_REFLECT で並べる
+    // .actor の項目の並び (動作の事象の項目) を std::variant で持つ型に共通の関数。
+    // 種類の型は typeName (ファイルの種類の名前) と label (エディタに出す名前) を持ち、欄は NS_REFLECT で並べる。
+    // std::variant でない項目の型 (当たりの束の HitReactionItem) は、同じ名前の関数を自分の名前空間に置き、
+    // detail::ParseItemRow と detail::WriteItemRow の中の名前を付けない呼び出しが引数の型からそれを選ぶ
 
     //! Kind が NS_REFLECT で欄を並べている場合 true
     template <class Kind>
@@ -37,22 +39,24 @@ namespace NS
                 result.emplace(std::in_place_type<Kind>);
             }
         }
-
-        template <class Variant, class... Kinds>
-        [[nodiscard]] std::optional<Variant> MakeItemByName(std::string_view name,
-                                                            std::type_identity<std::variant<Kinds...>>)
-        {
-            std::optional<Variant> result;
-            (TryMakeItem<Variant, Kinds>(name, result), ...);
-            return result;
-        }
     } // namespace detail
+
+    //! std::variant の種類の名前から、その種類の値を作る。MakeItem が呼ぶ
+    //! std::variant でない項目の型は、同じ名前の関数を自分の名前空間に置いて受ける
+    template <class... Kinds>
+    [[nodiscard]] std::optional<std::variant<Kinds...>> MakeItemOf(std::string_view name,
+                                                                   std::type_identity<std::variant<Kinds...>>)
+    {
+        std::optional<std::variant<Kinds...>> result;
+        (detail::TryMakeItem<std::variant<Kinds...>, Kinds>(name, result), ...);
+        return result;
+    }
 
     //! 種類の名前から、欄が全部既定値のその種類の値を作る
     //! @return Variant の種類に無い名前の場合は std::nullopt
     template <class Variant> [[nodiscard]] std::optional<Variant> MakeItem(std::string_view typeName)
     {
-        return detail::MakeItemByName<Variant>(typeName, std::type_identity<Variant>{});
+        return MakeItemOf(typeName, std::type_identity<Variant>{});
     }
 
     //! item の今の種類のリフレクション。欄の無い種類は nullptr

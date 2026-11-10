@@ -9,12 +9,14 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/WorldLines.h"
 #include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
@@ -22,6 +24,7 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
@@ -37,6 +40,8 @@ namespace NS
     NS_CLASSOBJ(m_model, "Model")
     NS_CLASSOBJ(m_animation, "Animation")
     NS_CLASSOBJ(m_shadow, "Shadow")
+    NS_CLASSOBJ(m_light, "DirectionalLight")
+    NS_CLASSOBJ(m_worldLines, "WorldLines")
     NS_CLASSOBJ(m_collision, "Collision")
     NS_CLASSOBJ(m_hitSensors, "HitSensors")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
@@ -123,20 +128,12 @@ namespace NS
     void SceneActor::Appear()
     {
         NS_ASSERT(Scene, !IsPendingDestroy(), "Destroy した個体を Appear で出そうとしている: {}", m_name);
-        if (m_parent != nullptr && !m_parent->IsAppeared())
-        {
-            return;
-        }
         if (m_presence != Presence::Disappeared)
         {
             return;
         }
         m_presence = Presence::Appeared;
         OnAppear();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Appear();
-        }
     }
 
     void SceneActor::Disappear() noexcept
@@ -147,20 +144,10 @@ namespace NS
         }
         m_presence = Presence::Disappeared;
         OnDisappear();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Disappear();
-        }
     }
 
     void SceneActor::Destroy() noexcept
     {
-        if (m_parent != nullptr)
-        {
-            NS_LOG_ERROR(
-                Scene, "子の {} は親と一緒に終わるので、単独では消さない。外すなら Disappear を使う", ClassName());
-            return;
-        }
         Disappear();
         m_presence = Presence::PendingDestroy;
     }
@@ -255,20 +242,6 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
-    void SceneActor::InitChild(std::unique_ptr<SceneActor> child)
-    {
-        SceneActor* raw = child.get();
-        m_children.push_back(std::move(child));
-        raw->m_parent = this;
-        raw->m_scene = m_scene;
-        raw->InitWithCodeValues({});
-        // 子はコンストラクタで出ているので、隠れている親の子は隠す
-        if (!IsAppeared())
-        {
-            raw->Disappear();
-        }
-    }
-
     void SceneActor::InitWithCodeValues(std::string_view actorFile)
     {
         m_actorFileName = ClassName();
@@ -277,6 +250,34 @@ namespace NS
             m_actorFileName = std::string{actorFile};
         }
         OnInit();
+    }
+
+    void SceneActor::RegisterDrawParts()
+    {
+        // 出入りの切り替えと外す事は OnAppear・OnDisappear・OnEndPlay が行う。OnInit の中で隠した物は隠れた組で入れる
+        if (SceneRenderer* renderer = GetSceneRenderer())
+        {
+            if (m_model)
+            {
+                renderer->RegisterModel(m_model.get(), &Root());
+                renderer->SetModelEnabled(m_model.get(), IsAppeared());
+            }
+            if (m_shadow)
+            {
+                renderer->RegisterShadow(m_shadow.get(), &Root());
+                renderer->SetShadowEnabled(m_shadow.get(), IsAppeared());
+            }
+            if (m_light)
+            {
+                renderer->RegisterLight(m_light.get(), &Root());
+                renderer->SetLightEnabled(m_light.get(), IsAppeared());
+            }
+            if (m_worldLines)
+            {
+                renderer->RegisterWorldLines(m_worldLines.get());
+                renderer->SetWorldLinesEnabled(m_worldLines.get(), IsAppeared());
+            }
+        }
     }
 
     bool SceneActor::IsSceneOverride(std::string_view part, std::string_view field) const
@@ -307,6 +308,7 @@ namespace NS
             m_scene = info->scene;
         }
         OnInit();
+        RegisterDrawParts();
         ApplyActorFile(this);
         ReloadActorFileOnlyValues();
         if (info != nullptr && info->placement != nullptr)
@@ -353,10 +355,6 @@ namespace NS
             m_model->SetMesh(nullptr);
         }
         OnAssetsLoaded();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->ReloadAssets();
-        }
     }
 
     void SceneActor::OnAssetsLoaded()
@@ -392,15 +390,11 @@ namespace NS
         }
         m_started = true;
         OnStart();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Start();
-        }
     }
 
     void SceneActor::OnStart()
     {
-        // 描く物とセンサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
+        // 描く物は OnInit の直後に RegisterDrawParts が、センサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }
@@ -424,11 +418,15 @@ namespace NS
         // clang-format off
         if (m_model) { ShowModel(this, m_model.get()); }
         if (m_shadow) { ShowModel(this, m_shadow.get()); }
+        if (m_light) { EnableLight(this, m_light.get()); }
+        if (m_worldLines) { ShowModel(this, m_worldLines.get()); }
         if (m_collision) { EnableCollision(this, m_collision.get(), Root().WorldMatrix()); }
         if (m_hitSensors) { m_hitSensors->EnableAll(); }
         // clang-format on
         // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
         SnapshotForInterpolation();
+        // 影も出た所の地面を探す。歩の外で出た物は、歩の最後の SyncShadows より先に描かれる
+        UpdateShadowGround();
     }
 
     void SceneActor::OnDisappear() noexcept
@@ -442,15 +440,35 @@ namespace NS
         // clang-format off
         if (m_model) { HideModel(this, m_model.get()); }
         if (m_shadow) { HideModel(this, m_shadow.get()); }
+        if (m_light) { DisableLight(this, m_light.get()); }
+        if (m_worldLines) { HideModel(this, m_worldLines.get()); }
         // 動作は外す前に止める。入り切りの途中のセンサーを戻す頼みが、外したセンサーを開け直さないため
         if (m_actorAction) { StopAction(); }
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
-        if (m_hitReaction) { m_hitReaction->StopAll(this); }
+        if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
     }
 
     namespace
     {
+        // action のフレーム 0 に、clip を流すアニメーションの項目がある場合 true。clip が nullptr なら false
+        bool PlaysClipAtFirstFrame(const ActorActionInfo& action, const Anim::AnimClip* clip) noexcept
+        {
+            if (clip == nullptr)
+            {
+                return false;
+            }
+            for (const ActorActionEvent& event : action.events)
+            {
+                const ActionAnimInfo* anim = std::get_if<ActionAnimInfo>(&event.item);
+                if (event.start == 0 && anim != nullptr && anim->clip != nullptr && anim->clip->Clip() == clip)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         // 動作の項目 1 つを、持ち主の部品と場面の管理クラスへ頼む
         struct ActionItemRunner
         {
@@ -520,7 +538,7 @@ namespace NS
                 {
                     return;
                 }
-                scene->HitScreen().StartFlash(&actor, length, screen.alpha);
+                scene->ScreenFlash().Start(&actor, length, screen.alpha);
             }
         };
     } // namespace
@@ -579,7 +597,15 @@ namespace NS
             return false;
         }
         // 次の Update まで待つと、フレーム 0 のクリップの切り替えが 1 フレーム遅れる
-        AdvanceAction(0.0f);
+        AdvanceAction();
+        // フレーム 0 の項目がクリップを替えるので、当てた後のクリップに結ぶ。自分のフレーム 0 にそのクリップの
+        // 項目が無い動作は、ほかの動作が流したクリップに結ばず、フレーム 0 のままにする
+        ActionClock clock = CurrentActionClock();
+        if (!PlaysClipAtFirstFrame(*m_actorAction->CurrentAction(), clock.clip))
+        {
+            clock.clip = nullptr;
+        }
+        m_actorAction->BindClip(clock);
         return true;
     }
 
@@ -610,21 +636,22 @@ namespace NS
         RunActionOutputs();
     }
 
-    void SceneActor::AdvanceAction(float playbackSeconds)
+    void SceneActor::AdvanceAction()
     {
-        m_actorAction->Advance(ActionClock{.machine = GetStateMachine(), .playbackSeconds = playbackSeconds});
+        m_actorAction->Advance(CurrentActionClock());
         RunActionOutputs();
     }
 
-    float SceneActor::ActionPlaybackSeconds() const noexcept
+    ActionClock SceneActor::CurrentActionClock() const noexcept
     {
-        // 次の描画でアニメーションが進む秒と同じ。Animation を持たない時は 1 フレームの秒で進める
-        const float dt = GetFrameDelta(this);
+        ActionClock clock{.machine = GetStateMachine()};
         if (m_animation)
         {
-            return dt * m_animation->Speed();
+            clock.clip = m_animation->CurrentClip();
+            clock.clipTime = m_animation->Time();
+            clock.clipLoops = m_animation->LoopCount();
         }
-        return dt;
+        return clock;
     }
 
     void SceneActor::PreloadActionSounds()
@@ -655,7 +682,7 @@ namespace NS
         {
             for (const HitReactionEntry& entry : set.entries)
             {
-                if (const HitSoundInfo* sound = std::get_if<HitSoundInfo>(&entry.item))
+                if (const HitSoundInfo* sound = entry.item.As<HitSoundInfo>())
                 {
                     m_sound->Preload(&AssetManager::Get(), sound->sound.name);
                 }
@@ -726,7 +753,7 @@ namespace NS
             // 時計は状態の歩なので、状態を進めたフレームにだけ進める
             // clang-format off
             if (m_stateMachine) { m_stateMachine->Update(GetFrameDelta(this)); }
-            if (m_actorAction) { AdvanceAction(ActionPlaybackSeconds()); }
+            if (m_actorAction) { AdvanceAction(); }
             // clang-format on
             AfterStateStep();
         }
@@ -741,19 +768,20 @@ namespace NS
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
         // clang-format on
         // clang-format off
-        if (m_model) { m_model->AdvanceDraw(this, Root().Position()); }
+        if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            if (child->IsAppeared())
-            {
-                child->Update();
-            }
-        }
         VisualStep();
         if (m_hitStopFrames > 0)
         {
             --m_hitStopFrames;
+        }
+    }
+
+    void SceneActor::UpdateShadowGround() noexcept
+    {
+        if (m_shadow && m_scene)
+        {
+            m_shadow->Update(m_scene, Root().Position());
         }
     }
 
@@ -762,11 +790,8 @@ namespace NS
         Root().Snapshot();
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
+        if (m_worldLines) { m_worldLines->Snapshot(); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->SnapshotForInterpolation();
-        }
     }
 
     void SceneActor::PrepareRender()
@@ -774,21 +799,10 @@ namespace NS
         // clang-format off
         if (m_animation) { m_animation->Update(m_model.get(), GetFrameDelta(this)); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            if (child->IsAppeared())
-            {
-                child->PrepareRender();
-            }
-        }
     }
 
     void SceneActor::OnEndPlay()
     {
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->OnEndPlay();
-        }
         // 描く物・センサー・当たりの body は消えても残っているので、出ていたかを問わずここで外す
         Disappear();
         if (OwningScene() == nullptr)
@@ -798,6 +812,8 @@ namespace NS
         // clang-format off
         if (m_model) { EndDraw(this, m_model.get()); }
         if (m_shadow) { EndDraw(this, m_shadow.get()); }
+        if (m_light) { EndLight(this, m_light.get()); }
+        if (m_worldLines) { EndDraw(this, m_worldLines.get()); }
         if (m_hitSensors) { m_hitSensors->EndAll(this); }
         if (m_collision) { EndCollision(this, m_collision.get()); }
         // clang-format on

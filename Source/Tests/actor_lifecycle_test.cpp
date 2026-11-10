@@ -5,15 +5,20 @@
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "TestActorFile.h"
 #include "TestRegistrations.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
+
+#include <memory>
 
 namespace
 {
@@ -57,6 +62,8 @@ namespace
     class LifeProbeActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(LifeProbeActor, NS::SceneActor)
+
         int updates = 0;
 
     protected:
@@ -70,16 +77,76 @@ namespace
         int updates = 0;
     };
 
+    // Model・Shadow・平行光・線の部品を作るだけで、描く仕組みへは入れない
+    class DrawPartsActor final : public NS::SceneActor
+    {
+    public:
+        NS_REFLECT_NONE(DrawPartsActor, NS::SceneActor)
+
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj(m_model);
+            CreateClassObj(m_shadow);
+            CreateClassObj(m_light);
+            CreateClassObj(m_worldLines);
+        }
+    };
+
 } // namespace
+
+NS_CLASS(LifeProbeActor)
+NS_CLASS(DrawPartsActor)
+
+// 基底が OnInit の直後に Model・Shadow・平行光・線の部品を 1 回ずつ入れ、隠すと使わず、OnEndPlay で外す
+TEST(ActorLifecycle, TheBaseRegistersTheModelShadowLightAndLinesOnce)
+{
+    NS::Scene scene;
+    NS::SceneRenderer* renderer = scene.GetSceneRenderer();
+    DrawPartsActor* actor = SpawnFromActorFile<DrawPartsActor>(scene, "DrawPartsActor");
+    EXPECT_EQ(renderer->ModelCount(), 1u);
+    EXPECT_EQ(renderer->ShadowCount(), 1u);
+    EXPECT_EQ(renderer->EnabledModelCount(), 1u);
+    EXPECT_EQ(renderer->EnabledShadowCount(), 1u);
+    EXPECT_EQ(renderer->LightCount(), 1u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 1u);
+    EXPECT_EQ(renderer->WorldLinesCount(), 1u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 1u);
+
+    actor->Disappear();
+    EXPECT_EQ(renderer->EnabledModelCount(), 0u);
+    EXPECT_EQ(renderer->EnabledShadowCount(), 0u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 0u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 0u);
+    actor->Appear();
+    EXPECT_EQ(renderer->EnabledModelCount(), 1u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 1u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 1u);
+
+    actor->Destroy();
+    scene.OnUpdate();
+    EXPECT_EQ(renderer->ModelCount(), 0u);
+    EXPECT_EQ(renderer->ShadowCount(), 0u);
+    EXPECT_EQ(renderer->LightCount(), 0u);
+    EXPECT_EQ(renderer->WorldLinesCount(), 0u);
+}
+
+// シーンに居ないアクターは、描く仕組みが無いので何も入れずに作れる
+TEST(ActorLifecycle, AnActorWithoutASceneRegistersNoDrawParts)
+{
+    const std::unique_ptr<DrawPartsActor> actor = NS::CreateActor<DrawPartsActor>();
+    EXPECT_NE(actor->ModelClassObj(), nullptr);
+    EXPECT_EQ(actor->GetSceneRenderer(), nullptr);
+}
 
 // ゴールは模型の 1 つを描く物に、体のセンサー 1 つをセンサーに入れる
 TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Scene scene;
-    const std::size_t renderables = scene.GetSceneRenderer()->RenderableCount();
-    (void)scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    EXPECT_EQ(scene.GetSceneRenderer()->RenderableCount(), renderables + 1);
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables + 1);
+    const std::size_t renderables = scene.GetSceneRenderer()->ModelCount();
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    EXPECT_EQ(scene.GetSceneRenderer()->ModelCount(), renderables + 1);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables + 1);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
     EXPECT_EQ(EnabledSensorCount(scene), 1u);
 }
@@ -87,8 +154,8 @@ TEST(ActorLifecycle, StartRegistersEachPartOnce)
 TEST(ActorLifecycle, DisappearStopsUpdatesAndAppearResumesOnce)
 {
     NS::Scene scene;
-    LifeProbeActor* actor = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
-    LifeProbeActor* other = scene.SpawnActor<LifeProbeActor>("LifeProbeActor");
+    LifeProbeActor* actor = SpawnFromActorFile<LifeProbeActor>(scene, "LifeProbeActor");
+    LifeProbeActor* other = SpawnFromActorFile<LifeProbeActor>(scene, "LifeProbeActor");
     EXPECT_TRUE(actor->IsAppeared());
     scene.OnUpdate();
     EXPECT_EQ(actor->updates, 1);
@@ -110,7 +177,7 @@ TEST(ActorLifecycle, DestroyedPlacedActorLeavesAfterTheStep)
 {
     NS::Scene scene;
     const std::size_t before = scene.Actors().ActorCount();
-    NS::SceneActor* actor = scene.SpawnActor<LifeProbeActor>("Probe");
+    NS::SceneActor* actor = SpawnFromActorFile<LifeProbeActor>(scene, "LifeProbeActor", "Probe");
     actor->Destroy();
     EXPECT_FALSE(actor->IsAppeared());
     // 歩を回している途中の呼び手がまだ指しているので、その場では解放しない
@@ -124,8 +191,8 @@ TEST(ActorLifecycle, PhysicsAndSensorsStopWhileDisappeared)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     // 当たりは地形の部品が、センサーはゴールが持つ
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
-    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
+    GL::Level::GoalActor* goal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     scene.OnUpdate();
     const std::size_t sensors = EnabledSensorCount(scene);
     ASSERT_GT(sensors, 0u);
@@ -149,14 +216,14 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     // 当たりは地形の部品が、センサーはゴールが持つ。消すのは原点の 2 体で、x = 10 の 2 体は残す
-    NS::MapPartsActor* actor = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
-    GL::Level::GoalActor* actorGoal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    NS::MapPartsActor* other = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
-    GL::Level::GoalActor* otherGoal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    NS::MapPartsActor* actor = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
+    GL::Level::GoalActor* actorGoal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    NS::MapPartsActor* other = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
+    GL::Level::GoalActor* otherGoal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
     otherGoal->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
-    const std::size_t renderables = scene.GetSceneRenderer()->EnabledRenderableCount();
+    const std::size_t renderables = scene.GetSceneRenderer()->EnabledModelCount();
     const std::size_t sensors = EnabledSensorCount(scene);
     const NS::uint bodies = scene.Physics().BodyCount();
     const NS::uint attached = scene.Physics().AttachedBodyCount();
@@ -165,7 +232,7 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     actorGoal->Disappear();
     EXPECT_TRUE(other->IsAppeared());
     EXPECT_TRUE(otherGoal->IsAppeared());
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables - 2);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables - 2);
     EXPECT_EQ(EnabledSensorCount(scene), sensors - 1);
     // 当たりの body は物理シーンの外へ出るだけで壊れない
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached - 1);
@@ -176,27 +243,26 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 
     actor->Appear();
     actorGoal->Appear();
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables);
     EXPECT_EQ(EnabledSensorCount(scene), sensors);
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached);
     EXPECT_EQ(scene.Physics().BodyCount(), bodies);
 }
 
-// 一方を消してから出し直しても、描く物とセンサーの並びは前と同じ順のまま
+// 一方を消してから出し直しても、センサーの並びは前と同じ順のまま
+// 描く物は出ているかを組の値で持ち、並びを動かさない。同じ距離の物を登録の順に描く事は scene_renderer_order_test が確かめる
 TEST(ActorLifecycle, AppearAgainKeepsRegistrationOrder)
 {
     NS::Scene scene;
-    GL::Level::GoalActor* first = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    GL::Level::GoalActor* second = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    GL::Level::GoalActor* first = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    GL::Level::GoalActor* second = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     second->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
-    const std::vector<NS::IRenderable*> renderables = scene.GetSceneRenderer()->Renderables();
     const std::vector<NS::HitSensor*> sensors = scene.HitSensors().Sensors();
     ASSERT_GE(sensors.size(), 2u);
 
     first->Disappear();
     first->Appear();
-    EXPECT_EQ(scene.GetSceneRenderer()->Renderables(), renderables);
     EXPECT_EQ(scene.HitSensors().Sensors(), sensors);
 }
 
@@ -205,14 +271,14 @@ TEST(ActorLifecycle, DisappearedActorLeavesRegistriesOnEndPlay)
 {
     NS::Scene scene;
     // 部品が作るシーンに 1 つの管理役 (当たりの画面の係など) は残るので、作られた後の数と比べる
-    (void)scene.SpawnActor<PlayerActor>("PlayerActor");
+    (void)SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     scene.OnUpdate();
     const Registrations before = CountRegistrations(scene);
 
-    const std::vector<NS::SceneActor*> actors{scene.SpawnActor<GL::Level::GoalActor>("GoalActor"),
-                                              scene.SpawnActor<PlayerActor>("PlayerActor"),
-                                              scene.SpawnActor<NS::LightActor>("LightActor"),
-                                              scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor")};
+    const std::vector<NS::SceneActor*> actors{SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor"),
+                                              SpawnFromActorFile<PlayerActor>(scene, "PlayerActor"),
+                                              SpawnFromActorFile<NS::LightActor>(scene, "LightActor"),
+                                              SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor")};
     scene.OnUpdate();
     for (NS::SceneActor* actor : actors)
     {
@@ -231,10 +297,10 @@ TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
 {
     const ScopedActorFile lifeBox{"LifeBoxActor", CodeValuesActorFile("LifeBoxActor")};
     NS::Scene scene;
-    (void)scene.SpawnActor<LifeBoxActor>("LifeBoxActor");
+    (void)SpawnFromActorFile<LifeBoxActor>(scene, "LifeBoxActor");
     EXPECT_TRUE(HitsDownAt(scene, 0.0f));
 
-    NS::SceneActor* placed = scene.SpawnActor<LifeBoxActor>("Placed");
+    NS::SceneActor* placed = SpawnFromActorFile<LifeBoxActor>(scene, "LifeBoxActor", "Placed");
     placed->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_TRUE(HitsDownAt(scene, 10.0f));

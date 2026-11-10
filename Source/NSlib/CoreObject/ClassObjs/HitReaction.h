@@ -1,141 +1,36 @@
 #pragma once
 
+#include "NSlib/Core/NonCopyable.h"
 #include "NSlib/CoreObject/ClassObjs/CameraModifier.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
-#include "NSlib/CoreObject/System/HitScreenDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
 #pragma warning(pop)
 
+#include <concepts>
 #include <functional>
 #include <initializer_list>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
-#include <variant>
+#include <type_traits>
 #include <vector>
 
 namespace NS
 {
+    struct HitReactionStart;
+
     // 名前の束が使う項目の型。曲線の横軸は項目が始まったフレームを 0 にしたフレーム数。
-    // 向きを使う項目は、束を始める時に渡す 2 つのセンサーの位置から向きを出す
-
-    //! 持ち主の描く形の倍率。縮み・潰れ・伸びを 1 本の流れで持つ
-    //! 向きの倍率は 2 つのセンサーを結ぶ水平の向きで x と z へ分ける
-    struct HitShapeInfo
-    {
-        std::string_view typeName = "Shape"; // ファイルに書く種類の名前
-        std::string_view label = "描く形";   // 窓とインスペクタに出す名前
-
-        Curve along{};  // 相手へ向かう向きの倍率。元の形が 1
-        Curve height{}; // 高さの倍率。元の形が 1
-        Curve side{};   // 相手へ向かう向きに直角な水平の横の倍率。点が無ければ 1
-
-        NS_REFLECT_BEGIN(HitShapeInfo, void)
-        NS_FIELD(along, "突進の向きの倍率")
-        NS_FIELD(height, "高さの倍率")
-        NS_FIELD(side, "横の倍率")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 持ち主の描く形を、床に沿う画面の横方向へ揺らす。最初の振れは相手と逆の側
-    struct HitBodyShakeInfo
-    {
-        std::string_view typeName = "BodyShake";
-        std::string_view label = "横揺れ";
-
-        //! 最初の振れ幅。高さ 720 ピクセルの画面の上のピクセル数で持つ
-        //! 始めたフレームに、カメラとの距離からゲームの中の距離を出す
-        float amplitudePixels = 10.0f;
-        int flipFrames = 1; // 左右を入れ替えるフレーム数。1 未満は 1
-
-        NS_REFLECT_BEGIN(HitBodyShakeInfo, void)
-        NS_FIELD(amplitudePixels, "振れ幅のピクセル")
-        NS_FIELD(flipFrames, "左右を入れ替えるフレーム数")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置から持ち主の体の裏へ震えを伝える。描く形だけを揺らし、当たりと根の位置は動かさない
-    struct HitBodyTremorInfo
-    {
-        std::string_view typeName = "BodyTremor";
-        std::string_view label = "衝撃の震え";
-
-        //! 振れ幅。基準の高さの画面の上のピクセル数で持ち、毎フレームカメラとの距離からゲームの中の距離を出す
-        float amplitudePixels = 3.0f;
-        //! 渡した位置から体の一番遠い所へ届くまでのフレーム数。長さの半分を超える分は使わない
-        int reachFrames = 6;
-        //! 振れ幅の、体の半径に対する割合。正ならピクセルの欄の代わりに使う
-        float radiusRatio = 0.0f;
-        float referenceHeight = 720.0f; // ピクセルの欄を数える画面の高さ
-
-        NS_REFLECT_BEGIN(HitBodyTremorInfo, void)
-        NS_FIELD(amplitudePixels, "振れ幅のピクセル")
-        NS_FIELD(reachFrames, "裏まで届くフレーム数")
-        NS_FIELD(radiusRatio, "体の半径に対する振れ幅の割合")
-        NS_FIELD(referenceHeight, "ピクセルを数える画面の高さ")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 画面を沈めて震わせる。同じ持ち主の「沈みを戻す」で跳ね返り、戻されなければ長さで終わる
-    //! ピクセルは高さ 1080 の画面で数える。カメラの位置と向きは変えない
-    struct HitCameraSinkInfo
-    {
-        std::string_view typeName = "CameraSink";
-        std::string_view label = "沈む揺れ";
-
-        float bottomPixels = 9.0f;   // 底の深さ (ピクセル)
-        int sinkFrames = 2;          // 底へ届くまでのフレーム数
-        float tremblePixels = 5.0f;  // 底での震えの最初の大きさ (ピクセル)
-        int trembleFrames = 6;       // 震えるフレーム数
-        int tremblePeriodFrames = 2; // 震えの 1 往復のフレーム数
-        float overshootRatio = 0.5f; // 跳ね返りで 0 を越えて上へ出る量の、底の深さに対する割合
-        int bouncePeriodFrames = 8;  // 跳ね返りの 1 往復のフレーム数
-
-        NS_REFLECT_BEGIN(HitCameraSinkInfo, void)
-        NS_FIELD(bottomPixels, "底の深さのピクセル")
-        NS_FIELD(sinkFrames, "沈むフレーム数")
-        NS_FIELD(tremblePixels, "震えの大きさ")
-        NS_FIELD(trembleFrames, "震えのフレーム数")
-        NS_FIELD(tremblePeriodFrames, "震えの 1 往復")
-        NS_FIELD(overshootRatio, "行き過ぎの割合")
-        NS_FIELD(bouncePeriodFrames, "跳ね返りの 1 往復")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 同じ持ち主が先に始めた沈む揺れを跳ね返す。新しい揺れは始めず、沈みが無ければ何もしない
-    struct HitCameraSinkReleaseInfo
-    {
-        std::string_view typeName = "CameraSinkRelease";
-        std::string_view label = "沈みを戻す";
-    };
-
-    //! カメラの寄りと傾き。項目の長さは保つフレーム数と戻すフレーム数の和
-    struct HitZoomRollInfo
-    {
-        std::string_view typeName = "ZoomRoll";
-        std::string_view label = "寄りと傾き";
-
-        float zoom = 1.15f;       // 寄りの倍率。1 は寄らない
-        float rollDegrees = 3.0f; // 傾き (度)。正は画面の上端を、相手がカメラの右なら右へ倒す
-        int returnFrames = 6;     // 長さのうち、元へ戻すのに使う末尾のフレーム数
-        //! 束を始めてから寄せ始めるまでのフレーム数。止めの間も数える
-        int delayFrames = 0;
-
-        NS_REFLECT_BEGIN(HitZoomRollInfo, void)
-        NS_FIELD(zoom, "寄りの倍率")
-        NS_FIELD(rollDegrees, "傾き")
-        NS_FIELD(returnFrames, "戻すフレーム数")
-        NS_FIELD(delayFrames, "始めるまでのフレーム数")
-        NS_REFLECT_END_VALUE()
-    };
+    // 向きを使う項目は、束を始める時に渡す 2 つのセンサーの位置から向きを出す。
+    // 種類の型は NS_HIT_REACTION_ITEM で登録し、束を始めたフレームに Start が 1 回呼ばれる
 
     //! カメラのトラウマを足し、相手の側へ一撃を振る。揺れの途中なら前のトラウマに足す
     //! 揺れの長さは項目の長さでなく減る速さで決まる
@@ -143,6 +38,8 @@ namespace NS
     {
         std::string_view typeName = "CameraTrauma";
         std::string_view label = "トラウマの揺れ";
+
+        void Start(const HitReactionStart& start) const;
 
         float trauma = 0.9f;         // 足すトラウマ 0〜1
         float yawDegrees = 3.0f;     // トラウマ 1 の横の首振りの最大 (度)
@@ -167,78 +64,6 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! カメラの位置と注視点を、相手へ向かう水平の向きへ曲線の距離だけずらす。向きと地平線は変えない
-    struct HitCameraLurchInfo
-    {
-        std::string_view typeName = "CameraLurch";
-        std::string_view label = "つんのめり";
-
-        Curve distance{}; // ずらす距離 (m)。負は手前へ
-
-        NS_REFLECT_BEGIN(HitCameraLurchInfo, void)
-        NS_FIELD(distance, "ずらす距離")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! カメラの位置と注視点を、相手から離れる向きの画面方向へ曲線の距離だけずらす
-    //! 奥行きの成分は捨て、画面方向が無ければ揺らさない。向きと地平線は変えない
-    struct HitCameraAwaySwayInfo
-    {
-        std::string_view typeName = "CameraAwaySway";
-        std::string_view label = "離れる向きの揺れ";
-
-        Curve distance{}; // ずらす距離 (m)。負は相手へ向かう向き
-
-        NS_REFLECT_BEGIN(HitCameraAwaySwayInfo, void)
-        NS_FIELD(distance, "ずらす距離")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 画面の白い光。長さの間に始めの濃さから直線で薄れる
-    struct HitFlashInfo
-    {
-        std::string_view typeName = "Flash";
-        std::string_view label = "白い光";
-
-        float alpha = 0.5f; // 始めの濃さ 0〜1
-
-        NS_REFLECT_BEGIN(HitFlashInfo, void)
-        NS_FIELD(alpha, "濃さ")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置から画面に輪を広げ、輪の部分の絵を外へ押し出す。長さが出すフレーム数
-    struct HitDistortionRingInfo
-    {
-        std::string_view typeName = "DistortionRing";
-        std::string_view label = "歪みの輪";
-
-        Curve radius{};          // 輪の半径。画面の高さに対する割合。点が無ければ 0
-        Curve push{};            // 輪の真ん中で絵を押し出す長さ。画面の高さに対する割合。点が無ければ歪めない
-        float halfWidth = 0.05f; // 輪の半分の幅。画面の高さに対する割合
-
-        NS_REFLECT_BEGIN(HitDistortionRingInfo, void)
-        NS_FIELD(radius, "半径")
-        NS_FIELD(push, "押し")
-        NS_FIELD(halfWidth, "半分の幅")
-        NS_REFLECT_END_VALUE()
-    };
-
-    //! 渡した位置の真下から、上を向いた面へ光の輪を広げる。長さが出すフレーム数
-    struct HitGroundWaveInfo
-    {
-        std::string_view typeName = "GroundWave";
-        std::string_view label = "床の波";
-
-        Curve radius{};   // 輪の半径 (m)。点が無ければ 0
-        Curve strength{}; // 輪の強さ。面の倒れと頂の光の量。点が無ければ出さない
-
-        NS_REFLECT_BEGIN(HitGroundWaveInfo, void)
-        NS_FIELD(radius, "半径")
-        NS_FIELD(strength, "強さ")
-        NS_REFLECT_END_VALUE()
-    };
-
     //! パッドの振動。左右のモーターの速さの曲線で、長さの間だけ書く
     //! 向き別の時は、持ち主から見た相手の向きの角度で隣り合う 2 つの向きの曲線を混ぜる。
     //! 向きは右・左・上・下で、向き無しの曲線は使わない
@@ -246,6 +71,8 @@ namespace NS
     {
         std::string_view typeName = "Pad";
         std::string_view label = "パッドの振動";
+
+        void Start(const HitReactionStart& start) const;
 
         bool byDirection = false; // 向き別の 4 組を使う場合 true。偽なら向き無しの 1 組
         bool layered = false;     // 走っている振動を始め直さずに重ねる場合 true
@@ -276,13 +103,6 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 長さの間、持ち主以外の世界を止める (Scene::RequestStopScene)。始めた歩の次の歩から止まる
-    struct HitOthersStopInfo
-    {
-        std::string_view typeName = "OthersStop";
-        std::string_view label = "自機以外の止め";
-    };
-
     //! 持ち主のアクターへ渡す項目。名前と値を持ち主が読んで、持ち主の演出 (残像・エフェクトなど) を始める
     //! NSlib は名前と値の意味を知らない。値の名前は持ち主が決める
     struct HitOwnerInfo
@@ -290,9 +110,16 @@ namespace NS
         std::string_view typeName = "Owner";
         std::string_view label = "持ち主へ渡す項目";
 
+        void Start(const HitReactionStart& start) const;
+
         std::string name; // 持ち主が始める演出の名前
         //! 値の名前から値。ファイルでは欄の「値」に書き、インスペクタの欄の表には載らない
         std::map<std::string, float, std::less<>> values;
+
+        //! 欄の「値」を fields から values へ読み、鍵を fields から外す。数でない値があれば error に書いて false
+        [[nodiscard]] static bool ReadExtraFields(HitOwnerInfo& item, nlohmann::json& fields, std::string& error);
+        //! values を欄の「値」として fields へ書く
+        static void WriteExtraFields(const HitOwnerInfo& item, nlohmann::json& fields);
 
         NS_REFLECT_BEGIN(HitOwnerInfo, void)
         NS_FIELD(name, "名前")
@@ -304,6 +131,8 @@ namespace NS
     {
         std::string_view typeName = "Sound";
         std::string_view label = "効果音";
+
+        void Start(const HitReactionStart& start) const;
 
         SoundName sound{};   // 鳴らす音
         float volume = 1.0f; // 音量 0〜1
@@ -320,6 +149,8 @@ namespace NS
         std::string_view typeName = "Effect";
         std::string_view label = "エフェクト";
 
+        void Start(const HitReactionStart& start) const;
+
         Effect* effect = nullptr; // 出すエフェクト
 
         NS_REFLECT_BEGIN(HitEffectInfo, void)
@@ -327,29 +158,195 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 項目の種類ごとの値。種類を足す時はここへ型を足す
-    using HitReactionEntryInfo = std::variant<HitShapeInfo,
-                                              HitBodyShakeInfo,
-                                              HitBodyTremorInfo,
-                                              HitCameraSinkInfo,
-                                              HitCameraSinkReleaseInfo,
-                                              HitZoomRollInfo,
-                                              HitCameraTraumaInfo,
-                                              HitCameraLurchInfo,
-                                              HitCameraAwaySwayInfo,
-                                              HitFlashInfo,
-                                              HitDistortionRingInfo,
-                                              HitGroundWaveInfo,
-                                              HitPadInfo,
-                                              HitOthersStopInfo,
-                                              HitOwnerInfo,
-                                              HitSoundInfo,
-                                              HitEffectInfo>;
+    //! 束の項目にできる種類の型。ファイルの種類の名前 typeName・エディタに出す名前 label と、
+    //! 束を始めたフレームに 1 回呼ばれる Start を持つ。欄は NS_REFLECT で並べる
+    template <class Info>
+    concept HitReactionItemInfo = std::copy_constructible<Info> && std::default_initializable<Info> &&
+                                  requires(const Info& info, const HitReactionStart& start) {
+                                      { info.typeName } -> std::convertible_to<std::string_view>;
+                                      { info.label } -> std::convertible_to<std::string_view>;
+                                      info.Start(start);
+                                  };
+
+    //! 種類の型ごとに 1 つの番地。HitReactionItem::As が今の種類を見分けるのに使う
+    //! const にしない。読むだけの同じ値は、最適化したリンクで 1 つの番地にまとめられることがある (/OPT:ICF)
+    template <class Info> [[nodiscard]] const void* HitReactionItemTag() noexcept
+    {
+        static char tag = 0;
+        return &tag;
+    }
+
+    //! 束の項目 1 つの値。登録した種類の型のどれか 1 つを持つ。既定で作った値は種類を持たず、束には入らない
+    class HitReactionItem
+    {
+    public:
+        HitReactionItem() = default;
+        // 自分の型を先に外す。HitReactionItem がコピーできるかを調べる時にこの関数も候補になり、
+        // HitReactionItemInfo<HitReactionItem> がまた std::copy_constructible<HitReactionItem> を調べると、clang が止める
+        template <class Info>
+            requires(!std::same_as<Info, HitReactionItem> && HitReactionItemInfo<Info>)
+        HitReactionItem(Info info) : m_value(std::make_unique<Holder<Info>>(std::move(info)))
+        {
+        }
+        HitReactionItem(const HitReactionItem& other);
+        HitReactionItem& operator=(const HitReactionItem& other);
+        HitReactionItem(HitReactionItem&&) noexcept = default;
+        HitReactionItem& operator=(HitReactionItem&&) noexcept = default;
+        ~HitReactionItem() = default;
+
+        //! ファイルに書く種類の名前。種類を持たなければ空
+        [[nodiscard]] std::string_view TypeName() const noexcept;
+        //! エディタに出す名前。種類を持たなければ空
+        [[nodiscard]] std::string_view Label() const noexcept;
+        //! 今の種類のリフレクション。欄の無い種類と、種類を持たない値は nullptr
+        [[nodiscard]] const ReflectionInfo* Reflection() const noexcept;
+        //! 今の種類の値を指す番地。Reflection の欄を読み書きする時に渡す。種類を持たなければ nullptr
+        [[nodiscard]] void* Fields() noexcept;
+        [[nodiscard]] const void* Fields() const noexcept;
+        //! 今の種類の Start を呼ぶ。種類を持たなければ何もしない
+        void Start(const HitReactionStart& start) const;
+        //! 今の種類が欄の表の外に持つ値を fields から読み、読んだ鍵を外す。壊れていれば error に書いて false
+        [[nodiscard]] bool ReadExtraFields(nlohmann::json& fields, std::string& error);
+        //! 今の種類が欄の表の外に持つ値を fields へ書く
+        void WriteExtraFields(nlohmann::json& fields) const;
+
+        //! 今の種類が Info ならその値。違えば nullptr
+        template <HitReactionItemInfo Info> [[nodiscard]] const Info* As() const noexcept
+        {
+            if (m_value == nullptr || m_value->Tag() != HitReactionItemTag<Info>())
+            {
+                return nullptr;
+            }
+            return &static_cast<const Holder<Info>*>(m_value.get())->info;
+        }
+        template <HitReactionItemInfo Info> [[nodiscard]] Info* As() noexcept
+        {
+            if (m_value == nullptr || m_value->Tag() != HitReactionItemTag<Info>())
+            {
+                return nullptr;
+            }
+            return &static_cast<Holder<Info>*>(m_value.get())->info;
+        }
+
+    private:
+        struct Value
+        {
+            Value() = default;
+            Value(const Value&) = delete;
+            Value& operator=(const Value&) = delete;
+            Value(Value&&) = delete;
+            Value& operator=(Value&&) = delete;
+            virtual ~Value() = default;
+            [[nodiscard]] virtual std::unique_ptr<Value> Clone() const = 0;
+            [[nodiscard]] virtual const void* Tag() const noexcept = 0;
+            [[nodiscard]] virtual std::string_view TypeName() const noexcept = 0;
+            [[nodiscard]] virtual std::string_view Label() const noexcept = 0;
+            [[nodiscard]] virtual const ReflectionInfo* Reflection() const noexcept = 0;
+            [[nodiscard]] virtual void* Fields() noexcept = 0;
+            [[nodiscard]] virtual const void* Fields() const noexcept = 0;
+            virtual void Start(const HitReactionStart& start) const = 0;
+            [[nodiscard]] virtual bool ReadExtraFields(nlohmann::json& fields, std::string& error) = 0;
+            virtual void WriteExtraFields(nlohmann::json& fields) const = 0;
+        };
+
+        template <class Info> struct Holder final : Value
+        {
+            explicit Holder(Info value) : info(std::move(value)) {}
+            [[nodiscard]] std::unique_ptr<Value> Clone() const override { return std::make_unique<Holder>(info); }
+            [[nodiscard]] const void* Tag() const noexcept override { return HitReactionItemTag<Info>(); }
+            [[nodiscard]] std::string_view TypeName() const noexcept override { return info.typeName; }
+            [[nodiscard]] std::string_view Label() const noexcept override { return info.label; }
+            [[nodiscard]] const ReflectionInfo* Reflection() const noexcept override
+            {
+                if constexpr (requires { Info::StaticReflection(); })
+                {
+                    return Info::StaticReflection();
+                }
+                else
+                {
+                    return nullptr;
+                }
+            }
+            [[nodiscard]] void* Fields() noexcept override { return &info; }
+            [[nodiscard]] const void* Fields() const noexcept override { return &info; }
+            void Start(const HitReactionStart& start) const override { info.Start(start); }
+            // 欄の表の外に値を持つ種類だけが、静的関数 ReadExtraFields と WriteExtraFields を持つ
+            [[nodiscard]] bool ReadExtraFields(nlohmann::json& fields, std::string& error) override
+            {
+                if constexpr (requires { Info::ReadExtraFields(info, fields, error); })
+                {
+                    return Info::ReadExtraFields(info, fields, error);
+                }
+                else
+                {
+                    return true;
+                }
+            }
+            void WriteExtraFields(nlohmann::json& fields) const override
+            {
+                if constexpr (requires { Info::WriteExtraFields(info, fields); })
+                {
+                    Info::WriteExtraFields(info, fields);
+                }
+            }
+
+            Info info;
+        };
+
+        std::unique_ptr<Value> m_value;
+    };
+
+    // .actor の項目の行を読み書きする共通の関数 (ItemVariant.h) が、HitReactionItem を std::variant と同じに扱うための関数
+    [[nodiscard]] inline std::string_view ItemTypeName(const HitReactionItem& item) noexcept { return item.TypeName(); }
+    [[nodiscard]] inline std::string_view ItemLabel(const HitReactionItem& item) noexcept { return item.Label(); }
+    [[nodiscard]] inline const ReflectionInfo* ItemReflection(const HitReactionItem& item) noexcept
+    {
+        return item.Reflection();
+    }
+    [[nodiscard]] inline void* ItemFields(HitReactionItem& item) noexcept { return item.Fields(); }
+    [[nodiscard]] inline const void* ItemFields(const HitReactionItem& item) noexcept { return item.Fields(); }
+    //! 登録した種類の名前から、欄が全部既定値のその種類の値を作る。登録していない名前は std::nullopt
+    [[nodiscard]] std::optional<HitReactionItem> MakeItemOf(std::string_view typeName,
+                                                            std::type_identity<HitReactionItem>);
+
+    //! 登録した項目の種類 1 つ
+    struct HitReactionItemKind
+    {
+        std::string_view typeName;
+        HitReactionItem (*make)() = nullptr; // 欄が全部既定値のその種類の値を作る
+    };
+
+    //! 束の項目の種類の表。NSlib と Game の種類の型が NS_HIT_REACTION_ITEM で自分を登録し、束を読む時に名前で引く
+    class HitReactionItemRegistry
+    {
+    public:
+        [[nodiscard]] static HitReactionItemRegistry& Get() noexcept;
+
+        //! 同じ名前の二重登録は先勝ちで断り、debug では assert で落とす
+        void Register(const HitReactionItemKind& kind);
+
+        //! 名前の種類。無ければ nullptr
+        [[nodiscard]] const HitReactionItemKind* Find(std::string_view typeName) const noexcept;
+
+        //! 登録した種類。登録の順
+        [[nodiscard]] const std::vector<HitReactionItemKind>& Kinds() const noexcept { return m_kinds; }
+
+    private:
+        HitReactionItemRegistry() = default;
+        std::vector<HitReactionItemKind> m_kinds; // 登録の順。種類は数十なので線形に引く
+    };
+
+    //! NS_HIT_REACTION_ITEM の実体
+    template <HitReactionItemInfo Info> void RegisterHitReactionItem()
+    {
+        HitReactionItemRegistry::Get().Register(HitReactionItemKind{
+            .typeName = Info{}.typeName, .make = +[]() -> HitReactionItem { return HitReactionItem{Info{}}; }});
+    }
 
     //! 束の 1 項目。束を始めたフレームに始まり、長さのフレーム数だけ続く
     struct HitReactionEntry
     {
-        HitReactionEntryInfo item{};
+        HitReactionItem item{};
         int length = 1; // 長さ (フレーム数)。0 以上
     };
 
@@ -415,9 +412,52 @@ namespace NS
         Model* model = nullptr; // 形・揺れ・震えを書く先。持ち主に Model が無ければ nullptr
     };
 
+    class HitReaction;
+
+    //! 束を始める 1 回に、項目の Start へ渡す持ち主と向きと位置。始めるたびに 1 回だけ出し、呼び出しの中だけ使う
+    struct HitReactionStart
+    {
+        HitReaction* reaction = nullptr; // 束を始めた部品
+        HitReactionSelf owner{};
+        Vector3 position{};    // 渡した位置
+        Vector3 toOther{};     // 持ち主のセンサーの中心から相手のセンサーの中心まで
+        Vector3 towardOther{}; // toOther の水平の長さ 1 の向き。決まらなければ hasToward が偽
+        bool hasToward = false;
+        Vector3 cameraRight{1.0f, 0.0f, 0.0f}; // 効果を掛ける前の視点の水平の右
+        float side = 0.0f;                     // toOther の cameraRight の成分
+        float up = 0.0f;                       // toOther の上の成分
+        float bodyLength = 0.0f;               // 持ち主の体の差し渡し (m)
+        uint32 seed = 0;                       // 揺れの種
+        int length = 0;                        // 今始める項目の長さ (フレーム数)
+    };
+
+    //! 当たりの項目が始めた後も毎フレーム進める見た目。項目の Start が HitReaction::AddRun で預け、HitReaction が持つ
+    //! 持ち主の SceneActor::Update が、体を動かした後・VisualStep の前に 1 フレームずつ進める。持ち主の止めの間も進む
+    //! 持ち主は覚えず、進める・弱める・止める時に受ける
+    class HitReactionRun : public NonCopyable
+    {
+    public:
+        virtual ~HitReactionRun() noexcept = default;
+
+        //! 1 フレーム進め、持ち主の Model へ書く。中で HitReaction の AddRun・Stop・StopAll を呼ばない
+        //! @return 続ける場合 true。false を返した物は、HitReaction が Stop を呼んでから外す
+        [[nodiscard]] virtual bool Advance(const HitReactionSelf& owner) = 0;
+
+        //! 振れ幅に scale を掛ける。次の Advance から効く。事前条件: 0 以上の有限の数
+        virtual void Scale(float scale) noexcept = 0;
+
+        //! 持ち主の Model へ書いた見た目を元へ戻す。呼んだ後に HitReaction が外す
+        virtual void Stop(const HitReactionSelf& owner) noexcept = 0;
+
+        //! 同じ種類で差し替える物の識別値。HitReaction::AddRun が、同じ識別値の物を前の物と差し替える
+        //! 前の物は Stop を呼ばずに外すので、識別値を返す物は前の物と同じ見た目を書き、書けないフレームは前の値のまま描かれる
+        //! @return 識別値の番地。nullptr の物は差し替えず、並べて進める
+        [[nodiscard]] virtual const void* Kind() const noexcept { return nullptr; }
+    };
+
     //! 当たりの演出を頼む部品。.actor の名前の束を持ち、名前で始める
-    //! 揺れと寄りは CameraManager、白・震えの線・歪みの輪・床の波は HitScreenDirector、振動は PadRumbleDirector、
-    //! 描く揺れ・形・震えは持ち主の Model、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
+    //! カメラの効果は CameraManager、白はシーンの ScreenFlashDirector、振動は PadRumbleDirector、
+    //! 始めた後も進む見た目は預かった HitReactionRun、効果音は持ち主の Sound、エフェクトは持ち主の EffectObj が出す。
     //! 止めの長さは Start が返し、持ち主の SceneActor が数える。
     //! 持ち主は覚えず、呼ぶたびに受ける。持ち主へ渡す項目の進みはここに持ち、持ち主の SceneActor::Update が進める
     class HitReaction : public Object
@@ -458,62 +498,61 @@ namespace NS
         //! 呼ぶのは SceneActor::Update の頭だけ。持ち主の止めの間も進める
         void AdvanceOwnerRuns() noexcept;
 
+        //! 始めた後も進む見た目を預かる。nullptr は何もしない
+        //! 同じ識別値 (HitReactionRun::Kind、nullptr 以外) の物が預けてあれば、その物の Stop を呼ばずに外してから足す。
+        //! 同じ種類の見た目は、新しい物が次の Advance で書き直す
+        void AddRun(std::unique_ptr<HitReactionRun> run);
+
+        //! 預かった見た目を預けた順に 1 フレーム進め、終わった物を外す
+        //! 呼ぶのは SceneActor::Update だけで、体を動かした後・VisualStep の前。持ち主の止めの間も進める
+        void AdvanceRuns(const HitReactionSelf& owner);
+
         // 下の関数の owner は管理クラスとカメラを引くアクターで、依頼の主にもなる。事前条件: nullptr でない
-
-        //! カメラの沈む揺れを始める
-        //! @param[in] desc 4 拍の形。フレーム数 0 以下なら揺らさない
-        //! @return 揺れを積んだか、フレーム数 0 以下で揺らさなかった場合 true。
-        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartSink(const SceneActor* owner, const CameraSinkDesc& desc);
-
-        //! カメラのずれを始める。位置と注視点を同じだけずらし、向きは変えない
-        //! @param[in] desc ずらす向きと距離の曲線。フレーム数 0 以下ならずらさない
-        //! @return ずれを積んだか、フレーム数 0 以下でずらさなかった場合 true。
-        //! 設定が壊れている・上限を超える・カメラの管理役が無い場合 false
-        bool StartNudge(const SceneActor* owner, const CameraNudgeDesc& desc);
 
         //! カメラのトラウマを足す。揺れの途中なら前のトラウマに足す
         //! @param[in] desc 足す量と揺れの形
         //! @return 足した場合 true。量が壊れている・カメラの管理役が無い場合 false
         bool AddTrauma(const SceneActor* owner, const CameraTraumaDesc& desc);
 
-        //! カメラの寄りと傾きを始める
-        //! @param[in] desc 寄りと傾きの設定
-        //! @return 積んだ場合 true。設定が壊れている・カメラの管理役が無い場合 false
-        bool StartZoomRoll(const SceneActor* owner, const CameraZoomRollDesc& desc);
-
-        //! この部品が頼んだ歪みの輪を消す
-        //! Stop は輪を消さない
-        void StopDistortionRing(const SceneActor* owner) noexcept;
-
-        //! この部品が頼んだ床の波を消す
-        //! Stop は波を消さない
-        void StopGroundWave(const SceneActor* owner) noexcept;
-
         //! @brief この部品が頼んで走っている演出の強さに scale を掛ける。始め直さず、残りをその強さで続ける
-        //! @details 掛けるのは白の濃さ・歪みの輪の押し出し・床の波の強さ・振動の速さ・描く形の揺れと震えの振れ幅。
-        //! 震えの線・描く形の倍率・カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
-        //! @param[in] owner 頼んだ持ち主と、揺れと震えを書いた先
+        //! @details 掛けるのは白の濃さ・振動の速さ・預かった見た目 (HitReactionRun::Scale)。
+        //! カメラの効果は変えない。持ち主へ渡す項目は持ち主が自分で弱める
+        //! @param[in] owner 頼んだ持ち主
         //! @param[in] scale 掛ける倍率。事前条件: 0 以上の有限の数
         void ScaleRunning(const HitReactionSelf& owner, float scale);
 
-        //! この部品が頼んだ演出を止める。白と震えの線を消し、振動を 0 にし、揺れ・ずれ・寄りを外し、
-        //! 持ち主へ渡す項目を外す
+        //! この部品が頼んだ演出を止める。白を消し、振動を 0 にし、持ち主が頼んだカメラの効果のうちトラウマのほかを外し、
+        //! 持ち主へ渡す項目を外し、預かった見た目を止めて外す
         //! トラウマは残す。次の当たりが止めてから始め直しても、続けて当てたトラウマは足される。
         //! ほかの物が頼んだカメラの効果は残す
-        void Stop(const SceneActor* owner);
+        void Stop(const HitReactionSelf& owner);
+
+        //! 預かった見た目だけを止めて外す。画面の演出・振動・カメラの効果・持ち主へ渡す項目は残す
+        void StopRuns(const HitReactionSelf& owner) noexcept;
 
         //! Stop に加えて、この部品が頼んだカメラの効果をトラウマも含めて全部外す。途中で外れても効果を残さない
-        void StopAll(const SceneActor* owner);
+        void StopAll(const HitReactionSelf& owner);
 
         // 状態は保存しない。型検索で引けるよう型名だけ登録する
         NS_REFLECT_NONE(HitReaction, Object)
 
     private:
-        struct ItemStarter;
+        // 持ち主へ渡す項目は、始める時に m_ownerRuns へ足す
+        friend struct HitOwnerInfo;
 
         std::vector<HitReactionSet> m_sets;   // 持ち主の .actor の束
         std::vector<HitOwnerRun> m_ownerRuns; // 進めている持ち主へ渡す項目
         uint32 m_startCount = 0;              // 束か項目を始めた回数。揺れの種に混ぜる
+        std::vector<std::unique_ptr<HitReactionRun>> m_runs; // 預かった、始めた後も進む見た目。預けた順
     };
 } // namespace NS
+
+//! 束の項目の種類の型を登録する。その型の .cpp で 1 度だけ書く。型の typeName がファイルの種類の名前になる
+#define NS_HIT_REACTION_ITEM(Type)                                                                                     \
+    namespace                                                                                                          \
+    {                                                                                                                  \
+        const bool k_hitReactionItemRegistered_##Type = [] {                                                           \
+            ::NS::RegisterHitReactionItem<Type>();                                                                     \
+            return true;                                                                                               \
+        }();                                                                                                           \
+    }

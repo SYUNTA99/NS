@@ -94,6 +94,7 @@ NS_CLASSOBJ(m_collider, "Collider")
 NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
+NS_CLASSOBJ(m_ghost, "TackleGhost")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
 
@@ -110,7 +111,6 @@ void PlayerActor::OnInit()
             return BodySensorVolume(rootWorld);
         });
     CreateClassObj(m_model);
-    NS::InitDraw(this, m_model.get(), &Root());
     CreateClassObj(m_appearance);
     CreateClassObj(m_body);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
@@ -118,12 +118,11 @@ void PlayerActor::OnInit()
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
-    NS::InitDraw(this, m_shadow.get(), &Root(), OwningScene());
-    m_ghost = CreateChildActor<GL::Level::TackleGhost>();
+    CreateClassObj(m_ghost);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
-    NS::InitOverlay(this, m_reboundPreview.get());
+    CreateClassObj(m_worldLines);
     CreateClassObj(m_effect);
     CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
@@ -279,9 +278,12 @@ void PlayerActor::BodyStep()
 
 void PlayerActor::VisualStep()
 {
+    // 写し取る姿は、当たりの反応が Model を進めた後・見た目を更新する前の物
+    m_ghost->Step(this, m_model.get());
     UpdateAnimation();
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
+    m_reboundPreview->WriteLines(m_worldLines.get());
 #endif
     const GL::Player::PlayerMotion motion = Motion();
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
@@ -381,22 +383,6 @@ void PlayerActor::OnEndPlay()
     // 戻す物はやり直しと同じ組。当たりの止めと状態と演出も捨て、止めが次のプレイへ残らない
     ResetState();
     NS::SceneActor::OnEndPlay();
-    NS::EndOverlay(this, m_reboundPreview.get());
-}
-
-void PlayerActor::OnAppear()
-{
-    NS::SceneActor::OnAppear();
-    if (IsAppeared())
-    {
-        NS::ShowOverlay(this, m_reboundPreview.get());
-    }
-}
-
-void PlayerActor::OnDisappear() noexcept
-{
-    NS::SceneActor::OnDisappear();
-    NS::HideOverlay(this, m_reboundPreview.get());
 }
 
 // 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
@@ -461,9 +447,10 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 void PlayerActor::Restart() noexcept
 {
     // 出現位置はカプセル中心の世界座標。コースが始まる前は、シーンに置いた位置のまま
+    // 出ている自機は Appear が前の位置をそろえないので、戻した直後の 1 歩が元の位置から補間されないように前の位置も書く
     if (m_courseStartPosition.has_value())
     {
-        Root().SetPosition(*m_courseStartPosition);
+        Root().Teleport(*m_courseStartPosition);
     }
     ResetState();
     ResetHealth();
@@ -525,18 +512,17 @@ bool PlayerActor::CanMoveBody() const noexcept
 
 void PlayerActor::StopTackleHitEffects() noexcept
 {
-    if (NS::Model* model = ModelClassObj())
-    {
-        model->StopDrawShake();
-        model->StopDrawTremor();
-        model->StopDrawShape();
-    }
     if (NS::HitReaction* reaction = HitReactionClassObj())
     {
-        reaction->StopGroundWave(this);
-        reaction->StopDistortionRing(this);
+        // 自機が預ける走る物は、当たりの束が描く形へ書く見た目だけなので、全部を止める
+        reaction->StopRuns(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()});
     }
-    m_ghost->Stop();
+    if (GL::Level::HitScreenDirector* screen = GL::Level::HitScreenOf(this))
+    {
+        screen->StopGroundWave(this);
+        screen->StopDistortionRing(this);
+    }
+    m_ghost->Stop(m_model.get());
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept
@@ -556,19 +542,20 @@ void PlayerActor::ResetState() noexcept
     m_input->ResetMovementInput();
     m_prevJumpHeld = false;
     m_jumpsRemaining = 1;
-    m_coyoteTimer = 0.0f;
-    m_bufferTimer = 0.0f;
+    m_coyoteTimer = 0;
+    m_bufferTimer = 0;
     m_airControlReturning = false;
-    m_airControlReturnElapsed = 0.0f;
+    m_airControlReturnElapsed = 0;
     m_body->SetGrounded(false);
     m_ledgeTopY = 0.0f;
     m_ledgeFaceNormal = NS::Vector3{0.0f, 0.0f, 0.0f};
-    m_ledgeMantleTimer = 0.0f;
+    m_ledgeMantleTimer = 0;
     m_facingDir = NS::Vector3{0.0f, 0.0f, 0.0f};
     m_lastMoveDistance = 0.0f;
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
     m_reboundPreview->Hide();
+    m_reboundPreview->WriteLines(m_worldLines.get());
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);

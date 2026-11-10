@@ -1,5 +1,7 @@
 #include "Game/PlayerActor.h"
 
+#include "Game/Level/GameScene.h"
+#include "Game/Level/HitScreenDirector.h"
 #include "Game/Level/ReboundDirections.h"
 #include "Game/Level/ReboundPreview.h"
 #include "Game/Player/PlayerAcceleration.h"
@@ -13,7 +15,6 @@
 #include "Game/Player/States/IdlePlayerState.h"
 #include "Game/Player/States/WalkPlayerState.h"
 #include "NSlib/Core/Windows/Clock.h"
-#include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -47,7 +48,7 @@ namespace
         return from * (along * cosine - across * sine) + side * (along * sine + across * cosine) + rest;
     }
 
-    // エアダッシュの状態に結ぶ .actor の動作の名前。長さ (length) がダッシュの長さを持つ
+    // エアダッシュの状態に結ぶ .actor の動作の名前。事象を置く所で、ダッシュの長さは PlayerParams が持つ
     std::string_view AirDashActionName() noexcept
     {
         return "AirDash";
@@ -76,14 +77,12 @@ bool PlayerActor::AcceptsAirDash() const noexcept
 
 bool PlayerActor::BeginAirDash() noexcept
 {
-    // 速さが 0 のダッシュは、状態の終わり (IsStateEnd) も来ないので宙で止まったまま抜けられない
+    // 速さが 0 のダッシュは、終わりの歩も来ないので宙で止まったまま抜けられない
     const float speed = AirDashSpeed();
     if (!NS::IsPositive(speed))
     {
-        NS_LOG_WARN(Game,
-                    ".actor {} の動作 {} が無いか長さが 0、または距離が 0 以下なので、エアダッシュを始めない",
-                    ActorFileName(),
-                    AirDashActionName());
+        NS_LOG_WARN(
+            Game, ".actor {} のエアダッシュのフレーム数か距離が 0 以下なので、エアダッシュを始めない", ActorFileName());
         return false;
     }
     const NS::Vector3 direction = AirDashStartDirection();
@@ -164,23 +163,10 @@ void PlayerActor::UpdateReboundPreview()
         }
         direction /= speed;
         // ダッシュが終わった後に触れた壁は反動にならないので、残りの歩で進む距離までだけ調べる
-        const NS::ActorAction* actions = ActorActionClassObj();
-        const NS::ActorActionInfo* action{nullptr};
-        if (actions != nullptr)
+        const std::optional<int> left = AirDashStepsLeft();
+        if (left.has_value())
         {
-            action = actions->FindAction(AirDashActionName());
-        }
-        // 移る予約の間の歩の数は uint32 の最大 (IsStateEnd と同じ見分け方)
-        const NS::IStateMachine* machine = GetStateMachine();
-        NS::uint32 steps = std::numeric_limits<NS::uint32>::max();
-        if (machine != nullptr)
-        {
-            steps = machine->StepCount();
-        }
-        if (action != nullptr && steps != std::numeric_limits<NS::uint32>::max())
-        {
-            const int left = std::max(action->length - static_cast<int>(steps), 0);
-            reach = m_airDash.m_dashSpeed * NS::OS::FrameTimer::FixedDelta() * static_cast<float>(left);
+            reach = m_airDash.m_dashSpeed * NS::OS::FrameTimer::FixedDelta() * static_cast<float>(*left);
         }
     }
     else if (AcceptsAirDash())
@@ -219,26 +205,43 @@ void PlayerActor::UpdateReboundPreview()
 
 float PlayerActor::AirDashSpeed() const noexcept
 {
-    const NS::ActorAction* actions = ActorActionClassObj();
-    if (actions == nullptr)
+    // フレーム数が 0 以下なら割らない。距離は欄の範囲が有限の正の数だけを書く
+    if (m_params->m_airDashFrames <= 0)
     {
         return 0.0f;
     }
-    const NS::ActorActionInfo* action = actions->FindAction(AirDashActionName());
-    // 長さを決めていない動作では割らない。距離は欄の範囲が有限の正の数だけを書く
-    if (action == nullptr || action->length <= 0)
-    {
-        return 0.0f;
-    }
-    return m_params->m_airDashDistance / (static_cast<float>(action->length) * NS::OS::FrameTimer::FixedDelta());
+    return m_params->m_airDashDistance /
+           (static_cast<float>(m_params->m_airDashFrames) * NS::OS::FrameTimer::FixedDelta());
 }
 
-bool PlayerActor::StartAirDashAction() noexcept
+std::optional<int> PlayerActor::AirDashStepsLeft() const noexcept
 {
-    // 速さは状態に入った時の動作の長さで決めて控え、途中で読み直しても変えない。IsStateEnd も入った時の長さで終わる
+    // 移る予約の間の歩の数は uint32 の最大で、まだ今のダッシュの歩ではない
+    const NS::IStateMachine* machine = GetStateMachine();
+    if (machine == nullptr)
+    {
+        return std::nullopt;
+    }
+    const NS::uint32 steps = machine->StepCount();
+    if (steps == std::numeric_limits<NS::uint32>::max())
+    {
+        return std::nullopt;
+    }
+    return std::max(m_params->m_airDashFrames - static_cast<int>(steps), 0);
+}
+
+bool PlayerActor::IsAirDashOver() const noexcept
+{
+    const std::optional<int> left = AirDashStepsLeft();
+    return left.has_value() && *left == 0;
+}
+
+void PlayerActor::StartAirDashAction() noexcept
+{
+    // 速さは状態に入った時に控え、途中で欄を書き換えても変えない
     m_airDash.m_dashSpeed = AirDashSpeed();
-    // 動作が無ければ StartStateAction が WARN を出す
-    return StartStateAction(AirDashActionName());
+    // 動作は事象を置く所で、ダッシュの長さを持たない。無くてもダッシュは続け、StartStateAction の WARN だけを残す
+    (void)StartStateAction(AirDashActionName());
 }
 
 void PlayerActor::KeepAirDashSpeed() noexcept
@@ -258,10 +261,10 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     {
         ChooseReboundAtRelease();
     }
-    m_airDash.m_reboundElapsed += dt;
-    const float lock = m_params->m_reboundLockSeconds;
-    // 操作なしの段は、床の上で返っても段の秒まで続ける。返った勢いを見せる長さを当てた所で変えない
-    if (m_airDash.m_reboundElapsed <= lock)
+    ++m_airDash.m_reboundFrames;
+    const int lock = m_params->m_reboundLockFrames;
+    // 操作なしの段は、床の上で返っても段のフレーム数まで続ける。返った勢いを見せる長さを当てた所で変えない
+    if (m_airDash.m_reboundFrames <= lock)
     {
         return;
     }
@@ -275,8 +278,8 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
         m_airDash.m_steerStarted = true;
         m_airDash.m_remaining = 1;
     }
-    const float steerEnd = m_params->m_reboundSteerEndSeconds;
-    if (m_airDash.m_reboundElapsed > steerEnd)
+    const int steerEnd = m_params->m_reboundSteerEndFrames;
+    if (m_airDash.m_reboundFrames >= steerEnd)
     {
         (void)m_states->Change<GL::Player::FallPlayerState>();
         return;
@@ -306,11 +309,12 @@ void PlayerActor::UpdateDashRebound(float dt) noexcept
     target.Normalize();
     const float limitRatio = std::min(m_params->m_reboundSteerLimitRatio, std::nextafter(0.5f, 0.0f));
     const float limit = GL::Level::DirectionStepRadians(m_params->m_reboundTableDivisions) * std::max(limitRatio, 0.0f);
-    const float span = steerEnd - lock;
+    const int span = steerEnd - lock;
     float progress = 1.0f;
-    if (span > 0.0f)
+    if (span > 0)
     {
-        progress = std::clamp((m_airDash.m_reboundElapsed - lock) / span, 0.0f, 1.0f);
+        progress =
+            std::clamp(static_cast<float>(m_airDash.m_reboundFrames - lock) / static_cast<float>(span), 0.0f, 1.0f);
     }
     const float rate = NS::ToRadians(NS::Degrees{m_params->m_reboundSteerMaxDegreesPerSecond}).value;
     const float step = std::min(rate * progress * dt, limit - m_airDash.m_steeredRadians);
@@ -327,7 +331,7 @@ float PlayerActor::MoveMaxSlopeRadians() const noexcept
 {
     // 登れない坂に触れていると、離れる向きへ飛ぶ時でも水平に坂へ向かう分が消え、選んだ向きと速さで飛ばない
     if (IsDashRebounding() && m_airDash.m_reboundChosen &&
-        m_airDash.m_reboundElapsed <= m_params->m_reboundLockSeconds &&
+        m_airDash.m_reboundFrames <= m_params->m_reboundLockFrames &&
         NS::HasPositiveMagnitude(NS::Dot(m_body->Velocity(), m_airDash.m_last.normal)))
     {
         return m_params->ReboundLeaveMaxSlopeRadians();
@@ -390,7 +394,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
                                                         .facing = facing,
                                                         .speed = baseSpeed};
     m_airDash.m_reboundCount = m_airDash.m_reboundCount + 1;
-    m_airDash.m_reboundElapsed = 0.0f;
+    m_airDash.m_reboundFrames = 0;
     m_airDash.m_steeredRadians = 0.0f;
     m_airDash.m_steerStarted = false;
     m_airDash.m_reboundChosen = false;
@@ -482,7 +486,7 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, bool f
     {
         if (run.item.name == "TackleGhost")
         {
-            m_ghost->Start(run);
+            m_ghost->Start(this, run);
         }
     }
 }
@@ -604,6 +608,10 @@ void PlayerActor::StartShiftedReboundReaction() noexcept
     }
     const float scale = m_params->m_reboundShiftedEffectScale;
     reaction->ScaleRunning(NS::HitReactionSelf{.actor = this, .model = ModelClassObj()}, scale);
+    if (GL::Level::HitScreenDirector* screen = GL::Level::HitScreenOf(this))
+    {
+        screen->Scale(this, scale);
+    }
     m_ghost->ScaleOpacity(scale);
     (void)StartHitReaction("地形の反動[ずらし]", Root().Position(), self, self);
 }

@@ -3,10 +3,12 @@
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "Tests/TestSceneSetup.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -20,6 +22,8 @@ namespace
     class DashTargetProbeActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(DashTargetProbeActor, NS::SceneActor)
+
         void Feed(GL::Level::ThirdPersonFollow* vcam) const
         {
             NS_ASSERT(Game, vcam != nullptr, "Feed: 渡したアクターか部品が無い");
@@ -40,8 +44,8 @@ namespace
 
         DashScene()
         {
-            target = scene.SpawnActor<DashTargetProbeActor>("target");
-            camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+            target = SpawnFromActorFile<DashTargetProbeActor>(scene, "DashTargetProbeActor", "target");
+            camera = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor");
             NS::ApplyJsonFields(&camera->Vcam(), nlohmann::json{{"追従対象", nlohmann::json{{"ref", target->Id()}}}});
             camera->ResolveActorRefs();
         }
@@ -124,6 +128,8 @@ namespace
         JPH::BodyID floor{};
     };
 } // namespace
+
+NS_CLASS(DashTargetProbeActor)
 
 // 落ち始めると、真下の床が画面の下端の内側へ入る
 TEST(FollowDashRebound, FallingBringsTheFloorInsideTheBottomEdge)

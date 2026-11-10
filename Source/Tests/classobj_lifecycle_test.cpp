@@ -3,12 +3,14 @@
 #include "Game/Level/ReboundPreview.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "TestRegistrations.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -18,7 +20,7 @@ namespace
     struct EnabledRegistrations
     {
         std::size_t renderables = 0;
-        std::size_t overlays = 0;
+        std::size_t worldLines = 0;
         std::size_t lights = 0;
         std::size_t cameras = 0;
         std::size_t sensors = 0;
@@ -32,8 +34,8 @@ namespace
         // 世界を止めた 1 歩で当たりを今の姿へ揃えてから数える
         scene.SetSimulationEnabled(false);
         scene.OnUpdate();
-        return EnabledRegistrations{scene.GetSceneRenderer()->EnabledRenderableCount(),
-                             scene.GetSceneRenderer()->EnabledOverlayCount(),
+        return EnabledRegistrations{scene.GetSceneRenderer()->EnabledModelCount() + scene.GetSceneRenderer()->EnabledShadowCount(),
+                             scene.GetSceneRenderer()->EnabledWorldLinesCount(),
                              scene.GetSceneRenderer()->EnabledLightCount(),
                              scene.GetCameraManager()->EnabledVirtualCameraCount(),
                              EnabledSensorCount(scene),
@@ -53,7 +55,7 @@ namespace
         actor->Disappear();
         EXPECT_EQ(Count(scene), disappeared);
         return EnabledRegistrations{appeared.renderables - disappeared.renderables,
-                             appeared.overlays - disappeared.overlays,
+                             appeared.worldLines - disappeared.worldLines,
                              appeared.lights - disappeared.lights,
                              appeared.cameras - disappeared.cameras,
                              appeared.sensors - disappeared.sensors,
@@ -65,31 +67,32 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
 {
     NS::Scene scene;
     // 地形の部品は模型を描く物に、当たりを物理に入れる。ゴールは模型を描く物に、体のセンサーをセンサーに入れる
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
-    GL::Level::GoalActor* goal = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
+    GL::Level::GoalActor* goal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, parts), (EnabledRegistrations{.renderables = 1, .bodies = 1}));
     EXPECT_EQ(RegisteredWhileAppeared(scene, goal), (EnabledRegistrations{.renderables = 1, .sensors = 1}));
 }
 
-// 派生の部品 (重ね描き・光・仮想カメラ) も持ち主が作る時に 1 回入れ、出し入れでは外さない。
+// 派生が作る部品 (線の部品・光・仮想カメラ) も持ち主が作る時に 1 回入れ、出し入れでは外さない。
 // 消えている間は組が無効になり、仕組みが使わない
 
 TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .overlays = 1, .sensors = 1}));
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
+    // 描く物は体の Model と影の 2 つ。残像は体の Model の写しなので数に入らない
+    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 2, .worldLines = 1, .sensors = 1}));
 
-    // 当たりの画面の係も重ね描きに入るので、消えている間も反動の矢印が入っている事は、外した時に数が減るかで見る
-    const std::size_t registered = scene.GetSceneRenderer()->OverlayCount();
-    NS::EndOverlay(&scene, &player->ReboundIndicator());
-    EXPECT_EQ(scene.GetSceneRenderer()->OverlayCount(), registered - 1);
+    // 消えている間も反動の矢印を書く線の部品が入っている事は、外した時に数が減るかで見る
+    const std::size_t registered = scene.GetSceneRenderer()->WorldLinesCount();
+    NS::EndDraw(&scene, player->WorldLinesClassObj());
+    EXPECT_EQ(scene.GetSceneRenderer()->WorldLinesCount(), registered - 1);
 }
 
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    NS::LightActor* light = scene.SpawnActor<NS::LightActor>("LightActor");
+    NS::LightActor* light = SpawnFromActorFile<NS::LightActor>(scene, "LightActor");
     EXPECT_EQ(RegisteredWhileAppeared(scene, light), EnabledRegistrations{.lights = 1});
     EXPECT_EQ(scene.GetSceneRenderer()->LightCount(), 1u);
 
@@ -99,15 +102,15 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->ResolveSceneSettings(defaults).exposure, 7.0f);
     light->Appear();
     const NS::Gfx::RenderSettings lit = scene.GetSceneRenderer()->ResolveSceneSettings(defaults);
-    EXPECT_FLOAT_EQ(lit.exposure, light->Light().Exposure());
-    const NS::Vector3 direction = light->Light().Direction(light->Root().WorldMatrix());
+    EXPECT_FLOAT_EQ(lit.exposure, light->LightClassObj()->Exposure());
+    const NS::Vector3 direction = light->LightClassObj()->Direction(light->Root().WorldMatrix());
     EXPECT_NEAR(lit.lightDir.y, direction.y, 1.0e-5f);
 }
 
 TEST(ClassObjLifecycle, FollowCameraStaysRegisteredAndIsSkippedWhileDisappeared)
 {
     NS::Scene scene;
-    GL::Level::FollowCameraActor* camera = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* camera = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor");
     const NS::CameraManager* cameras = scene.GetCameraManager();
     EXPECT_EQ(RegisteredWhileAppeared(scene, camera), EnabledRegistrations{.cameras = 1});
     EXPECT_EQ(cameras->VirtualCameraCount(), 1u);

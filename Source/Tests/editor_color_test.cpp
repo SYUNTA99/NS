@@ -164,9 +164,16 @@ TEST(ModelDrawColor, ShippedScenesAndActorFilesKeepTheirColor)
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     library.Reload();
     int checked = 0;
+    const std::string shippedActors = NS::OS::FileSystem::Combine(
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Actors");
 
     for (const std::string& name : library.Names())
     {
+        // テストの準備がテストの型に足した .actor は出荷しないので見ない
+        if (!NS::OS::FileSystem::Exists(NS::OS::FileSystem::Combine(shippedActors, name + ".actor")))
+        {
+            continue;
+        }
         const std::unique_ptr<NS::SceneActor> actor = ActorFromFile(name);
         ASSERT_NE(actor, nullptr) << name;
         const NS::Model* model = actor->ModelClassObj();

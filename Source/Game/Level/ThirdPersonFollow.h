@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Reflection/ActorRef.h"
@@ -248,8 +249,7 @@ namespace GL
             // 遮りで縮めた距離の上限 (m)。遮られた時は面の手前まで一度に縮め、外れたら距離バネと同じ速さで戻す
             float m_occludedDistance = 0.0f;
             bool m_hasOccludedDistance = false; // m_occludedDistance を前のフレームから持っているか
-            NS::Vector3 m_look{};                  // このフレームの注視点。反動と寄せ戻しで使う
-            NS::Vector3 m_previousLook{};          // 前のフレームの注視点。描画の補間に使う
+            NS::Interpolated<NS::Vector3> m_look{}; // 前と今のフレームの注視点。反動と寄せ戻しで使い、描く時に補間する
             bool m_hasLook = false;                // m_look が前のフレームの注視点か。休止とプレイ開始の後は偽
             bool m_floorViewActive = false;        // 反動になってから接地するまでか
             bool m_floorViewStickUsed = false;     // その間に本人がカメラを縦に入力したか。真なら接地まで角度を足さない

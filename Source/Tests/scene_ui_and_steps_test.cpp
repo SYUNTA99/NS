@@ -5,8 +5,10 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -34,7 +36,7 @@ namespace
     {
     public:
         void OnTick() override { ++updates; }
-        void OnRenderOverlay(const NS::Gfx::RenderContext&) override {}
+        void OnDraw(const NS::Gfx::RenderContext&) override {}
         int updates = 0;
     };
 
@@ -61,6 +63,7 @@ namespace
         TickLog* m_log = nullptr;
     };
 
+    // 呼ばれた順を自分の控えに書く。部品も同じ控えに書く
     class LoggingActor final : public NS::SceneActor
     {
     public:
@@ -68,7 +71,7 @@ namespace
         NS_CLASSOBJ(m_part, "Logging")
         NS_REFLECT_END()
 
-        explicit LoggingActor(TickLog& log) noexcept : m_log(log) {}
+        [[nodiscard]] const TickLog& Log() const noexcept { return m_log; }
 
     protected:
         void OnInit() override { CreateClassObj(m_part, &m_log); }
@@ -79,10 +82,12 @@ namespace
         }
 
     private:
-        TickLog& m_log;
+        TickLog m_log;
         std::unique_ptr<LoggingClassObj> m_part;
     };
 } // namespace
+
+NS_CLASS(LoggingActor)
 
 TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
 {
@@ -103,10 +108,11 @@ TEST(UIActor, OpenRegistersForUpdateAndCloseRemoves)
 TEST(ActorListTicker, ActorRunsBeforeItsPartInItsOwnStep)
 {
     NS::Scene scene;
-    TickLog log;
-    scene.SpawnActor<LoggingActor>("LoggingActor", log);
+    const LoggingActor* actor = SpawnFromActorFile<LoggingActor>(scene, "LoggingActor");
+    ASSERT_NE(actor, nullptr);
 
     scene.OnUpdate();
+    const TickLog& log = actor->Log();
     ASSERT_EQ(log.order.size(), 2u);
     EXPECT_EQ(log.order[0], "actor");
     EXPECT_EQ(log.order[1], "component");

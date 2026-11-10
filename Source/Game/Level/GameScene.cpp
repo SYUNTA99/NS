@@ -21,6 +21,16 @@ namespace GL
 
         GameScene::~GameScene() = default;
 
+        HitScreenDirector* HitScreenOf(const NS::SceneActor* actor) noexcept
+        {
+            NS_ASSERT(Game, actor != nullptr, "HitScreenOf: アクターが null");
+            if (GameScene* game = NS::SceneCast<GameScene>(actor->OwningScene()))
+            {
+                return &game->HitScreen();
+            }
+            return nullptr;
+        }
+
         void GameScene::OnStartPlay()
         {
             for (NS::SceneActor* actor : PlacedActors(nullptr))

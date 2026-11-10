@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace NS
@@ -22,8 +23,10 @@ namespace NS
         inline constexpr uint k_SkyCubeSlot = 9;
         //! 空のキューブマップを読むサンプラーのスロット
         inline constexpr uint k_SkySamplerSlot = 1;
-        //! 描く 1 回ごとの定数 (物の FrameCB、描く段の定数) のスロット
+        //! 描く 1 回ごとの定数 (物の ObjectConstants、描く段の定数) のスロット
         inline constexpr uint k_DrawConstantsSlot = 0;
+        //! ビューごとの定数 ViewConstants のスロット。空・エフェクト・画面の処理は b0 を差し直すので、別の場所に置く
+        inline constexpr uint k_ViewConstantsSlot = 3;
         //! 骨の行列の並び BonePalette のスロット
         inline constexpr uint k_BonePaletteSlot = 1;
         //! 材質の値を書く定数バッファ MaterialParams のスロット
@@ -82,6 +85,18 @@ namespace NS
             Domain,
             Compute,
         };
+
+        //! D3DShader の作成と読み直しで、#include を先に探すフォルダを置き換える
+        //! 渡したフォルダに無いファイルは、include したファイルのフォルダから探す。呼び手は読む前に 1 度渡す
+        void SetShaderIncludeDirectories(std::vector<std::string> directories);
+
+        //! hlslPath を entryPoint と target でコンパイルする
+        //! #include は includeDirectories を前から探し、無ければ include したファイルのフォルダから探す
+        //! @return バイトコード。ファイルが無い・コンパイルに失敗した時は ERROR を出して nullptr
+        [[nodiscard]] ComPtr<ID3DBlob> CompileShaderFile(std::string_view hlslPath,
+                                                         const char* entryPoint,
+                                                         const char* target,
+                                                         std::span<const std::string> includeDirectories) noexcept;
 
         //! ファイル名からステージを判定して実行時にコンパイルするシェーダ
         //! 頂点・ピクセルシェーダの読込失敗はピンクの代替表示で示す

@@ -20,7 +20,7 @@ inline std::size_t EnabledSensorCount(const NS::Scene& scene)
 struct Registrations
 {
     std::size_t renderables = 0;
-    std::size_t overlays = 0;
+    std::size_t worldLines = 0;
     std::size_t lights = 0;
     std::size_t cameras = 0;
     std::size_t sensors = 0;
@@ -30,8 +30,8 @@ struct Registrations
 
 inline Registrations CountRegistrations(NS::Scene& scene)
 {
-    return Registrations{scene.GetSceneRenderer()->RenderableCount(),
-                         scene.GetSceneRenderer()->OverlayCount(),
+    return Registrations{scene.GetSceneRenderer()->ModelCount() + scene.GetSceneRenderer()->ShadowCount(),
+                         scene.GetSceneRenderer()->WorldLinesCount(),
                          scene.GetSceneRenderer()->LightCount(),
                          scene.GetCameraManager()->VirtualCameraCount(),
                          scene.HitSensors().Sensors().size()};
