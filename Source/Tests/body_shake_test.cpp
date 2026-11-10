@@ -3,9 +3,11 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "Tests/TestViewCamera.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -20,6 +22,9 @@ namespace
 {
     class ModelActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(ModelActor, NS::SceneActor)
+
     protected:
         void OnInit() override { CreateClassObj(m_model); }
     };
@@ -40,6 +45,8 @@ namespace
         return NS::HitReactionSelf{.actor = actor, .model = actor->ModelClassObj()};
     }
 } // namespace
+
+NS_CLASS(ModelActor)
 
 // 振れ幅 × (1 − 経過 ÷ 長さ) に (1 − ばらつき)〜1 を掛ける。1 フレーム目から入れ替えのフレーム数 (2) の間は最初の向き、
 // そこから 2 フレームごとに入れ替わる。止めの後半まで揺れが残るよう、弱まり方は直線
@@ -109,7 +116,7 @@ TEST(BodyShake, OffsetHoldsEachSideForTheFlipFramesAndFallsLinearly)
 TEST(BodyShake, ShakeRunMovesOnlyTheDrawnShapeAndEndsAfterTheLength)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
@@ -145,7 +152,7 @@ TEST(BodyShake, ShakeRunMovesOnlyTheDrawnShapeAndEndsAfterTheLength)
 TEST(BodyShake, ScalingTheShakeRunScalesTheNextOffset)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     const GL::Level::BodyShakeDesc shake = SideShakeOf(6);
     GL::Level::BodyShakeRun run(shake);
     run.Scale(0.5f);
@@ -157,7 +164,7 @@ TEST(BodyShake, ScalingTheShakeRunScalesTheNextOffset)
 TEST(BodyShake, ModelWithoutRequestsDrawsUnadjusted)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     EXPECT_TRUE(model->GetDrawOffset() == (NS::Vector3{0.0f, 0.0f, 0.0f}));
@@ -169,7 +176,7 @@ TEST(BodyShake, ModelWithoutRequestsDrawsUnadjusted)
 TEST(BodyShake, ShapeRunFollowsTheCurveAndEndsAtTheLength)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     constexpr int k_Length = 3;
@@ -194,7 +201,7 @@ TEST(BodyShake, TremorRunStartsAtFrameZeroAndEndsAtTheLength)
 {
     NS::Scene scene;
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{}), nullptr);
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     constexpr int k_Length = 3;
@@ -255,7 +262,7 @@ TEST(BodyShake, TremorDrawValuesRoundTrip)
 TEST(BodyShake, DrawScaleInterpolatesAndSnapDoesNot)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->Snapshot();
@@ -276,7 +283,7 @@ TEST(BodyShake, DrawScaleInterpolatesAndSnapDoesNot)
 TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
     NS::Scene scene;
-    ModelActor* actor = scene.SpawnActor<ModelActor>("ModelActor");
+    ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
     actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);

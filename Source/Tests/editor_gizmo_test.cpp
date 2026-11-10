@@ -12,6 +12,7 @@
 #include "NSlib/Phys/MeshShape.h"
 #include "Tests/TestCheckLayer.h"
 #include "Tests/TestHiddenApp.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -118,8 +119,8 @@ TEST(EditorGizmo, BatchedMeshBoundsDoNotBlockSmallObjects)
                                 {vertices[3].position, vertices[4].position, vertices[5].position}};
         NS::Mesh batchMesh("SelectionGap", std::move(drawable), std::move(triangles), {});
         NS::Scene scene;
-        NS::MapPartsActor* batch = scene.SpawnActor<NS::MapPartsActor>("BatchedTerrain");
-        NS::MapPartsActor* smallObject = scene.SpawnActor<NS::MapPartsActor>("SmallObject");
+        NS::MapPartsActor* batch = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor", "BatchedTerrain");
+        NS::MapPartsActor* smallObject = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor", "SmallObject");
         ASSERT_NE(batch->ModelClassObj(), nullptr);
         batch->ModelClassObj()->SetMesh(&batchMesh);
         NS::Editor::GizmoEditor gizmo;

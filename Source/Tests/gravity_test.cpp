@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -20,7 +21,7 @@ TEST(Gravity, SceneFileCannotTurnGravity)
     doc["environment"]["gravityDirection"] = nlohmann::json::array({1.0f, 0.0f, 0.0f});
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    NS::SceneActor* actor = scene.SpawnActor<NS::SceneActor>("SceneActor");
+    NS::SceneActor* actor = SpawnFromActorFile<TestEmptyActor>(scene, "TestEmptyActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->GravityDirection(), (NS::Vector3{0.0f, -1.0f, 0.0f}));
     NS::Vector3 velocity{1.0f, 2.0f, 3.0f};

@@ -2,6 +2,7 @@
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
@@ -12,6 +13,7 @@
 #include "NSlib/Core/Windows/Window.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -43,10 +45,12 @@ namespace
     };
 } // namespace
 
+NS_CLASS(GhostOwnerActor)
+
 TEST(TackleGhost, PlayerOwnsTheGhostAndItWritesTheCopiesToThePlayersModel)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "player");
     ASSERT_NE(player, nullptr);
     ASSERT_NE(player->Ghost(), nullptr);
     EXPECT_STREQ(player->Ghost()->ClassName(), "TackleGhost");
@@ -85,7 +89,7 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
     scene.GetSceneRenderer()->SetDevice(&device);
-    GhostOwnerActor* owner = scene.SpawnActor<GhostOwnerActor>("owner");
+    GhostOwnerActor* owner = SpawnFromActorFile<GhostOwnerActor>(scene, "GhostOwnerActor", "owner");
     ASSERT_NE(owner, nullptr);
     NS::Model* model = owner->ModelClassObj();
     ASSERT_NE(model, nullptr);
@@ -131,7 +135,7 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
 TEST(TackleGhost, PausesWhileThePlayerIsHiddenAndContinuesAfterReappearing)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "player");
     ASSERT_NE(player, nullptr);
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 1.0f, -5.0f}, NS::Vector3{}), nullptr);
     scene.OnUpdate();
@@ -164,7 +168,7 @@ TEST(TackleGhost, PausesWhileThePlayerIsHiddenAndContinuesAfterReappearing)
 TEST(TackleGhost, TheAfterimageStaysWhereItWasCapturedWhenTheRootMoves)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("player");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "player");
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
     player->Ghost()->CaptureAfterimage(player->ModelClassObj(), player->Root().WorldMatrix());

@@ -17,6 +17,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestViewCamera.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -53,7 +54,7 @@ TEST(PlayerParams, MaxHealthBelongsToPlayer)
 TEST(PlayerParams, DeactivatingPlayerKeepsHealth)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     player.ResetHealth();
@@ -121,7 +122,7 @@ TEST(PlayerParams, MovementDefaultsKeepEveryDisplayNameAndValue)
 TEST(PlayerParams, LiveTuningDrivesMovementWithoutCopiedValues)
 {
     NS::Scene scene;
-    PlayerActor* spawned = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(spawned, nullptr);
     PlayerActor& player = *spawned;
     GL::Player::PlayerParams* params = &player.Params();

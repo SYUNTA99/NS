@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "NSlib/Core/Types.h"
+#include "TestSpawn.h"
 
 // 描画の無い世界の保持役は再生せず、出した記録だけを残す
 
@@ -121,7 +122,7 @@ TEST(EffectTest, AmountAndRotationAreWrittenToTheRecord)
 TEST(EffectTest, ActorUpdateAdvancesTheSlotKeeperOnce)
 {
     NS::Scene scene;
-    TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
+    TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
     EffectObj* effect = actor.GetEffect();

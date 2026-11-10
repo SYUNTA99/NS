@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -24,6 +25,7 @@
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/Core/Windows/Mouse.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -91,6 +93,9 @@ namespace
     // コースの始めの位置を MsgCourseStart で控え、MsgCourseRestart でそこへ戻る
     class CourseReturnActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(CourseReturnActor, NS::SceneActor)
+
     protected:
         bool ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::HitSensor* receiver) override
         {
@@ -119,7 +124,7 @@ namespace
     // 組み直した後のシーンに、x=5 の CourseReturnActor を 1 体置く。StartPlay の前に呼ぶ
     NS::SceneActor* PlaceCourseReturnActor(NS::Scene& scene)
     {
-        CourseReturnActor* placed = scene.SpawnActor<CourseReturnActor>("CourseReturnActor");
+        CourseReturnActor* placed = SpawnFromActorFile<CourseReturnActor>(scene, "CourseReturnActor");
         if (placed != nullptr)
         {
             placed->Root().SetPosition(NS::Vector3{5.0f, 1.0f, 0.0f});
@@ -127,6 +132,8 @@ namespace
         return placed;
     }
 } // namespace
+
+NS_CLASS(CourseReturnActor)
 
 TEST(GameScene, ClearSequenceUsesTheSceneFadeAndUnlocksInput)
 {
@@ -369,7 +376,7 @@ TEST(GameScene, StartPlayPutsTheFollowCameraAtTheCurrentInitialPose)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
-    GL::Level::FollowCameraActor* follow = scene.SpawnActor<GL::Level::FollowCameraActor>("FollowCameraActor");
+    GL::Level::FollowCameraActor* follow = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor");
     ASSERT_NE(follow, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&follow->Vcam(), nlohmann::json{{"初期ヨー", 1.0f}}), 0u);
     ASSERT_FLOAT_EQ(follow->Vcam().InitialYaw(), 1.0f);

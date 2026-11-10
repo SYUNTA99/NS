@@ -1,10 +1,41 @@
 #pragma once
 
 #include "NSlib/CoreObject/ActorJson.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <string_view>
+
+//! 部品も振る舞いも持たないアクター。止めを始める物や、IGet〜 の関数を呼ぶ元にだけ使う
+//! 登録は TestActorFileEnvironment.cpp の NS_CLASS
+class TestEmptyActor final : public NS::SceneActor
+{
+public:
+    NS_REFLECT_NONE(TestEmptyActor, NS::SceneActor)
+};
+
+//! 立方体のモデルを player.mat で描くだけのアクター。描いた絵や影を見るテストに使う
+//! 登録は TestActorFileEnvironment.cpp の NS_CLASS
+class TestBoxActor final : public NS::SceneActor
+{
+public:
+    NS_REFLECT_NONE(TestBoxActor, NS::SceneActor)
+
+    //! 描くモデル。OnInit の前は nullptr
+    [[nodiscard]] NS::Model* Body() const noexcept { return m_body; }
+
+protected:
+    void OnInit() override
+    {
+        m_body = CreateClassObj(m_model);
+        m_body->SetMeshRef("cube");
+        m_body->SetMaterialRef("Assets/Materials/player.mat");
+    }
+
+private:
+    NS::Model* m_body = nullptr;
+};
 
 //! テストのアクターを、ゲームと同じく .actor を通してシーンに入れる
 //! 新しい永続 id を振り、actorFile の .actor の値に classObjs のシーンの上書きを重ねて作り、開始する

@@ -35,6 +35,7 @@
 #include "Tests/TestCheckLayer.h"
 #include "Tests/TestHeadlessImGui.h"
 #include "Tests/TestHiddenApp.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -732,9 +733,9 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
 TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
 {
     NS::Scene scene;
-    (void)scene.SpawnActor<GL::Level::GoalActor>("a");
-    (void)scene.SpawnActor<GL::Level::GoalActor>("b");
-    (void)scene.SpawnActor<GL::Level::GoalActor>("c");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "a");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "b");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "c");
 
     const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Actors());
     ASSERT_EQ(placed.size(), 3u);

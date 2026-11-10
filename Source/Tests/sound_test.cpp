@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -73,7 +74,7 @@ TEST(SoundTest, ActorWithoutTheSlotDoesNothing)
 TEST(SoundTest, SceneWithoutDeviceDoesNotPlay)
 {
     NS::Scene scene;
-    TestAudioActor* actor = scene.SpawnActor<TestAudioActor>("TestAudioActor");
+    TestAudioActor* actor = SpawnFromActorFile<TestAudioActor>(scene, "TestAudioActor");
     ASSERT_NE(actor, nullptr);
     ASSERT_NE(actor->GetSound(), nullptr);
     const TestLogCapture log;
@@ -97,7 +98,7 @@ TEST(SoundTest, PreloadUsesTheAssetManagerDevice)
     assets.SetAudioDevice(&device);
     const NS::AssetManagerScope scope{assets};
     NS::Scene scene;
-    TestAudioActor* actor = scene.SpawnActor<TestAudioActor>("TestAudioActor");
+    TestAudioActor* actor = SpawnFromActorFile<TestAudioActor>(scene, "TestAudioActor");
     ASSERT_NE(actor, nullptr);
     ASSERT_EQ(actor->GetAudioDevice(), nullptr);
     const TestLogCapture log;
@@ -120,7 +121,7 @@ TEST(SoundTest, EmptyNameIsNotUsed)
     const NS::AssetManagerScope scope{assets};
     NS::Scene scene;
     scene.SetAudioDevice(&device);
-    TestAudioActor* actor = scene.SpawnActor<TestAudioActor>("TestAudioActor");
+    TestAudioActor* actor = SpawnFromActorFile<TestAudioActor>(scene, "TestAudioActor");
     ASSERT_NE(actor, nullptr);
     const TestLogCapture log;
 
@@ -135,7 +136,7 @@ TEST(SoundTest, EmptyNameIsNotUsed)
 TEST(SoundTest, SlotIsSavedUnderTheSoundKeyAndSurvivesReload)
 {
     NS::Scene scene;
-    TestAudioActor* actor = scene.SpawnActor<TestAudioActor>("TestAudioActor");
+    TestAudioActor* actor = SpawnFromActorFile<TestAudioActor>(scene, "TestAudioActor");
     ASSERT_NE(actor, nullptr);
     std::vector<std::string_view> keys;
     NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& field, NS::Object* part) {

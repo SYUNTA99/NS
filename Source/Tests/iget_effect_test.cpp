@@ -1,6 +1,7 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "TestEffectActor.h"
@@ -8,6 +9,10 @@
 #include <gtest/gtest.h>
 
 #include "NSlib/Core/Types.h"
+#include "TestSpawn.h"
+
+// TestEffectActor.h の型の登録。effect_test.cpp も同じ型を使う
+NS_CLASS(TestEffectActor)
 
 // エフェクトの関数は窓口だけを受け、個体の枠の保持役へ渡す
 
@@ -21,7 +26,7 @@ TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
-    TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
+    TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
     ASSERT_NE(actor.GetEffect(), nullptr);
@@ -40,7 +45,7 @@ TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
     NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
-    TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
+    TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
     const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
@@ -66,7 +71,7 @@ TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
     NS::Effect asset{"11111111111111111111111111111111"};
     asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
     NS::Scene scene;
-    TestEffectActor* spawned = scene.SpawnActor<TestEffectActor>("TestEffectActor");
+    TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
     const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});

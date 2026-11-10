@@ -20,8 +20,10 @@
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "TestAnimatedPlayerActor.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -66,10 +68,12 @@ namespace
     };
 } // namespace
 
+NS_CLASS(AssetFieldProbeActor)
+
 TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 {
     NS::Scene scene;
-    const AssetFieldProbeActor* actor = scene.SpawnActor<AssetFieldProbeActor>("AssetFieldProbeActor");
+    const AssetFieldProbeActor* actor = SpawnFromActorFile<AssetFieldProbeActor>(scene, "AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* sphere = NS::AssetManager::Get().LoadMesh("sphere");
     EXPECT_EQ(actor->part->asset, sphere);
@@ -80,7 +84,7 @@ TEST(AssetField, ActorLoadsItsFieldsWhenCreated)
 TEST(AssetField, ReloadAssetsReadsTheNewName)
 {
     NS::Scene scene;
-    AssetFieldProbeActor* actor = scene.SpawnActor<AssetFieldProbeActor>("AssetFieldProbeActor");
+    AssetFieldProbeActor* actor = SpawnFromActorFile<AssetFieldProbeActor>(scene, "AssetFieldProbeActor");
     ASSERT_NE(actor, nullptr);
     const NS::Mesh* cube = NS::AssetManager::Get().LoadMesh("cube");
     (void)NS::ApplyJsonFields(actor->part.get(), nlohmann::json{{"素材", "cube"}});
@@ -309,7 +313,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
     ASSERT_EQ(model->MaterialRef(), "");
@@ -329,7 +333,7 @@ TEST(AssetField, ModelWithoutAMaterialDrawsGrayOnABuiltinShapeAndPinkOnAFileMesh
 TEST(AssetField, ReloadingAnotherMeshChangesTheCollisionShape)
 {
     NS::Scene scene;
-    NS::MapPartsActor* parts = scene.SpawnActor<NS::MapPartsActor>("MapPartsActor");
+    NS::MapPartsActor* parts = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
     ASSERT_NE(parts, nullptr);
     const NS::MeshCollision* collision = NS::Cast<NS::MeshCollision>(parts->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
@@ -374,7 +378,7 @@ TEST(AssetField, PlayerLooksHoldTheirAssetsInAssetFields)
 TEST(AssetField, PlayerLookWritesItsScaleToTheModel)
 {
     NS::Scene scene;
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(player, nullptr);
     GL::Player::PlayerAppearance* appearance = &player->Appearance();
     const NS::Model* model = player->ModelClassObj();

@@ -16,6 +16,7 @@
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "Tests/TestWarpGpu.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -415,7 +416,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
     scene.GetSceneRenderer()->SetDevice(&device);
-    PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
+    PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
     const NS::Effect* asset = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");

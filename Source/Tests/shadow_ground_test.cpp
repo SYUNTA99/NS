@@ -1,9 +1,11 @@
 #include "NSlib/Core/OBB.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -14,6 +16,8 @@ namespace
     class ShadowActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(ShadowActor, NS::SceneActor)
+
         [[nodiscard]] NS::Shadow* Ground() const noexcept { return m_shadow.get(); }
 
     protected:
@@ -24,6 +28,8 @@ namespace
     class MoverActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(MoverActor, NS::SceneActor)
+
         NS::SceneActor* target = nullptr;
         NS::Vector3 destination{};
 
@@ -45,6 +51,9 @@ namespace
             NS::Phys::k_TerrainObjectLayer);
     }
 } // namespace
+
+NS_CLASS(ShadowActor)
+NS_CLASS(MoverActor)
 
 TEST(ShadowGround, UpdateKeepsTheGroundHeight)
 {
@@ -94,7 +103,7 @@ TEST(ShadowGround, TheStepFindsTheGroundAndAStoppedWorldStillFollowsEdits)
 {
     NS::Scene scene;
     AddGround(scene);
-    ShadowActor* actor = scene.SpawnActor<ShadowActor>("ShadowActor");
+    ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
     actor->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
 
     scene.OnUpdate();
@@ -113,9 +122,9 @@ TEST(ShadowGround, FindsTheGroundAfterLaterActorsMovedIt)
     // 影を持つアクターの更新の後で別のアクターが動かしても、その歩の最後の位置の地面を探す
     NS::Scene scene;
     AddGround(scene);
-    ShadowActor* actor = scene.SpawnActor<ShadowActor>("ShadowActor");
+    ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
     actor->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
-    MoverActor* mover = scene.SpawnActor<MoverActor>("MoverActor");
+    MoverActor* mover = SpawnFromActorFile<MoverActor>(scene, "MoverActor");
     mover->target = actor;
     mover->destination = NS::Vector3{30.0f, 3.0f, 0.0f};
 
@@ -129,7 +138,7 @@ TEST(ShadowGround, AppearingFindsTheGroundWhereItAppears)
     // 歩の外で出した物は、歩の最後の探し直しより先に描かれる。消えた所の地面を描かない
     NS::Scene scene;
     AddGround(scene);
-    ShadowActor* actor = scene.SpawnActor<ShadowActor>("ShadowActor");
+    ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
     actor->Root().SetPosition(NS::Vector3{30.0f, 3.0f, 0.0f});
     scene.OnUpdate();
     ASSERT_FALSE(actor->Ground()->HasGround());

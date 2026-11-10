@@ -7,8 +7,10 @@
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -25,6 +27,8 @@ namespace
     // 追われるだけの動かない物
     class FollowedProbeActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(FollowedProbeActor, NS::SceneActor)
     };
 
     struct FollowScene
@@ -36,8 +40,8 @@ namespace
 
         FollowScene()
         {
-            first = scene.SpawnActor<FollowedProbeActor>("first");
-            second = scene.SpawnActor<FollowedProbeActor>("second");
+            first = SpawnFromActorFile<FollowedProbeActor>(scene, "FollowedProbeActor", "first");
+            second = SpawnFromActorFile<FollowedProbeActor>(scene, "FollowedProbeActor", "second");
             second->Root().SetPosition({10.0f, 0.0f, 0.0f});
             nlohmann::json json = NS::MakeActorJson();
             NS::SetActorJsonId(json, 50);
@@ -58,12 +62,16 @@ namespace
     class WalkingTargetActor final : public NS::SceneActor, public GL::Level::IGetCameraTarget
     {
     public:
-        explicit WalkingTargetActor(std::vector<std::string>& log) : m_log(log) {}
+        NS_REFLECT_NONE(WalkingTargetActor, NS::SceneActor)
+
+        //! 控える先を渡す。作った後に呼ぶ
+        void Bind(std::vector<std::string>& log) noexcept { m_log = &log; }
         void WriteFollowState(GL::Level::ThirdPersonFollow* vcam) const override
         {
             NS_ASSERT(Game, vcam != nullptr, "WriteFollowState: 渡したアクターか部品が無い");
+            NS_ASSERT(Game, m_log != nullptr, "WalkingTargetActor: 控える先が無い");
             vcam->SetFollowMotion(true, NS::Vector3{});
-            m_log.push_back("camera");
+            m_log->push_back("camera");
             seenPositions.push_back(Root().Position());
         }
         mutable std::vector<NS::Vector3> seenPositions; // 読まれた時の位置。書くのは WriteFollowState だけ
@@ -71,12 +79,13 @@ namespace
     protected:
         void DecideStep() override
         {
-            m_log.push_back("target");
+            NS_ASSERT(Game, m_log != nullptr, "WalkingTargetActor: 控える先が無い");
+            m_log->push_back("target");
             Root().SetPosition(Root().Position() + NS::Vector3{1.0f, 0.0f, 0.0f});
         }
 
     private:
-        std::vector<std::string>& m_log;
+        std::vector<std::string>* m_log = nullptr;
     };
 
     // ゲームの流れ (StepGame) で、追われる物を +z へ 5 m 置き直すシーン。MoveInStepGame を呼ぶまでは何もしない
@@ -142,8 +151,12 @@ namespace
 
         WalkingFollowScene()
         {
-            camera = scene.SpawnActor<VcamOwnerActor>("VcamOwner");
-            target = scene.SpawnActor<WalkingTargetActor>("target", log);
+            camera = SpawnFromActorFile<VcamOwnerActor>(scene, "VcamOwnerActor", "VcamOwner");
+            target = SpawnFromActorFile<WalkingTargetActor>(scene, "WalkingTargetActor", "target");
+            if (target != nullptr)
+            {
+                target->Bind(log);
+            }
             if (camera != nullptr && target != nullptr)
             {
                 camera->Follow(target);
@@ -151,6 +164,10 @@ namespace
         }
     };
 } // namespace
+
+NS_CLASS(FollowedProbeActor)
+NS_CLASS(WalkingTargetActor)
+NS_CLASS(VcamOwnerActor)
 
 // カメラはアクター全部・物理・判定・StepGame の後に追う。そのフレームに動いた後の相手を読む
 TEST(FollowCamera, ReadsTheTargetAfterTheActorsAndTheCourseMovedItInThatFrame)

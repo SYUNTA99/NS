@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "TestSpawn.h"
 
 //! @brief 試し用の仮想カメラ。差し替えた位置と注視点をそのまま返す
 //! @details 遊びはカメラの管理役が仮想カメラから合成した視点を読み、実カメラは読まない
@@ -35,6 +36,7 @@ private:
 
 //! @brief 試し用の仮想カメラの持ち主
 //! @details シーンへ湧かすと作る時に仮想カメラがシーンの管理役へ登録される
+//! 型の登録は TestActorFileEnvironment.cpp の NS_CLASS
 //! 依存: NS::SceneActor, TestViewCamera
 class TestViewCameraHostActor final : public NS::SceneActor
 {
@@ -69,7 +71,7 @@ private:
 //! @return 湧かした仮想カメラ。湧かせなかった場合は nullptr
 inline TestViewCamera* PlaceViewCamera(NS::Scene& scene, const NS::Vector3& position, const NS::Vector3& target)
 {
-    TestViewCameraHostActor* host = scene.SpawnActor<TestViewCameraHostActor>("TestViewCameraHostActor");
+    TestViewCameraHostActor* host = SpawnFromActorFile<TestViewCameraHostActor>(scene, "TestViewCameraHostActor");
     if (host == nullptr)
     {
         return nullptr;

@@ -11,6 +11,7 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -30,26 +31,16 @@ namespace
     constexpr int k_Width = 160;
     constexpr int k_Height = 90;
 
-    class BoxActor : public NS::SceneActor
+    // 立方体を .actor から作り、position へ置く。作れなければ nullptr
+    TestBoxActor* SpawnBoxAt(NS::Scene& scene, const NS::Vector3& position)
     {
-    public:
-        explicit BoxActor(const NS::Vector3& position) : m_position(position) {}
-
-        [[nodiscard]] NS::Model* Body() const { return m_body; }
-
-    protected:
-        void OnInit() override
+        TestBoxActor* box = SpawnFromActorFile<TestBoxActor>(scene, "TestBoxActor");
+        if (box != nullptr)
         {
-            m_body = CreateClassObj(m_model);
-            m_body->SetMeshRef("cube");
-            m_body->SetMaterialRef("Assets/Materials/player.mat");
-            Root().SetPosition(m_position);
+            box->Root().SetPosition(position);
         }
-
-    private:
-        NS::Vector3 m_position{};
-        NS::Model* m_body = nullptr;
-    };
+        return box;
+    }
 
     // 型を行の順に 1 画素 1 バイトで読む。読めなければ空
     std::vector<NS::uint8> ReadMask(const NS::Gfx::D3DTexture& mask)
@@ -111,10 +102,14 @@ namespace
             NS::Scene scene;
             const NS::AssetManagerScope useAssets{m_assets};
             scene.GetSceneRenderer()->SetDevice(&m_device);
-            BoxActor* maskedBox = scene.SpawnActor<BoxActor>("BoxActor", masked);
+            TestBoxActor* maskedBox = SpawnBoxAt(scene, masked);
+            if (maskedBox == nullptr)
+            {
+                return {};
+            }
             if (other.has_value())
             {
-                (void)scene.SpawnActor<BoxActor>("BoxActor", *other);
+                (void)SpawnBoxAt(scene, *other);
             }
             scene.GetSceneRenderer()->SetBodyMask({maskedBox->Body()});
             // 有効な間は前の固定ステップとの補間で描くので、無効にして今の位置で描く

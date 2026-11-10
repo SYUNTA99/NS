@@ -3,6 +3,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
@@ -11,6 +12,7 @@
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
 #include "NSlib/Phys/PhysicsScene.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -25,6 +27,8 @@ namespace
     class GlassActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(GlassActor, NS::SceneActor)
+
         [[nodiscard]] NS::Model* Body() const noexcept { return m_model.get(); }
 
     protected:
@@ -39,6 +43,9 @@ namespace
     // 真下の地面に影を描く
     class ShadowOnlyActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(ShadowOnlyActor, NS::SceneActor)
+
     protected:
         void OnInit() override
         {
@@ -50,6 +57,8 @@ namespace
     class CopyActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(CopyActor, NS::SceneActor)
+
         void Copy(int priority)
         {
             const std::array<NS::ModelDraw, 1> copies{NS::ModelDraw{.offset = NS::Vector3{}, .opacity = 0.5f}};
@@ -114,15 +123,24 @@ namespace
                                    NS::Phys::k_TerrainObjectLayer);
         }
 
+        //! T と同じ名前の .actor から作り、position へ置く
         template <typename T>
         T* SpawnAt(const NS::Vector3& position)
         {
-            T* actor = scene.SpawnActor<T>("actor");
-            actor->Root().SetPosition(position);
+            T* actor = SpawnFromActorFile<T>(scene, T::StaticReflection()->typeName, "actor");
+            EXPECT_NE(actor, nullptr);
+            if (actor != nullptr)
+            {
+                actor->Root().SetPosition(position);
+            }
             return actor;
         }
     };
 } // namespace
+
+NS_CLASS(GlassActor)
+NS_CLASS(ShadowOnlyActor)
+NS_CLASS(CopyActor)
 
 TEST_F(SceneRendererOrder, TransparentPassMixesModelsShadowsAndCopiesFarFirstThenPriorityThenRegistration)
 {

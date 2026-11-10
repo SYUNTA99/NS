@@ -13,6 +13,7 @@
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/Core/Windows/Filesystem.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -136,7 +137,8 @@ TEST(ScreenFade, SceneAdvancesOncePerStepWhileTheSceneIsStopped)
 {
     NS::Scene scene;
     // 止めを持つだけのアクター。暗転を進める物は無い
-    const NS::SceneActor* holder = scene.SpawnActor<NS::SceneActor>("Holder");
+    const NS::SceneActor* holder = SpawnFromActorFile<TestEmptyActor>(scene, "TestEmptyActor", "Holder");
+    ASSERT_NE(holder, nullptr);
     scene.RequestStopScene(holder, 10);
     scene.Fade().BeginOut(NS::OS::FrameTimer::FixedDelta() * 4.0f);
     scene.OnUpdate();

@@ -2,8 +2,10 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/StateMachineOf.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -15,24 +17,26 @@
 
 namespace
 {
-    // 自分の Update の中で、控えた id のアクターをシーンから消しに行く
+    // 自分の Update の中で、控えた id のアクターを入っているシーンから消しに行く
     class DestroyerActor final : public NS::SceneActor
     {
     public:
-        explicit DestroyerActor(NS::Scene& scene) : m_scene(scene) {}
+        NS_REFLECT_NONE(DestroyerActor, NS::SceneActor)
+
         void SetTarget(NS::uint32 objectId) noexcept { m_target = objectId; }
 
     protected:
-        void DecideStep() override { m_scene.RemoveActor(m_target); }
+        void DecideStep() override { OwningScene()->RemoveActor(m_target); }
 
     private:
-        NS::Scene& m_scene;
         NS::uint32 m_target = NS::k_NoActorId;
     };
 
     class CountingActor final : public NS::SceneActor
     {
     public:
+        NS_REFLECT_NONE(CountingActor, NS::SceneActor)
+
         int updates = 0;
 
     protected:
@@ -41,6 +45,9 @@ namespace
 
     class DrawModelActor final : public NS::SceneActor
     {
+    public:
+        NS_REFLECT_NONE(DrawModelActor, NS::SceneActor)
+
     protected:
         void OnInit() override { CreateClassObj(m_model); }
     };
@@ -49,13 +56,16 @@ namespace
     class DrawScaleWriterActor final : public NS::SceneActor
     {
     public:
-        explicit DrawScaleWriterActor(DrawModelActor* target) : m_target(target)
-        {
-            NS_ASSERT(Game, target != nullptr, "DrawScaleWriterActor: 書く先のアクターが無い");
-        }
+        NS_REFLECT_NONE(DrawScaleWriterActor, NS::SceneActor)
+
+        void SetTarget(DrawModelActor* target) noexcept { m_target = target; }
 
     protected:
-        void DecideStep() override { (void)m_target->ModelClassObj()->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}); }
+        void DecideStep() override
+        {
+            NS_ASSERT(Game, m_target != nullptr, "DrawScaleWriterActor: 書く先のアクターが無い");
+            (void)m_target->ModelClassObj()->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f});
+        }
 
     private:
         DrawModelActor* m_target = nullptr;
@@ -87,20 +97,43 @@ namespace
         NS::uint32 m_target = NS::k_NoActorId;
     };
 
-    // 更新のたびに名前を、描く支度のたびに名前と ":render-prep" を控える
+    // 更新のたびに名前を、描く支度のたびに名前と ":render-prep" を控える。控える先は作った後に Bind で渡す
     class FrameLogActor final : public NS::SceneActor
     {
     public:
-        FrameLogActor(std::vector<std::string>& log, std::string label) : m_log(log), m_label(std::move(label)) {}
-        void PrepareRender() override { m_log.push_back(m_label + ":render-prep"); }
+        NS_REFLECT_NONE(FrameLogActor, NS::SceneActor)
+
+        void Bind(std::vector<std::string>& log, std::string label)
+        {
+            m_log = &log;
+            m_label = std::move(label);
+        }
+        void PrepareRender() override { Log(m_label + ":render-prep"); }
 
     protected:
-        void DecideStep() override { m_log.push_back(m_label); }
+        void DecideStep() override { Log(m_label); }
 
     private:
-        std::vector<std::string>& m_log;
+        void Log(std::string entry)
+        {
+            NS_ASSERT(Game, m_log != nullptr, "FrameLogActor: 控える先が無い");
+            m_log->push_back(std::move(entry));
+        }
+
+        std::vector<std::string>* m_log = nullptr;
         std::string m_label;
     };
+
+    // 控える先を渡した FrameLogActor を .actor から作る
+    FrameLogActor* SpawnFrameLog(NS::Scene& scene, std::string_view name, std::vector<std::string>& log, std::string label)
+    {
+        FrameLogActor* actor = SpawnFromActorFile<FrameLogActor>(scene, "FrameLogActor", name);
+        if (actor != nullptr)
+        {
+            actor->Bind(log, std::move(label));
+        }
+        return actor;
+    }
 
     [[nodiscard]] int CountOf(const std::vector<std::string>& log, const std::string& label)
     {
@@ -167,13 +200,19 @@ namespace
     };
 } // namespace
 
+NS_CLASS(DestroyerActor)
+NS_CLASS(CountingActor)
+NS_CLASS(DrawModelActor)
+NS_CLASS(DrawScaleWriterActor)
+NS_CLASS(FrameLogActor)
+
 // アクターは種類によらず全部が、歩の初めの 1 か所で一覧の順に回る。ゲームの流れ・UI・描く支度はその後
 TEST(ActorFrame, EveryActorRunsInTheListOrderBeforeTheGameFlowAndUI)
 {
     std::vector<std::string> log;
     CourseLogScene scene(log);
-    scene.SpawnActor<FrameLogActor>("A", log, "a");
-    scene.SpawnActor<FrameLogActor>("B", log, "b");
+    ASSERT_NE(SpawnFrameLog(scene, "A", log, "a"), nullptr);
+    ASSERT_NE(SpawnFrameLog(scene, "B", log, "b"), nullptr);
     LoggingUI ui(log, "ui");
     ui.Open(scene);
 
@@ -233,7 +272,8 @@ TEST(SceneStepGuard, DestroyingFromTheGameFlowIsRefused)
 {
     // ゲームの流れも歩の中。ここでアクターを解放すると、同じ歩で後に描く支度をするアクターが破棄済みになる
     DestroyerScene scene;
-    CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");
+    CountingActor* victim = SpawnFromActorFile<CountingActor>(scene, "CountingActor", "Victim");
+    ASSERT_NE(victim, nullptr);
     const NS::uint32 victimId = victim->Id();
     scene.SetTarget(victimId);
 
@@ -248,8 +288,10 @@ TEST(SceneStepGuard, DestroyingDuringAStepIsRefused)
 {
     // 歩の最中にアクターを解放すると、その歩で後に呼ぶ予定の生ポインタが破棄済みになる。解放の口は歩の間は断る
     NS::Scene scene;
-    DestroyerActor* destroyer = scene.SpawnActor<DestroyerActor>("Destroyer", scene);
-    CountingActor* victim = scene.SpawnActor<CountingActor>("Victim");
+    DestroyerActor* destroyer = SpawnFromActorFile<DestroyerActor>(scene, "DestroyerActor", "Destroyer");
+    ASSERT_NE(destroyer, nullptr);
+    CountingActor* victim = SpawnFromActorFile<CountingActor>(scene, "CountingActor", "Victim");
+    ASSERT_NE(victim, nullptr);
     const NS::uint32 victimId = victim->Id();
     destroyer->SetTarget(victimId);
 
@@ -265,10 +307,13 @@ TEST(InterpolationSnapshot, ModelWrittenDuringTheStepStartsFromTheValueBeforeThe
 {
     // 前の値をアクターを回した後に控えると、その歩で書いた倍率が始点にもなり補間されずに飛ぶ
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = SpawnFromActorFile<DrawModelActor>(scene, "DrawModelActor");
+    ASSERT_NE(drawn, nullptr);
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
-    scene.SpawnActor<DrawScaleWriterActor>("DrawScaleWriterActor", drawn);
+    DrawScaleWriterActor* writer = SpawnFromActorFile<DrawScaleWriterActor>(scene, "DrawScaleWriterActor");
+    ASSERT_NE(writer, nullptr);
+    writer->SetTarget(drawn);
 
     scene.OnUpdate();
 
@@ -280,7 +325,8 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 {
     // 止めている間はアクターが回らない。前の値の控えもアクターと一緒に回すと、止める前に書いた倍率から補間し続けて絵が揺れる
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = SpawnFromActorFile<DrawModelActor>(scene, "DrawModelActor");
+    ASSERT_NE(drawn, nullptr);
     ASSERT_NE(drawn->ModelClassObj(), nullptr);
     NS::Model* model = drawn->ModelClassObj();
     scene.SetSimulationPaused(true);
@@ -294,7 +340,8 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = SpawnFromActorFile<DrawModelActor>(scene, "DrawModelActor");
+    ASSERT_NE(drawn, nullptr);
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
@@ -310,7 +357,8 @@ TEST(ActorFrame, AStoppedStepSkipsTheGameFlowButKeepsActorsAndUI)
 {
     std::vector<std::string> log;
     CourseLogScene scene(log);
-    FrameLogActor* actor = scene.SpawnActor<FrameLogActor>("A", log, "a");
+    FrameLogActor* actor = SpawnFrameLog(scene, "A", log, "a");
+    ASSERT_NE(actor, nullptr);
     LoggingUI ui(log, "ui");
     ui.Open(scene);
     scene.RequestStopScene(actor, 10);
@@ -336,7 +384,8 @@ TEST(RenderAlpha, KeepsTheFrameAlphaAndPauseHoldsAtOne)
 TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
 {
     NS::Scene scene;
-    DrawModelActor* drawn = scene.SpawnActor<DrawModelActor>("DrawModelActor");
+    DrawModelActor* drawn = SpawnFromActorFile<DrawModelActor>(scene, "DrawModelActor");
+    ASSERT_NE(drawn, nullptr);
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
