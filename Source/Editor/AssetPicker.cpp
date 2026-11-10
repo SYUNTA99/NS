@@ -38,7 +38,7 @@ namespace NS
                 {
                     return LowerExtension(path) == ".wav";
                 }
-                if (kind == AssetKind::Mesh || kind == AssetKind::Model || kind == AssetKind::Animation)
+                if (kind == AssetKind::Mesh || kind == AssetKind::Animation)
                 {
                     return IsModelAssetPath(path);
                 }

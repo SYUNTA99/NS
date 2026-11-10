@@ -218,10 +218,6 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
         return option.value == "Assets/Materials/folder/test.mat" && option.label == "test.mat" &&
                option.location == "Assets/Materials/folder";
     }));
-    const std::vector<NS::Editor::AssetOption> models =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Model, m_root.generic_string());
-    ASSERT_EQ(models.size(), 1);
-    EXPECT_EQ(models[0].value, "Assets/Models/folder/test.GLB");
 }
 
 TEST_F(AssetPickerCatalogTest, EffectChoicesUsePersistentIdsAndDisplayLabels)

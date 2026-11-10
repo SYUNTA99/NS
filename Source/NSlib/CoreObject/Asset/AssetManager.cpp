@@ -3,6 +3,7 @@
 #include "NSlib/Audio/SoundClip.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
+#include "NSlib/Core/Geometry/SkinnedBounds.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -12,7 +13,6 @@
 #include "NSlib/CoreObject/Asset/MaterialFile.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/Asset/SoundClip.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
 #include "NSlib/Gfx/D3DMaterial.h"
@@ -30,6 +30,8 @@
 #include <memory>
 #include <optional>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace NS
@@ -181,24 +183,6 @@ namespace NS
             return mesh;
         }
 
-        // key の glTF を読む。読めない時は ERROR を出して nullopt
-        [[nodiscard]] std::optional<MeshGeometry> ReadMeshFile(const std::string& key)
-        {
-            const std::optional<std::string> path = ResolveContentPath(key);
-            if (!path)
-            {
-                NS_LOG_ERROR(Scene, "メッシュ {} は ContentRoot の外を指すので読まず、何も描かない", key);
-                return std::nullopt;
-            }
-            MeshGeometry geom = LoadGltfMesh(*path);
-            if (geom.vertices.empty() || geom.indices.empty())
-            {
-                NS_LOG_ERROR(Scene, "メッシュ {} を読めないので、何も描かず当たりも作らない", key);
-                return std::nullopt;
-            }
-            return geom;
-        }
-
         [[nodiscard]] std::unique_ptr<Phys::MeshShape> MakeCollision(const MeshGeometry& geom)
         {
             std::unique_ptr<Phys::MeshShape> collision = std::make_unique<Phys::MeshShape>();
@@ -206,13 +190,15 @@ namespace NS
             return collision;
         }
 
-        template <class Result>
-        [[nodiscard]] Result LoadGltfFile(std::string_view path, Result (*parse)(const GltfFileDesc&))
+        // 道の glTF の本体を 1 回だけ読み、use に渡す。本体を読めない時は use を呼ばずに空の値を返す
+        // 外部のバッファは本体と同じフォルダから読む
+        template <class Fn>
+        [[nodiscard]] std::invoke_result_t<Fn, const GltfFileDesc&> WithGltfFile(std::string_view path, Fn&& use)
         {
             const std::optional<std::vector<std::byte>> bytes = OS::FileSystem::ReadAllBytes(path);
             if (!bytes)
             {
-                return Result{};
+                return std::invoke_result_t<Fn, const GltfFileDesc&>{};
             }
             const std::string directory = OS::FileSystem::ParentDirectory(path);
             GltfFileDesc file{};
@@ -220,23 +206,80 @@ namespace NS
             file.name = path;
             file.baseDirectory = directory;
             file.readFile = [](std::string_view bufferPath) { return OS::FileSystem::ReadAllBytes(bufferPath); };
-            return parse(file);
+            return use(file);
+        }
+
+        // 骨付きの Mesh を作る。骨格の無いファイルは nullptr。描く形を GPU で作れなくても骨格は持つ
+        [[nodiscard]] std::unique_ptr<Mesh> ReadSkinnedMesh(const std::string& key,
+                                                            const GltfFileDesc& file)
+        {
+            std::pair<SkinnedMeshGeometry, Anim::Skeleton> skinned = ParseGltfSkinnedMesh(file);
+            const SkinnedMeshGeometry& geom = skinned.first;
+            Anim::Skeleton& skeleton = skinned.second;
+            if (geom.vertices.empty() || geom.indices.empty() || skeleton.BoneCount() == 0u)
+            {
+                return nullptr;
+            }
+
+            Gfx::D3DSkeletalMeshDesc desc{};
+            desc.vertices = geom.vertices.data();
+            desc.vertexCount = geom.vertices.size();
+            desc.indices = geom.indices.data();
+            desc.indexCount = geom.indices.size();
+            std::unique_ptr<Gfx::D3DSkeletalMesh> mesh = Gfx::D3DSkeletalMesh::Create(desc);
+            if (mesh != nullptr && !mesh->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗。 描かず、 骨格は持つ: {}", key);
+                mesh = nullptr;
+            }
+
+            std::vector<BoneSphere> spheres =
+                ComputeBoneSpheres(geom.vertices.data(), geom.vertices.size(), skeleton.BoneCount());
+            return std::make_unique<Mesh>(key, std::move(mesh), std::move(skeleton), std::move(spheres));
+        }
+
+        // key の glTF を読む。スキン付きのメッシュの node があれば骨付きの Mesh、無ければ描く形と当たりの Mesh
+        // 読めない時は ERROR を出して nullptr
+        [[nodiscard]] std::unique_ptr<Mesh> ReadMeshFile(const std::string& key)
+        {
+            const std::optional<std::string> path = ResolveContentPath(key);
+            if (!path)
+            {
+                NS_LOG_ERROR(Scene, "メッシュ {} は ContentRoot の外を指すので読まず、何も描かない", key);
+                return nullptr;
+            }
+            std::unique_ptr<Mesh> mesh =
+                WithGltfFile(*path, [&key](const GltfFileDesc& file) -> std::unique_ptr<Mesh> {
+                    if (HasGltfSkin(file))
+                    {
+                        return ReadSkinnedMesh(key, file);
+                    }
+                    const MeshGeometry geom = ParseGltfMesh(file);
+                    if (geom.vertices.empty() || geom.indices.empty())
+                    {
+                        return nullptr;
+                    }
+                    // 描く形と当たりのどちらを先に頼まれても両方ここで作る。GPU で作れなくても当たりは作る
+                    // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
+                    // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
+                    return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom));
+                });
+            if (mesh == nullptr)
+            {
+                NS_LOG_ERROR(Scene, "メッシュ {} を読めないので、何も描かず当たりも作らない", key);
+            }
+            return mesh;
         }
     } // namespace
 
     MeshGeometry LoadGltfMesh(std::string_view path)
     {
-        return LoadGltfFile(path, &ParseGltfMesh);
-    }
-
-    SkinnedMeshData LoadGltfSkinnedMesh(std::string_view path)
-    {
-        return LoadGltfFile(path, &ParseGltfSkinnedMesh);
+        return WithGltfFile(path, &ParseGltfMesh);
     }
 
     AnimSource LoadGltfAnimationSource(std::string_view path)
     {
-        return LoadGltfFile(path, &ParseGltfAnimationSource);
+        return WithGltfFile(path, &ParseGltfAnimationSource);
     }
 
     AssetManager::AssetManager(std::string baseDir) noexcept : m_baseDir(std::move(baseDir)) {}
@@ -316,36 +359,25 @@ namespace NS
 
     std::unique_ptr<Mesh> AssetManager::CreateMesh(const std::string& key)
     {
-        // 組み込みの形と、描く形も当たりも無いメッシュは灰色。何も描かないメッシュの ERROR は読む時に出す
-        const MeshUnsetMaterial gray{LoadMaterial(DefaultMaterialPath()), false};
         // 空の名前は「メッシュを選んでいない」で、誤りではない
         if (key.empty())
         {
-            return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
+            return std::make_unique<Mesh>(key, nullptr, nullptr);
         }
 
-        // 組み込みとファイルで違うのは、頂点の出どころと欄が空の時のマテリアルだけ
-        MeshGeometry geom;
-        MeshUnsetMaterial unset = gray;
+        // 組み込みとファイルで違うのは頂点の出どころ。スキンのあるファイルだけは当たりの代わりに骨格を持つ
         if (const BuiltinShape* shape = FindBuiltinShape(key))
         {
-            geom = shape->make(*shape);
+            const MeshGeometry geom = shape->make(*shape);
+            return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom));
         }
-        else
+        // 読めない名前の ERROR は ReadMeshFile が出す
+        std::unique_ptr<Mesh> file = ReadMeshFile(key);
+        if (file == nullptr)
         {
-            std::optional<MeshGeometry> file = ReadMeshFile(key);
-            if (!file)
-            {
-                return std::make_unique<Mesh>(key, nullptr, nullptr, gray);
-            }
-            geom = std::move(*file);
-            unset = MeshUnsetMaterial{LoadMaterial(k_MissingMaterialPath), true};
+            return std::make_unique<Mesh>(key, nullptr, nullptr);
         }
-
-        // 描く形と当たりのどちらを先に頼まれても両方ここで作る。GPU で作れなくても当たりは作る
-        // TODO: コライダーの無い描画だけの mesh も三角形を Clear() まで持つ
-        // 大きな mesh を飾りに多く置いてメモリが効いてきたら、当たりを頼まれた時に作る形へ移す
-        return std::make_unique<Mesh>(key, MakeDrawnMesh(key, geom), MakeCollision(geom), unset);
+        return file;
     }
 
     Mesh* AssetManager::LoadMesh(std::string_view name)
@@ -357,51 +389,6 @@ namespace NS
     const Phys::MeshShape* AssetManager::LoadMeshShape(std::string_view name)
     {
         return WithShape(LoadMesh(name)->Collision());
-    }
-
-    SkinnedModel* AssetManager::LoadSkinnedModel(std::string_view name)
-    {
-        const std::string key = NameKey(name);
-        return &FindOrAdd(m_skinnedModels, key, [this, &key] { return CreateSkinnedModel(key); });
-    }
-
-    std::unique_ptr<SkinnedModel> AssetManager::CreateSkinnedModel(const std::string& key)
-    {
-        if (key.empty())
-        {
-            return std::make_unique<SkinnedModel>(key);
-        }
-        const std::optional<std::string> path = ResolveContentPath(key);
-        if (!path)
-        {
-            NS_LOG_ERROR(Scene, "骨付きのモデル {} は ContentRoot の外を指すので読まない", key);
-            return std::make_unique<SkinnedModel>(key);
-        }
-
-        SkinnedMeshData data = LoadGltfSkinnedMesh(*path);
-        if (!data.IsValid())
-        {
-            NS_LOG_ERROR(Scene, "骨付きのモデル {} から骨付きの形を取り出せないので、何も描かない", key);
-            return std::make_unique<SkinnedModel>(key);
-        }
-
-        Gfx::D3DSkeletalMeshDesc smd{};
-        smd.vertices = data.vertices.data();
-        smd.vertexCount = data.vertices.size();
-        smd.indices = data.indices.data();
-        smd.indexCount = data.indices.size();
-        smd.boneCount = data.skeleton.BoneCount();
-
-        std::unique_ptr<Gfx::D3DSkeletalMesh> mesh = Gfx::D3DSkeletalMesh::Create(smd);
-        if (mesh == nullptr || !mesh->IsValid())
-        {
-            NS_LOG_ERROR(Graphics, "AssetManager: skinned mesh の GPU 生成失敗: {}", key);
-            return std::make_unique<SkinnedModel>(key);
-        }
-
-        const MeshUnsetMaterial pink{LoadMaterial(k_MissingMaterialPath), true};
-        return std::make_unique<SkinnedModel>(
-            key, std::make_unique<Mesh>(key, std::move(mesh), pink), std::move(data.skeleton));
     }
 
     const AnimSource* AssetManager::GetOrLoadAnimationSource(std::string_view path)
@@ -509,10 +496,13 @@ namespace NS
 
     std::unique_ptr<Material> AssetManager::ReadMaterial(const std::string& key)
     {
-        // 空の名前は「マテリアルを選んでいない」で、誤りではない
+        // 空の名前は「マテリアルを選んでいない」で、誤りではない。中身は空のまま、既定の灰色を黙って描く
+        // 読めない名前がピンクを指すのと同じ形にして、欄の持ち主が空かを見分けずに済むようにする
         if (key.empty())
         {
-            return std::make_unique<Material>(key);
+            std::unique_ptr<Material> material = std::make_unique<Material>(key);
+            material->SetStandIn(LoadMaterial(DefaultMaterialPath()));
+            return material;
         }
         const std::optional<std::string> path = ResolveContentPath(key);
         if (!path)
@@ -664,7 +654,6 @@ namespace NS
         m_textures.clear();
         m_shaders.clear();
         m_meshes.clear();
-        m_skinnedModels.clear();
         m_animClips.clear();
         m_animationSources.clear();
     }

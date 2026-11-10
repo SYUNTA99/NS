@@ -4,7 +4,6 @@
 
 #include "NSlib/Core/Animation/Retarget.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
-#include "NSlib/CoreObject/Asset/SkinnedModel.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Gfx/D3DBuffer.h"
@@ -14,14 +13,21 @@
 
 namespace NS
 {
-    Animation::Animation()
-    {
-        LoadAssetField(m_model, "");
-    }
+    Animation::Animation() = default;
 
     Animation::~Animation() = default;
 
-    void Animation::SetMesh(Gfx::D3DSkeletalMesh* mesh) noexcept { m_mesh = mesh; }
+    void Animation::UseMesh(const Mesh* mesh)
+    {
+        m_mesh = mesh;
+        const Anim::Skeleton* skeleton = nullptr;
+        if (mesh != nullptr)
+        {
+            skeleton = mesh->Skeleton();
+        }
+        SetSkeleton(skeleton);
+        FindClipBones();
+    }
 
     void Animation::SetSkeleton(const Anim::Skeleton* skeleton) noexcept
     {
@@ -112,24 +118,6 @@ namespace NS
         }
     }
 
-    void Animation::UseModel(Model* renderer)
-    {
-        NS_ASSERT(Scene, renderer != nullptr, "Animation::UseModel: メッシュを差す Model が空");
-        // 欄を書き換えるたびに読み直すので、前のモデルの骨格とメッシュを残さない
-        SetSkeleton(nullptr);
-        SetMesh(nullptr);
-        Mesh* mesh = m_model->GetMesh();
-        if (mesh != nullptr)
-        {
-            SetSkeleton(m_model->GetSkeleton());
-            SetMesh(mesh->D3DSkeletal());
-
-            // Model のメッシュの欄は空なので、ここで差さないと骨付きのメッシュが見た目に出ない
-            renderer->SetMesh(mesh);
-        }
-        FindClipBones();
-    }
-
     void Animation::BindToModel(Model* renderer)
     {
         NS_ASSERT(Scene, renderer != nullptr, "Animation::BindToModel: パレットを差す Model が空");
@@ -218,7 +206,8 @@ namespace NS
 
     void Animation::ApplyPose(Model* renderer)
     {
-        if (m_mesh == nullptr)
+        // 描く形の無いメッシュ (D3DDevice の無い場) は、描かないので姿勢も適用しない
+        if (m_mesh == nullptr || m_mesh->LocalBounds() == nullptr)
         {
             return;
         }
@@ -243,8 +232,8 @@ namespace NS
         }
 
         // 現在ポーズの締まった境界を描画側へ差し、カリングをポーズ追従させる
-        const AABB localBounds = Gfx::MergeSkinnedBounds(
-            m_mesh->BoneSpheres(), m_palette.bones, m_mesh->BoneCount(), m_mesh->LocalBounds());
+        const AABB localBounds =
+            MergeSkinnedBounds(m_mesh->BoneSpheres(), m_palette.bones, k_MaxBones, *m_mesh->LocalBounds());
         renderer->SetLocalBoundsOverride(localBounds);
     }
 } // namespace NS

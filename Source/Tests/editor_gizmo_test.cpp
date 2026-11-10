@@ -117,7 +117,7 @@ TEST(EditorGizmo, BatchedMeshBoundsDoNotBlockSmallObjects)
         std::unique_ptr<NS::Phys::MeshShape> triangles = std::make_unique<NS::Phys::MeshShape>();
         triangles->triangles = {{vertices[0].position, vertices[1].position, vertices[2].position},
                                 {vertices[3].position, vertices[4].position, vertices[5].position}};
-        NS::Mesh batchMesh("SelectionGap", std::move(drawable), std::move(triangles), {});
+        NS::Mesh batchMesh("SelectionGap", std::move(drawable), std::move(triangles));
         NS::Scene scene;
         NS::MapPartsActor* batch = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor", "BatchedTerrain");
         NS::MapPartsActor* smallObject = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor", "SmallObject");

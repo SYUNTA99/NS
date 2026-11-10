@@ -715,7 +715,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
 }
 
 // マテリアルを付けると、描くマテリアルが付けた物になる
-TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
+TEST(EditorInspector, MaterialApplyReachesTheModelDraw)
 {
     NS::Application app(HiddenAppDesc("マテリアルを付ける試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
@@ -729,7 +729,8 @@ TEST(EditorInspector, MaterialApplyReachesTheDrawnMaterial)
         const std::string stone = "Assets/Materials/stone.mat";
         ASSERT_TRUE(editor.ApplyMaterialToSelected(
             NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone)));
-        EXPECT_EQ(parts->ModelClassObj()->DrawnMaterial(), app.Assets().LoadMaterial(stone));
+        EXPECT_EQ(parts->ModelClassObj()->MakeDrawItem(NS::Matrix::Identity).material,
+                  app.Assets().LoadMaterial(stone)->D3D());
     }));
     EXPECT_EQ(app.Run(), 0);
 }
