@@ -67,7 +67,7 @@ namespace
     public:
         LoggingUI(std::vector<std::string>& log, std::string label) : m_log(log), m_label(std::move(label)) {}
         void OnTick() override { m_log.push_back(m_label); }
-        void OnRenderOverlay(const NS::Gfx::RenderContext&) override {}
+        void OnDraw(const NS::Gfx::RenderContext&) override {}
 
     private:
         std::vector<std::string>& m_log;

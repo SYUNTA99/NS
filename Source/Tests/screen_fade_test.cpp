@@ -25,7 +25,7 @@ namespace
     {
     public:
         int DrawOrder() const noexcept override { return 10000; }
-        void OnRenderOverlay(const NS::Gfx::RenderContext& context) override
+        void OnDraw(const NS::Gfx::RenderContext& context) override
         {
             context.overlay->DrawFullscreenColor(NS::Color{1.0f, 1.0f, 1.0f, 1.0f});
         }
@@ -35,7 +35,7 @@ namespace
     class HalfBlackScreen final : public NS::UIActor
     {
     public:
-        void OnRenderOverlay(const NS::Gfx::RenderContext& context) override
+        void OnDraw(const NS::Gfx::RenderContext& context) override
         {
             context.overlay->DrawFullscreenColor(NS::Color{0.0f, 0.0f, 0.0f, 0.5f});
         }

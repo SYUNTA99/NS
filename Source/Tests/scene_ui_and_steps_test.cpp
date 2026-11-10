@@ -34,7 +34,7 @@ namespace
     {
     public:
         void OnTick() override { ++updates; }
-        void OnRenderOverlay(const NS::Gfx::RenderContext&) override {}
+        void OnDraw(const NS::Gfx::RenderContext&) override {}
         int updates = 0;
     };
 
