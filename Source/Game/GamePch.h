@@ -18,7 +18,7 @@
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
+#include "NSlib/CoreObject/ClassObjs/WorldLines.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/SphereCollision.h"

@@ -1,20 +1,20 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 
 namespace NS
 {
     class SceneActor;
-    class Scene;
+    class SceneRenderer;
 
     //! シーンに 1 つの、画面全体の白い光。始めた歩は始めの濃さで描き、次の更新から直線で薄れる
     //! 動作の事象と当たりの反応の項目が、持ち主を頼んだ物として始める
-    class ScreenFlashDirector final : public NonCopyable, public IOverlay
+    //! 濃さが変わるたびに SceneRenderer::SetScreenFlash へ書く。描くのは SceneRenderer
+    class ScreenFlashDirector final : public NonCopyable
     {
     public:
-        explicit ScreenFlashDirector(Scene& scene);
-        ~ScreenFlashDirector() noexcept;
+        //! @param[in] renderer 濃さを書く先。この物より長く生きる
+        explicit ScreenFlashDirector(SceneRenderer& renderer) noexcept;
 
         //! 白の光を始める。前の白が残っていても始め直す
         //! @param[in] requester 頼んだ物。Stop で同じ物を渡すと消える
@@ -38,12 +38,11 @@ namespace NS
         //! 白を 1 フレーム薄める
         void OnTick() noexcept;
 
-        [[nodiscard]] int OverlayOrder() const noexcept override { return 1; }
-        //! 残りのフレーム数に比例して薄くなる白を画面全体へ重ねる
-        void OnRenderOverlay(const Gfx::RenderContext& context) override;
-
     private:
-        Scene& m_scene;
+        //! 今の濃さを描く仕組みへ書く。状態を変える関数の最後に呼ぶ
+        void WriteAlpha() noexcept;
+
+        SceneRenderer& m_renderer;
         // 頼んだ物は見分けるだけで、指す先は読まない
         const SceneActor* m_requester = nullptr;
         int m_remaining = 0;

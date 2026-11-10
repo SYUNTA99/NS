@@ -1,22 +1,13 @@
 #include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 
-#include "NSlib/CoreObject/Scene/Scene.h"
-#include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Render/ScreenOverlay.h"
+#include "NSlib/Core/Assert.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
 
 #include <algorithm>
 
 namespace NS
 {
-    ScreenFlashDirector::ScreenFlashDirector(Scene& scene) : m_scene(scene)
-    {
-        InitOverlay(&m_scene, this);
-    }
-
-    ScreenFlashDirector::~ScreenFlashDirector() noexcept
-    {
-        EndOverlay(&m_scene, this);
-    }
+    ScreenFlashDirector::ScreenFlashDirector(SceneRenderer& renderer) noexcept : m_renderer(renderer) {}
 
     void ScreenFlashDirector::Start(const SceneActor* requester, int frames, float alpha) noexcept
     {
@@ -26,6 +17,7 @@ namespace NS
         m_frames = m_remaining;
         m_alpha = alpha;
         m_justStarted = true;
+        WriteAlpha();
     }
 
     void ScreenFlashDirector::Stop(const SceneActor* requester) noexcept
@@ -43,6 +35,7 @@ namespace NS
         if (m_requester == requester)
         {
             m_alpha *= scale;
+            WriteAlpha();
         }
     }
 
@@ -51,6 +44,7 @@ namespace NS
         m_remaining = 0;
         m_justStarted = false;
         m_requester = nullptr;
+        WriteAlpha();
     }
 
     float ScreenFlashDirector::Alpha() const noexcept
@@ -73,18 +67,8 @@ namespace NS
         {
             --m_remaining;
         }
+        WriteAlpha();
     }
 
-    void ScreenFlashDirector::OnRenderOverlay(const Gfx::RenderContext& context)
-    {
-        if (context.device == nullptr || context.overlay == nullptr)
-        {
-            return;
-        }
-        const float alpha = Alpha();
-        if (alpha > 0.0f)
-        {
-            context.overlay->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, alpha});
-        }
-    }
+    void ScreenFlashDirector::WriteAlpha() noexcept { m_renderer.SetScreenFlash(Alpha()); }
 } // namespace NS

@@ -256,7 +256,8 @@
         0.0,
         1.0
       ]
-    }
+    },
+    "WorldLines": {}
   },
   "hitReactions": [
     {

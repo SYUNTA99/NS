@@ -19,7 +19,7 @@ namespace
     struct EnabledRegistrations
     {
         std::size_t renderables = 0;
-        std::size_t overlays = 0;
+        std::size_t worldLines = 0;
         std::size_t lights = 0;
         std::size_t cameras = 0;
         std::size_t sensors = 0;
@@ -34,7 +34,7 @@ namespace
         scene.SetSimulationEnabled(false);
         scene.OnUpdate();
         return EnabledRegistrations{scene.GetSceneRenderer()->EnabledModelCount() + scene.GetSceneRenderer()->EnabledShadowCount(),
-                             scene.GetSceneRenderer()->EnabledOverlayCount(),
+                             scene.GetSceneRenderer()->EnabledWorldLinesCount(),
                              scene.GetSceneRenderer()->EnabledLightCount(),
                              scene.GetCameraManager()->EnabledVirtualCameraCount(),
                              EnabledSensorCount(scene),
@@ -54,7 +54,7 @@ namespace
         actor->Disappear();
         EXPECT_EQ(Count(scene), disappeared);
         return EnabledRegistrations{appeared.renderables - disappeared.renderables,
-                             appeared.overlays - disappeared.overlays,
+                             appeared.worldLines - disappeared.worldLines,
                              appeared.lights - disappeared.lights,
                              appeared.cameras - disappeared.cameras,
                              appeared.sensors - disappeared.sensors,
@@ -72,19 +72,19 @@ TEST(ClassObjLifecycle, BaseFramePartsRegisterOnlyWhileAppeared)
     EXPECT_EQ(RegisteredWhileAppeared(scene, goal), (EnabledRegistrations{.renderables = 1, .sensors = 1}));
 }
 
-// 派生の部品 (重ね描き・光・仮想カメラ) も持ち主が作る時に 1 回入れ、出し入れでは外さない。
+// 派生が作る部品 (線の部品・光・仮想カメラ) も持ち主が作る時に 1 回入れ、出し入れでは外さない。
 // 消えている間は組が無効になり、仕組みが使わない
 
 TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .overlays = 1, .sensors = 1}));
+    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .worldLines = 1, .sensors = 1}));
 
-    // 当たりの画面の係も重ね描きに入るので、消えている間も反動の矢印が入っている事は、外した時に数が減るかで見る
-    const std::size_t registered = scene.GetSceneRenderer()->OverlayCount();
-    NS::EndOverlay(&scene, &player->ReboundIndicator());
-    EXPECT_EQ(scene.GetSceneRenderer()->OverlayCount(), registered - 1);
+    // 消えている間も反動の矢印を書く線の部品が入っている事は、外した時に数が減るかで見る
+    const std::size_t registered = scene.GetSceneRenderer()->WorldLinesCount();
+    NS::EndDraw(&scene, player->WorldLinesClassObj());
+    EXPECT_EQ(scene.GetSceneRenderer()->WorldLinesCount(), registered - 1);
 }
 
 TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)

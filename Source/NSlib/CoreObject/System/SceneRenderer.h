@@ -65,9 +65,9 @@ namespace NS
 {
     class SceneCamera;
     class DirectionalLight;
-    class IOverlay;
     class Model;
     class Shadow;
+    class WorldLines;
     class Transform;
     class UIDirector;
 
@@ -147,13 +147,13 @@ namespace NS
         //! Shadow の組の有効と無効を書く。無効の組は描かず、箱も読まない。入れていない物は何もしない
         void SetShadowEnabled(const Shadow* shadow, bool enabled) noexcept;
 
-        //! 重ね描きを入れる。組は有効で入る。二重登録は無視する
-        //! 呼ぶのは補助関数 InitOverlay だけ。並びは OverlayOrder 昇順に保たれ、同値なら後から入れた方が後ろになる
-        void RegisterOverlay(IOverlay* overlay);
-        //! 重ね描きの組を外す。入れていない物は何もしない
-        void UnregisterOverlay(const IOverlay* overlay) noexcept;
-        //! 重ね描きの組の有効と無効を書く。無効の組は描かない。入れていない物は何もしない
-        void SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept;
+        //! 線の部品を入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは基底の SceneActor::RegisterDrawParts だけ。lines は外すまで生きていること
+        void RegisterWorldLines(WorldLines* lines);
+        //! 線の部品の組を外す。入れていない物は何もしない
+        void UnregisterWorldLines(const WorldLines* lines) noexcept;
+        //! 線の部品の組の有効と無効を書く。無効の組は描かない。入れていない物は何もしない
+        void SetWorldLinesEnabled(const WorldLines* lines, bool enabled) noexcept;
 
         //! 平行光を、向きを出す持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
         //! 呼ぶのは基底の SceneActor だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
@@ -163,16 +163,21 @@ namespace NS
         //! 平行光の組の有効と無効を書く。無効の組は ResolveSceneSettings が読まない。入れていない物は何もしない
         void SetLightEnabled(const DirectionalLight* light, bool enabled) noexcept;
 
+        //! 画面全体の白い光の濃さを書く。書くのは ScreenFlashDirector だけ。0 以下なら描かない
+        void SetScreenFlash(float alpha) noexcept { m_screenFlashAlpha = alpha; }
+        //! 書いた白い光の濃さ
+        [[nodiscard]] float ScreenFlashAlpha() const noexcept { return m_screenFlashAlpha; }
+
         //! 登録簿に入っている数。無効の組も数える
         [[nodiscard]] std::size_t ModelCount() const noexcept { return m_models.size(); }
         [[nodiscard]] std::size_t ShadowCount() const noexcept { return m_shadows.size(); }
-        [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_overlays.size(); }
+        [[nodiscard]] std::size_t WorldLinesCount() const noexcept { return m_worldLines.size(); }
         [[nodiscard]] std::size_t LightCount() const noexcept { return m_lights.size(); }
 
         //! 登録簿のうち有効な組の数
         [[nodiscard]] std::size_t EnabledModelCount() const noexcept;
         [[nodiscard]] std::size_t EnabledShadowCount() const noexcept;
-        [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept;
+        [[nodiscard]] std::size_t EnabledWorldLinesCount() const noexcept;
         [[nodiscard]] std::size_t EnabledLightCount() const noexcept;
         //! 前の Render でビューごとの定数を送った回数。1 つのビューにつき 1 回
         [[nodiscard]] std::size_t ViewConstantsSentCount() const noexcept { return m_viewConstantsSent; }
@@ -198,7 +203,7 @@ namespace NS
         void DrawAfterSky(const Gfx::RenderContext& context);
         //! Transparent の段を CollectPass の順に描く
         void DrawTransparent(const Gfx::RenderContext& context);
-        //! 有効な組の重ね描きを OverlayOrder 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
+        //! 有効な線の部品の線を登録の順に context.alpha で補間して画素の線で描き、その上へ白い光、ui の画面を DrawOrder 昇順で描く
         //! 最後にシーン全体の暗転 fade を重ねる
         void DrawOverlays(const Gfx::RenderContext& context, UIDirector& ui, const Gfx::ScreenFade& fade);
 
@@ -214,7 +219,7 @@ namespace NS
             std::unique_ptr<Gfx::ScreenPasses> screen;
         };
 
-        //! 1 ビュー分のシーンを描き、その上へデバッグ描画と OverlayRenderer の重ね描きを出す
+        //! 1 ビュー分のシーンを描き、その上へデバッグ描画と DrawOverlays の線・白い光・UI・暗転を出す
         //! デバッグ描画は、この固定ステップの図形、view.drawShapes が積んだ図形の順に描く
         //! view.viewPose が空なら実カメラで描く
         void RenderViewWithOverlays(SceneCamera& camera,
@@ -281,13 +286,13 @@ namespace NS
         //! m_drawScratch を順に context.device へ発行する。装置が無ければ何もしない
         void IssueDrawScratch(const Gfx::RenderContext& context);
 
-        //! 重ね描きの組。指す物は非所有
-        struct OverlayEntry
+        //! 線の部品の組。指す物は非所有
+        struct WorldLinesEntry
         {
-            IOverlay* overlay = nullptr;
+            WorldLines* part = nullptr;
             bool enabled = true; // 持ち主が出ているか。正はこの値だけ
         };
-        std::vector<OverlayEntry> m_overlays; // OverlayOrder 昇順
+        std::vector<WorldLinesEntry> m_worldLines; // 登録順
 
         //! 平行光と、向きを出す持ち主の根の組。指す物は非所有
         struct LightEntry
@@ -316,7 +321,8 @@ namespace NS
         std::unique_ptr<Gfx::SceneDepthCopy> m_afterSkyDepth; // AfterSky の段が読む深度。装置未設定の間は空
         bool m_afterSkyDepthFailureLogged = false;
         std::unique_ptr<Gfx::D3DBuffer> m_viewConstants; // ビューごとの定数。装置を差した時に作る。装置未設定の間は空
-        std::size_t m_viewConstantsSent = 0;             // 今の Render で送った回数。書くのは Render と SendViewConstants だけ
+        float m_screenFlashAlpha = 0.0f;                 // 白い光の濃さ。書くのは SetScreenFlash だけ
+        std::size_t m_viewConstantsSent = 0;            // 今の Render で送った回数。書くのは Render と SendViewConstants だけ
         float m_sceneTimeSeconds = 0.0f; // 固定更新の経過秒。ゲームを止めている間は進まない
 
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る

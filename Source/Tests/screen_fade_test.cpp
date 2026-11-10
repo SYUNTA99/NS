@@ -31,6 +31,16 @@ namespace
         }
     };
 
+    // 画面を半分の濃さの黒で覆う UI。白い光より後に描かれれば、白の上が灰色になる
+    class HalfBlackScreen final : public NS::UIActor
+    {
+    public:
+        void OnRenderOverlay(const NS::Gfx::RenderContext& context) override
+        {
+            context.overlay->DrawFullscreenColor(NS::Color{0.0f, 0.0f, 0.0f, 0.5f});
+        }
+    };
+
     void ExpectEveryPixel(const NS::Gfx::D3DTexture& texture, int expected)
     {
         D3D11_TEXTURE2D_DESC desc{};
@@ -210,6 +220,41 @@ TEST(ScreenFade, FullscreenDrawCoversUIAndTheResizedTarget)
     device.BeginFrame();
     sceneRenderer.DrawOverlays(context, screens, fade);
     ExpectEveryPixel(*target->Color(), 255);
+    device.SetSceneTarget(nullptr);
+    device.BindBackbuffer();
+}
+
+// 白い光は SetScreenFlash で書いた濃さで、UI の下と暗転の下に描く
+TEST(ScreenFade, ScreenFlashDrawsUnderTheUIAndTheFade)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "白い光の試し", .size = {32, 18}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
+    const NS::AssetManagerScope useAssets{assets};
+    const std::unique_ptr<NS::Gfx::D3DRenderTarget> target = NS::Gfx::D3DRenderTarget::Create({32, 18});
+    ASSERT_TRUE(target->IsValid());
+    NS::SceneRenderer sceneRenderer;
+    sceneRenderer.SetDevice(&device);
+    NS::Gfx::ScreenFade fade;
+    HalfBlackScreen ui;
+    NS::UIDirector screens;
+    screens.Add(ui);
+    NS::Gfx::RenderContext context;
+    context.device = &device;
+    context.overlay = sceneRenderer.Overlay();
+    ASSERT_NE(context.overlay, nullptr);
+    sceneRenderer.SetScreenFlash(1.0f);
+
+    device.SetSceneTarget(target.get());
+    device.BeginFrame();
+    sceneRenderer.DrawOverlays(context, screens, fade);
+    ExpectEveryPixel(*target->Color(), 128);
+
+    fade.BeginOut(0.0f);
+    device.BeginFrame();
+    sceneRenderer.DrawOverlays(context, screens, fade);
+    ExpectEveryPixel(*target->Color(), 0);
     device.SetSceneTarget(nullptr);
     device.BindBackbuffer();
 }

@@ -44,6 +44,27 @@ TEST(ScreenFlashDirector, StartsAtFullAlphaAndFadesFromTheNextTick)
     EXPECT_FLOAT_EQ(flash.Alpha(), 0.0f);
 }
 
+// 始める・薄める・濃さを変える・止めるたびに、今の濃さを描く仕組みへ書く。描く仕組みは描く時にこの値だけを読む
+TEST(ScreenFlashDirector, WritesTheAlphaToTheSceneRenderer)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceTwo(scene);
+    ASSERT_NE(player, nullptr);
+    NS::ScreenFlashDirector& flash = scene.ScreenFlash();
+    const NS::SceneRenderer& renderer = *scene.GetSceneRenderer();
+    EXPECT_FLOAT_EQ(renderer.ScreenFlashAlpha(), 0.0f);
+
+    flash.Start(player, 3, 0.9f);
+    EXPECT_FLOAT_EQ(renderer.ScreenFlashAlpha(), 0.9f);
+    flash.OnTick();
+    flash.OnTick();
+    EXPECT_NEAR(renderer.ScreenFlashAlpha(), 0.6f, 0.0001f);
+    flash.Scale(player, 0.5f);
+    EXPECT_NEAR(renderer.ScreenFlashAlpha(), 0.3f, 0.0001f);
+    flash.Stop(player);
+    EXPECT_FLOAT_EQ(renderer.ScreenFlashAlpha(), 0.0f);
+}
+
 // 止めると、止めた物が頼んだ白だけが消える。ほかの物が頼んだ物は残る
 TEST(ScreenFlashDirector, StopClearsOnlyWhatTheRequesterStarted)
 {

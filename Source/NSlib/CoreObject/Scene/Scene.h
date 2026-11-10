@@ -67,8 +67,8 @@ namespace NS
         //! 世界が回っている間だけ、描く前に CameraManager が実カメラを 1 回書く
         void OnRender();
 
-        //! 描く物・重ね描き・平行光の管理クラス
-        //! 描く部品と平行光は基底の SceneActor が OnInit の直後に、重ね描きはアクターが OnInit で InitOverlay を呼んで入れ、OnEndPlay で外す。
+        //! 描く物・線の部品・平行光の管理クラス
+        //! 描く部品・線の部品・平行光は基底の SceneActor が OnInit の直後に入れ、OnEndPlay で外す。
         //! 出る・消える時は、入れたまま組の有効と無効を切り替える
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 
@@ -275,9 +275,9 @@ namespace NS
         Gfx::ScreenFade m_fade;
         // アクターが持つ画面は破棄で自分を外すので、アクターより先に宣言して後に破棄する
         UIDirector m_ui;
-        // 作る時に m_sceneRenderer へ重ね描きを入れ、破棄で外すので、m_sceneRenderer より後に宣言する。
+        // 白い光の濃さを m_sceneRenderer へ書くので、m_sceneRenderer より後に宣言する。
         // アクターの動作と HitReaction が頼むので、アクターより先に宣言して後に破棄する
-        ScreenFlashDirector m_screenFlash{*this};
+        ScreenFlashDirector m_screenFlash{m_sceneRenderer};
         PadRumbleDirector m_padRumble;
 
         //! 衝突判定の PhysicsScene。Collision が出る時と動いた歩に body を入れる

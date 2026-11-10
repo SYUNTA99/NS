@@ -65,43 +65,33 @@ namespace NS
         }
     }
 
-    void InitOverlay(const IGetRenderer* user, IOverlay* overlay)
+    void ShowModel(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "InitOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, lines != nullptr, "ShowModel: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->RegisterOverlay(overlay);
+            renderer->SetWorldLinesEnabled(lines, true);
         }
     }
 
-    void ShowOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
+    void HideModel(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "ShowOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, lines != nullptr, "HideModel: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetOverlayEnabled(overlay, true);
+            renderer->SetWorldLinesEnabled(lines, false);
         }
     }
 
-    void HideOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
+    void EndDraw(const IGetRenderer* user, const WorldLines* lines) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "HideOverlay: 重ね描きが null");
+        NS_ASSERT(Scene, lines != nullptr, "EndDraw: WorldLines が null");
         if (SceneRenderer* renderer = user->GetSceneRenderer())
         {
-            renderer->SetOverlayEnabled(overlay, false);
-        }
-    }
-
-    void EndOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, overlay != nullptr, "EndOverlay: 重ね描きが null");
-        if (SceneRenderer* renderer = user->GetSceneRenderer())
-        {
-            renderer->UnregisterOverlay(overlay);
+            renderer->UnregisterWorldLines(lines);
         }
     }
 

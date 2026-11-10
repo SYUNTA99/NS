@@ -5,87 +5,63 @@
 #include <cmath>
 #include <vector>
 
-// 反動の矢印を画面の線に組む計算を縛る。太い矢印は当て方で決まる向き、細い矢印は曲げられる先
+// 反動の矢印を世界の座標の線に組む計算を縛る。太い矢印は当て方で決まる向き、細い矢印は曲げられる先
 
 namespace
 {
     using GL::Level::BuildReboundArrowLines;
-    using GL::Level::ReboundArrowLine;
     using GL::Level::ReboundPreviewArrows;
     using GL::Level::ReboundPreviewDesc;
 
-    const NS::Size2D k_Target{1280, 720};
-
-    // 手前の (0, 1, -5) から奥の (0, 1, 0) を見るカメラ
-    NS::Matrix ViewProjection()
+    void ExpectNear(const NS::Vector3& actual, const NS::Vector3& expected)
     {
-        const NS::Matrix view =
-            NS::Matrix::CreateLookAt(NS::Vector3{0.0f, 1.0f, -5.0f}, NS::Vector3{0.0f, 1.0f, 0.0f}, NS::Vector3::Up);
-        return view * NS::Matrix::CreatePerspectiveFieldOfView(1.0f, 1280.0f / 720.0f, 0.1f, 100.0f);
+        EXPECT_NEAR(actual.x, expected.x, 0.0001f);
+        EXPECT_NEAR(actual.y, expected.y, 0.0001f);
+        EXPECT_NEAR(actual.z, expected.z, 0.0001f);
     }
 } // namespace
 
-TEST(ReboundPreviewTest, AssignedArrowIsDrawnLastAndThickerThanTheChoices)
+// 矢印ごとに軸と矢じりの 2 本を世界の座標で組み、当て方の向きを最後に組んで上に重ねる
+TEST(ReboundPreviewTest, AssignedArrowIsWrittenLastAndThickerThanTheChoices)
 {
-    const ReboundPreviewArrows arrows{.origin = NS::Vector3{0.0f, 1.0f, 0.0f},
-                                      .assigned = NS::Vector3{1.0f, 0.0f, 0.0f},
-                                      .choices = {NS::Vector3{0.0f, 1.0f, 0.0f}}};
+    const NS::Vector3 origin{0.0f, 1.0f, 0.0f};
+    const ReboundPreviewArrows arrows{
+        .origin = origin, .assigned = NS::Vector3{1.0f, 0.0f, 0.0f}, .choices = {NS::Vector3{0.0f, 1.0f, 0.0f}}};
     const ReboundPreviewDesc desc{};
-    std::vector<ReboundArrowLine> lines{};
-    ASSERT_TRUE(BuildReboundArrowLines(arrows, ViewProjection(), k_Target, desc, lines));
-    // 矢印ごとに軸と矢じりの 2 本
+    std::vector<NS::WorldLine> lines{};
+    ASSERT_TRUE(BuildReboundArrowLines(arrows, desc, lines));
     ASSERT_EQ(lines.size(), 6u);
 
-    const ReboundArrowLine& choiceShaft = lines[0];
-    EXPECT_NEAR(choiceShaft.startX, 640.0f, 0.5f);
-    EXPECT_NEAR(choiceShaft.startY, 360.0f, 0.5f);
-    EXPECT_LT(choiceShaft.endY, choiceShaft.startY) << "上へ曲げる先は画面の上へ伸びる";
-    EXPECT_FLOAT_EQ(choiceShaft.thickness, desc.choiceThickness);
+    const NS::WorldLine& choiceShaft = lines[0];
+    ExpectNear(choiceShaft.start, origin);
+    ExpectNear(choiceShaft.end, origin + NS::Vector3{0.0f, desc.choiceLength, 0.0f});
+    EXPECT_FLOAT_EQ(choiceShaft.thickness, desc.choiceThickness / desc.referenceHeight);
 
-    const ReboundArrowLine& assignedShaft = lines[3];
-    EXPECT_NEAR(assignedShaft.startX, 640.0f, 0.5f);
-    EXPECT_NEAR(assignedShaft.endY, 360.0f, 0.5f) << "横へ返る向きは画面の横へ伸びる";
-    EXPECT_GT(std::abs(assignedShaft.endX - assignedShaft.startX), 1.0f);
-    for (int i = 3; i < 6; ++i)
+    const NS::WorldLine& assignedShaft = lines[3];
+    const NS::Vector3 tip = origin + NS::Vector3{desc.assignedLength, 0.0f, 0.0f};
+    ExpectNear(assignedShaft.end, tip);
+    for (std::size_t i = 3; i < 6; ++i)
     {
-        EXPECT_FLOAT_EQ(lines[i].thickness, desc.assignedThickness);
+        EXPECT_FLOAT_EQ(lines[i].thickness, desc.assignedThickness / desc.referenceHeight);
         EXPECT_FLOAT_EQ(lines[i].color.w, desc.assignedColor.w);
     }
-    // 矢じりの線は矢じりの先から始まる
-    EXPECT_FLOAT_EQ(lines[4].startX, assignedShaft.endX);
-    EXPECT_FLOAT_EQ(lines[5].startY, assignedShaft.endY);
-}
-
-TEST(ReboundPreviewTest, ThicknessFollowsTheScreenHeight)
-{
-    const ReboundPreviewArrows arrows{.origin = NS::Vector3{0.0f, 1.0f, 0.0f}, .assigned = NS::Vector3{1.0f, 0.0f, 0.0f}};
-    const ReboundPreviewDesc desc{};
-    std::vector<ReboundArrowLine> lines{};
-    ASSERT_TRUE(BuildReboundArrowLines(arrows, ViewProjection(), NS::Size2D{2560, 1440}, desc, lines));
-    ASSERT_FALSE(lines.empty());
-    EXPECT_FLOAT_EQ(lines[0].thickness, desc.assignedThickness * 2.0f);
-}
-
-TEST(ReboundPreviewTest, ArrowsBehindTheCameraOrPointingAtItAreSkipped)
-{
-    std::vector<ReboundArrowLine> lines{};
-    const ReboundPreviewArrows behind{.origin = NS::Vector3{0.0f, 1.0f, -8.0f}, .assigned = NS::Vector3{1.0f, 0.0f, 0.0f}};
-    ASSERT_TRUE(BuildReboundArrowLines(behind, ViewProjection(), k_Target, ReboundPreviewDesc{}, lines));
-    EXPECT_TRUE(lines.empty());
-
-    const ReboundPreviewArrows atCamera{.origin = NS::Vector3{0.0f, 1.0f, 0.0f}, .assigned = NS::Vector3{0.0f, 0.0f, -1.0f}};
-    ASSERT_TRUE(BuildReboundArrowLines(atCamera, ViewProjection(), k_Target, ReboundPreviewDesc{}, lines));
-    EXPECT_TRUE(lines.empty());
+    // 矢じりの 2 本は矢じりの先から軸を戻る側へ、左右対称に開く
+    for (std::size_t i = 4; i < 6; ++i)
+    {
+        ExpectNear(lines[i].start, tip);
+        EXPECT_LT(lines[i].end.x, tip.x);
+        EXPECT_NEAR((lines[i].end - tip).Length(), desc.assignedLength * desc.headLengthRatio, 0.0001f);
+    }
+    EXPECT_NEAR(lines[4].end.z, -lines[5].end.z, 0.0001f);
+    EXPECT_GT(std::abs(lines[4].end.z), 0.0001f);
 }
 
 TEST(ReboundPreviewTest, InvalidDescIsRejectedWithoutWriting)
 {
     const ReboundPreviewArrows arrows{.origin = NS::Vector3{0.0f, 1.0f, 0.0f}, .assigned = NS::Vector3{1.0f, 0.0f, 0.0f}};
-    std::vector<ReboundArrowLine> lines(1);
+    std::vector<NS::WorldLine> lines(1);
     ReboundPreviewDesc desc{};
     desc.referenceHeight = 0.0f;
-    EXPECT_FALSE(BuildReboundArrowLines(arrows, ViewProjection(), k_Target, desc, lines));
-    EXPECT_EQ(lines.size(), 1u);
-    EXPECT_FALSE(BuildReboundArrowLines(arrows, ViewProjection(), NS::Size2D{0, 0}, ReboundPreviewDesc{}, lines));
+    EXPECT_FALSE(BuildReboundArrowLines(arrows, desc, lines));
     EXPECT_EQ(lines.size(), 1u);
 }

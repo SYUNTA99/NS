@@ -4,7 +4,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
-#include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
+#include "NSlib/CoreObject/ClassObjs/WorldLines.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
@@ -181,50 +181,28 @@ namespace NS
 
     std::size_t SceneRenderer::EnabledShadowCount() const noexcept { return CountEnabled(m_shadows); }
 
-    void SceneRenderer::RegisterOverlay(IOverlay* overlay)
+    void SceneRenderer::RegisterWorldLines(WorldLines* lines)
     {
-        NS_ASSERT(Graphics, overlay != nullptr, "SceneRenderer::RegisterOverlay: 重ね描きが null");
-        if (overlay == nullptr)
+        NS_ASSERT(Graphics, lines != nullptr, "SceneRenderer::RegisterWorldLines: WorldLines が null");
+        if (lines == nullptr || FindDrawEntry(m_worldLines, lines) < m_worldLines.size())
         {
             return;
         }
-        if (std::any_of(m_overlays.begin(), m_overlays.end(), [overlay](const OverlayEntry& entry) {
-                return entry.overlay == overlay;
-            }))
-        {
-            return;
-        }
-
-        // 挿入の時点で priority 昇順を保つ。同値は後から来た方が後ろ
-        const std::vector<OverlayEntry>::iterator at = std::upper_bound(
-            m_overlays.begin(), m_overlays.end(), overlay, [](const IOverlay* a, const OverlayEntry& b) {
-                return a->OverlayOrder() < b.overlay->OverlayOrder();
-            });
-        m_overlays.insert(at, OverlayEntry{.overlay = overlay});
+        m_worldLines.push_back(WorldLinesEntry{.part = lines});
     }
 
-    void SceneRenderer::UnregisterOverlay(const IOverlay* overlay) noexcept
+    void SceneRenderer::UnregisterWorldLines(const WorldLines* lines) noexcept
     {
-        std::erase_if(m_overlays, [overlay](const OverlayEntry& entry) { return entry.overlay == overlay; });
+        std::erase_if(m_worldLines, [lines](const WorldLinesEntry& entry) { return entry.part == lines; });
     }
 
-    void SceneRenderer::SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept
+    void SceneRenderer::SetWorldLinesEnabled(const WorldLines* lines, bool enabled) noexcept
     {
-        NS_ASSERT(Scene, overlay != nullptr, "SetOverlayEnabled: 重ね描きが null");
-        for (OverlayEntry& entry : m_overlays)
-        {
-            if (entry.overlay == overlay)
-            {
-                entry.enabled = enabled;
-            }
-        }
+        NS_ASSERT(Scene, lines != nullptr, "SetWorldLinesEnabled: WorldLines が null");
+        SetDrawEntryEnabled(m_worldLines, lines, enabled);
     }
 
-    std::size_t SceneRenderer::EnabledOverlayCount() const noexcept
-    {
-        return static_cast<std::size_t>(
-            std::count_if(m_overlays.begin(), m_overlays.end(), [](const OverlayEntry& entry) { return entry.enabled; }));
-    }
+    std::size_t SceneRenderer::EnabledWorldLinesCount() const noexcept { return CountEnabled(m_worldLines); }
 
     void SceneRenderer::RegisterLight(DirectionalLight* light, const Transform* root)
     {
@@ -419,12 +397,30 @@ namespace NS
                                      UIDirector& ui,
                                      const Gfx::ScreenFade& fade)
     {
-        for (const OverlayEntry& entry : m_overlays)
+        if (context.device != nullptr && context.overlay != nullptr)
         {
-            if (entry.enabled)
+            const Size2D targetSize = context.device->Size();
+            for (const WorldLinesEntry& entry : m_worldLines)
             {
-                entry.overlay->OnRenderOverlay(context);
+                if (!entry.enabled)
+                {
+                    continue;
+                }
+                for (std::size_t i = 0; i < entry.part->Count(); ++i)
+                {
+                    PixelLine line{};
+                    if (TryProjectWorldLine(entry.part->LineAt(i, context.alpha), context.viewProjection, targetSize, line))
+                    {
+                        context.overlay->DrawScreenLine(
+                            line.start.x, line.start.y, line.end.x, line.end.y, line.thickness, line.color);
+                    }
+                }
             }
+        }
+        // 白い光は世界の上の重ね描きを覆い、UI と暗転の下に入る
+        if (context.overlay != nullptr && m_screenFlashAlpha > 0.0f)
+        {
+            context.overlay->DrawFullscreenColor(Color{1.0f, 1.0f, 1.0f, m_screenFlashAlpha});
         }
         // 画面に出す物は世界の上の重ね描きよりさらに上
         ui.Draw(context);

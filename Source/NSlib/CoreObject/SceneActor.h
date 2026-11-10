@@ -32,6 +32,7 @@ namespace NS
     class Animation;
     class Shadow;
     class DirectionalLight;
+    class WorldLines;
     class Collision;
     class EffectObj;
     class Sound;
@@ -139,6 +140,9 @@ namespace NS
         //! シーンを照らす平行光。光を持つクラスが OnInit で作る。持たないクラスでは nullptr
         [[nodiscard]] DirectionalLight* LightClassObj() noexcept { return m_light.get(); }
         [[nodiscard]] const DirectionalLight* LightClassObj() const noexcept { return m_light.get(); }
+        //! 世界の座標の線。作っていない種類は nullptr
+        [[nodiscard]] WorldLines* WorldLinesClassObj() noexcept { return m_worldLines.get(); }
+        [[nodiscard]] const WorldLines* WorldLinesClassObj() const noexcept { return m_worldLines.get(); }
         [[nodiscard]] Collision* CollisionClassObj() noexcept { return m_collision.get(); }
         [[nodiscard]] const Collision* CollisionClassObj() const noexcept { return m_collision.get(); }
         //! センサーを名前つきで持つ部品。センサーを持つクラスが OnInit で作る。持たないクラスでは nullptr
@@ -432,6 +436,7 @@ namespace NS
         std::unique_ptr<Animation> m_animation;
         std::unique_ptr<Shadow> m_shadow;
         std::unique_ptr<DirectionalLight> m_light;
+        std::unique_ptr<WorldLines> m_worldLines;
         std::unique_ptr<Collision> m_collision;
         std::unique_ptr<HitSensorsObj> m_hitSensors;
         std::unique_ptr<HitReaction> m_hitReaction;

@@ -203,8 +203,6 @@ protected:
 
     void OnInit() override;
     void OnAssetsLoaded() override;
-    void OnAppear() override;
-    void OnDisappear() noexcept override;
     void DecideStep() override;
     void AfterStateStep() override;
     void BodyStep() override;

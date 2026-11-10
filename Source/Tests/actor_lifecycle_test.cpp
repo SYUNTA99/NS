@@ -74,7 +74,7 @@ namespace
         int updates = 0;
     };
 
-    // Model・Shadow・平行光を作るだけで、描く仕組みへは入れない
+    // Model・Shadow・平行光・線の部品を作るだけで、描く仕組みへは入れない
     class DrawPartsActor final : public NS::SceneActor
     {
     protected:
@@ -83,13 +83,14 @@ namespace
             CreateClassObj(m_model);
             CreateClassObj(m_shadow);
             CreateClassObj(m_light);
+            CreateClassObj(m_worldLines);
         }
     };
 
 } // namespace
 
-// 基底が OnInit の直後に Model・Shadow・平行光を 1 回ずつ入れ、隠すと使わず、OnEndPlay で外す
-TEST(ActorLifecycle, TheBaseRegistersTheModelShadowAndLightOnce)
+// 基底が OnInit の直後に Model・Shadow・平行光・線の部品を 1 回ずつ入れ、隠すと使わず、OnEndPlay で外す
+TEST(ActorLifecycle, TheBaseRegistersTheModelShadowLightAndLinesOnce)
 {
     NS::Scene scene;
     NS::SceneRenderer* renderer = scene.GetSceneRenderer();
@@ -100,20 +101,25 @@ TEST(ActorLifecycle, TheBaseRegistersTheModelShadowAndLightOnce)
     EXPECT_EQ(renderer->EnabledShadowCount(), 1u);
     EXPECT_EQ(renderer->LightCount(), 1u);
     EXPECT_EQ(renderer->EnabledLightCount(), 1u);
+    EXPECT_EQ(renderer->WorldLinesCount(), 1u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 1u);
 
     actor->Disappear();
     EXPECT_EQ(renderer->EnabledModelCount(), 0u);
     EXPECT_EQ(renderer->EnabledShadowCount(), 0u);
     EXPECT_EQ(renderer->EnabledLightCount(), 0u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 0u);
     actor->Appear();
     EXPECT_EQ(renderer->EnabledModelCount(), 1u);
     EXPECT_EQ(renderer->EnabledLightCount(), 1u);
+    EXPECT_EQ(renderer->EnabledWorldLinesCount(), 1u);
 
     actor->Destroy();
     scene.OnUpdate();
     EXPECT_EQ(renderer->ModelCount(), 0u);
     EXPECT_EQ(renderer->ShadowCount(), 0u);
     EXPECT_EQ(renderer->LightCount(), 0u);
+    EXPECT_EQ(renderer->WorldLinesCount(), 0u);
 }
 
 // シーンに居ないアクターは、描く仕組みが無いので何も入れずに作れる

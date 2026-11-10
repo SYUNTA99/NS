@@ -121,7 +121,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
-    NS::InitOverlay(this, m_reboundPreview.get());
+    CreateClassObj(m_worldLines);
     CreateClassObj(m_effect);
     CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
@@ -280,6 +280,7 @@ void PlayerActor::VisualStep()
     UpdateAnimation();
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
+    m_reboundPreview->WriteLines(m_worldLines.get());
 #endif
     const GL::Player::PlayerMotion motion = Motion();
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
@@ -379,22 +380,6 @@ void PlayerActor::OnEndPlay()
     // 戻す物はやり直しと同じ組。当たりの止めと状態と演出も捨て、止めが次のプレイへ残らない
     ResetState();
     NS::SceneActor::OnEndPlay();
-    NS::EndOverlay(this, m_reboundPreview.get());
-}
-
-void PlayerActor::OnAppear()
-{
-    NS::SceneActor::OnAppear();
-    if (IsAppeared())
-    {
-        NS::ShowOverlay(this, m_reboundPreview.get());
-    }
-}
-
-void PlayerActor::OnDisappear() noexcept
-{
-    NS::SceneActor::OnDisappear();
-    NS::HideOverlay(this, m_reboundPreview.get());
 }
 
 // 体の形は当たりの部品が持つ世界のカプセルで決まるので、ルートの行列は読まない
@@ -567,6 +552,7 @@ void PlayerActor::ResetState() noexcept
     // 押しの控えは残す。押したまま出直した歩を、押した瞬間と読まない
     m_airDash.Reset();
     m_reboundPreview->Hide();
+    m_reboundPreview->WriteLines(m_worldLines.get());
     // 当たりの形だけを立ち姿へ戻し、根は動かさない。出直しは根を出現位置へ置いてから呼ぶので、
     // 丸まりを解く時のように根を上げると出現位置より半長ぶん高く湧いた
     m_collider->SetSphereShape(false);
