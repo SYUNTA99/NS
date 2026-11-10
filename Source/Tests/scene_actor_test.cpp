@@ -53,10 +53,6 @@ namespace
 {
     // 開始の手前で止まる ActorList の口を外から呼べるか。テンプレートにして、呼べない時を偽として受ける
     template <class List>
-    concept CanAppendWithNewIdFromOutside = requires(List& list, std::unique_ptr<NS::SceneActor> obj) {
-        list.AppendWithNewId(std::move(obj), std::string{});
-    };
-    template <class List>
     concept CanInsertFromJsonFromOutside =
         requires(List& list, std::unique_ptr<NS::SceneActor> obj, const nlohmann::json& entry) {
             list.InsertFromJson(std::move(obj), entry, std::size_t{0});
@@ -68,7 +64,6 @@ namespace
 TEST(SceneActor, SpawningGoesThroughTheSceneOnly)
 {
     // シーンのアクターを湧かすのは開始まで済ませる Scene の口だけ。開始を飛ばして並びへ入れる道を外へ開けない
-    static_assert(!CanAppendWithNewIdFromOutside<NS::ActorList>);
     static_assert(!CanInsertFromJsonFromOutside<NS::ActorList>);
     static_assert(!CanSpawnFromOutside<NS::ActorList>);
 }

@@ -71,23 +71,6 @@ namespace NS
         }
     }
 
-    SceneActor* ActorList::AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-        obj->SetId(AllocateActorId());
-
-        // ファイルの参照は名前で書くので、プレイ中に足す物も既存と重ならない名前にする
-        RenameActor(obj.get(), name);
-        SceneActor* raw = obj.get();
-        m_actors.push_back(std::move(obj));
-        MarkIndexDirty();
-        ResolveActorRefs();
-        return raw;
-    }
-
     void ActorList::RemoveByActorId(uint32 objectId)
     {
         // 歩の最中に解放すると、その歩で後に呼ぶ予定の生ポインタが破棄済みになる

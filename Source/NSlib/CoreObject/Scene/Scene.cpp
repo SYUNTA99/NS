@@ -170,23 +170,6 @@ namespace NS
         return frameAlpha;
     }
 
-    SceneActor* Scene::AdoptActor(std::unique_ptr<SceneActor> obj, std::string name)
-    {
-        if (!obj)
-        {
-            return nullptr;
-        }
-
-        // シーンは SpawnActor の作る関数が OnInit の前に決めている
-        SceneActor* raw = m_actors.AppendWithNewId(std::move(obj), std::move(name));
-        if (raw == nullptr)
-        {
-            return nullptr;
-        }
-        StartSpawned(raw);
-        return raw;
-    }
-
     void Scene::StartSpawned(SceneActor* obj)
     {
         NS_ASSERT(Scene, obj != nullptr, "Scene::StartSpawned: 開始するアクターが無い");

@@ -130,10 +130,6 @@ namespace NS
         //! 出ているアクターを並びの順に m_scheduled へ積み直す
         void ScheduleAppeared();
 
-        //! 永続 id を振り、名前が既存と重なれば番号を付けて 1 体加える
-        //! シーンへの付けと開始は呼び手が済ませる
-        SceneActor* AppendWithNewId(std::unique_ptr<SceneActor> obj, std::string name);
-
         //! 組み直さずに 1 体だけ入れる。名前は既存と重なれば番号を付ける。index が末尾より先なら末尾
         //! シーンへの接続と開始は呼び手が済ませる
         SceneActor* InsertFromJson(std::unique_ptr<SceneActor> obj, const nlohmann::json& entry, std::size_t index);

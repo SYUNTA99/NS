@@ -328,8 +328,6 @@ namespace NS
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
         friend bool SendMsgToActor(const Message& msg, SceneActor* receiver);
         template <class T, class... TArgs> friend std::unique_ptr<T> CreateActor(TArgs&&... args);
-        template <class T, class... TArgs>
-        friend std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className);
         friend std::unique_ptr<SceneActor> CreateActorOfClass(std::string_view className, const ActorInitInfo& info);
         friend std::unique_ptr<SceneActor> CreateActorWithCodeValues(std::string_view className,
@@ -431,7 +429,7 @@ namespace NS
     [[nodiscard]] float GetFrameDelta(const SceneActor* actor) noexcept;
 
     //! T を作り、部品・クラスと同じ名前の .actor・素材まで済ませて返す
-    //! Scene の中に作る時は Scene::SpawnActor を使う (中でこの関数を呼ぶ)。
+    //! シーンへ入れるアクターは .actor から作る (Scene::SpawnFromJson)。この関数で作った物はシーンへ入らない。
     //! Scene に入れずに部品を触る試しは、この関数で作る
     template <class T, class... TArgs> [[nodiscard]] std::unique_ptr<T> CreateActor(TArgs&&... args)
     {
@@ -439,18 +437,6 @@ namespace NS
         std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
         SceneActor& base = *actor;
         base.Init(nullptr);
-        return actor;
-    }
-
-    //! T を作り、info で部品・.actor・配置の上書き・素材まで済ませて返す
-    //! シーンへ入れる口 (Scene::SpawnActor) が呼ぶ。シーンの一覧に入る前に素材を読み終える
-    template <class T, class... TArgs>
-    [[nodiscard]] std::unique_ptr<T> CreateActorWithInfo(const ActorInitInfo& info, TArgs&&... args)
-    {
-        static_assert(std::derived_from<T, SceneActor>, "T は SceneActor の派生でなければならない");
-        std::unique_ptr<T> actor = std::make_unique<T>(std::forward<TArgs>(args)...);
-        SceneActor& base = *actor;
-        base.Init(&info);
         return actor;
     }
 

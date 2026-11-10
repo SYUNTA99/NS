@@ -13,6 +13,7 @@
 #include "NSlib/Core/Windows/FileSystem.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 
 #include <gtest/gtest.h>
 
@@ -96,11 +97,16 @@ namespace
         static_assert(!requires(TActor& actor) { actor.Init(); });
     }
 
-    // シーンは外で作った個体を受けない。受けると、Init していない個体が一覧に入る
+    // シーンへ入れる口はアクターの JSON (SpawnFromJson) だけ。型から作る口があると .actor を通らないアクターが入り、
+    // 外で作った個体を受ける口があると Init していない個体が一覧に入る
     template <class TScene = NS::Scene> void CheckSceneBuildsItsOwnActors()
     {
+        static_assert(!requires(TScene& scene) { scene.template SpawnActor<NS::SceneActor>(std::string{}); });
         static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
             scene.SpawnActor(std::move(actor), std::string{});
+        });
+        static_assert(!requires(TScene& scene, std::unique_ptr<NS::SceneActor> actor) {
+            scene.AdoptActor(std::move(actor), std::string{});
         });
     }
 
@@ -223,10 +229,6 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
 {
     const ScopedActorFile probeFile{"ClassObjInitProbeActor", CodeValuesActorFile("ClassObjInitProbeActor")};
     NS::Scene scene;
-    const ClassObjInitProbeActor* placed = scene.SpawnActor<ClassObjInitProbeActor>("Placed");
-    EXPECT_EQ(placed->inits, 1);
-    EXPECT_NE(placed->ModelClassObj(), nullptr);
-
     const std::unique_ptr<ClassObjInitProbeActor> loose = NS::CreateActor<ClassObjInitProbeActor>();
     EXPECT_EQ(loose->inits, 1);
 
@@ -234,6 +236,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
         NS::Cast<ClassObjInitProbeActor>(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<ClassObjInitProbeActor>()));
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
+    EXPECT_NE(fromJson->ModelClassObj(), nullptr);
 
     const std::unique_ptr<NS::SceneActor> baselineOwned = ActorFromFile("ClassObjInitProbeActor");
     ASSERT_NE(baselineOwned, nullptr);
@@ -269,14 +272,13 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
     check(scene.Actors().FindByActorId(1), "組み直し");
 
     check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
-    check(scene.SpawnActor<AssetTimingProbeActor>("Placed"), "型から湧かす");
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
 TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 {
     NS::Scene scene;
-    const AssetTimingProbeActor* actor = scene.SpawnActor<AssetTimingProbeActor>("AssetTimingProbeActor");
+    const AssetTimingProbeActor* actor = SpawnFromActorFile<AssetTimingProbeActor>(scene, "AssetTimingProbeActor");
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->loads, 1);
 }

@@ -166,18 +166,6 @@ namespace NS
         //! 描く補間の割合 0〜1。frameAlpha をそのまま返し、世界を回さない間と時間停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
-        //! 型 T のアクターをシーンの中で作って入れ、開始する。新しい永続 id と名前を振る
-        //! 所有はシーンが握り、呼出側へは生ポインタだけ返す。名前は既存と重なれば番号を付ける。
-        //! 値はクラスと同じ名前の .actor の値で、保存と凍結に写る
-        template <class T, class... Args> T* SpawnActor(std::string name, Args&&... args)
-        {
-            const ActorInitInfo info{.scene = this};
-            std::unique_ptr<T> obj = CreateActorWithInfo<T>(info, std::forward<Args>(args)...);
-            T* raw = obj.get();
-            AdoptActor(std::move(obj), std::move(name));
-            return raw;
-        }
-
         //! アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
         //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
@@ -259,9 +247,6 @@ namespace NS
 
         //! ApplyFromJson の作り直す道。同じ id のアクターを外して replaced へ渡し、同じ並びの位置へ JSON から作って入れる
         SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced);
-
-        // SpawnActor の中身。外から個体を受けると、OnInit を通っていない個体が入る
-        SceneActor* AdoptActor(std::unique_ptr<SceneActor> obj, std::string name);
 
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);
