@@ -7,7 +7,6 @@ namespace NS
     class Model;
     class SceneRenderer;
     class Shadow;
-    class Transform;
 
     //! 所属シーンの描く物の管理クラスを取得するインターフェース
     class IGetRenderer
@@ -34,7 +33,7 @@ namespace NS
     void EndDraw(const IGetRenderer* user, const Model* model) noexcept;
     void EndDraw(const IGetRenderer* user, const Shadow* shadow) noexcept;
 
-    // 重ね描きと平行光も描く物と同じく、OnInit で入れて OnEndPlay で外し、出る・消える時は入れたまま切り替える
+    // 重ね描きは描く物と同じく、OnInit で入れて OnEndPlay で外し、出る・消える時は入れたまま切り替える
 
     //! 重ね描き overlay を入れる。描く物として入る
     //! overlay は EndOverlay まで生きていること
@@ -46,9 +45,8 @@ namespace NS
     //! 重ね描きを管理クラスから外す。入れていない物は何もしない
     void EndOverlay(const IGetRenderer* user, const IOverlay* overlay) noexcept;
 
-    //! 平行光 light を、向きを出す持ち主の根 root と組にして入れる。シーンを照らす物として入る
-    //! light と root は EndLight まで生きていること
-    void InitLight(const IGetRenderer* user, DirectionalLight* light, const Transform* root);
+    // 平行光は基底の SceneActor が OnInit の直後に入れ、出入りと OnEndPlay で下の 3 つを呼ぶ
+
     //! 入れた平行光でシーンを照らし始める。入れていない物は何もしない
     void EnableLight(const IGetRenderer* user, const DirectionalLight* light) noexcept;
     //! 入れた平行光を、入れたまま照らす物から外す。入れていない物は何もしない

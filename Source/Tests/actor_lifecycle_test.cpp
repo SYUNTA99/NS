@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/ClassObjs/BoxCollision.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -73,7 +74,7 @@ namespace
         int updates = 0;
     };
 
-    // Model と Shadow を作るだけで、描く仕組みへは入れない
+    // Model・Shadow・平行光を作るだけで、描く仕組みへは入れない
     class DrawPartsActor final : public NS::SceneActor
     {
     protected:
@@ -81,13 +82,14 @@ namespace
         {
             CreateClassObj(m_model);
             CreateClassObj(m_shadow);
+            CreateClassObj(m_light);
         }
     };
 
 } // namespace
 
-// 基底が OnInit の直後に Model と Shadow を 1 回ずつ入れ、隠すと描かず、OnEndPlay で外す
-TEST(ActorLifecycle, TheBaseRegistersTheModelAndShadowOnce)
+// 基底が OnInit の直後に Model・Shadow・平行光を 1 回ずつ入れ、隠すと使わず、OnEndPlay で外す
+TEST(ActorLifecycle, TheBaseRegistersTheModelShadowAndLightOnce)
 {
     NS::Scene scene;
     NS::SceneRenderer* renderer = scene.GetSceneRenderer();
@@ -96,17 +98,22 @@ TEST(ActorLifecycle, TheBaseRegistersTheModelAndShadowOnce)
     EXPECT_EQ(renderer->ShadowCount(), 1u);
     EXPECT_EQ(renderer->EnabledModelCount(), 1u);
     EXPECT_EQ(renderer->EnabledShadowCount(), 1u);
+    EXPECT_EQ(renderer->LightCount(), 1u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 1u);
 
     actor->Disappear();
     EXPECT_EQ(renderer->EnabledModelCount(), 0u);
     EXPECT_EQ(renderer->EnabledShadowCount(), 0u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 0u);
     actor->Appear();
     EXPECT_EQ(renderer->EnabledModelCount(), 1u);
+    EXPECT_EQ(renderer->EnabledLightCount(), 1u);
 
     actor->Destroy();
     scene.OnUpdate();
     EXPECT_EQ(renderer->ModelCount(), 0u);
     EXPECT_EQ(renderer->ShadowCount(), 0u);
+    EXPECT_EQ(renderer->LightCount(), 0u);
 }
 
 // シーンに居ないアクターは、描く仕組みが無いので何も入れずに作れる

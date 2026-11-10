@@ -3,6 +3,7 @@
 #include "Game/Level/ReboundPreview.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/Actors/MapPartsActor.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
@@ -99,8 +100,8 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
     EXPECT_FLOAT_EQ(scene.GetSceneRenderer()->ResolveSceneSettings(defaults).exposure, 7.0f);
     light->Appear();
     const NS::Gfx::RenderSettings lit = scene.GetSceneRenderer()->ResolveSceneSettings(defaults);
-    EXPECT_FLOAT_EQ(lit.exposure, light->Light().Exposure());
-    const NS::Vector3 direction = light->Light().Direction(light->Root().WorldMatrix());
+    EXPECT_FLOAT_EQ(lit.exposure, light->LightClassObj()->Exposure());
+    const NS::Vector3 direction = light->LightClassObj()->Direction(light->Root().WorldMatrix());
     EXPECT_NEAR(lit.lightDir.y, direction.y, 1.0e-5f);
 }
 

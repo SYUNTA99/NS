@@ -152,7 +152,7 @@ namespace NS
         void SetOverlayEnabled(const IOverlay* overlay, bool enabled) noexcept;
 
         //! 平行光を、向きを出す持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
-        //! 呼ぶのは補助関数 InitLight だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
+        //! 呼ぶのは基底の SceneActor だけ。並びは入れた順で、ResolveSceneSettings はこの順に読む
         void RegisterLight(DirectionalLight* light, const Transform* root);
         //! 平行光の組を外す。入れていない物は何もしない
         void UnregisterLight(const DirectionalLight* light) noexcept;

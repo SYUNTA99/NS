@@ -105,17 +105,6 @@ namespace NS
         }
     }
 
-    void InitLight(const IGetRenderer* user, DirectionalLight* light, const Transform* root)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, light != nullptr, "InitLight: 平行光が null");
-        NS_ASSERT(Scene, root != nullptr, "InitLight: 持ち主の根が null");
-        if (SceneRenderer* renderer = user->GetSceneRenderer())
-        {
-            renderer->RegisterLight(light, root);
-        }
-    }
-
     void EnableLight(const IGetRenderer* user, const DirectionalLight* light) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

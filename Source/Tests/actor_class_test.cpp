@@ -79,7 +79,8 @@ TEST(ActorClass, LightShinesAlongItsRotation)
     NS::LightActor* lightActor = scene.SpawnActor<NS::LightActor>("LightActor");
     ASSERT_NE(lightActor, nullptr);
     NS::LightActor& light = *lightActor;
-    const NS::DirectionalLight* sun = &light.Light();
+    const NS::DirectionalLight* sun = light.LightClassObj();
+    ASSERT_NE(sun, nullptr);
 
     NS::Vector3 initial{-0.3f, -1.0f, -0.2f};
     initial.Normalize();

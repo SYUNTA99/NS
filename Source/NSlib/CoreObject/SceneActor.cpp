@@ -9,6 +9,7 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
+#include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
@@ -38,6 +39,7 @@ namespace NS
     NS_CLASSOBJ(m_model, "Model")
     NS_CLASSOBJ(m_animation, "Animation")
     NS_CLASSOBJ(m_shadow, "Shadow")
+    NS_CLASSOBJ(m_light, "DirectionalLight")
     NS_CLASSOBJ(m_collision, "Collision")
     NS_CLASSOBJ(m_hitSensors, "HitSensors")
     NS_CLASSOBJ(m_hitReaction, "HitReaction")
@@ -301,6 +303,11 @@ namespace NS
                 renderer->RegisterShadow(m_shadow.get(), &Root());
                 renderer->SetShadowEnabled(m_shadow.get(), IsAppeared());
             }
+            if (m_light)
+            {
+                renderer->RegisterLight(m_light.get(), &Root());
+                renderer->SetLightEnabled(m_light.get(), IsAppeared());
+            }
         }
         for (const std::unique_ptr<SceneActor>& child : m_children)
         {
@@ -454,6 +461,7 @@ namespace NS
         // clang-format off
         if (m_model) { ShowModel(this, m_model.get()); }
         if (m_shadow) { ShowModel(this, m_shadow.get()); }
+        if (m_light) { EnableLight(this, m_light.get()); }
         if (m_collision) { EnableCollision(this, m_collision.get(), Root().WorldMatrix()); }
         if (m_hitSensors) { m_hitSensors->EnableAll(); }
         // clang-format on
@@ -474,6 +482,7 @@ namespace NS
         // clang-format off
         if (m_model) { HideModel(this, m_model.get()); }
         if (m_shadow) { HideModel(this, m_shadow.get()); }
+        if (m_light) { DisableLight(this, m_light.get()); }
         // 動作は外す前に止める。入り切りの途中のセンサーを戻す頼みが、外したセンサーを開け直さないため
         if (m_actorAction) { StopAction(); }
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
@@ -865,6 +874,7 @@ namespace NS
         // clang-format off
         if (m_model) { EndDraw(this, m_model.get()); }
         if (m_shadow) { EndDraw(this, m_shadow.get()); }
+        if (m_light) { EndLight(this, m_light.get()); }
         if (m_hitSensors) { m_hitSensors->EndAll(this); }
         if (m_collision) { EndCollision(this, m_collision.get()); }
         // clang-format on
