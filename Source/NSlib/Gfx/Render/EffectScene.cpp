@@ -5,7 +5,7 @@
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Windows/StringUtils.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
 #include <EffekseerRendererDX11.h>
@@ -137,15 +137,15 @@ namespace NS
 
         EffectScene::EffectScene() noexcept
         {
-            const D3DGlobal& gpu = Gpu();
-            if (gpu.device == nullptr || gpu.context == nullptr)
+            const D3DDevice* gpu = D3DDevice::Current();
+            if (gpu == nullptr || gpu->Native() == nullptr || gpu->NativeContext() == nullptr)
             {
                 NS_LOG_WARN(Graphics, "EffectScene: D3DDevice が未構築のため無効のまま作る");
                 return;
             }
 
             const Effekseer::Backend::GraphicsDeviceRef graphicsDevice =
-                EffekseerRendererDX11::CreateGraphicsDevice(gpu.device, gpu.context);
+                EffekseerRendererDX11::CreateGraphicsDevice(gpu->Native(), gpu->NativeContext());
             if (graphicsDevice == nullptr)
             {
                 NS_LOG_ERROR(Graphics, "EffectScene: Effekseer の GraphicsDevice を作れなかった");

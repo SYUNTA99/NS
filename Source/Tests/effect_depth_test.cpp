@@ -8,7 +8,6 @@
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "TestEffectFiles.h"
@@ -31,7 +30,7 @@
 #include <vector>
 
 // 奥行きをエフェクトへ渡す道は描画装置が無いと通らない。窓の要らないソフトウェアの描画装置
-// (WARP) を作り、層の外から Gpu() へ差して確かめる
+// (WARP) の D3DDevice を作って確かめる
 
 namespace
 {
@@ -61,7 +60,7 @@ namespace
     }
     std::vector<NS::uint32> CaptureEffectPixels(NS::Gfx::EffectScene& effects)
     {
-        const NS::Gfx::D3DGlobal& gpu = NS::Gfx::Gpu();
+        const NS::Gfx::D3DDevice* gpu = NS::Gfx::D3DDevice::Current();
         D3D11_TEXTURE2D_DESC desc{};
         desc.Width = 128;
         desc.Height = 128;
@@ -71,39 +70,39 @@ namespace
         desc.SampleDesc.Count = 1;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET;
         ComPtr<ID3D11Texture2D> target;
-        if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, target.GetAddressOf())))
+        if (FAILED(gpu->Native()->CreateTexture2D(&desc, nullptr, target.GetAddressOf())))
         {
             ADD_FAILURE() << "描画先を作れなかった";
             return {};
         }
         ComPtr<ID3D11RenderTargetView> view;
-        if (FAILED(gpu.device->CreateRenderTargetView(target.Get(), nullptr, view.GetAddressOf())))
+        if (FAILED(gpu->Native()->CreateRenderTargetView(target.Get(), nullptr, view.GetAddressOf())))
         {
             ADD_FAILURE() << "描画先のビューを作れなかった";
             return {};
         }
         const float clear[4]{};
-        gpu.context->ClearRenderTargetView(view.Get(), clear);
+        gpu->NativeContext()->ClearRenderTargetView(view.Get(), clear);
         ID3D11RenderTargetView* views[]{view.Get()};
-        gpu.context->OMSetRenderTargets(1, views, nullptr);
+        gpu->NativeContext()->OMSetRenderTargets(1, views, nullptr);
         const D3D11_VIEWPORT viewport{0.0f, 0.0f, 128.0f, 128.0f, 0.0f, 1.0f};
-        gpu.context->RSSetViewports(1, &viewport);
+        gpu->NativeContext()->RSSetViewports(1, &viewport);
         NS::CameraData camera = MakeCamera();
         camera.SetPosition({0.0f, 3.0f, -5.0f});
         effects.Draw(camera, 0.0f);
-        gpu.context->OMSetRenderTargets(0, nullptr, nullptr);
+        gpu->NativeContext()->OMSetRenderTargets(0, nullptr, nullptr);
         desc.BindFlags = 0;
         desc.Usage = D3D11_USAGE_STAGING;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         ComPtr<ID3D11Texture2D> staging;
-        if (FAILED(gpu.device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
+        if (FAILED(gpu->Native()->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
         {
             ADD_FAILURE() << "読み戻し先を作れなかった";
             return {};
         }
-        gpu.context->CopyResource(staging.Get(), target.Get());
+        gpu->NativeContext()->CopyResource(staging.Get(), target.Get());
         D3D11_MAPPED_SUBRESOURCE mapped{};
-        if (FAILED(gpu.context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+        if (FAILED(gpu->NativeContext()->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
         {
             ADD_FAILURE() << "描いた画素を読み戻せなかった";
             return {};
@@ -120,7 +119,7 @@ namespace
                 pixels.push_back(pixel);
             }
         }
-        gpu.context->Unmap(staging.Get(), 0);
+        gpu->NativeContext()->Unmap(staging.Get(), 0);
         return pixels;
     }
 

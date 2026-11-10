@@ -27,7 +27,6 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "Tests/TestActorFile.h"

@@ -1,11 +1,11 @@
 #include "NSlib/Gfx/D3DStaticMesh.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Core/Geometry/MeshPrimitives.h"
 
 namespace NS
 {
@@ -21,7 +21,7 @@ namespace NS
         {
             // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに作らない
             // ゲームでは D3DDevice を先に作るので、ここで返らない
-            if (Gpu().device == nullptr || Gpu().context == nullptr)
+            if (detail::CurrentDevice() == nullptr || detail::CurrentContext() == nullptr)
             {
                 return nullptr;
             }

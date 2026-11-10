@@ -6,11 +6,10 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -21,8 +20,8 @@ namespace NS
         ScreenPasses::ScreenPasses(const BuiltinShaders& shaders) noexcept
             : m_vs(shaders.fullscreenVs), m_distortionPs(shaders.screenDistortionPs), m_bodyMaskPs(shaders.bodyMaskPs)
         {
-            const D3DGlobal& gpu = Gpu();
-            if (gpu.device == nullptr || gpu.context == nullptr)
+            const D3DDevice* gpu = D3DDevice::Current();
+            if (gpu == nullptr || gpu->Native() == nullptr || gpu->NativeContext() == nullptr)
             {
                 NS_LOG_WARN(Graphics, "ScreenPasses: D3DDevice が未構築のため無効のまま作る");
                 return;

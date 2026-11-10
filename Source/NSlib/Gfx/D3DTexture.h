@@ -33,25 +33,25 @@ namespace NS
         {
         public:
             //! 参照先を必ず返す。画像の読み込み失敗は代替画像、空テクスチャの生成失敗は IsValid が false
-            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(const D3DTextureDesc& desc);
+            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(const D3DTextureDesc& desc) noexcept;
 
             //! 既存のテクスチャリソースを包んで生成する
             //! @param[in] existing 包む対象。空なら IsValid() が false を返す
             //! @param[in] bindFlags 作るビュー。立っている物だけ SRV / RTV / DSV を作る
-            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
+            [[nodiscard]] static std::unique_ptr<D3DTexture> Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags) noexcept;
 
             //! 立方体の DDS から立方体のテクスチャを作る。参照先を必ず返す
             //! 読めない時と立方体でない DDS の時は、ピンクの立方体の代替画像
-            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFromDds(const std::string& path);
+            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFromDds(const std::string& path) noexcept;
 
             //! 6 枚の画像を +X・-X・+Y・-Y・+Z・-Z の面に並べた立方体のテクスチャを作る。参照先を必ず返す
             //! 各面は 2D と同じ道で読み、2D と同じ段数の mipmap を持つ
             //! 1 枚でも読めない時と、大きさ・書式・段数が揃わない時は、ピンクの立方体の代替画像
             [[nodiscard]] static std::unique_ptr<D3DTexture>
-            CreateCubeFromFaces(const std::array<std::string, 6>& facePaths);
+            CreateCubeFromFaces(const std::array<std::string, 6>& facePaths) noexcept;
 
             //! ピンクの立方体の代替画像を作る。IsUsingFallback は true
-            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFallback();
+            [[nodiscard]] static std::unique_ptr<D3DTexture> CreateCubeFallback() noexcept;
 
             ~D3DTexture();
 
@@ -76,10 +76,8 @@ namespace NS
 
         private:
             D3DTexture() noexcept = default;
-            explicit D3DTexture(const D3DTextureDesc& desc);
-            D3DTexture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags);
 
-            // 読めた資源を持つ。読めなければ代替画像 (cube なら立方体) へ差し替える
+            // 読み込みに失敗した時は、同じ種類のピンクの代替画像へ差し替える
             void AdoptLoaded(ID3D11Device* device, ComPtr<ID3D11Resource> loaded, bool cube) noexcept;
 
             ComPtr<ID3D11Texture2D> m_tex;

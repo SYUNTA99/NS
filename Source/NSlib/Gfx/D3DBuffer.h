@@ -26,7 +26,9 @@ namespace NS
         class D3DBuffer : public NonCopyable
         {
         public:
-            [[nodiscard]] static std::unique_ptr<D3DBuffer> Create(const D3DBufferDesc& desc);
+            //! 参照先を必ず返す。生成の成否は IsValid() で確認する
+            [[nodiscard]] static std::unique_ptr<D3DBuffer> Create(const D3DBufferDesc& desc) noexcept;
+
             //! ID3D11Buffer の生成に成功しているか
             [[nodiscard]] bool IsValid() const noexcept;
             //! OSのグラフィックスAPIと直接やり取りする境界処理でのみ使用する
@@ -39,7 +41,7 @@ namespace NS
             [[nodiscard]] bool IsDynamic() const noexcept;
 
         private:
-            explicit D3DBuffer(const D3DBufferDesc& desc);
+            D3DBuffer() noexcept = default;
             ComPtr<ID3D11Buffer> m_buffer;
             std::size_t m_stride = 0;
             std::size_t m_byteSize = 0;
@@ -61,5 +63,6 @@ namespace NS
 
         //! 動的な定数バッファ用。byteSize は内部で 16 バイト境界へ切り上げる
         [[nodiscard]] D3DBufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept;
+
     } // namespace Gfx
 } // namespace NS

@@ -1,43 +1,23 @@
 #pragma once
 
 #include "NSlib/Core/NonCopyable.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/D3dCommon.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
-//! 試しの間だけ WARP の描画装置を Gpu() に差す。作れない機械では空のまま
-//! コピーを破棄すると Gpu() が空になるので、コピーを禁止する
+//! ウィンドウのない WARP の装置をテストの間だけ所有する。構築の失敗は Valid() で確認する
 struct ScopedWarpGpu : NS::NonCopyable
 {
     NS::Gfx::ComPtr<ID3D11Device> d3d11Device;
     NS::Gfx::ComPtr<ID3D11DeviceContext> context;
+    NS::Gfx::D3DDevice device;
 
-    ScopedWarpGpu()
+    ScopedWarpGpu() : device(NS::Gfx::D3DDeviceDesc{}, D3D_DRIVER_TYPE_WARP)
     {
-        const HRESULT hr = ::D3D11CreateDevice(nullptr,
-                                               D3D_DRIVER_TYPE_WARP,
-                                               nullptr,
-                                               0,
-                                               nullptr,
-                                               0,
-                                               D3D11_SDK_VERSION,
-                                               d3d11Device.GetAddressOf(),
-                                               nullptr,
-                                               context.GetAddressOf());
-        if (FAILED(hr))
+        if (device.IsValid())
         {
-            d3d11Device.Reset();
-            context.Reset();
-            return;
+            d3d11Device = device.Native();
+            context = device.NativeContext();
         }
-        NS::Gfx::Gpu().device = d3d11Device.Get();
-        NS::Gfx::Gpu().context = context.Get();
     }
 
-    ~ScopedWarpGpu()
-    {
-        NS::Gfx::Gpu().device = nullptr;
-        NS::Gfx::Gpu().context = nullptr;
-    }
-
-    [[nodiscard]] bool Valid() const { return d3d11Device != nullptr; }
+    [[nodiscard]] bool Valid() const { return device.IsValid(); }
 };

@@ -16,7 +16,7 @@
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
@@ -218,7 +218,7 @@ TEST(AssetManagerLoad, MeshShapeFollowsTheNameRules)
 // D3DDevice の無い場では、ファイルのメッシュも描く形を作らずに当たりだけを作り、ERROR を出さない
 TEST(AssetManagerLoad, FileMeshWithoutADeviceHasOnlyCollisionAndLogsNoError)
 {
-    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
     const NS::Mesh* mesh = assets.LoadMesh("Assets/Models/CesiumMan.glb");
@@ -231,7 +231,7 @@ TEST(AssetManagerLoad, FileMeshWithoutADeviceHasOnlyCollisionAndLogsNoError)
 // ゲームでは D3DDevice が先にあるので、この道を通らない
 TEST(AssetManagerLoad, MaterialWithoutADeviceIsEmptyAndLogsNoError)
 {
-    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
     const NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
@@ -242,7 +242,7 @@ TEST(AssetManagerLoad, MaterialWithoutADeviceIsEmptyAndLogsNoError)
 
 TEST(AssetManagerLoad, BuiltinShadersWithoutADeviceAreEmptyAndLogNoError)
 {
-    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
     const NS::Gfx::BuiltinShaders shaders = assets.LoadBuiltinShaders();

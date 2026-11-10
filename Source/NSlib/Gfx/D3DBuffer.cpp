@@ -1,9 +1,10 @@
 #include "NSlib/Gfx/D3DBuffer.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/D3dUsage.h"
 
 namespace NS
@@ -58,20 +59,16 @@ namespace NS
         D3DBufferDesc MakeConstantBufferDesc(std::size_t byteSize) noexcept
         {
             D3DBufferDesc desc{};
-            desc.byteSize = byteSize; // 16 バイト切り上げは D3DBuffer のコンストラクタでやる
+            desc.byteSize = byteSize; // 16 バイト切り上げは CreateBufferでやる
             desc.usage = D3D11_USAGE_DYNAMIC;
             desc.bindFlags = D3D11_BIND_CONSTANT_BUFFER;
 
             return desc;
         }
 
-        std::unique_ptr<D3DBuffer> D3DBuffer::Create(const D3DBufferDesc& desc)
+        std::unique_ptr<D3DBuffer> D3DBuffer::Create(const D3DBufferDesc& desc) noexcept
         {
-            return std::unique_ptr<D3DBuffer>(new D3DBuffer(desc));
-        }
-
-        D3DBuffer::D3DBuffer(const D3DBufferDesc& desc)
-        {
+            std::unique_ptr<D3DBuffer> resource(new D3DBuffer());
             const bool isConstant = (desc.bindFlags & D3D11_BIND_CONSTANT_BUFFER) != 0u;
             std::size_t bytes = desc.byteSize;
             if (isConstant)
@@ -79,12 +76,12 @@ namespace NS
                 bytes = RoundUpToAlignment(desc.byteSize, k_ConstantBufferAlignment);
             }
 
-            m_stride = desc.stride;
-            m_byteSize = bytes;
-            m_format = desc.indexFormat;
-            m_dynamic = (detail::GetCpuAccessFlags(desc.usage) & D3D11_CPU_ACCESS_WRITE) != 0u;
+            resource->m_stride = desc.stride;
+            resource->m_byteSize = bytes;
+            resource->m_format = desc.indexFormat;
+            resource->m_dynamic = (detail::GetCpuAccessFlags(desc.usage) & D3D11_CPU_ACCESS_WRITE) != 0u;
 
-            ID3D11Device* device = Gpu().device;
+            ID3D11Device* device = detail::CurrentDevice();
             if (device == nullptr || bytes == 0u)
             {
                 NS_LOG_ERROR(Graphics,
@@ -92,13 +89,13 @@ namespace NS
                              static_cast<const void*>(device),
                              bytes,
                              static_cast<uint>(desc.bindFlags));
-                return;
+                return resource;
             }
 
             if (desc.usage != D3D11_USAGE_DYNAMIC && desc.initialData == nullptr)
             {
                 NS_LOG_ERROR(Graphics, "Static バッファは initialData 必須 (CreateBuffer 後 GPU が未初期化を読む危険)");
-                return;
+                return resource;
             }
 
             D3D11_BUFFER_DESC bd{};
@@ -115,7 +112,7 @@ namespace NS
                 srdPtr = &srd;
             }
 
-            const HRESULT hr = device->CreateBuffer(&bd, srdPtr, m_buffer.GetAddressOf());
+            const HRESULT hr = device->CreateBuffer(&bd, srdPtr, resource->m_buffer.GetAddressOf());
             if (FAILED(hr))
             {
                 NS_LOG_ERROR(Graphics,
@@ -123,8 +120,9 @@ namespace NS
                              static_cast<uint>(hr),
                              bytes,
                              static_cast<uint>(desc.bindFlags));
-                m_buffer.Reset();
+                resource->m_buffer.Reset();
             }
+            return resource;
         }
 
         bool D3DBuffer::IsValid() const noexcept { return m_buffer != nullptr; }

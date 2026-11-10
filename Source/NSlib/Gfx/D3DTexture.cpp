@@ -1,9 +1,9 @@
 #include "NSlib/Gfx/D3DTexture.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -370,55 +370,65 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<D3DTexture> D3DTexture::Create(const D3DTextureDesc& desc)
+        void D3DTexture::AdoptLoaded(ID3D11Device* device, ComPtr<ID3D11Resource> loaded, bool cube) noexcept
         {
-            return std::unique_ptr<D3DTexture>(new D3DTexture(desc));
+            if (loaded)
+            {
+                m_tex = AsTexture2D(loaded.Get());
+                m_size = Texture2DSize(m_tex.Get());
+                return;
+            }
+            // 読みかけで作ったビューを捨て、代替画像のビューだけを持つ
+            m_srv.Reset();
+            if (!CreateMagentaFallback(device, cube, m_tex, m_srv))
+            {
+                return;
+            }
+            m_size = Size2D{1, 1};
+            m_fallback = true;
         }
 
-        std::unique_ptr<D3DTexture> D3DTexture::Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
+        std::unique_ptr<D3DTexture> D3DTexture::Create(const D3DTextureDesc& desc) noexcept
         {
-            return std::unique_ptr<D3DTexture>(new D3DTexture(std::move(existing), bindFlags));
-        }
-
-        D3DTexture::D3DTexture(const D3DTextureDesc& desc)
-        {
-            ID3D11Device* device = Gpu().device;
-            ID3D11DeviceContext* context = Gpu().context;
+            std::unique_ptr<D3DTexture> texture(new D3DTexture());
+            ID3D11Device* device = detail::CurrentDevice();
+            ID3D11DeviceContext* context = detail::CurrentContext();
             // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに空のテクスチャを返す
             // ゲームでは D3DDevice を先に作るので、ここで返らない
             if (device == nullptr || context == nullptr)
             {
-                return;
+                return texture;
             }
 
             // 生成の失敗はフォールバックへ差し替えない。描画先を頼んだ側が IsValid で弾いて畳む
             // 大きさが 0 の時はここへ入らずフォールバックへ落ちる。マテリアルへ差すダミーがこの形
             if (desc.path.empty() && desc.width > 0 && desc.height > 0)
             {
-                if (CreateEmptyTexture(device, desc, m_tex))
+                if (CreateEmptyTexture(device, desc, texture->m_tex))
                 {
-                    CreateRequestedViews(device, m_tex.Get(), desc.bindFlags, desc.viewFormat, m_srv, m_rtv, m_dsv);
-                    m_size = Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
+                    CreateRequestedViews(device, texture->m_tex.Get(), desc.bindFlags, desc.viewFormat, texture->m_srv, texture->m_rtv, texture->m_dsv);
+                    texture->m_size = Size2D{static_cast<int>(desc.width), static_cast<int>(desc.height)};
                 }
-                return;
+                return texture;
             }
 
             ComPtr<ID3D11Resource> resource;
             if (!desc.path.empty())
             {
-                if (!LoadImageFile(device, context, desc.path, resource, m_srv))
+                if (!LoadImageFile(device, context, desc.path, resource, texture->m_srv))
                 {
                     resource.Reset();
                 }
             }
-            AdoptLoaded(device, std::move(resource), false);
+            texture->AdoptLoaded(device, std::move(resource), false);
+            return texture;
         }
 
-        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromDds(const std::string& path)
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromDds(const std::string& path) noexcept
         {
             std::unique_ptr<D3DTexture> texture(new D3DTexture());
-            ID3D11Device* device = Gpu().device;
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11Device* device = detail::CurrentDevice();
+            ID3D11DeviceContext* context = detail::CurrentContext();
             if (device == nullptr || context == nullptr)
             {
                 return texture;
@@ -438,11 +448,11 @@ namespace NS
             return texture;
         }
 
-        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromFaces(const std::array<std::string, 6>& facePaths)
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFromFaces(const std::array<std::string, 6>& facePaths) noexcept
         {
             std::unique_ptr<D3DTexture> texture(new D3DTexture());
-            ID3D11Device* device = Gpu().device;
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11Device* device = detail::CurrentDevice();
+            ID3D11DeviceContext* context = detail::CurrentContext();
             if (device == nullptr || context == nullptr)
             {
                 return texture;
@@ -456,42 +466,26 @@ namespace NS
             return texture;
         }
 
-        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFallback()
+        std::unique_ptr<D3DTexture> D3DTexture::CreateCubeFallback() noexcept
         {
             std::unique_ptr<D3DTexture> texture(new D3DTexture());
-            texture->AdoptLoaded(Gpu().device, nullptr, true);
+            texture->AdoptLoaded(detail::CurrentDevice(), nullptr, true);
             return texture;
         }
 
-        void D3DTexture::AdoptLoaded(ID3D11Device* device, ComPtr<ID3D11Resource> loaded, bool cube) noexcept
+        std::unique_ptr<D3DTexture> D3DTexture::Create(ComPtr<ID3D11Texture2D> existing, UINT bindFlags) noexcept
         {
-            if (loaded)
-            {
-                m_tex = AsTexture2D(loaded.Get());
-                m_size = Texture2DSize(m_tex.Get());
-                return;
-            }
-            // 読みかけで作ったビューを捨て、代替画像のビューだけを持つ
-            m_srv.Reset();
-            if (!CreateMagentaFallback(device, cube, m_tex, m_srv))
-            {
-                return;
-            }
-            m_size = Size2D{1, 1};
-            m_fallback = true;
-        }
-
-        D3DTexture::D3DTexture(ComPtr<ID3D11Texture2D> existing, UINT bindFlags)
-        {
-            ID3D11Device* device = Gpu().device;
+            std::unique_ptr<D3DTexture> texture(new D3DTexture());
+            ID3D11Device* device = detail::CurrentDevice();
             if (device == nullptr || !existing)
             {
                 NS_LOG_ERROR(Graphics, "D3DTexture: ラップ対象 / Device が無効");
-                return;
+                return texture;
             }
-            m_tex = std::move(existing);
-            m_size = Texture2DSize(m_tex.Get());
-            CreateRequestedViews(device, m_tex.Get(), bindFlags, DXGI_FORMAT_UNKNOWN, m_srv, m_rtv, m_dsv);
+            texture->m_tex = std::move(existing);
+            texture->m_size = Texture2DSize(texture->m_tex.Get());
+            CreateRequestedViews(device, texture->m_tex.Get(), bindFlags, DXGI_FORMAT_UNKNOWN, texture->m_srv, texture->m_rtv, texture->m_dsv);
+            return texture;
         }
 
         D3DTexture::~D3DTexture() = default;

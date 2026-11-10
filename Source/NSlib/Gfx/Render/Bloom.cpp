@@ -4,10 +4,9 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -44,8 +43,8 @@ namespace NS
             : m_desc(desc), m_vs(shaders.fullscreenVs), m_thresholdPs(shaders.bloomThresholdPs),
               m_downPs(shaders.bloomDownPs), m_upPs(shaders.bloomUpPs), m_compositePs(shaders.bloomCompositePs)
         {
-            const D3DGlobal& gpu = Gpu();
-            if (gpu.device == nullptr || gpu.context == nullptr)
+            const D3DDevice* gpu = D3DDevice::Current();
+            if (gpu == nullptr || gpu->Native() == nullptr || gpu->NativeContext() == nullptr)
             {
                 NS_LOG_WARN(Graphics, "Bloom: D3DDevice が未構築のため無効のまま作る");
                 return;

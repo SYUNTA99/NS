@@ -1,7 +1,8 @@
 #include "NSlib/Gfx/D3DGpuTimer.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Clock.h"
 
 #include <chrono>
@@ -39,7 +40,7 @@ namespace NS
 
         D3DGpuTimer::D3DGpuTimer() noexcept
         {
-            ID3D11Device* device = Gpu().device;
+            ID3D11Device* device = detail::CurrentDevice();
             if (device == nullptr)
             {
                 NS_LOG_WARN(Graphics, "D3DGpuTimer: D3DDevice が未構築のため無効のまま作る");
@@ -70,7 +71,7 @@ namespace NS
 
         void D3DGpuTimer::Begin() noexcept
         {
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11DeviceContext* context = detail::CurrentContext();
             if (!IsValid() || context == nullptr)
             {
                 return;
@@ -88,7 +89,7 @@ namespace NS
 
         void D3DGpuTimer::End() noexcept
         {
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11DeviceContext* context = detail::CurrentContext();
             if (!IsValid() || context == nullptr || !m_begun)
             {
                 return;
@@ -101,7 +102,7 @@ namespace NS
 
         std::optional<float> D3DGpuTimer::ReadMilliseconds() noexcept
         {
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11DeviceContext* context = detail::CurrentContext();
             if (!IsValid() || context == nullptr || !m_ended)
             {
                 return std::nullopt;

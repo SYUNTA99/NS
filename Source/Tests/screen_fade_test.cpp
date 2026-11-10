@@ -5,10 +5,9 @@
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -52,10 +51,10 @@ namespace
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         desc.MiscFlags = 0;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
-        ASSERT_TRUE(SUCCEEDED(NS::Gfx::Gpu().device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())));
-        NS::Gfx::Gpu().context->CopyResource(staging.Get(), texture.Native());
+        ASSERT_TRUE(SUCCEEDED(NS::Gfx::D3DDevice::Current()->Native()->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())));
+        NS::Gfx::D3DDevice::Current()->NativeContext()->CopyResource(staging.Get(), texture.Native());
         D3D11_MAPPED_SUBRESOURCE mapped{};
-        ASSERT_TRUE(SUCCEEDED(NS::Gfx::Gpu().context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)));
+        ASSERT_TRUE(SUCCEEDED(NS::Gfx::D3DDevice::Current()->NativeContext()->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)));
         int mismatches = 0;
         for (UINT y = 0; y < desc.Height; ++y)
         {
@@ -72,7 +71,7 @@ namespace
                 }
             }
         }
-        NS::Gfx::Gpu().context->Unmap(staging.Get(), 0);
+        NS::Gfx::D3DDevice::Current()->NativeContext()->Unmap(staging.Get(), 0);
         EXPECT_EQ(mismatches, 0);
     }
 } // namespace

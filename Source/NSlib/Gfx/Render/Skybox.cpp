@@ -1,4 +1,5 @@
 #include "NSlib/Gfx/Render/Skybox.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/CameraData.h"
@@ -7,14 +8,13 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DStaticMesh.h"
 #include "NSlib/Gfx/D3DTexture.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/TextureFile.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 
@@ -51,7 +51,7 @@ namespace NS
             }
             m_tried = true;
 
-            ID3D11Device* d3d11Device = Gpu().device;
+            ID3D11Device* d3d11Device = detail::CurrentDevice();
             if (d3d11Device == nullptr)
             {
                 NS_LOG_WARN(Graphics, "Skybox: device が無いため空を描かない");
