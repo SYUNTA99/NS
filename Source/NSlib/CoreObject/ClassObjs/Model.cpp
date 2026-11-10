@@ -228,7 +228,7 @@ namespace NS
     Gfx::RenderBounds Model::CopiesBounds(const Matrix& root) const noexcept
     {
         NS_ASSERT(Graphics, DrawsCopies(), "Model::CopiesBounds: 写しを描かない Model で呼んでいる");
-        return Gfx::RenderBounds{.bounds = m_copySource->DrawsWorldBounds(root, m_copies),
+        return Gfx::RenderBounds{.bounds = DrawsWorldBounds(root, m_copies),
                                  .sortCenter = root.Translation(),
                                  .sortPriority = m_copyPriority,
                                  .pass = Gfx::RenderPass::Transparent};
@@ -239,7 +239,7 @@ namespace NS
                               std::vector<Gfx::DrawItem>& out) const
     {
         NS_ASSERT(Graphics, DrawsCopies(), "Model::CollectCopies: 写しを描かない Model で呼んでいる");
-        m_copySource->CollectDraws(context, root, m_copies, out);
+        CollectDraws(context, root, m_copies, out);
     }
 
     Color Model::DrawColor() const noexcept

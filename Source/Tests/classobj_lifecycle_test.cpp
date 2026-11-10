@@ -79,7 +79,8 @@ TEST(ClassObjLifecycle, PlayerIndicatorsStayRegisteredAndHideWhileDisappeared)
 {
     NS::Scene scene;
     PlayerActor* player = scene.SpawnActor<PlayerActor>("PlayerActor");
-    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 3, .worldLines = 1, .sensors = 1}));
+    // 描く物は体の Model と影の 2 つ。残像は体の Model の写しなので数に入らない
+    EXPECT_EQ(RegisteredWhileAppeared(scene, player), (EnabledRegistrations{.renderables = 2, .worldLines = 1, .sensors = 1}));
 
     // 消えている間も反動の矢印を書く線の部品が入っている事は、外した時に数が減るかで見る
     const std::size_t registered = scene.GetSceneRenderer()->WorldLinesCount();

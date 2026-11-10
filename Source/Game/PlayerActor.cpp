@@ -94,6 +94,7 @@ NS_CLASSOBJ(m_collider, "Collider")
 NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
+NS_CLASSOBJ(m_ghost, "TackleGhost")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
 
@@ -117,7 +118,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
-    m_ghost = CreateChildActor<GL::Level::TackleGhost>();
+    CreateClassObj(m_ghost);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
@@ -277,6 +278,8 @@ void PlayerActor::BodyStep()
 
 void PlayerActor::VisualStep()
 {
+    // 写し取る姿は、当たりの反応が Model を進めた後・見た目を更新する前の物
+    m_ghost->Step(this, m_model.get());
     UpdateAnimation();
 #if !defined(NS_SHIPPING)
     UpdateReboundPreview();
@@ -519,7 +522,7 @@ void PlayerActor::StopTackleHitEffects() noexcept
         screen->StopGroundWave(this);
         screen->StopDistortionRing(this);
     }
-    m_ghost->Stop();
+    m_ghost->Stop(m_model.get());
 }
 
 GL::Player::PlayerMotion PlayerActor::Motion() const noexcept

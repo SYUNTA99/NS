@@ -193,7 +193,7 @@ namespace NS
         // 素材は作る関数の Init が読み終えている
         obj->Start();
         // 後から入る物は他のアクターが既に揃っている
-        obj->VisitSelfAndDescendants([](SceneActor* actor) { actor->InitAfterPlacement(); });
+        obj->InitAfterPlacement();
     }
 
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)

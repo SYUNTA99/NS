@@ -1,11 +1,11 @@
 #include "Game/Level/TackleGhost.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/Core/Logger.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
+#include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,10 +15,9 @@ namespace GL
 {
     namespace Level
     {
-        void TackleGhost::Start(const NS::HitOwnerRun& run)
+        void TackleGhost::Start(const NS::SceneActor* owner, const NS::HitOwnerRun& run)
         {
-            const NS::SceneActor* owner = ParentActor();
-            NS_ASSERT(Game, owner != nullptr, "残像に親アクターが無い");
+            NS_ASSERT(Game, owner != nullptr, "残像の持ち主が渡されていない");
             if (run.length <= 0)
             {
                 return;
@@ -42,15 +41,13 @@ namespace GL
             m_running = true;
         }
 
-        void TackleGhost::Stop() noexcept
+        void TackleGhost::Stop(NS::Model* model) noexcept
         {
+            NS_ASSERT(Game, model != nullptr, "残像の持ち主の Model が渡されていない");
             m_running = false;
             (void)SetSpread(NS::Vector3{});
             (void)SetAfterimageOpacity(0.0f);
-            if (m_model)
-            {
-                m_model->SetCopies({}, m_sortPriority);
-            }
+            model->SetCopies({}, m_sortPriority);
         }
 
         void TackleGhost::ScaleOpacity(float scale) noexcept
@@ -104,38 +101,14 @@ namespace GL
             return true;
         }
 
-        void TackleGhost::PrepareRender()
+        void TackleGhost::Step(const NS::SceneActor* owner, NS::Model* model)
         {
-            // 親の根は、親の更新の後に届いた衝突の知らせでも動く。描く直前に補間の前後をそろえる
-            NS_ASSERT(Game, ParentActor() != nullptr, "残像に親アクターが無い");
-            Root().CopyFrom(ParentActor()->Root());
-            NS::SceneActor::PrepareRender();
-        }
-
-        void TackleGhost::OnInit()
-        {
-            const NS::Model* source = ParentModel();
-            if (source == nullptr)
-            {
-                NS_LOG_ERROR(Game, "残像の親に描く Model が無いので、残像を描かない");
-                return;
-            }
-            // 描く仕組みへ入れる事と、出る・消える・終わる時の切り替えは基底が自分の Model に対して行う
-            CreateClassObj(m_model)->SetCopySource(source);
-        }
-
-        void TackleGhost::VisualStep()
-        {
-            const NS::SceneActor* owner = ParentActor();
-            NS_ASSERT(Game, owner != nullptr, "残像に親アクターが無い");
+            NS_ASSERT(Game, owner != nullptr, "残像の持ち主が渡されていない");
+            NS_ASSERT(Game, model != nullptr, "残像の持ち主の Model が渡されていない");
             if (m_running)
             {
                 ++m_frame;
-                m_running = m_desc.WriteTo(this, m_frame, owner->ModelClassObj(), owner->Root().WorldMatrix());
-            }
-            if (!m_model)
-            {
-                return;
+                m_running = m_desc.WriteTo(this, m_frame, model, owner->Root().WorldMatrix());
             }
             std::vector<NS::ModelDraw> draws;
             if (m_spread.LengthSquared() > 0.0f)
@@ -153,15 +126,7 @@ namespace GL
                                               .sceneValues = false,
                                               .objectValues = false});
             }
-            m_model->SetCopies(draws, m_sortPriority);
+            model->SetCopies(draws, m_sortPriority);
         }
-
-        const NS::Model* TackleGhost::ParentModel() const noexcept
-        {
-            // 親は CreateChildActor が OnInit より先に設定する
-            NS_ASSERT(Game, ParentActor() != nullptr, "残像に親アクターが無い");
-            return ParentActor()->ModelClassObj();
-        }
-
     } // namespace Level
 } // namespace GL

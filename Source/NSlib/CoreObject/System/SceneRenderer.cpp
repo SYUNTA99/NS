@@ -268,11 +268,9 @@ namespace NS
                 continue;
             }
             const Matrix root = entry.root->WorldMatrix();
-            if (entry.part->DrawsBody())
-            {
-                keep(VisibleDraw::Kind::ModelBody, i, entry.part->Bounds(root), entry.order);
-            }
-            else if (entry.part->DrawsCopies())
+            // 写しを書いた Model は、体と写しの 2 つを積む。写しは半透明の段で体と別に並ぶ
+            keep(VisibleDraw::Kind::ModelBody, i, entry.part->Bounds(root), entry.order);
+            if (entry.part->DrawsCopies())
             {
                 keep(VisibleDraw::Kind::ModelCopies, i, entry.part->CopiesBounds(root), entry.order);
             }
@@ -508,7 +506,7 @@ namespace NS
         for (const Model* model : m_bodyMask)
         {
             const std::size_t index = FindDrawEntry(m_models, model);
-            if (index < m_models.size() && m_models[index].enabled && model->DrawsBody())
+            if (index < m_models.size() && m_models[index].enabled)
             {
                 model->Collect(context, m_models[index].root->InterpolatedWorldMatrix(context.alpha), m_bodyMaskItems);
             }

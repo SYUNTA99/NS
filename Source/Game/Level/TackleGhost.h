@@ -3,27 +3,39 @@
 #include "Game/Level/LevelMessages.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/CoreObject/Object.h"
+
+namespace NS
+{
+    class SceneActor;
+} // namespace NS
 
 namespace GL
 {
     namespace Level
     {
-        //! エアダッシュの残像 (名前は前の体当たりの残像のまま)。親の Model を、左右の写しと明けの写しとして半透明で描く子アクター
-        //! 親が OnInit の中で CreateChildActor で作る。自分の欄の Model に姿を読む元として親の Model を差し、
-        //! 毎ステップ写しの列を書く。描くのは描く仕組みで、親の Model は残像を知らない
-        class TackleGhost final : public NS::SceneActor
+        //! エアダッシュの残像 (名前は前の体当たりの残像のまま)。持ち主の Model を、左右の写しと明けの写しとして半透明で描かせる部品
+        //! 持ち主が OnInit で作り、毎ステップ Step で持ち主の Model へ写しの列を書く。持ち主も Model も覚えず、呼ぶたびに受ける
+        class TackleGhost final : public NS::Object
         {
         public:
-            NS_REFLECT_BEGIN(TackleGhost, NS::SceneActor)
+            NS_REFLECT_BEGIN(TackleGhost, NS::Object)
             NS_FIELD(m_sortPriority, "描く順")
             NS_REFLECT_END()
 
-            //! 長さが0以下かカメラが無ければ始めない。次の VisualStep を1フレーム目に数える
-            void Start(const NS::HitOwnerRun& run);
-            void Stop() noexcept;
-            //! 不透明度の倍率は次の VisualStep から効く
+            //! 長さが0以下かカメラが無ければ始めない。次の Step を1フレーム目に数える
+            //! @param[in] owner 持ち主。カメラの向きと根の位置で、離れのピクセルを m に直す
+            void Start(const NS::SceneActor* owner, const NS::HitOwnerRun& run);
+            //! 進みを止め、離れと不透明度を 0 にし、model の写しの列を空にする
+            //! @param[in] model 持ち主の Model
+            void Stop(NS::Model* model) noexcept;
+            //! 不透明度の倍率は次の Step から効く
             void ScaleOpacity(float scale) noexcept;
+            //! 始めていれば 1 フレーム進め、今の離れと不透明度から写しの列を作って model へ書く
+            //! 持ち主の HitReaction が Model を進めた後、見た目を更新する前に呼ぶ
+            //! @param[in] owner 持ち主。写し取る姿の根は持ち主の根の今の固定フレームの世界行列
+            //! @param[in] model 持ち主の Model
+            void Step(const NS::SceneActor* owner, NS::Model* model);
 
             //! 根から ±spread m の位置に左右の写しを描く。ゼロなら描かない
             //! 補間せず、本体の描く時だけのずれは写しに足さない
@@ -59,19 +71,10 @@ namespace GL
             [[nodiscard]] float AfterimageOpacity() const noexcept { return m_afterimageOpacity; }
             //! 控えた明けの写しの世界行列。控えていなければ単位行列
             [[nodiscard]] const NS::Matrix& AfterimageWorldMatrix() const noexcept { return m_afterimageWorld; }
-
-            void PrepareRender() override;
-
-        protected:
-            //! 自分の Model を作り、姿を読む元に親の Model を差す。親に Model が無ければ作らない
-            void OnInit() override;
-            //! 親が Model を進めた後に呼ばれる。離れと不透明度を進め、描く写しの列を自分の Model に書く
-            void VisualStep() override;
+            //! 写しの組の、中心の距離が同じ半透明の物との描く順。小さいほど先に描く
+            [[nodiscard]] int SortPriority() const noexcept { return m_sortPriority; }
 
         private:
-            //! 描く元の親の Model。親に Model が無ければ nullptr
-            [[nodiscard]] const NS::Model* ParentModel() const noexcept;
-
             TackleGhostDesc m_desc{};
             int m_frame = 0;
             bool m_running = false;

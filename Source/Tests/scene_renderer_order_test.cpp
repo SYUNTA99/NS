@@ -46,13 +46,12 @@ namespace
         }
     };
 
-    // 姿を読む元の Model を差し、写しだけを描く。自分の欄の箱は不透明だが描かない
+    // 不透明の箱を描き、Copy の後は同じ箱を半透明の写しとしても描く
     class CopyActor final : public NS::SceneActor
     {
     public:
-        void Copy(const NS::Model* source, int priority)
+        void Copy(int priority)
         {
-            m_model->SetCopySource(source);
             const std::array<NS::ModelDraw, 1> copies{NS::ModelDraw{.offset = NS::Vector3{}, .opacity = 0.5f}};
             m_model->SetCopies(copies, priority);
         }
@@ -64,25 +63,6 @@ namespace
             body->SetMeshRef("cube");
             body->SetMaterialRef("Assets/Materials/player.mat");
         }
-    };
-
-    // 半透明の箱を描き、OnInit で同じ箱を描く子を作る
-    class GlassParentActor final : public NS::SceneActor
-    {
-    public:
-        [[nodiscard]] GlassActor* Child() const noexcept { return m_child; }
-
-    protected:
-        void OnInit() override
-        {
-            NS::Model* body = CreateClassObj(m_model);
-            body->SetMeshRef("cube");
-            body->SetMaterialRef("Assets/Materials/shadow.mat");
-            m_child = CreateChildActor<GlassActor>();
-        }
-
-    private:
-        GlassActor* m_child = nullptr;
     };
 
     // 原点から +z を見るカメラ。並べる物は全部視錐台に入る
@@ -154,8 +134,8 @@ TEST_F(SceneRendererOrder, TransparentPassMixesModelsShadowsAndCopiesFarFirstThe
     CopyActor* farCopy = SpawnAt<CopyActor>(NS::Vector3{0.0f, 0.0f, 15.0f});
     (void)SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, 20.0f});
     // 近い写しは箱と同じ距離で、優先度が箱 (0) より小さい
-    nearCopy->Copy(nearA->Body(), -1);
-    farCopy->Copy(nearA->Body(), 0);
+    nearCopy->Copy(-1);
+    farCopy->Copy(0);
     scene.OnUpdate(); // 影の地面を探す
     // 消して出し直しても、登録の順は変わらない
     nearA->Disappear();
@@ -174,27 +154,11 @@ TEST_F(SceneRendererOrder, TransparentPassMixesModelsShadowsAndCopiesFarFirstThe
     EXPECT_FLOAT_EQ(spots[5].x, -3.0f);
 }
 
-TEST_F(SceneRendererOrder, AParentIsRegisteredBeforeTheChildItMadeInOnInit)
-{
-    // 子は親の OnInit の中で作られるが、同じ距離と優先度なら親を先に描く
-    GlassParentActor* parent = SpawnAt<GlassParentActor>(NS::Vector3{1.0f, 0.0f, 6.0f});
-    parent->Child()->Root().SetPosition(NS::Vector3{-1.0f, 0.0f, 6.0f});
-    scene.OnUpdate();
-
-    std::vector<NS::Gfx::DrawItem> items;
-    scene.GetSceneRenderer()->CollectPass(LookAlongZ(), NS::Gfx::RenderPass::Transparent, items);
-
-    const std::vector<Spot> spots = SpotsOf(items);
-    ASSERT_EQ(spots.size(), 2u);
-    EXPECT_FLOAT_EQ(spots[0].x, 1.0f);
-    EXPECT_FLOAT_EQ(spots[1].x, -1.0f);
-}
-
 TEST_F(SceneRendererOrder, CollectsOnlyTheRequestedPassInsideTheView)
 {
     (void)SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, 6.0f});
     (void)SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, -6.0f}); // カメラの後ろ
-    (void)SpawnAt<CopyActor>(NS::Vector3{1.0f, 0.0f, 8.0f}); // 読む元を差さないので不透明の箱を描く
+    (void)SpawnAt<CopyActor>(NS::Vector3{1.0f, 0.0f, 8.0f}); // 写しを書かないので不透明の箱だけを描く
     scene.OnUpdate();
     const NS::Gfx::RenderContext context = LookAlongZ();
 
@@ -214,12 +178,12 @@ TEST_F(SceneRendererOrder, CollectsOnlyTheRequestedPassInsideTheView)
     EXPECT_TRUE(afterSky.empty());
 }
 
-TEST_F(SceneRendererOrder, HiddenEntriesAndTheBodyOfACopyingModelAreNotDrawn)
+TEST_F(SceneRendererOrder, HiddenEntriesAreNotDrawnAndACopyingModelDrawsItsBodyAndCopies)
 {
-    GlassActor* shown = SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, 6.0f});
+    (void)SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, 6.0f});
     GlassActor* hidden = SpawnAt<GlassActor>(NS::Vector3{0.0f, 0.0f, 8.0f});
     CopyActor* copier = SpawnAt<CopyActor>(NS::Vector3{2.0f, 0.0f, 6.0f});
-    copier->Copy(shown->Body(), 0);
+    copier->Copy(0);
     scene.OnUpdate();
     hidden->Disappear();
     const NS::Gfx::RenderContext context = LookAlongZ();
@@ -229,12 +193,14 @@ TEST_F(SceneRendererOrder, HiddenEntriesAndTheBodyOfACopyingModelAreNotDrawn)
     std::vector<NS::Gfx::DrawItem> opaque;
     scene.GetSceneRenderer()->CollectPass(context, NS::Gfx::RenderPass::Opaque, opaque);
 
-    // 隠した箱は描かず、写しを持つ Model は自分の不透明の箱を描かずに写しだけを描く
+    // 隠した箱は描かず、写しを持つ Model は自分の不透明の箱と、同じ箱の半透明の写しの両方を描く
     const std::vector<Spot> spots = SpotsOf(transparent);
     ASSERT_EQ(spots.size(), 2u);
     EXPECT_FLOAT_EQ(spots[0].x, 2.0f); // 写しの方が少し遠い
     EXPECT_FLOAT_EQ(spots[1].x, 0.0f);
-    EXPECT_TRUE(opaque.empty());
+    const std::vector<Spot> body = SpotsOf(opaque);
+    ASSERT_EQ(body.size(), 1u);
+    EXPECT_FLOAT_EQ(body[0].x, 2.0f);
     EXPECT_EQ(scene.GetSceneRenderer()->ModelCount(), 3u);
     EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), 2u);
 }

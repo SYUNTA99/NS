@@ -66,7 +66,7 @@ namespace NS
             // 全てのアクターが開始してから、揃っている前提の用意をさせる
             for (std::unique_ptr<SceneActor>& objPtr : m_actors)
             {
-                objPtr->VisitSelfAndDescendants([](SceneActor* actor) { actor->InitAfterPlacement(); });
+                objPtr->InitAfterPlacement();
             }
         }
     }
@@ -239,7 +239,7 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->VisitSelfAndDescendants([](SceneActor* current) { current->ResolveActorRefs(); });
+            actor->ResolveActorRefs();
         }
     }
 
@@ -249,13 +249,11 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->VisitSelfAndDescendants([](SceneActor* current) {
-                Collision* collision = current->CollisionClassObj();
-                if (collision != nullptr && current->IsAppeared())
-                {
-                    collision->SyncToPhysics(current->Root().WorldMatrix(), current);
-                }
-            });
+            Collision* collision = actor->CollisionClassObj();
+            if (collision != nullptr && actor->IsAppeared())
+            {
+                collision->SyncToPhysics(actor->Root().WorldMatrix(), actor.get());
+            }
         }
     }
 
@@ -263,13 +261,11 @@ namespace NS
     {
         for (const std::unique_ptr<SceneActor>& actor : m_actors)
         {
-            actor->VisitSelfAndDescendants([](SceneActor* current) {
-                // 消えている物の影は描かないので探さない。出す時は基底の OnAppear が探す
-                if (current->IsAppeared())
-                {
-                    current->UpdateShadowGround();
-                }
-            });
+            // 消えている物の影は描かないので探さない。出す時は基底の OnAppear が探す
+            if (actor->IsAppeared())
+            {
+                actor->UpdateShadowGround();
+            }
         }
     }
 

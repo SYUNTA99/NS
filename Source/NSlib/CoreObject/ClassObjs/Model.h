@@ -163,24 +163,17 @@ namespace NS
         //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
         void Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
 
-        //! 写しの姿を読む元の Model を差す。差している間は自分の体を描かない。nullptr で外す
-        //! source は差している間生きていること
-        void SetCopySource(const Model* source) noexcept { m_copySource = source; }
-        //! 写しの姿を読む元の Model。差していなければ nullptr
-        [[nodiscard]] const Model* CopySource() const noexcept { return m_copySource; }
-        //! 描く写しの列と、半透明の段で中心の距離が同じ時の優先度を書く。前の列は捨てる
-        //! 写しは読む元の Model のメッシュ・マテリアル・骨格の定数・姿で、半透明で描く
+        //! 体と一緒に描く写しの列と、半透明の段で中心の距離が同じ時の優先度を書く。前の列は捨てる
+        //! 写しはこの Model のメッシュ・マテリアル・骨格の定数・姿で、半透明で描く
         void SetCopies(std::span<const ModelDraw> copies, int priority);
         //! SetCopies で書いた写しの列。書かれていなければ空
         [[nodiscard]] std::span<const ModelDraw> Copies() const noexcept { return m_copies; }
         //! SetCopies で書いた優先度。書かれていなければ 0
         [[nodiscard]] int CopyPriority() const noexcept { return m_copyPriority; }
-        //! 体を描くか。写しの読む元を差していなければ真
-        [[nodiscard]] bool DrawsBody() const noexcept { return m_copySource == nullptr; }
-        //! 写しを描くか。読む元を差し、写しの列が空でなければ真
-        [[nodiscard]] bool DrawsCopies() const noexcept { return m_copySource != nullptr && !m_copies.empty(); }
+        //! 写しを描くか。写しの列が空でなければ真
+        [[nodiscard]] bool DrawsCopies() const noexcept { return !m_copies.empty(); }
         //! 写しの組の段と順と箱。DrawsCopies が真の時だけ呼ぶ。段は Transparent、中心は根の位置、優先度は CopyPriority
-        //! 箱は、読む元の体の箱と、写しごとの箱 (行列を控えた写しはその行列、ずれの写しはずれの分を広げた体の箱) を包む
+        //! 箱は、体の箱と、写しごとの箱 (行列を控えた写しはその行列、ずれの写しはずれの分を広げた体の箱) を包む
         //! @param[in] root 持ち主の根の今の固定フレームの世界行列
         [[nodiscard]] Gfx::RenderBounds CopiesBounds(const Matrix& root) const noexcept;
         //! 写しごとに半透明の DrawItem を積む。骨格の姿は写しの行列に合わせない。DrawsCopies が真の時だけ呼ぶ
@@ -217,8 +210,6 @@ namespace NS
         // 体の箱と copies の写しごとの箱を包む
         [[nodiscard]] AABB DrawsWorldBounds(const Matrix& root, std::span<const ModelDraw> copies) const noexcept;
 
-        // 写しの姿を読む元。差している間は体を描かない。非所有で、保存しない
-        const Model* m_copySource = nullptr;
         // 描く写しの列と優先度。写しを決めるアクターが毎ステップ書き直すので保存しない
         std::vector<ModelDraw> m_copies;
         int m_copyPriority = 0;

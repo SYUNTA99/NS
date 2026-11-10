@@ -239,6 +239,9 @@
     },
     "Sound": {},
     "StateMachine": {},
+    "TackleGhost": {
+      "描く順": -1
+    },
     "Transform": {
       "スケール": [
         1.0,

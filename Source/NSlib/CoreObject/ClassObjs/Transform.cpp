@@ -29,13 +29,6 @@ namespace NS
         m_scale.Snapshot();
     }
 
-    void Transform::CopyFrom(const Transform& source) noexcept
-    {
-        m_position = source.m_position;
-        m_rotation = source.m_rotation;
-        m_scale = source.m_scale;
-    }
-
     Matrix Transform::WorldMatrix() const noexcept { return InterpolatedWorldMatrix(1.0f); }
 
     Matrix Transform::InterpolatedWorldMatrix(float alpha) const noexcept

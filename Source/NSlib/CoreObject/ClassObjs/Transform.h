@@ -48,9 +48,6 @@ namespace NS
         //! 各個体の更新前に同じ固定フレームの値を控える
         void Snapshot() noexcept;
 
-        //! 現在と補間前の姿勢を一緒に写す。追従先と同じ軌道で補間される
-        void CopyFrom(const Transform& source) noexcept;
-
         [[nodiscard]] Matrix WorldMatrix() const noexcept;
         //! 個体の前後の姿勢を補間したシーン内の行列
         [[nodiscard]] Matrix InterpolatedWorldMatrix(float alpha) const noexcept;

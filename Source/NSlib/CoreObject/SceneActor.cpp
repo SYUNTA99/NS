@@ -128,20 +128,12 @@ namespace NS
     void SceneActor::Appear()
     {
         NS_ASSERT(Scene, !IsPendingDestroy(), "Destroy した個体を Appear で出そうとしている: {}", m_name);
-        if (m_parent != nullptr && !m_parent->IsAppeared())
-        {
-            return;
-        }
         if (m_presence != Presence::Disappeared)
         {
             return;
         }
         m_presence = Presence::Appeared;
         OnAppear();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Appear();
-        }
     }
 
     void SceneActor::Disappear() noexcept
@@ -152,20 +144,10 @@ namespace NS
         }
         m_presence = Presence::Disappeared;
         OnDisappear();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Disappear();
-        }
     }
 
     void SceneActor::Destroy() noexcept
     {
-        if (m_parent != nullptr)
-        {
-            NS_LOG_ERROR(
-                Scene, "子の {} は親と一緒に終わるので、単独では消さない。外すなら Disappear を使う", ClassName());
-            return;
-        }
         Disappear();
         m_presence = Presence::PendingDestroy;
     }
@@ -260,25 +242,6 @@ namespace NS
 
     SceneActor::~SceneActor() noexcept = default;
 
-    void SceneActor::InitChild(std::unique_ptr<SceneActor> child)
-    {
-        SceneActor* raw = child.get();
-        m_children.push_back(std::move(child));
-        raw->m_parent = this;
-        raw->m_scene = m_scene;
-        raw->InitWithCodeValues({});
-        // 親の OnInit の中で作った子は、親が自分の部品の後に入れる。描く順を親、子の順にする
-        if (m_drawPartsRegistered)
-        {
-            raw->RegisterDrawParts();
-        }
-        // 子はコンストラクタで出ているので、隠れている親の子は隠す
-        if (!IsAppeared())
-        {
-            raw->Disappear();
-        }
-    }
-
     void SceneActor::InitWithCodeValues(std::string_view actorFile)
     {
         m_actorFileName = ClassName();
@@ -291,7 +254,6 @@ namespace NS
 
     void SceneActor::RegisterDrawParts()
     {
-        m_drawPartsRegistered = true;
         // 出入りの切り替えと外す事は OnAppear・OnDisappear・OnEndPlay が行う。OnInit の中で隠した物は隠れた組で入れる
         if (SceneRenderer* renderer = GetSceneRenderer())
         {
@@ -315,10 +277,6 @@ namespace NS
                 renderer->RegisterWorldLines(m_worldLines.get());
                 renderer->SetWorldLinesEnabled(m_worldLines.get(), IsAppeared());
             }
-        }
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->RegisterDrawParts();
         }
     }
 
@@ -402,10 +360,6 @@ namespace NS
         {
             m_model->ChooseDrawnMaterial();
         }
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->ReloadAssets();
-        }
     }
 
     void SceneActor::OnAssetsLoaded()
@@ -436,10 +390,6 @@ namespace NS
         }
         m_started = true;
         OnStart();
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->Start();
-        }
     }
 
     void SceneActor::OnStart()
@@ -820,13 +770,6 @@ namespace NS
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            if (child->IsAppeared())
-            {
-                child->Update();
-            }
-        }
         VisualStep();
         if (m_hitStopFrames > 0)
         {
@@ -849,10 +792,6 @@ namespace NS
         if (m_model) { m_model->Snapshot(); }
         if (m_worldLines) { m_worldLines->Snapshot(); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->SnapshotForInterpolation();
-        }
     }
 
     void SceneActor::PrepareRender()
@@ -860,21 +799,10 @@ namespace NS
         // clang-format off
         if (m_animation) { m_animation->Update(m_model.get(), GetFrameDelta(this)); }
         // clang-format on
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            if (child->IsAppeared())
-            {
-                child->PrepareRender();
-            }
-        }
     }
 
     void SceneActor::OnEndPlay()
     {
-        for (const std::unique_ptr<SceneActor>& child : m_children)
-        {
-            child->OnEndPlay();
-        }
         // 描く物・センサー・当たりの body は消えても残っているので、出ていたかを問わずここで外す
         Disappear();
         if (OwningScene() == nullptr)
