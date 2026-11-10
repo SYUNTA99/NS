@@ -17,15 +17,14 @@ namespace NS
         LoadAssetField(m_material, "Assets/Materials/shadow.mat");
     }
 
-    Vector3 Shadow::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
-
-    AABB Shadow::WorldBounds(const RenderSource& source) const noexcept
+    Gfx::RenderBounds Shadow::Bounds(const Matrix& root) const noexcept
     {
-        const Vector3 origin = source.root.Translation();
+        const Vector3 origin = root.Translation();
         // 影は根の直下 [-maxDrop, 0] のどこかに baseDiameter 幅で落ちる。その可動域を全部覆う
         const Vector3 center{origin.x, origin.y - m_maxDrop * 0.5f, origin.z};
         const Vector3 extents{m_baseDiameter, m_maxDrop * 0.5f, m_baseDiameter};
-        return AABB{center, extents};
+        return Gfx::RenderBounds{
+            .bounds = AABB{center, extents}, .sortCenter = origin, .pass = Gfx::RenderPass::Transparent};
     }
 
     float Shadow::ComputeFade(float dist, float maxDist) noexcept
@@ -77,15 +76,13 @@ namespace NS
         return plane->world;
     }
 
-    void Shadow::Collect(const Gfx::RenderContext& context,
-                         const RenderSource& source,
-                         std::vector<Gfx::DrawItem>& out)
+    void Shadow::Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const
     {
         if (m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
         {
             return;
         }
-        const std::optional<Plane> plane = PlaneAt(source.root.Translation());
+        const std::optional<Plane> plane = PlaneAt(root.Translation());
         if (!plane.has_value())
         {
             return;

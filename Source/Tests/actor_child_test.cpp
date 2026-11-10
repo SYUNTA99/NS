@@ -20,9 +20,7 @@
 #include <utility>
 #include <vector>
 
-static_assert(!std::derived_from<NS::SceneActor, NS::IRenderable>);
 static_assert(std::derived_from<GL::Level::TackleGhost, NS::SceneActor>);
-static_assert(std::derived_from<GL::Level::TackleGhost, NS::IRenderable>);
 
 namespace
 {
@@ -480,23 +478,27 @@ TEST(ActorChild, PlayerOwnsATackleGhostThatDrawsItsMainModel)
     EXPECT_STREQ(player->Ghost()->ClassName(), "TackleGhost");
     EXPECT_EQ(player->Ghost()->ParentActor(), player);
     EXPECT_EQ(CountSelfAndDescendants(player), 2);
-    EXPECT_EQ(player->Ghost()->ModelClassObj(), nullptr);
+    // 残像は自分の Model に、姿を読む元として自機の Model を差す。自機の Model は写しを持たない
+    ASSERT_NE(player->Ghost()->ModelClassObj(), nullptr);
+    EXPECT_EQ(player->Ghost()->ModelClassObj()->CopySource(), player->ModelClassObj());
+    EXPECT_EQ(player->ModelClassObj()->CopySource(), nullptr);
+    EXPECT_TRUE(player->ModelClassObj()->Copies().empty());
     EXPECT_EQ(scene.Actors().ActorCount(), 1u);
     NS::SceneRenderer* renderer = player->GetSceneRenderer();
     ASSERT_NE(renderer, nullptr);
-    const std::size_t registered = renderer->RenderableCount();
+    const std::size_t registered = renderer->ModelCount();
     ASSERT_TRUE(player->Ghost()->SetSpread(NS::Vector3{0.3f, 0.0f, 0.0f}));
     ASSERT_TRUE(player->Ghost()->SetAfterimageOpacity(0.4f));
     player->Disappear();
     EXPECT_FALSE(player->Ghost()->IsAppeared());
-    EXPECT_EQ(renderer->RenderableCount(), registered);
+    EXPECT_EQ(renderer->ModelCount(), registered);
     player->Appear();
     EXPECT_TRUE(player->Ghost()->IsAppeared());
     EXPECT_FLOAT_EQ(player->Ghost()->Spread().x, 0.3f);
     EXPECT_FLOAT_EQ(player->Ghost()->AfterimageOpacity(), 0.4f);
     player->Destroy();
     scene.OnUpdate();
-    EXPECT_EQ(renderer->RenderableCount(), 0u);
+    EXPECT_EQ(renderer->ModelCount(), 0u);
 }
 
 TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
@@ -512,7 +514,8 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
     ASSERT_NE(parent, nullptr);
     GL::Level::TackleGhost* ghost = parent->Ghost();
     ASSERT_NE(ghost, nullptr);
-    EXPECT_EQ(ghost->ModelClassObj(), nullptr);
+    NS::Model* copies = ghost->ModelClassObj();
+    ASSERT_NE(copies, nullptr);
     parent->Root().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
     ASSERT_TRUE(ghost->SetSpread(NS::Vector3{1.0f, 0.0f, 0.0f}));
     ASSERT_TRUE(ghost->SetSideOpacity(0.5f));
@@ -523,39 +526,49 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
 
     NS::Gfx::RenderContext context{};
     context.sceneValues[0].w = 2.0f;
-    std::vector<NS::Gfx::DrawItem> copies;
-    ghost->Collect(context, NS::RenderSource{ghost->Root().WorldMatrix()}, copies);
-    ASSERT_EQ(copies.size(), 3u);
-    EXPECT_FLOAT_EQ(copies[0].constants.world._41, 5.0f);
-    EXPECT_FLOAT_EQ(copies[1].constants.world._41, 3.0f);
-    EXPECT_FLOAT_EQ(copies[2].constants.world._41, 0.0f);
-    EXPECT_FLOAT_EQ(copies[0].constants.opacity, 0.5f);
-    EXPECT_FLOAT_EQ(copies[1].constants.opacity, 0.5f);
-    EXPECT_FLOAT_EQ(copies[2].constants.opacity, 0.25f);
-    EXPECT_EQ(copies[0].blend, NS::Gfx::BlendMode::Alpha);
-    EXPECT_FLOAT_EQ(copies[0].constants.sceneValues[0].w, 0.0f);
+    std::vector<NS::Gfx::DrawItem> drawn;
+    copies->CollectCopies(context, ghost->Root().WorldMatrix(), drawn);
+    ASSERT_EQ(drawn.size(), 3u);
+    EXPECT_FLOAT_EQ(drawn[0].constants.world._41, 5.0f);
+    EXPECT_FLOAT_EQ(drawn[1].constants.world._41, 3.0f);
+    EXPECT_FLOAT_EQ(drawn[2].constants.world._41, 0.0f);
+    EXPECT_FLOAT_EQ(drawn[0].constants.opacity, 0.5f);
+    EXPECT_FLOAT_EQ(drawn[1].constants.opacity, 0.5f);
+    EXPECT_FLOAT_EQ(drawn[2].constants.opacity, 0.25f);
+    EXPECT_EQ(drawn[0].blend, NS::Gfx::BlendMode::Alpha);
+    EXPECT_FLOAT_EQ(drawn[0].constants.sceneValues[0].w, 0.0f);
     std::vector<NS::Gfx::DrawItem> body;
-    parent->ModelClassObj()->Collect(context, NS::RenderSource{parent->Root().WorldMatrix()}, body);
+    parent->ModelClassObj()->Collect(context, parent->Root().WorldMatrix(), body);
     ASSERT_EQ(body.size(), 1u);
-    EXPECT_EQ(copies[0].mesh, body[0].mesh);
-    EXPECT_EQ(copies[2].material, body[0].material);
+    EXPECT_EQ(drawn[0].mesh, body[0].mesh);
+    EXPECT_EQ(drawn[2].material, body[0].material);
     EXPECT_FLOAT_EQ(body[0].constants.opacity, 1.0f);
     EXPECT_FLOAT_EQ(body[0].constants.sceneValues[0].w, 2.0f);
-    EXPECT_EQ(ghost->SortPriority(), -1);
+    EXPECT_EQ(copies->CopyPriority(), -1);
+    EXPECT_TRUE(parent->ModelClassObj()->Copies().empty());
+
+    // 左右の写しは描く時に補間した根から作るので、割合 0.5 では前と今の根の真ん中に描く。明けの写しは控えた所に残る
+    parent->Root().Snapshot();
+    parent->Root().SetPosition(NS::Vector3{8.0f, 0.0f, 0.0f});
+    parent->PrepareRender();
+    context.alpha = 0.5f;
+    drawn.clear();
+    copies->CollectCopies(context, ghost->Root().InterpolatedWorldMatrix(0.5f), drawn);
+    ASSERT_EQ(drawn.size(), 3u);
+    EXPECT_FLOAT_EQ(drawn[0].constants.world._41, 7.0f);
+    EXPECT_FLOAT_EQ(drawn[1].constants.world._41, 5.0f);
+    EXPECT_FLOAT_EQ(drawn[2].constants.world._41, 0.0f);
 
     NS::SceneRenderer* renderer = parent->GetSceneRenderer();
-    const std::size_t registered = renderer->RenderableCount();
-    const std::size_t enabled = renderer->EnabledRenderableCount();
+    const std::size_t registered = renderer->ModelCount();
+    const std::size_t enabled = renderer->EnabledModelCount();
     ghost->Disappear();
-    EXPECT_EQ(renderer->EnabledRenderableCount(), enabled - 1u);
+    EXPECT_EQ(renderer->EnabledModelCount(), enabled - 1u);
     EXPECT_TRUE(parent->IsAppeared());
     ghost->Appear();
-    EXPECT_EQ(renderer->EnabledRenderableCount(), enabled);
+    EXPECT_EQ(renderer->EnabledModelCount(), enabled);
     ghost->OnEndPlay();
-    copies.clear();
-    ghost->Collect(context, NS::RenderSource{ghost->Root().WorldMatrix()}, copies);
-    EXPECT_TRUE(copies.empty());
-    EXPECT_EQ(renderer->RenderableCount(), registered - 1u);
+    EXPECT_EQ(renderer->ModelCount(), registered - 1u);
 }
 
 TEST(ActorChild, ReloadsTheChildAssetsAfterTheParent)

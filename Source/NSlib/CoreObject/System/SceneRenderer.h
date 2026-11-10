@@ -2,12 +2,12 @@
 
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
+#include "NSlib/Gfx/Render/DrawItem.h"
 #include "NSlib/Gfx/Render/RenderContext.h"
-#include "NSlib/Gfx/Render/RenderProxyList.h"
 #include "NSlib/Gfx/Render/RenderSettings.h"
 #include "NSlib/Gfx/Render/ScreenFade.h"
 
@@ -61,9 +61,9 @@ namespace NS
 {
     class SceneCamera;
     class DirectionalLight;
-    class IRenderable;
     class IOverlay;
     class Model;
+    class Shadow;
     class Transform;
     class UIDirector;
 
@@ -117,23 +117,31 @@ namespace NS
         //! 描く時に使う歪みの輪
         [[nodiscard]] const Gfx::DistortionRing& DistortionRingShown() const noexcept { return m_distortionRing; }
 
-        //! 体の型に写す描く物を差し替える。空なら型を描かない
-        //! 型に写すのは登録の組が有効な物だけ。登録を外した描く物は、ここからも外す
-        //! @param[in] renderables 型に写す描く物、非所有
-        void SetBodyMask(std::vector<IRenderable*> renderables) noexcept { m_bodyMask = std::move(renderables); }
+        //! 体の型に写す Model を差し替える。空なら型を描かない
+        //! 型に写すのは登録の組が有効な Model の体だけ。登録を外した Model は、ここからも外す
+        //! @param[in] models 型に写す Model、非所有
+        void SetBodyMask(std::vector<const Model*> models) noexcept { m_bodyMask = std::move(models); }
         //! ビュー列の index 番目に、今のフレームで描いた体の型を返す
         //! @return 1 色 8 ビットの型。未描画なら空
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
-        //! 描く物を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
-        //! 呼ぶのは補助関数 InitDraw だけ。renderable と root は外すまで生きていること
-        void RegisterRenderable(IRenderable* renderable, const Transform* root);
-        //! 描く物の組を外す。入れていない物は何もしない
-        void UnregisterRenderable(const IRenderable* renderable) noexcept;
-        // 組の有効と無効を書く関数は、この 3 つと CameraManager::SetVirtualCameraEnabled で 4 つある。
+        //! Model を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは補助関数 InitDraw だけ。model と root は外すまで生きていること
+        void RegisterModel(Model* model, const Transform* root);
+        //! Model の組を外す。入れていない物は何もしない
+        void UnregisterModel(const Model* model) noexcept;
+        // 組の有効と無効を書く関数は、この 4 つと CameraManager::SetVirtualCameraEnabled で 5 つある。
         // 組の型と、無効の時に止める物が組ごとに違うので、1 つの関数にしない
-        //! 描く物の組の有効と無効を書く。無効の組は描かず、境界も写さない。入れていない物は何もしない
-        void SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept;
+        //! Model の組の有効と無効を書く。無効の組は描かず、箱も読まない。入れていない物は何もしない
+        void SetModelEnabled(const Model* model, bool enabled) noexcept;
+
+        //! Shadow を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
+        //! 呼ぶのは補助関数 InitDraw だけ。shadow と root は外すまで生きていること
+        void RegisterShadow(Shadow* shadow, const Transform* root);
+        //! Shadow の組を外す。入れていない物は何もしない
+        void UnregisterShadow(const Shadow* shadow) noexcept;
+        //! Shadow の組の有効と無効を書く。無効の組は描かず、箱も読まない。入れていない物は何もしない
+        void SetShadowEnabled(const Shadow* shadow, bool enabled) noexcept;
 
         //! 重ね描きを入れる。組は有効で入る。二重登録は無視する
         //! 呼ぶのは補助関数 InitOverlay だけ。並びは OverlayOrder 昇順に保たれ、同値なら後から入れた方が後ろになる
@@ -152,20 +160,22 @@ namespace NS
         void SetLightEnabled(const DirectionalLight* light, bool enabled) noexcept;
 
         //! 登録簿に入っている数。無効の組も数える
-        [[nodiscard]] std::size_t RenderableCount() const noexcept { return m_renderables.size(); }
+        [[nodiscard]] std::size_t ModelCount() const noexcept { return m_models.size(); }
+        [[nodiscard]] std::size_t ShadowCount() const noexcept { return m_shadows.size(); }
         [[nodiscard]] std::size_t OverlayCount() const noexcept { return m_overlays.size(); }
         [[nodiscard]] std::size_t LightCount() const noexcept { return m_lights.size(); }
 
         //! 登録簿のうち有効な組の数
-        [[nodiscard]] std::size_t EnabledRenderableCount() const noexcept;
+        [[nodiscard]] std::size_t EnabledModelCount() const noexcept;
+        [[nodiscard]] std::size_t EnabledShadowCount() const noexcept;
         [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept;
         [[nodiscard]] std::size_t EnabledLightCount() const noexcept;
 
-        //! 登録中の描く物。登録順、非所有
-        [[nodiscard]] std::vector<IRenderable*> Renderables() const;
-
-        //! 有効な組の bounds とソート情報を RenderProxyList へ同期する。描画の入口で呼ぶ
-        void SyncRenderBounds();
+        //! pass の段で描く DrawItem を、描く順に out へ積む。out は空にせず後ろへ足す
+        //! 有効な組だけを、今の固定フレームの根で箱を読んで視錐台で絞る。Model の体と写しと Shadow を 1 つの列にする
+        //! Transparent の段は、中心が context.cameraPosition から遠い順、同じなら優先度の小さい順、それも同じなら登録の順
+        //! ほかの段は登録の順。DrawItem の行列は context.alpha で補間した根から作る
+        void CollectPass(const Gfx::RenderContext& context, Gfx::RenderPass pass, std::vector<Gfx::DrawItem>& out);
 
         //! ビューを順に描く。未指定なら現在の描画先、装置なしなら描画しない
         //! カメラの姿勢は呼ぶ前に確定する。alpha は固定更新間の割合 0〜1
@@ -176,12 +186,11 @@ namespace NS
                     std::string_view skyboxPath,
                     float alpha);
 
-        //! Opaque バケットを視錐台で絞り、並べ替えずに描画する
+        //! Opaque の段を CollectPass の順に描く
         void DrawOpaque(const Gfx::RenderContext& context);
-        //! AfterSky バケットを、画面の深度のコピーと空のキューブマップを結んだ間だけ描画する
+        //! AfterSky の段を、画面の深度のコピーと空のキューブマップを結んだ間だけ描く。描く物が無ければ深度を写さない
         void DrawAfterSky(const Gfx::RenderContext& context);
-        //! Transparent バケットを視錐台で絞り、context.cameraPosition から遠い順に描画する
-        //! 距離が同じなら SortPriority 昇順
+        //! Transparent の段を CollectPass の順に描く
         void DrawTransparent(const Gfx::RenderContext& context);
         //! 有効な組の重ね描きを OverlayOrder 昇順で描画し、その上へ ui の画面を DrawOrder 昇順で描く
         //! 最後にシーン全体の暗転 fade を重ねる
@@ -226,23 +235,41 @@ namespace NS
         //! 体の型に写す描く物を、世界の深度で隠して型へ描く。写す物が無ければ型を描かない
         void DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen);
 
-        //! 描く物と、描く時に渡す持ち主の根、RenderProxyList の登録ハンドルの組。指す物は全部非所有
-        struct RenderEntry
+        //! 描く部品と、描く時に渡す持ち主の根の組。指す物は全部非所有
+        template <typename Part>
+        struct DrawEntry
         {
-            IRenderable* renderable = nullptr;
+            Part* part = nullptr;
             const Transform* root = nullptr;
-            Gfx::RenderHandle handle{};
+            uint64 order = 0;    // 型をまたいだ登録の通し番号。半透明の段で同じ距離と優先度の物をこの順に描く
             bool enabled = true; // 持ち主が出ているか。正はこの値だけ
         };
-        // 組の番地を RenderProxyList が持って描く時に返すので、組は並びが動いても動かない所に置く。登録順
-        std::vector<std::unique_ptr<RenderEntry>> m_renderables;
+        std::vector<DrawEntry<Model>> m_models;   // 登録順
+        std::vector<DrawEntry<Shadow>> m_shadows; // 登録順
+        uint64 m_nextOrder = 0;                   // 次に入れる組の通し番号
 
-        //! renderable の組。入れていなければ nullptr
-        [[nodiscard]] RenderEntry* FindEntry(const IRenderable* renderable) const noexcept;
-        //! RenderProxyList の proxy を組の IRenderable::Collect へつなぐ。entry は登録した組で、無効なら何も積まない
-        static void CollectEntry(void* entry, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out);
-        //! 組の今の固定フレームの姿
-        [[nodiscard]] static RenderSource CurrentSource(const RenderEntry& entry) noexcept;
+        //! 視錐台を通った描く物 1 つ。どの一覧の何番目の何を描くかと、並べる値
+        struct VisibleDraw
+        {
+            enum class Kind : uint8
+            {
+                ModelBody,
+                ModelCopies,
+                Shadow,
+            };
+            Kind kind = Kind::ModelBody;
+            std::size_t index = 0; // Kind の一覧の番号
+            Vector3 sortCenter{};
+            int sortPriority = 0;
+            uint64 order = 0;
+        };
+        std::vector<VisibleDraw> m_visibleScratch; // CollectPass が使う作業用の並び
+        std::vector<Gfx::DrawItem> m_drawScratch;  // DrawOpaque などが積んで発行する作業用の並び
+
+        //! pass の段の有効な組のうち視錐台を通った物を m_visibleScratch に、CollectPass の順に並べる
+        void GatherVisible(const Gfx::RenderContext& context, Gfx::RenderPass pass);
+        //! m_drawScratch を順に context.device へ発行する。装置が無ければ何もしない
+        void IssueDrawScratch(const Gfx::RenderContext& context);
 
         //! 重ね描きの組。指す物は非所有
         struct OverlayEntry
@@ -260,8 +287,6 @@ namespace NS
             bool enabled = true; // 持ち主が出ているか。正はこの値だけ
         };
         std::vector<LightEntry> m_lights; // 入れた順
-
-        Gfx::RenderProxyList m_renderScene;
 
         bool m_warnedZeroLightDirection = false; // 平行光の向きが 0 の警告を出したか
         Gfx::D3DDevice* m_device = nullptr; // 装置、非所有。未設定なら描かない
@@ -287,7 +312,7 @@ namespace NS
 
         std::array<Vector4, 2> m_sceneValues{};     // 描く名前の無いシーンの値。SetSceneValue で書いた値
         Gfx::DistortionRing m_distortionRing{};     // 描く歪みの輪。SetDistortionRing で書いた値
-        std::vector<IRenderable*> m_bodyMask;           // 体の型に写す描く物、非所有
+        std::vector<const Model*> m_bodyMask;       // 体の型に写す Model、非所有
         std::vector<Gfx::DrawItem> m_bodyMaskItems; // 体の型に描く物。描くたびに組み直す
     };
 } // namespace NS

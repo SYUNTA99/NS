@@ -30,7 +30,7 @@ struct Registrations
 
 inline Registrations CountRegistrations(NS::Scene& scene)
 {
-    return Registrations{scene.GetSceneRenderer()->RenderableCount(),
+    return Registrations{scene.GetSceneRenderer()->ModelCount() + scene.GetSceneRenderer()->ShadowCount(),
                          scene.GetSceneRenderer()->OverlayCount(),
                          scene.GetSceneRenderer()->LightCount(),
                          scene.GetCameraManager()->VirtualCameraCount(),

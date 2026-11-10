@@ -4,9 +4,9 @@ namespace NS
 {
     class DirectionalLight;
     class IOverlay;
-    class IRenderable;
     class Model;
     class SceneRenderer;
+    class Shadow;
     class Transform;
 
     //! 所属シーンの描く物の管理クラスを取得するインターフェース
@@ -24,16 +24,20 @@ namespace NS
     // アクターが終わる時 (OnEndPlay) に EndDraw で外す。出る・消える時は ShowModel・HideModel で切り替え、
     // 入れたままにするので描く順は変わらない。管理クラスが無ければ (シーンに居ないアクター) どれも何もしない
 
-    //! 描く物 renderable を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
-    //! renderable と root は EndDraw まで生きていること
-    void InitDraw(const IGetRenderer* user, IRenderable* renderable, const Transform* root);
+    //! 描く部品 model・shadow を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
+    //! 部品と root は EndDraw まで生きていること
+    void InitDraw(const IGetRenderer* user, Model* model, const Transform* root);
+    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root);
 
-    //! 入れた描く物を描き始める。入れていない物は何もしない
-    void ShowModel(const IGetRenderer* user, const IRenderable* renderable) noexcept;
-    //! 入れた描く物を、入れたまま描かない。入れていない物は何もしない
-    void HideModel(const IGetRenderer* user, const IRenderable* renderable) noexcept;
-    //! 描く物を管理クラスから外す。入れていない物は何もしないので、2 回呼んでもよい
-    void EndDraw(const IGetRenderer* user, const IRenderable* renderable) noexcept;
+    //! 入れた描く部品を描き始める。入れていない物は何もしない
+    void ShowModel(const IGetRenderer* user, const Model* model) noexcept;
+    void ShowModel(const IGetRenderer* user, const Shadow* shadow) noexcept;
+    //! 入れた描く部品を、入れたまま描かない。入れていない物は何もしない
+    void HideModel(const IGetRenderer* user, const Model* model) noexcept;
+    void HideModel(const IGetRenderer* user, const Shadow* shadow) noexcept;
+    //! 描く部品を管理クラスから外す。入れていない物は何もしないので、2 回呼んでもよい
+    void EndDraw(const IGetRenderer* user, const Model* model) noexcept;
+    void EndDraw(const IGetRenderer* user, const Shadow* shadow) noexcept;
 
     // 重ね描きと平行光も描く物と同じく、OnInit で入れて OnEndPlay で外し、出る・消える時は入れたまま切り替える
 

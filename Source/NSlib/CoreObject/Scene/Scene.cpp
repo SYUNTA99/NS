@@ -492,9 +492,6 @@ namespace NS
 
     void Scene::OnRender()
     {
-        // 更新は終わっているので bounds は 1 フレームに 1 回で足りる。ビューを何枚描いても同じ値
-        m_sceneRenderer.SyncRenderBounds();
-
         // 世界が実時間で進まない間は、前の固定フレームからの経過の割合に意味が無い
         // 描く度に割合が変わると、同じフレームの絵が揺れる
         const float alpha = RenderAlpha(OS::FrameTimer::Alpha());

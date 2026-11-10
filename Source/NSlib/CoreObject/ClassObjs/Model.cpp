@@ -209,16 +209,37 @@ namespace NS
         return scaled;
     }
 
-    void Model::Collect(const Gfx::RenderContext& context,
-                        const RenderSource& source,
-                        std::vector<Gfx::DrawItem>& out)
+    void Model::Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const
     {
         if (!CanDraw(m_drawnMaterial))
         {
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(source.root, context.alpha)));
+        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(root, context.alpha)));
+    }
+
+    void Model::SetCopies(std::span<const ModelDraw> copies, int priority)
+    {
+        m_copies.assign(copies.begin(), copies.end());
+        m_copyPriority = priority;
+    }
+
+    Gfx::RenderBounds Model::CopiesBounds(const Matrix& root) const noexcept
+    {
+        NS_ASSERT(Graphics, DrawsCopies(), "Model::CopiesBounds: 写しを描かない Model で呼んでいる");
+        return Gfx::RenderBounds{.bounds = m_copySource->DrawsWorldBounds(root, m_copies),
+                                 .sortCenter = root.Translation(),
+                                 .sortPriority = m_copyPriority,
+                                 .pass = Gfx::RenderPass::Transparent};
+    }
+
+    void Model::CollectCopies(const Gfx::RenderContext& context,
+                              const Matrix& root,
+                              std::vector<Gfx::DrawItem>& out) const
+    {
+        NS_ASSERT(Graphics, DrawsCopies(), "Model::CollectCopies: 写しを描かない Model で呼んでいる");
+        m_copySource->CollectDraws(context, root, m_copies, out);
     }
 
     Color Model::DrawColor() const noexcept
@@ -231,15 +252,15 @@ namespace NS
     }
 
     void Model::CollectDraws(const Gfx::RenderContext& context,
-                             const RenderSource& source,
-                             std::span<const ModelDraw> draws,
+                             const Matrix& root,
+                             std::span<const ModelDraw> copies,
                              std::vector<Gfx::DrawItem>& out) const
     {
         if (!CanDraw())
         {
             return;
         }
-        for (const ModelDraw& draw : draws)
+        for (const ModelDraw& draw : copies)
         {
             Matrix world = Matrix::Identity;
             if (draw.world.has_value())
@@ -248,11 +269,11 @@ namespace NS
             }
             else if (draw.offset.has_value())
             {
-                world = DrawWorldMatrixWithOffset(source.root, context.alpha, *draw.offset);
+                world = DrawWorldMatrixWithOffset(root, context.alpha, *draw.offset);
             }
             else
             {
-                world = DrawWorldMatrix(source.root, context.alpha);
+                world = DrawWorldMatrix(root, context.alpha);
             }
             Gfx::DrawItem item = MakeDrawItem(context, world);
             item.blend = Gfx::BlendMode::Alpha;
@@ -269,11 +290,11 @@ namespace NS
         }
     }
 
-    AABB Model::DrawsWorldBounds(const RenderSource& source, std::span<const ModelDraw> draws) const noexcept
+    AABB Model::DrawsWorldBounds(const Matrix& root, std::span<const ModelDraw> copies) const noexcept
     {
-        const AABB base = WorldBounds(source);
+        const AABB base = WorldBounds(root);
         AABB out = base;
-        for (const ModelDraw& draw : draws)
+        for (const ModelDraw& draw : copies)
         {
             AABB bounds = base;
             if (draw.world.has_value())
@@ -343,33 +364,26 @@ namespace NS
         return item;
     }
 
-    Gfx::RenderPass Model::Bucket() const noexcept
+    Gfx::RenderBounds Model::Bounds(const Matrix& root) const noexcept
     {
+        Gfx::RenderBounds out{.bounds = WorldBounds(root), .sortCenter = root.Translation()};
+        const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
+        if (material != nullptr)
+        {
+            out.sortPriority = material->RenderPriority();
+        }
         if (m_drawsAfterSky)
         {
-            return Gfx::RenderPass::AfterSky;
+            out.pass = Gfx::RenderPass::AfterSky;
         }
-        const Gfx::D3DMaterial* material = m_drawnMaterial->D3D();
-        if (material == nullptr || material->Blend() == Gfx::BlendMode::Opaque)
+        else if (material != nullptr && material->Blend() != Gfx::BlendMode::Opaque)
         {
-            return Gfx::RenderPass::Opaque;
+            out.pass = Gfx::RenderPass::Transparent;
         }
-
-        return Gfx::RenderPass::Transparent;
+        return out;
     }
 
-    Vector3 Model::SortCenter(const RenderSource& source) const noexcept { return source.root.Translation(); }
-
-    int Model::SortPriority() const noexcept
-    {
-        if (const Gfx::D3DMaterial* material = m_drawnMaterial->D3D())
-        {
-            return material->RenderPriority();
-        }
-        return 0;
-    }
-
-    AABB Model::WorldBounds(const RenderSource& source) const noexcept
+    AABB Model::WorldBounds(const Matrix& root) const noexcept
     {
         if (m_neverCulled)
         {
@@ -383,7 +397,7 @@ namespace NS
         }
         AABB out{};
         // m_mesh は確認済みで、描画の境界を取得できる
-        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, source.root));
+        DrawnLocalBounds()->Transform(out, WithLocalScale(m_localScale, root));
 
         // 描く時は前と今の倍率の間を補間するので、成分ごとの大きい方で包む。下端はそのまま
         const Vector3 scale = Vector3::Max(m_shownDrawScale.Previous(), GetDrawScale());

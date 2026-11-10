@@ -76,10 +76,10 @@ namespace
 TEST(ActorLifecycle, StartRegistersEachPartOnce)
 {
     NS::Scene scene;
-    const std::size_t renderables = scene.GetSceneRenderer()->RenderableCount();
+    const std::size_t renderables = scene.GetSceneRenderer()->ModelCount();
     (void)scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
-    EXPECT_EQ(scene.GetSceneRenderer()->RenderableCount(), renderables + 1);
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables + 1);
+    EXPECT_EQ(scene.GetSceneRenderer()->ModelCount(), renderables + 1);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables + 1);
     EXPECT_EQ(scene.HitSensors().Sensors().size(), 1u);
     EXPECT_EQ(EnabledSensorCount(scene), 1u);
 }
@@ -156,7 +156,7 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     other->Root().SetPosition({10.0f, 0.0f, 0.0f});
     otherGoal->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
-    const std::size_t renderables = scene.GetSceneRenderer()->EnabledRenderableCount();
+    const std::size_t renderables = scene.GetSceneRenderer()->EnabledModelCount();
     const std::size_t sensors = EnabledSensorCount(scene);
     const NS::uint bodies = scene.Physics().BodyCount();
     const NS::uint attached = scene.Physics().AttachedBodyCount();
@@ -165,7 +165,7 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     actorGoal->Disappear();
     EXPECT_TRUE(other->IsAppeared());
     EXPECT_TRUE(otherGoal->IsAppeared());
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables - 2);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables - 2);
     EXPECT_EQ(EnabledSensorCount(scene), sensors - 1);
     // 当たりの body は物理シーンの外へ出るだけで壊れない
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached - 1);
@@ -176,13 +176,14 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
 
     actor->Appear();
     actorGoal->Appear();
-    EXPECT_EQ(scene.GetSceneRenderer()->EnabledRenderableCount(), renderables);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), renderables);
     EXPECT_EQ(EnabledSensorCount(scene), sensors);
     EXPECT_EQ(scene.Physics().AttachedBodyCount(), attached);
     EXPECT_EQ(scene.Physics().BodyCount(), bodies);
 }
 
-// 一方を消してから出し直しても、描く物とセンサーの並びは前と同じ順のまま
+// 一方を消してから出し直しても、センサーの並びは前と同じ順のまま
+// 描く物は出ているかを組の値で持ち、並びを動かさない。同じ距離の物を登録の順に描く事は scene_renderer_order_test が確かめる
 TEST(ActorLifecycle, AppearAgainKeepsRegistrationOrder)
 {
     NS::Scene scene;
@@ -190,13 +191,11 @@ TEST(ActorLifecycle, AppearAgainKeepsRegistrationOrder)
     GL::Level::GoalActor* second = scene.SpawnActor<GL::Level::GoalActor>("GoalActor");
     second->Root().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
-    const std::vector<NS::IRenderable*> renderables = scene.GetSceneRenderer()->Renderables();
     const std::vector<NS::HitSensor*> sensors = scene.HitSensors().Sensors();
     ASSERT_GE(sensors.size(), 2u);
 
     first->Disappear();
     first->Appear();
-    EXPECT_EQ(scene.GetSceneRenderer()->Renderables(), renderables);
     EXPECT_EQ(scene.HitSensors().Sensors(), sensors);
 }
 

@@ -4,11 +4,11 @@
 #include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
+#include "NSlib/Gfx/Render/RenderBounds.h"
 
 #include <array>
 #include <optional>
@@ -34,7 +34,8 @@ namespace NS
     namespace Gfx
     {
         class D3DBuffer;
-    }
+        struct RenderContext;
+    } // namespace Gfx
 } // namespace NS
 
 namespace NS
@@ -45,7 +46,8 @@ namespace NS
     //! メッシュとマテリアルを描画する部品
     //! 描画用の姿勢変更は根の Transform と衝突形状に影響せず、保存されない。
     //! 根の行列は覚えず、描く物の管理クラスと持ち主のアクターが渡す
-    class Model : public Object, public IRenderable
+    //! 姿を読む元の Model を差した Model は自分の体を描かず、元の Model の写しだけを描く
+    class Model : public Object
     {
     public:
         //! メッシュとマテリアルの欄は、作る時に既定の名前の素材を AssetManager::Get() から引く
@@ -151,39 +153,45 @@ namespace NS
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
-        //! 指定ごとに半透明の描画を積む。メッシュ・マテリアル・骨格の定数は共有する
-        //! worldを指定しても骨格の姿勢は固定しない。描けないModelでは何も積まない
-        void CollectDraws(const Gfx::RenderContext& context,
-                          const RenderSource& source,
-                          std::span<const ModelDraw> draws,
-                          std::vector<Gfx::DrawItem>& out) const;
-        //! 固定した世界行列も含めて、全ての描画指定を包む
-        [[nodiscard]] AABB DrawsWorldBounds(const RenderSource& source,
-                                            std::span<const ModelDraw> draws) const noexcept;
+        //! 体を描く段と順と箱。root は持ち主の根の今の固定フレームの世界行列
+        //! 段は、SetDrawsAfterSky の後は AfterSky、他は描くマテリアルの混ぜ方が不透明なら Opaque、それ以外は Transparent
+        //! 中心は根の位置、優先度は描くマテリアルの renderPriority
+        //! 箱は、SetNeverCulled の後は原点を中心に全域を覆い、他は描く形の局所の境界を根で包む。
+        //! 描く倍率は前と今の大きい方で包み、描く時だけのずれを足す。描くメッシュが無ければ空の箱
+        [[nodiscard]] Gfx::RenderBounds Bounds(const Matrix& root) const noexcept;
+        //! DrawWorldMatrix(root, context.alpha) の体の DrawItem を out に積む。描けなければ何も積まない
+        //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
+        void Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
 
-        //! DrawWorldMatrix(source.root, context.alpha) を詰めた DrawItem を out に積む
-        void Collect(const Gfx::RenderContext& context,
-                     const RenderSource& source,
-                     std::vector<Gfx::DrawItem>& out) override;
+        //! 写しの姿を読む元の Model を差す。差している間は自分の体を描かない。nullptr で外す
+        //! source は差している間生きていること
+        void SetCopySource(const Model* source) noexcept { m_copySource = source; }
+        //! 写しの姿を読む元の Model。差していなければ nullptr
+        [[nodiscard]] const Model* CopySource() const noexcept { return m_copySource; }
+        //! 描く写しの列と、半透明の段で中心の距離が同じ時の優先度を書く。前の列は捨てる
+        //! 写しは読む元の Model のメッシュ・マテリアル・骨格の定数・姿で、半透明で描く
+        void SetCopies(std::span<const ModelDraw> copies, int priority);
+        //! SetCopies で書いた写しの列。書かれていなければ空
+        [[nodiscard]] std::span<const ModelDraw> Copies() const noexcept { return m_copies; }
+        //! SetCopies で書いた優先度。書かれていなければ 0
+        [[nodiscard]] int CopyPriority() const noexcept { return m_copyPriority; }
+        //! 体を描くか。写しの読む元を差していなければ真
+        [[nodiscard]] bool DrawsBody() const noexcept { return m_copySource == nullptr; }
+        //! 写しを描くか。読む元を差し、写しの列が空でなければ真
+        [[nodiscard]] bool DrawsCopies() const noexcept { return m_copySource != nullptr && !m_copies.empty(); }
+        //! 写しの組の段と順と箱。DrawsCopies が真の時だけ呼ぶ。段は Transparent、中心は根の位置、優先度は CopyPriority
+        //! 箱は、読む元の体の箱と、写しごとの箱 (行列を控えた写しはその行列、ずれの写しはずれの分を広げた体の箱) を包む
+        //! @param[in] root 持ち主の根の今の固定フレームの世界行列
+        [[nodiscard]] Gfx::RenderBounds CopiesBounds(const Matrix& root) const noexcept;
+        //! 写しごとに半透明の DrawItem を積む。骨格の姿は写しの行列に合わせない。DrawsCopies が真の時だけ呼ぶ
+        //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
+        void CollectCopies(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
 
         //! 空の後の段で描く。画面の深度と空のキューブマップを読むシェーダーの物が呼ぶ
         void SetDrawsAfterSky() noexcept { m_drawsAfterSky = true; }
 
         //! 視錐台で間引かない。頂点シェーダーがメッシュの範囲の外へ動かす物が呼ぶ
         void SetNeverCulled() noexcept { m_neverCulled = true; }
-
-        //! SetDrawsAfterSky の後は AfterSky。他は D3DMaterial の BlendMode から段を返し、
-        //! Opaque 以外は Transparent。D3DMaterial 不在は Opaque
-        [[nodiscard]] Gfx::RenderPass Bucket() const noexcept override;
-        //! 根の世界行列の平行移動成分で半透明ソート用の中心
-        [[nodiscard]] Vector3 SortCenter(const RenderSource& source) const noexcept override;
-        //! D3DMaterial の renderPriority で距離同値時のタイブレークに使う
-        [[nodiscard]] int SortPriority() const noexcept override;
-
-        //! SetNeverCulled の後は根もメッシュも見ず、原点を中心に全域を覆う箱を返す
-        //! 他は上書き境界を優先し、メッシュの境界を根の世界行列で包む
-        //! 描画倍率は前後の大きい方で包み、描画用のずれを加える。描くメッシュがなければ原点の半幅 1
-        [[nodiscard]] AABB WorldBounds(const RenderSource& source) const noexcept override;
 
         //! 固定更新の先頭で補間用の姿勢を控える。時間停止中も前後の値を揃える
         void Snapshot() noexcept;
@@ -201,6 +209,21 @@ namespace NS
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
                                                      const Material* material,
                                                      const Matrix& world) const noexcept;
+        // 体の箱。Bounds の箱の決まりで作る
+        [[nodiscard]] AABB WorldBounds(const Matrix& root) const noexcept;
+        // copies の写しごとに、この Model の姿で半透明の DrawItem を積む。描けなければ何も積まない
+        void CollectDraws(const Gfx::RenderContext& context,
+                          const Matrix& root,
+                          std::span<const ModelDraw> copies,
+                          std::vector<Gfx::DrawItem>& out) const;
+        // 体の箱と copies の写しごとの箱を包む
+        [[nodiscard]] AABB DrawsWorldBounds(const Matrix& root, std::span<const ModelDraw> copies) const noexcept;
+
+        // 写しの姿を読む元。差している間は体を描かない。非所有で、保存しない
+        const Model* m_copySource = nullptr;
+        // 描く写しの列と優先度。写しを決めるアクターが毎ステップ書き直すので保存しない
+        std::vector<ModelDraw> m_copies;
+        int m_copyPriority = 0;
 
         // 素材は AssetManager が持つ。欄は nullptr にならない
         Mesh* m_mesh = nullptr;              // 描くメッシュ

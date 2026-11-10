@@ -32,7 +32,7 @@ namespace
         // 世界を止めた 1 歩で当たりを今の姿へ揃えてから数える
         scene.SetSimulationEnabled(false);
         scene.OnUpdate();
-        return EnabledRegistrations{scene.GetSceneRenderer()->EnabledRenderableCount(),
+        return EnabledRegistrations{scene.GetSceneRenderer()->EnabledModelCount() + scene.GetSceneRenderer()->EnabledShadowCount(),
                              scene.GetSceneRenderer()->EnabledOverlayCount(),
                              scene.GetSceneRenderer()->EnabledLightCount(),
                              scene.GetCameraManager()->EnabledVirtualCameraCount(),

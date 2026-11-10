@@ -6,7 +6,9 @@
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/OverlayRenderer.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IRenderable.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
+#include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/Core/Frustum.h"
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/CoreObject/System/UIDirector.h"
 #include "NSlib/CoreObject/UIActor.h"
@@ -80,99 +82,95 @@ namespace NS
         m_effects->Update(OS::FrameTimer::FixedDelta());
     }
 
-    SceneRenderer::RenderEntry* SceneRenderer::FindEntry(const IRenderable* renderable) const noexcept
+    namespace
     {
-        NS_ASSERT(Scene, renderable != nullptr, "FindEntry: 描く物が null");
-        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
+        // part の組の番号。入れていなければ組の数
+        template <typename Entries, typename Part>
+        [[nodiscard]] std::size_t FindDrawEntry(const Entries& entries, const Part* part) noexcept
         {
-            if (entry->renderable == renderable)
+            for (std::size_t i = 0; i < entries.size(); ++i)
             {
-                return entry.get();
+                if (entries[i].part == part)
+                {
+                    return i;
+                }
+            }
+            return entries.size();
+        }
+
+        template <typename Entries, typename Part>
+        void SetDrawEntryEnabled(Entries& entries, const Part* part, bool enabled) noexcept
+        {
+            const std::size_t index = FindDrawEntry(entries, part);
+            if (index < entries.size())
+            {
+                entries[index].enabled = enabled;
             }
         }
-        return nullptr;
-    }
 
-    void SceneRenderer::CollectEntry(void* entry, const Gfx::RenderContext& context, std::vector<Gfx::DrawItem>& out)
+        template <typename Entries>
+        [[nodiscard]] std::size_t CountEnabled(const Entries& entries) noexcept
+        {
+            std::size_t count = 0;
+            for (const typename Entries::value_type& entry : entries)
+            {
+                if (entry.enabled)
+                {
+                    ++count;
+                }
+            }
+            return count;
+        }
+    } // namespace
+
+    void SceneRenderer::RegisterModel(Model* model, const Transform* root)
     {
-        const RenderEntry* drawn = static_cast<const RenderEntry*>(entry);
-        if (!drawn->enabled)
+        NS_ASSERT(Graphics, model != nullptr, "SceneRenderer::RegisterModel: Model が null");
+        NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterModel: 持ち主の根が null");
+        if (model == nullptr || root == nullptr || FindDrawEntry(m_models, model) < m_models.size())
         {
             return;
         }
-        const RenderSource source{.root = drawn->root->InterpolatedWorldMatrix(context.alpha)};
-        drawn->renderable->Collect(context, source, out);
+        m_models.push_back(DrawEntry<Model>{.part = model, .root = root, .order = m_nextOrder++});
     }
 
-    RenderSource SceneRenderer::CurrentSource(const RenderEntry& entry) noexcept
+    void SceneRenderer::UnregisterModel(const Model* model) noexcept
     {
-        return RenderSource{.root = entry.root->WorldMatrix()};
+        std::erase_if(m_models, [model](const DrawEntry<Model>& entry) { return entry.part == model; });
+        std::erase(m_bodyMask, model);
     }
 
-    void SceneRenderer::RegisterRenderable(IRenderable* renderable, const Transform* root)
+    void SceneRenderer::SetModelEnabled(const Model* model, bool enabled) noexcept
     {
-        NS_ASSERT(Graphics, renderable != nullptr, "SceneRenderer::RegisterRenderable: 描く物が null");
-        NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterRenderable: 持ち主の根が null");
-        if (renderable == nullptr || root == nullptr || FindEntry(renderable) != nullptr)
+        NS_ASSERT(Scene, model != nullptr, "SetModelEnabled: Model が null");
+        SetDrawEntryEnabled(m_models, model, enabled);
+    }
+
+    void SceneRenderer::RegisterShadow(Shadow* shadow, const Transform* root)
+    {
+        NS_ASSERT(Graphics, shadow != nullptr, "SceneRenderer::RegisterShadow: Shadow が null");
+        NS_ASSERT(Graphics, root != nullptr, "SceneRenderer::RegisterShadow: 持ち主の根が null");
+        if (shadow == nullptr || root == nullptr || FindDrawEntry(m_shadows, shadow) < m_shadows.size())
         {
             return;
         }
-
-        std::unique_ptr<RenderEntry> entry = std::make_unique<RenderEntry>();
-        entry->renderable = renderable;
-        entry->root = root;
-        const RenderSource source = CurrentSource(*entry);
-        Gfx::RenderProxyDesc desc{};
-        desc.bounds = renderable->WorldBounds(source);
-        desc.sortCenter = renderable->SortCenter(source);
-        desc.sortPriority = renderable->SortPriority();
-        desc.pass = renderable->Bucket();
-        desc.collect = &CollectEntry;
-        desc.owner = entry.get();
-        entry->handle = m_renderScene.Register(desc);
-        m_renderables.push_back(std::move(entry));
+        m_shadows.push_back(DrawEntry<Shadow>{.part = shadow, .root = root, .order = m_nextOrder++});
     }
 
-    void SceneRenderer::UnregisterRenderable(const IRenderable* renderable) noexcept
+    void SceneRenderer::UnregisterShadow(const Shadow* shadow) noexcept
     {
-        const std::vector<std::unique_ptr<RenderEntry>>::iterator it =
-            std::find_if(m_renderables.begin(), m_renderables.end(), [renderable](const std::unique_ptr<RenderEntry>& entry) {
-                return entry->renderable == renderable;
-            });
-        if (it != m_renderables.end())
-        {
-            m_renderScene.Unregister((*it)->handle);
-            m_renderables.erase(it);
-        }
-        m_bodyMask.erase(std::remove(m_bodyMask.begin(), m_bodyMask.end(), renderable), m_bodyMask.end());
+        std::erase_if(m_shadows, [shadow](const DrawEntry<Shadow>& entry) { return entry.part == shadow; });
     }
 
-    void SceneRenderer::SetRenderableEnabled(const IRenderable* renderable, bool enabled) noexcept
+    void SceneRenderer::SetShadowEnabled(const Shadow* shadow, bool enabled) noexcept
     {
-        NS_ASSERT(Scene, renderable != nullptr, "SetRenderableEnabled: 描く物が null");
-        if (RenderEntry* entry = FindEntry(renderable))
-        {
-            entry->enabled = enabled;
-        }
+        NS_ASSERT(Scene, shadow != nullptr, "SetShadowEnabled: Shadow が null");
+        SetDrawEntryEnabled(m_shadows, shadow, enabled);
     }
 
-    std::size_t SceneRenderer::EnabledRenderableCount() const noexcept
-    {
-        return static_cast<std::size_t>(std::count_if(m_renderables.begin(),
-                                                      m_renderables.end(),
-                                                      [](const std::unique_ptr<RenderEntry>& entry) { return entry->enabled; }));
-    }
+    std::size_t SceneRenderer::EnabledModelCount() const noexcept { return CountEnabled(m_models); }
 
-    std::vector<IRenderable*> SceneRenderer::Renderables() const
-    {
-        std::vector<IRenderable*> renderables;
-        renderables.reserve(m_renderables.size());
-        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
-        {
-            renderables.push_back(entry->renderable);
-        }
-        return renderables;
-    }
+    std::size_t SceneRenderer::EnabledShadowCount() const noexcept { return CountEnabled(m_shadows); }
 
     void SceneRenderer::RegisterOverlay(IOverlay* overlay)
     {
@@ -259,33 +257,124 @@ namespace NS
             std::count_if(m_lights.begin(), m_lights.end(), [](const LightEntry& entry) { return entry.enabled; }));
     }
 
-    void SceneRenderer::SyncRenderBounds()
+    void SceneRenderer::GatherVisible(const Gfx::RenderContext& context, Gfx::RenderPass pass)
     {
-        // proxy 側の bounds はコピーなので、描画前に登録元の現在値へ揃える。無効の組は描かないので写さない
-        for (const std::unique_ptr<RenderEntry>& entry : m_renderables)
+        const Frustum frustum = Frustum::FromViewProjection(context.viewProjection);
+        m_visibleScratch.clear();
+        const auto keep = [&](VisibleDraw::Kind kind, std::size_t index, const Gfx::RenderBounds& bounds, uint64 order) {
+            // 視錐台の外は DrawItem を作らない
+            if (bounds.pass == pass && frustum.Intersects(bounds.bounds))
+            {
+                m_visibleScratch.push_back(VisibleDraw{.kind = kind,
+                                                       .index = index,
+                                                       .sortCenter = bounds.sortCenter,
+                                                       .sortPriority = bounds.sortPriority,
+                                                       .order = order});
+            }
+        };
+        // 箱と並べる値は今の固定フレームの根から作る。隠した組は箱を読まずに飛ばす
+        for (std::size_t i = 0; i < m_models.size(); ++i)
         {
-            if (!entry->enabled)
+            const DrawEntry<Model>& entry = m_models[i];
+            if (!entry.enabled)
             {
                 continue;
             }
-            const IRenderable* r = entry->renderable;
-            const RenderSource source = CurrentSource(*entry);
-            m_renderScene.Update(entry->handle,
-                                 r->WorldBounds(source),
-                                 r->SortCenter(source),
-                                 r->SortPriority(),
-                                 r->Bucket());
+            const Matrix root = entry.root->WorldMatrix();
+            if (entry.part->DrawsBody())
+            {
+                keep(VisibleDraw::Kind::ModelBody, i, entry.part->Bounds(root), entry.order);
+            }
+            else if (entry.part->DrawsCopies())
+            {
+                keep(VisibleDraw::Kind::ModelCopies, i, entry.part->CopiesBounds(root), entry.order);
+            }
+        }
+        for (std::size_t i = 0; i < m_shadows.size(); ++i)
+        {
+            const DrawEntry<Shadow>& entry = m_shadows[i];
+            if (entry.enabled)
+            {
+                keep(VisibleDraw::Kind::Shadow, i, entry.part->Bounds(entry.root->WorldMatrix()), entry.order);
+            }
+        }
+
+        if (pass != Gfx::RenderPass::Transparent)
+        {
+            std::ranges::sort(m_visibleScratch, {}, &VisibleDraw::order);
+            return;
+        }
+        const Vector3 camera = context.cameraPosition;
+        std::ranges::sort(m_visibleScratch, [camera](const VisibleDraw& a, const VisibleDraw& b) noexcept {
+            const float da = (a.sortCenter - camera).LengthSquared();
+            const float db = (b.sortCenter - camera).LengthSquared();
+            if (da != db)
+            {
+                return da > db; // 遠い順に描かないと半透明の重なりが崩れる
+            }
+            if (a.sortPriority != b.sortPriority)
+            {
+                return a.sortPriority < b.sortPriority;
+            }
+            return a.order < b.order;
+        });
+    }
+
+    void SceneRenderer::CollectPass(const Gfx::RenderContext& context,
+                                    Gfx::RenderPass pass,
+                                    std::vector<Gfx::DrawItem>& out)
+    {
+        GatherVisible(context, pass);
+        for (const VisibleDraw& visible : m_visibleScratch)
+        {
+            switch (visible.kind)
+            {
+                case VisibleDraw::Kind::ModelBody:
+                {
+                    const DrawEntry<Model>& entry = m_models[visible.index];
+                    entry.part->Collect(context, entry.root->InterpolatedWorldMatrix(context.alpha), out);
+                    break;
+                }
+                case VisibleDraw::Kind::ModelCopies:
+                {
+                    const DrawEntry<Model>& entry = m_models[visible.index];
+                    entry.part->CollectCopies(context, entry.root->InterpolatedWorldMatrix(context.alpha), out);
+                    break;
+                }
+                case VisibleDraw::Kind::Shadow:
+                {
+                    const DrawEntry<Shadow>& entry = m_shadows[visible.index];
+                    entry.part->Collect(context, entry.root->InterpolatedWorldMatrix(context.alpha), out);
+                    break;
+                }
+            }
+        }
+    }
+
+    void SceneRenderer::IssueDrawScratch(const Gfx::RenderContext& context)
+    {
+        if (context.device == nullptr)
+        {
+            return;
+        }
+        for (const Gfx::DrawItem& item : m_drawScratch)
+        {
+            Gfx::IssueDrawItem(*context.device, item);
         }
     }
 
     void SceneRenderer::DrawOpaque(const Gfx::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, Gfx::RenderPass::Opaque);
+        m_drawScratch.clear();
+        CollectPass(context, Gfx::RenderPass::Opaque, m_drawScratch);
+        IssueDrawScratch(context);
     }
 
     void SceneRenderer::DrawAfterSky(const Gfx::RenderContext& context)
     {
-        if (!m_renderScene.HasPass(Gfx::RenderPass::AfterSky))
+        m_drawScratch.clear();
+        CollectPass(context, Gfx::RenderPass::AfterSky, m_drawScratch);
+        if (m_drawScratch.empty())
         {
             return;
         }
@@ -306,13 +395,15 @@ namespace NS
             commands.PSSetShaderResource(*sky, Gfx::k_SkyCubeSlot);
         }
         commands.PSSetSampler(m_device->States().LinearClamp(), Gfx::k_SkySamplerSlot);
-        m_renderScene.DrawBucket(context, Gfx::RenderPass::AfterSky);
+        IssueDrawScratch(context);
         commands.UnbindPixelShaderResources(Gfx::k_SceneDepthSlot, 2);
     }
 
     void SceneRenderer::DrawTransparent(const Gfx::RenderContext& context)
     {
-        m_renderScene.DrawBucket(context, Gfx::RenderPass::Transparent);
+        m_drawScratch.clear();
+        CollectPass(context, Gfx::RenderPass::Transparent, m_drawScratch);
+        IssueDrawScratch(context);
     }
 
     void SceneRenderer::DrawOverlays(const Gfx::RenderContext& context,
@@ -408,11 +499,12 @@ namespace NS
             return;
         }
         m_bodyMaskItems.clear();
-        for (const IRenderable* renderable : m_bodyMask)
+        for (const Model* model : m_bodyMask)
         {
-            if (RenderEntry* entry = FindEntry(renderable))
+            const std::size_t index = FindDrawEntry(m_models, model);
+            if (index < m_models.size() && m_models[index].enabled && model->DrawsBody())
             {
-                CollectEntry(entry, context, m_bodyMaskItems);
+                model->Collect(context, m_models[index].root->InterpolatedWorldMatrix(context.alpha), m_bodyMaskItems);
             }
         }
         for (const Gfx::DrawItem& item : m_bodyMaskItems)

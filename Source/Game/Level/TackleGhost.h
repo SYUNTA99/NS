@@ -3,18 +3,16 @@
 #include "Game/Level/LevelMessages.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/IRenderable.h"
 #include "NSlib/CoreObject/SceneActor.h"
-
-#include <vector>
 
 namespace GL
 {
     namespace Level
     {
         //! エアダッシュの残像 (名前は前の体当たりの残像のまま)。親の Model を、左右の写しと明けの写しとして半透明で描く子アクター
-        //! 親が OnInit の中で CreateChildActor で作る。自分の Model は持たず、親の Model を描く
-        class TackleGhost final : public NS::SceneActor, public NS::IRenderable
+        //! 親が OnInit の中で CreateChildActor で作る。自分の欄の Model に姿を読む元として親の Model を差し、
+        //! 毎ステップ写しの列を書く。描くのは描く仕組みで、親の Model は残像を知らない
+        class TackleGhost final : public NS::SceneActor
         {
         public:
             NS_REFLECT_BEGIN(TackleGhost, NS::SceneActor)
@@ -62,27 +60,12 @@ namespace GL
             //! 控えた明けの写しの世界行列。控えていなければ単位行列
             [[nodiscard]] const NS::Matrix& AfterimageWorldMatrix() const noexcept { return m_afterimageWorld; }
 
-            //! 描く写しの数だけ、親の Model の DrawItem を積む
-            void Collect(const NS::Gfx::RenderContext& context,
-                         const NS::RenderSource& source,
-                         std::vector<NS::Gfx::DrawItem>& out) override;
-            [[nodiscard]] NS::AABB WorldBounds(const NS::RenderSource& source) const noexcept override;
-            [[nodiscard]] NS::Gfx::RenderPass Bucket() const noexcept override
-            {
-                return NS::Gfx::RenderPass::Transparent;
-            }
-            [[nodiscard]] NS::Vector3 SortCenter(const NS::RenderSource& source) const noexcept override;
-            //! 中心が同じ半透明の物の描画順。小さいほど先に描く。影より先に描くため既定は -1
-            [[nodiscard]] int SortPriority() const noexcept override { return m_sortPriority; }
             void PrepareRender() override;
-            void OnEndPlay() override;
 
         protected:
-            //! 親の Model を描く物として自分を登録する。親に Model が無ければ登録しない
+            //! 自分の Model を作り、姿を読む元に親の Model を差して描く仕組みへ入れる。親に Model が無ければ作らない
             void OnInit() override;
-            void OnAppear() override;
-            void OnDisappear() noexcept override;
-            //! 親が Model を進めた後に呼ばれる。離れと不透明度を進め、描く写しを決める
+            //! 親が Model を進めた後に呼ばれる。離れと不透明度を進め、描く写しの列を自分の Model に書く
             void VisualStep() override;
 
         private:
@@ -92,13 +75,11 @@ namespace GL
             TackleGhostDesc m_desc{};
             int m_frame = 0;
             bool m_running = false;
-            bool m_drawRegistered = false;
             NS::Vector3 m_spread{0.0f, 0.0f, 0.0f};
             float m_sideOpacity = 0.0f;
             NS::Matrix m_afterimageWorld = NS::Matrix::Identity;
             float m_afterimageOpacity = 0.0f;
-            int m_sortPriority = -1;
-            std::vector<NS::ModelDraw> m_draws;
+            int m_sortPriority = -1; // 中心が同じ半透明の物の描く順。小さいほど先に描く。影より先に描くため既定は -1
         };
     } // namespace Level
 } // namespace GL
