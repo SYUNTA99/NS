@@ -368,6 +368,10 @@ namespace NS
         //! actorFile は .actor の名前として持つだけで、空ならクラスと同じ名前
         void InitWithCodeValues(std::string_view actorFile);
         void InitChild(std::unique_ptr<SceneActor> child);
+        //! OnInit が作った Model と Shadow を根と組にしてシーンの描く仕組みへ入れ、続けて子にも同じ事をする
+        //! 隠れていれば隠れた組で入る。Init が OnInit の直後に 1 回呼び、その後に作った子は InitChild が呼ぶ
+        //! シーンに居なければ入れない
+        void RegisterDrawParts();
         //! 補間の前の値として、根の Transform と Model の今の値を控える
         //! ActorList::SnapshotActors が固定ステップの頭で全ての SceneActor
         //! に呼ぶ。世界を止めている間も呼ばれる
@@ -437,6 +441,7 @@ namespace NS
         int m_hitStopFrames = 0;      // 当たりの止めの残り。書くのは RequestHitStop・OverrideHitStop・Update だけ
         bool m_skipStateStep = false; // このフレームは状態機械を進めないか。書くのは SkipStateStep と Update の初めだけ
         bool m_started = false;
+        bool m_drawPartsRegistered = false; // RegisterDrawParts を通ったか。書くのは RegisterDrawParts だけ
         SceneActor* m_parent = nullptr;
         std::vector<std::unique_ptr<SceneActor>> m_children; // 親の部品より先に壊すので最後に置く
     };

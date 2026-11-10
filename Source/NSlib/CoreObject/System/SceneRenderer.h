@@ -126,7 +126,7 @@ namespace NS
         [[nodiscard]] const Gfx::D3DTexture* BodyMaskShown(std::size_t viewIndex) const noexcept;
 
         //! Model を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
-        //! 呼ぶのは補助関数 InitDraw だけ。model と root は外すまで生きていること
+        //! 呼ぶのは基底の SceneActor::RegisterDrawParts だけ。model と root は外すまで生きていること
         void RegisterModel(Model* model, const Transform* root);
         //! Model の組を外す。入れていない物は何もしない
         void UnregisterModel(const Model* model) noexcept;
@@ -136,7 +136,7 @@ namespace NS
         void SetModelEnabled(const Model* model, bool enabled) noexcept;
 
         //! Shadow を、持ち主の根 root と組にして入れる。組は有効で入る。二重登録は無視する
-        //! 呼ぶのは補助関数 InitDraw だけ。shadow と root は外すまで生きていること
+        //! 呼ぶのは基底の SceneActor::RegisterDrawParts だけ。shadow と root は外すまで生きていること
         void RegisterShadow(Shadow* shadow, const Transform* root);
         //! Shadow の組を外す。入れていない物は何もしない
         void UnregisterShadow(const Shadow* shadow) noexcept;

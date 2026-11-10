@@ -22,6 +22,7 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/Phys/PhysicsScene.h"
 
 #include <algorithm>
@@ -262,6 +263,11 @@ namespace NS
         raw->m_parent = this;
         raw->m_scene = m_scene;
         raw->InitWithCodeValues({});
+        // 親の OnInit の中で作った子は、親が自分の部品の後に入れる。描く順を親、子の順にする
+        if (m_drawPartsRegistered)
+        {
+            raw->RegisterDrawParts();
+        }
         // 子はコンストラクタで出ているので、隠れている親の子は隠す
         if (!IsAppeared())
         {
@@ -277,6 +283,29 @@ namespace NS
             m_actorFileName = std::string{actorFile};
         }
         OnInit();
+    }
+
+    void SceneActor::RegisterDrawParts()
+    {
+        m_drawPartsRegistered = true;
+        // 出入りの切り替えと外す事は OnAppear・OnDisappear・OnEndPlay が行う。OnInit の中で隠した物は隠れた組で入れる
+        if (SceneRenderer* renderer = GetSceneRenderer())
+        {
+            if (m_model)
+            {
+                renderer->RegisterModel(m_model.get(), &Root());
+                renderer->SetModelEnabled(m_model.get(), IsAppeared());
+            }
+            if (m_shadow)
+            {
+                renderer->RegisterShadow(m_shadow.get(), &Root());
+                renderer->SetShadowEnabled(m_shadow.get(), IsAppeared());
+            }
+        }
+        for (const std::unique_ptr<SceneActor>& child : m_children)
+        {
+            child->RegisterDrawParts();
+        }
     }
 
     bool SceneActor::IsSceneOverride(std::string_view part, std::string_view field) const
@@ -307,6 +336,7 @@ namespace NS
             m_scene = info->scene;
         }
         OnInit();
+        RegisterDrawParts();
         ApplyActorFile(this);
         ReloadActorFileOnlyValues();
         if (info != nullptr && info->placement != nullptr)
@@ -400,7 +430,7 @@ namespace NS
 
     void SceneActor::OnStart()
     {
-        // 描く物とセンサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
+        // 描く物は OnInit の直後に RegisterDrawParts が、センサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
         if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }

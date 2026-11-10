@@ -3,7 +3,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
-#include "NSlib/CoreObject/IGet/IGetRenderer.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
@@ -32,7 +31,6 @@ namespace
         void OnInit() override
         {
             NS::Model* body = CreateClassObj(m_model);
-            NS::InitDraw(this, body, &Root());
             body->SetMeshRef("cube");
             body->SetMaterialRef("Assets/Materials/shadow.mat");
         }
@@ -44,7 +42,7 @@ namespace
     protected:
         void OnInit() override
         {
-            NS::InitDraw(this, CreateClassObj(m_shadow), &Root());
+            CreateClassObj(m_shadow);
         }
     };
 
@@ -63,10 +61,28 @@ namespace
         void OnInit() override
         {
             NS::Model* body = CreateClassObj(m_model);
-            NS::InitDraw(this, body, &Root());
             body->SetMeshRef("cube");
             body->SetMaterialRef("Assets/Materials/player.mat");
         }
+    };
+
+    // 半透明の箱を描き、OnInit で同じ箱を描く子を作る
+    class GlassParentActor final : public NS::SceneActor
+    {
+    public:
+        [[nodiscard]] GlassActor* Child() const noexcept { return m_child; }
+
+    protected:
+        void OnInit() override
+        {
+            NS::Model* body = CreateClassObj(m_model);
+            body->SetMeshRef("cube");
+            body->SetMaterialRef("Assets/Materials/shadow.mat");
+            m_child = CreateChildActor<GlassActor>();
+        }
+
+    private:
+        GlassActor* m_child = nullptr;
     };
 
     // 原点から +z を見るカメラ。並べる物は全部視錐台に入る
@@ -156,6 +172,22 @@ TEST_F(SceneRendererOrder, TransparentPassMixesModelsShadowsAndCopiesFarFirstThe
     EXPECT_FLOAT_EQ(spots[3].z, 5.0f);  // 箱と同じ距離で優先度の小さい写し
     EXPECT_FLOAT_EQ(spots[4].x, 3.0f);  // 同じ距離と優先度の 2 つの箱は登録の順
     EXPECT_FLOAT_EQ(spots[5].x, -3.0f);
+}
+
+TEST_F(SceneRendererOrder, AParentIsRegisteredBeforeTheChildItMadeInOnInit)
+{
+    // 子は親の OnInit の中で作られるが、同じ距離と優先度なら親を先に描く
+    GlassParentActor* parent = SpawnAt<GlassParentActor>(NS::Vector3{1.0f, 0.0f, 6.0f});
+    parent->Child()->Root().SetPosition(NS::Vector3{-1.0f, 0.0f, 6.0f});
+    scene.OnUpdate();
+
+    std::vector<NS::Gfx::DrawItem> items;
+    scene.GetSceneRenderer()->CollectPass(LookAlongZ(), NS::Gfx::RenderPass::Transparent, items);
+
+    const std::vector<Spot> spots = SpotsOf(items);
+    ASSERT_EQ(spots.size(), 2u);
+    EXPECT_FLOAT_EQ(spots[0].x, 1.0f);
+    EXPECT_FLOAT_EQ(spots[1].x, -1.0f);
 }
 
 TEST_F(SceneRendererOrder, CollectsOnlyTheRequestedPassInsideTheView)

@@ -33,7 +33,6 @@ namespace
         void OnInit() override
         {
             CreateClassObj(m_model);
-            NS::InitDraw(this, m_model.get(), &Root());
             m_model->SetMeshRef("cube");
             m_model->SetMaterialRef("Assets/Materials/player.mat");
             m_ghost = CreateChildActor<GL::Level::TackleGhost>();
@@ -443,6 +442,9 @@ TEST(ActorChild, ChildStartsHiddenWhenCreatedByAHiddenParent)
     EXPECT_FALSE(parent->IsAppeared());
     ASSERT_NE(parent->Child(), nullptr);
     EXPECT_FALSE(parent->Child()->IsAppeared());
+    // OnInit の中で隠した親の Model は、隠れた組として入る
+    EXPECT_EQ(scene.GetSceneRenderer()->ModelCount(), 1u);
+    EXPECT_EQ(scene.GetSceneRenderer()->EnabledModelCount(), 0u);
     scene.OnUpdate();
     EXPECT_EQ(counts.steps, 0);
 }

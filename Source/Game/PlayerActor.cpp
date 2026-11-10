@@ -110,7 +110,6 @@ void PlayerActor::OnInit()
             return BodySensorVolume(rootWorld);
         });
     CreateClassObj(m_model);
-    NS::InitDraw(this, m_model.get(), &Root());
     CreateClassObj(m_appearance);
     CreateClassObj(m_body);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
@@ -118,7 +117,6 @@ void PlayerActor::OnInit()
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
-    NS::InitDraw(this, m_shadow.get(), &Root());
     m_ghost = CreateChildActor<GL::Level::TackleGhost>();
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);

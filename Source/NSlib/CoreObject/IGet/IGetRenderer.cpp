@@ -5,28 +5,6 @@
 
 namespace NS
 {
-    void InitDraw(const IGetRenderer* user, Model* model, const Transform* root)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, model != nullptr, "InitDraw: Model が null");
-        NS_ASSERT(Scene, root != nullptr, "InitDraw: 持ち主の根が null");
-        if (SceneRenderer* renderer = user->GetSceneRenderer())
-        {
-            renderer->RegisterModel(model, root);
-        }
-    }
-
-    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        NS_ASSERT(Scene, shadow != nullptr, "InitDraw: Shadow が null");
-        NS_ASSERT(Scene, root != nullptr, "InitDraw: 持ち主の根が null");
-        if (SceneRenderer* renderer = user->GetSceneRenderer())
-        {
-            renderer->RegisterShadow(shadow, root);
-        }
-    }
-
     void ShowModel(const IGetRenderer* user, const Model* model) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

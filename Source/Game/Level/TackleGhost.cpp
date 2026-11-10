@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
-#include "NSlib/CoreObject/IGet/IGetRenderer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -121,10 +120,8 @@ namespace GL
                 NS_LOG_ERROR(Game, "残像の親に描く Model が無いので、残像を描かない");
                 return;
             }
-            // 出る・消える・終わる時の切り替えは基底が自分の Model に対して行う
-            NS::Model* copies = CreateClassObj(m_model);
-            copies->SetCopySource(source);
-            NS::InitDraw(this, copies, &Root());
+            // 描く仕組みへ入れる事と、出る・消える・終わる時の切り替えは基底が自分の Model に対して行う
+            CreateClassObj(m_model)->SetCopySource(source);
         }
 
         void TackleGhost::VisualStep()

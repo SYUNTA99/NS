@@ -68,7 +68,7 @@ namespace NS
         void OnRender();
 
         //! 描く物・重ね描き・平行光の管理クラス
-        //! アクターが OnInit で InitDraw・InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
+        //! 描く部品は基底の SceneActor が OnInit の直後に、重ね描きと平行光はアクターが OnInit で InitOverlay・InitLight を呼んで入れ、OnEndPlay で外す。
         //! 出る・消える時は、入れたまま組の有効と無効を切り替える
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
 

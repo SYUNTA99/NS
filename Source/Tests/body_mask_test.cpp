@@ -41,7 +41,6 @@ namespace
         void OnInit() override
         {
             m_body = CreateClassObj(m_model);
-            NS::InitDraw(this, m_body, &Root());
             m_body->SetMeshRef("cube");
             m_body->SetMaterialRef("Assets/Materials/player.mat");
             Root().SetPosition(m_position);

@@ -9,11 +9,14 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/CoreObject/UIActor.h"
 #include "TestActorFile.h"
 #include "TestRegistrations.h"
 
 #include <gtest/gtest.h>
+
+#include <memory>
 
 namespace
 {
@@ -70,7 +73,49 @@ namespace
         int updates = 0;
     };
 
+    // Model と Shadow を作るだけで、描く仕組みへは入れない
+    class DrawPartsActor final : public NS::SceneActor
+    {
+    protected:
+        void OnInit() override
+        {
+            CreateClassObj(m_model);
+            CreateClassObj(m_shadow);
+        }
+    };
+
 } // namespace
+
+// 基底が OnInit の直後に Model と Shadow を 1 回ずつ入れ、隠すと描かず、OnEndPlay で外す
+TEST(ActorLifecycle, TheBaseRegistersTheModelAndShadowOnce)
+{
+    NS::Scene scene;
+    NS::SceneRenderer* renderer = scene.GetSceneRenderer();
+    DrawPartsActor* actor = scene.SpawnActor<DrawPartsActor>("DrawPartsActor");
+    EXPECT_EQ(renderer->ModelCount(), 1u);
+    EXPECT_EQ(renderer->ShadowCount(), 1u);
+    EXPECT_EQ(renderer->EnabledModelCount(), 1u);
+    EXPECT_EQ(renderer->EnabledShadowCount(), 1u);
+
+    actor->Disappear();
+    EXPECT_EQ(renderer->EnabledModelCount(), 0u);
+    EXPECT_EQ(renderer->EnabledShadowCount(), 0u);
+    actor->Appear();
+    EXPECT_EQ(renderer->EnabledModelCount(), 1u);
+
+    actor->Destroy();
+    scene.OnUpdate();
+    EXPECT_EQ(renderer->ModelCount(), 0u);
+    EXPECT_EQ(renderer->ShadowCount(), 0u);
+}
+
+// シーンに居ないアクターは、描く仕組みが無いので何も入れずに作れる
+TEST(ActorLifecycle, AnActorWithoutASceneRegistersNoDrawParts)
+{
+    const std::unique_ptr<DrawPartsActor> actor = NS::CreateActor<DrawPartsActor>();
+    EXPECT_NE(actor->ModelClassObj(), nullptr);
+    EXPECT_EQ(actor->GetSceneRenderer(), nullptr);
+}
 
 // ゴールは模型の 1 つを描く物に、体のセンサー 1 つをセンサーに入れる
 TEST(ActorLifecycle, StartRegistersEachPartOnce)

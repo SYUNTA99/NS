@@ -63,7 +63,7 @@ namespace GL
             void PrepareRender() override;
 
         protected:
-            //! 自分の Model を作り、姿を読む元に親の Model を差して描く仕組みへ入れる。親に Model が無ければ作らない
+            //! 自分の Model を作り、姿を読む元に親の Model を差す。親に Model が無ければ作らない
             void OnInit() override;
             //! 親が Model を進めた後に呼ばれる。離れと不透明度を進め、描く写しの列を自分の Model に書く
             void VisualStep() override;

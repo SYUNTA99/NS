@@ -20,14 +20,9 @@ namespace NS
         ~IGetRenderer() = default;
     };
 
-    // 描く物は、アクターを作る時 (OnInit) に部品を作る行の隣で InitDraw を 1 回呼んで入れ、
-    // アクターが終わる時 (OnEndPlay) に EndDraw で外す。出る・消える時は ShowModel・HideModel で切り替え、
-    // 入れたままにするので描く順は変わらない。管理クラスが無ければ (シーンに居ないアクター) どれも何もしない
-
-    //! 描く部品 model・shadow を、描く時に渡す持ち主の根 root と組にして入れる。出ている物として入る
-    //! 部品と root は EndDraw まで生きていること
-    void InitDraw(const IGetRenderer* user, Model* model, const Transform* root);
-    void InitDraw(const IGetRenderer* user, Shadow* shadow, const Transform* root);
+    // 描く部品 (Model・Shadow) は、基底の SceneActor が OnInit の直後に入れ、OnEndPlay で EndDraw で外す。
+    // 出る・消える時は ShowModel・HideModel で切り替え、入れたままにするので描く順は変わらない。
+    // 管理クラスが無ければ (シーンに居ないアクター) どれも何もしない
 
     //! 入れた描く部品を描き始める。入れていない物は何もしない
     void ShowModel(const IGetRenderer* user, const Model* model) noexcept;
