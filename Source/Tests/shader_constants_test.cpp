@@ -2,7 +2,7 @@
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
 #include "NSlib/Gfx/Render/Bloom.h"
 #include "NSlib/Gfx/Render/DrawItem.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/Render/Skybox.h"
@@ -92,6 +92,18 @@ namespace
         return ::testing::AssertionSuccess();
     }
 
+    // ビューごとの定数 ViewCB と物ごとの定数 ObjectCB が、どちらも C++ の場所と大きさにあるか
+    ::testing::AssertionResult HasDrawConstants(ID3D11ShaderReflection& reflection)
+    {
+        const ::testing::AssertionResult view =
+            HasConstantBuffer(reflection, "ViewCB", NS::Gfx::k_ViewConstantsSlot, sizeof(NS::Gfx::ViewConstants));
+        if (!view)
+        {
+            return view;
+        }
+        return HasConstantBuffer(reflection, "ObjectCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::ObjectConstants));
+    }
+
     // 材質の値の cbuffer は持たないシェーダーもある。持つ時だけ場所を照らす
     ::testing::AssertionResult MaterialParamsAtItsSlot(ID3D11ShaderReflection& reflection)
     {
@@ -113,8 +125,7 @@ TEST(ShaderConstants, StandardVertexShaderMatchesTheDrawConstants)
 {
     const ReflectedShader shader = Reflect(L"Shaders/standard.vs.hlsl", "VSMain", "vs_5_0");
     ASSERT_NE(shader.reflection, nullptr) << shader.error;
-    EXPECT_TRUE(
-        HasConstantBuffer(*shader.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
+    EXPECT_TRUE(HasDrawConstants(*shader.reflection.Get()));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));
 }
 
@@ -134,25 +145,37 @@ TEST(ShaderConstants, WaterShadersMatchTheDrawConstantsAndExposeTheViewAndTime)
     EXPECT_EQ(samplerBind.BindPoint, NS::Gfx::k_SkySamplerSlot);
     ASSERT_NE(vertex.reflection, nullptr) << vertex.error;
     ASSERT_NE(pixel.reflection, nullptr) << pixel.error;
-    EXPECT_TRUE(HasConstantBuffer(*vertex.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
-    EXPECT_TRUE(HasConstantBuffer(*pixel.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
+    EXPECT_TRUE(HasDrawConstants(*vertex.reflection.Get()));
+    // 水の色は物ごとの値を読まないので、ピクセルシェーダーにはビューごとの定数だけがある
+    EXPECT_TRUE(HasConstantBuffer(*pixel.reflection.Get(), "ViewCB", NS::Gfx::k_ViewConstantsSlot, sizeof(NS::Gfx::ViewConstants)));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*vertex.reflection.Get()));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*pixel.reflection.Get()));
-    ID3D11ShaderReflectionConstantBuffer* constants = pixel.reflection->GetConstantBufferByName("FrameCB");
+    ID3D11ShaderReflectionConstantBuffer* constants = pixel.reflection->GetConstantBufferByName("ViewCB");
     D3D11_SHADER_VARIABLE_DESC camera{};
     D3D11_SHADER_VARIABLE_DESC time{};
     ASSERT_TRUE(SUCCEEDED(constants->GetVariableByName("g_cameraPosition")->GetDesc(&camera)));
     ASSERT_TRUE(SUCCEEDED(constants->GetVariableByName("g_sceneTimeSeconds")->GetDesc(&time)));
-    EXPECT_EQ(camera.StartOffset, offsetof(NS::Gfx::FrameCB, cameraPosition));
-    EXPECT_EQ(time.StartOffset, offsetof(NS::Gfx::FrameCB, sceneTimeSeconds));
+    EXPECT_EQ(camera.StartOffset, offsetof(NS::Gfx::ViewConstants, cameraPosition));
+    EXPECT_EQ(time.StartOffset, offsetof(NS::Gfx::ViewConstants, sceneTimeSeconds));
+}
+
+// 物を描くピクセルシェーダーも、ビューごとと物ごとの 2 つの定数を C++ と同じ場所と大きさで読む
+TEST(ShaderConstants, SurfacePixelShadersMatchTheViewAndObjectConstants)
+{
+    for (const wchar_t* path : {L"Shaders/lit.ps.hlsl", L"Shaders/unlit.ps.hlsl", L"Shaders/soft_circle.ps.hlsl"})
+    {
+        const ReflectedShader shader = Reflect(path, "PSMain", "ps_5_0");
+        ASSERT_NE(shader.reflection, nullptr) << shader.error;
+        EXPECT_TRUE(HasDrawConstants(*shader.reflection.Get()));
+        EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));
+    }
 }
 
 TEST(ShaderConstants, SkinnedVertexShaderMatchesTheDrawConstantsAndTheBones)
 {
     const ReflectedShader shader = Reflect(L"Shaders/skinned.vs.hlsl", "VSMain", "vs_5_0");
     ASSERT_NE(shader.reflection, nullptr) << shader.error;
-    EXPECT_TRUE(
-        HasConstantBuffer(*shader.reflection.Get(), "FrameCB", NS::Gfx::k_DrawConstantsSlot, sizeof(NS::Gfx::FrameCB)));
+    EXPECT_TRUE(HasDrawConstants(*shader.reflection.Get()));
     EXPECT_TRUE(HasConstantBuffer(
         *shader.reflection.Get(), "BonePalette", NS::Gfx::k_BonePaletteSlot, sizeof(NS::Gfx::BonePaletteCB)));
     EXPECT_TRUE(MaterialParamsAtItsSlot(*shader.reflection.Get()));

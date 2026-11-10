@@ -126,6 +126,7 @@ namespace
             m_device.BeginFrame();
             scene.GetSceneRenderer()->SetSceneViews({NS::SceneView{m_target.get(), pose}});
             scene.OnRender();
+            m_viewConstantsSent = scene.GetSceneRenderer()->ViewConstantsSentCount();
             scene.GetSceneRenderer()->SetSceneViews({});
             const NS::Gfx::D3DTexture* mask = scene.GetSceneRenderer()->BodyMaskShown(0);
             if (mask == nullptr)
@@ -135,7 +136,11 @@ namespace
             return ReadMask(*mask);
         }
 
+        //! 前の Render でビューごとの定数を送った回数
+        [[nodiscard]] std::size_t ViewConstantsSent() const { return m_viewConstantsSent; }
+
     private:
+        std::size_t m_viewConstantsSent = 0;
         NS::OS::Window m_window;
         NS::Gfx::D3DDevice m_device;
         NS::AssetManager m_assets;
@@ -239,4 +244,13 @@ TEST(BodyMask, EndReturnsToTheTargetsBeforeBegin)
     ASSERT_EQ(viewportCount, 1u);
     EXPECT_FLOAT_EQ(viewport.Width, 12.0f);
     EXPECT_FLOAT_EQ(viewport.Height, 10.0f);
+}
+
+// ビューごとの定数は、物をいくつ描いても 1 つのビューにつき 1 回だけ送る
+TEST(BodyMask, ViewConstantsAreSentOncePerView)
+{
+    BodyMaskRig rig;
+    ASSERT_TRUE(rig.Valid());
+    (void)rig.Render(NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{3.0f, 0.0f, 0.0f});
+    EXPECT_EQ(rig.ViewConstantsSent(), 1u);
 }

@@ -7,7 +7,7 @@
 //   [1] 画面の右の向きと、 震え始めからの経過フレーム数
 //   [2] 画面の上の向きと、 衝突点から 1 m あたりの遅れのフレーム数
 //   [3].x 1 か所が震えるフレーム数
-// 名前の無いシーンの値 g_sceneValues は、 床の波 (GL::Level::HitScreenDirector) の並び
+// 名前の無いシーンの値 (SceneValue で読む) は、 床の波 (GL::Level::HitScreenDirector) の並び
 //   [0] 輪の中心のワールド X 座標・中心のワールド Z 座標・半径 (m)・強さ (0 以下で出さない)
 
 // 衝撃の震えで世界の位置へ足すずれ。 衝突点から遠い所ほど遅れて震え始め、 1 か所は震えるフレーム数で弱まって止まる
@@ -41,13 +41,13 @@ static const float k_GroundWaveHalfWidth = 0.7;
 float GroundWaveSlot(float3 worldPos, float3 worldNormal, out float3 outward)
 {
     outward = float3(0.0, 0.0, 0.0);
-    if (g_sceneValues[0].w <= 0.0 || worldNormal.y < 0.5)
+    if (SceneValue(0).w <= 0.0 || worldNormal.y < 0.5)
     {
         return 2.0;
     }
-    float2 fromCenter = worldPos.xz - g_sceneValues[0].xy;
+    float2 fromCenter = worldPos.xz - SceneValue(0).xy;
     float distanceFromCenter = length(fromCenter);
-    float slot = (distanceFromCenter - g_sceneValues[0].z) / k_GroundWaveHalfWidth;
+    float slot = (distanceFromCenter - SceneValue(0).z) / k_GroundWaveHalfWidth;
     if (abs(slot) >= 1.0)
     {
         return 2.0;
@@ -67,7 +67,7 @@ float3 SurfaceNormal(float3 worldPos, float3 worldNormal)
         return worldNormal;
     }
     const float k_Pi = 3.14159265;
-    return normalize(worldNormal + outward * sin(k_Pi * slot) * g_sceneValues[0].w);
+    return normalize(worldNormal + outward * sin(k_Pi * slot) * SceneValue(0).w);
 }
 
 // 床の波の頂に足す光。 輪の真ん中が一番明るく、 縁で 0
@@ -80,7 +80,7 @@ float3 SurfaceAddedLight(float3 worldPos, float3 worldNormal)
         return float3(0.0, 0.0, 0.0);
     }
     float crest = 1.0 - slot * slot;
-    return crest * crest * g_sceneValues[0].w * 0.6 * g_lightColor;
+    return crest * crest * SceneValue(0).w * 0.6 * g_lightColor;
 }
 
 #endif

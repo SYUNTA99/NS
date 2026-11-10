@@ -76,8 +76,11 @@ namespace NS
         return plane->world;
     }
 
-    void Shadow::Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const
+    void Shadow::Collect([[maybe_unused]] const Gfx::RenderContext& context,
+                         const Matrix& root,
+                         std::vector<Gfx::DrawItem>& out) const
     {
+        // 影の板の値は物ごとの定数だけで決まり、ビューの値は SceneRenderer がビューごとの定数で送る。引数は Model::Collect と同じ形にそろえる
         if (m_mesh->D3D() == nullptr || m_material->D3D() == nullptr)
         {
             return;
@@ -93,7 +96,6 @@ namespace NS
         item.material = m_material->D3D();
         item.blend = Gfx::BlendMode::Alpha; // 深度は読むだけで書かない。手前の物には隠れる
         item.constants.world = plane->world;
-        item.constants.viewProj = context.viewProjection;
         item.constants.baseColor = m_material->BaseColor().ToVector3();
         item.constants.opacity = plane->opacity;
         out.push_back(item);

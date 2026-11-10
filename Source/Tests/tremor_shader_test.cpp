@@ -1,7 +1,8 @@
 #include "Game/Level/BodyShake.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/Render/FrameConstants.h"
+#include "NSlib/Gfx/D3DShader.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 
 #include <gtest/gtest.h>
 
@@ -109,10 +110,11 @@ namespace
                                      const std::vector<NS::Vector3>& points)
         {
             std::vector<NS::Vector3> out;
-            NS::Gfx::FrameCB constants{};
+            NS::Gfx::ObjectConstants constants{};
             constants.world = NS::Matrix::CreateTranslation(origin);
-            constants.viewProj = NS::Matrix::Identity;
             constants.objectValues = tremor.DrawValues();
+            NS::Gfx::ViewConstants view{};
+            view.viewProj = NS::Matrix::Identity;
 
             D3D11_BUFFER_DESC cbDesc{};
             cbDesc.ByteWidth = sizeof(constants);
@@ -121,6 +123,14 @@ namespace
             const D3D11_SUBRESOURCE_DATA cbData{&constants, 0, 0};
             ComPtr<ID3D11Buffer> cb;
             if (FAILED(m_device->CreateBuffer(&cbDesc, &cbData, cb.GetAddressOf())))
+            {
+                return out;
+            }
+            D3D11_BUFFER_DESC viewDesc = cbDesc;
+            viewDesc.ByteWidth = sizeof(view);
+            const D3D11_SUBRESOURCE_DATA viewData{&view, 0, 0};
+            ComPtr<ID3D11Buffer> viewCb;
+            if (FAILED(m_device->CreateBuffer(&viewDesc, &viewData, viewCb.GetAddressOf())))
             {
                 return out;
             }
@@ -167,11 +177,13 @@ namespace
             ID3D11Buffer* vbs[] = {vb.Get()};
             ID3D11Buffer* sos[] = {so.Get()};
             ID3D11Buffer* cbs[] = {cb.Get()};
+            ID3D11Buffer* viewCbs[] = {viewCb.Get()};
             m_context->IASetInputLayout(m_layout.Get());
             m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
             m_context->IASetVertexBuffers(0, 1, vbs, &stride, &offset);
             m_context->VSSetShader(m_vs.Get(), nullptr, 0);
-            m_context->VSSetConstantBuffers(0, 1, cbs);
+            m_context->VSSetConstantBuffers(NS::Gfx::k_DrawConstantsSlot, 1, cbs);
+            m_context->VSSetConstantBuffers(NS::Gfx::k_ViewConstantsSlot, 1, viewCbs);
             m_context->GSSetShader(m_gs.Get(), nullptr, 0);
             m_context->PSSetShader(nullptr, nullptr, 0);
             m_context->SOSetTargets(1, sos, &offset);
@@ -233,19 +245,23 @@ namespace
     }
 } // namespace
 
-// 名前の無い物ごとの値の欄は物ごとの定数の照明の後、名前の無いシーンの値と不透明度の欄はその後に置く。Common.hlsli の cbuffer と並びを揃える
-TEST(TremorShader, ConstantsSitAfterTheLightingInTheFrameConstants)
+// 名前の無い物ごとの値は物ごとの定数の色と不透明度の後、シーンの値の重みはその後に置く。
+// 名前の無いシーンの値はビューごとの定数の照明の後に置く。Common.hlsli の cbuffer と並びを揃える
+TEST(TremorShader, ConstantsSitAfterTheColorInTheObjectConstants)
 {
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB::objectValues), 64u);
-    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, objectValues), 208u);
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB::sceneValues), 32u);
-    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, sceneValues), 272u);
-    EXPECT_EQ(offsetof(NS::Gfx::FrameCB, opacity), 304u);
-    EXPECT_EQ(sizeof(NS::Gfx::FrameCB), 336u);
-    // 書いていない値は全部 0 で、震えの振れ幅も 0。書いていない不透明度は 1
-    const NS::Gfx::FrameCB constants{};
+    EXPECT_EQ(offsetof(NS::Gfx::ObjectConstants, opacity), 76u);
+    EXPECT_EQ(sizeof(NS::Gfx::ObjectConstants::objectValues), 64u);
+    EXPECT_EQ(offsetof(NS::Gfx::ObjectConstants, objectValues), 80u);
+    EXPECT_EQ(offsetof(NS::Gfx::ObjectConstants, sceneValuesWeight), 144u);
+    EXPECT_EQ(sizeof(NS::Gfx::ObjectConstants), 160u);
+    EXPECT_EQ(sizeof(NS::Gfx::ViewConstants::sceneValues), 32u);
+    EXPECT_EQ(offsetof(NS::Gfx::ViewConstants, sceneValues), 128u);
+    EXPECT_EQ(sizeof(NS::Gfx::ViewConstants), 176u);
+    // 書いていない値は全部 0 で、震えの振れ幅も 0。書いていない不透明度とシーンの値の重みは 1
+    const NS::Gfx::ObjectConstants constants{};
     EXPECT_FLOAT_EQ(GL::Level::BodyTremor::FromDrawValues(constants.objectValues).amplitude, 0.0f);
     EXPECT_FLOAT_EQ(constants.opacity, 1.0f);
+    EXPECT_FLOAT_EQ(constants.sceneValuesWeight, 1.0f);
 }
 
 // 頂点のシェーダーは、衝突点からの距離の分だけ遅れて始まり、1 か所は ringFrames で弱まって止まる震えを足す

@@ -127,7 +127,7 @@ namespace NS
         //! @return 全成分が有限の正値の場合 true、それ以外の場合は変更せず false
         [[nodiscard]] bool SetDrawShapeScale(const Vector3& scale) noexcept;
         //! シェーダへ渡す、名前の無い物ごとの 4 つの値を書く。補間しない
-        //! 意味は値を書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める。描く 1 回ごとに FrameCB::objectValues へ渡す
+        //! 意味は値を書く物と、シェーダの口のファイル SurfaceHooks.hlsli が決める。描く 1 回ごとに ObjectConstants::objectValues へ渡す
         void SetDrawValues(const std::array<Vector4, 4>& values) noexcept { m_drawValues = values; }
         //! SetDrawValues で書いた値。書かれていなければ全部 0
         [[nodiscard]] const std::array<Vector4, 4>& DrawValues() const noexcept { return m_drawValues; }
@@ -149,7 +149,7 @@ namespace NS
         [[nodiscard]] bool CanDraw() const noexcept;
         //! 描くマテリアルと DrawColor で、world に描く DrawItem を作る
         //! 混ぜ方はマテリアルの物。CanDraw が true の時だけ呼ぶ
-        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept;
+        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Matrix& world) const noexcept;
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
@@ -206,9 +206,7 @@ namespace NS
         // 描く形と material の描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw(const Material* material) const noexcept;
         // CanDraw が true の時だけ呼ぶ
-        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Gfx::RenderContext& context,
-                                                     const Material* material,
-                                                     const Matrix& world) const noexcept;
+        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Material* material, const Matrix& world) const noexcept;
         // 体の箱。Bounds の箱の決まりで作る
         [[nodiscard]] AABB WorldBounds(const Matrix& root) const noexcept;
         // copies の写しごとに、この Model の姿で半透明の DrawItem を積む。描けなければ何も積まない

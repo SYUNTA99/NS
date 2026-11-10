@@ -527,7 +527,6 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
     EXPECT_EQ(ghost->Root().WorldMatrix(), parent->Root().WorldMatrix());
 
     NS::Gfx::RenderContext context{};
-    context.sceneValues[0].w = 2.0f;
     std::vector<NS::Gfx::DrawItem> drawn;
     copies->CollectCopies(context, ghost->Root().WorldMatrix(), drawn);
     ASSERT_EQ(drawn.size(), 3u);
@@ -538,14 +537,14 @@ TEST(ActorChild, TackleGhostDrawsTheSharedModelWithTheSideAndAfterimageCopies)
     EXPECT_FLOAT_EQ(drawn[1].constants.opacity, 0.5f);
     EXPECT_FLOAT_EQ(drawn[2].constants.opacity, 0.25f);
     EXPECT_EQ(drawn[0].blend, NS::Gfx::BlendMode::Alpha);
-    EXPECT_FLOAT_EQ(drawn[0].constants.sceneValues[0].w, 0.0f);
+    EXPECT_FLOAT_EQ(drawn[0].constants.sceneValuesWeight, 0.0f);
     std::vector<NS::Gfx::DrawItem> body;
     parent->ModelClassObj()->Collect(context, parent->Root().WorldMatrix(), body);
     ASSERT_EQ(body.size(), 1u);
     EXPECT_EQ(drawn[0].mesh, body[0].mesh);
     EXPECT_EQ(drawn[2].material, body[0].material);
     EXPECT_FLOAT_EQ(body[0].constants.opacity, 1.0f);
-    EXPECT_FLOAT_EQ(body[0].constants.sceneValues[0].w, 2.0f);
+    EXPECT_FLOAT_EQ(body[0].constants.sceneValuesWeight, 1.0f);
     EXPECT_EQ(copies->CopyPriority(), -1);
     EXPECT_TRUE(parent->ModelClassObj()->Copies().empty());
 

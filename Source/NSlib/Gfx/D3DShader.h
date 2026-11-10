@@ -23,8 +23,10 @@ namespace NS
         inline constexpr uint k_SkyCubeSlot = 9;
         //! 空のキューブマップを読むサンプラーのスロット
         inline constexpr uint k_SkySamplerSlot = 1;
-        //! 描く 1 回ごとの定数 (物の FrameCB、描く段の定数) のスロット
+        //! 描く 1 回ごとの定数 (物の ObjectConstants、描く段の定数) のスロット
         inline constexpr uint k_DrawConstantsSlot = 0;
+        //! ビューごとの定数 ViewConstants のスロット。空・エフェクト・画面の処理は b0 を差し直すので、別の場所に置く
+        inline constexpr uint k_ViewConstantsSlot = 3;
         //! 骨の行列の並び BonePalette のスロット
         inline constexpr uint k_BonePaletteSlot = 1;
         //! 材質の値を書く定数バッファ MaterialParams のスロット

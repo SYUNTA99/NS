@@ -1,32 +1,45 @@
 #ifndef NS_COMMON_HLSLI
 #define NS_COMMON_HLSLI
 
-// 全 mesh 描画が共有する毎フレーム定数。 C++ の FrameCB と 1 対 1 に対応する 336 byte
+// 物ごとの定数。 C++ の ObjectConstants と 1 対 1 に対応する 160 byte。 描く 1 回ごとに材質の定数バッファで送る
 // row-major LH に揃え mul(float4(pos,1), world) の行ベクトル流派で使う
-cbuffer FrameCB : register(b0)
+cbuffer ObjectCB : register(b0)
 {
     row_major float4x4 world;
+    float3 baseColor;
+    // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
+    float  g_opacity;
+    // 名前の無い物ごとの 4 つの値。 C++ の ObjectConstants::objectValues と同じ並び。 意味は口のファイル SurfaceHooks.hlsli が決める
+    float4 g_objectValues[4];
+    // ビューごとのシーンの値に掛ける重み。 1 なら効き、 0 なら効かない。 読むのは SceneValue だけ
+    float  g_sceneValuesWeight;
+    float3 g_objectPad;
+};
+
+// ビューごとの定数。 C++ の ViewConstants と 1 対 1 に対応する 176 byte。 SceneRenderer がビューを描き始める時に 1 回送る
+// 空・エフェクト・画面の処理が b0 を差し直すので、 b3 に置く
+cbuffer ViewCB : register(b3)
+{
     row_major float4x4 viewProj;
     float3 lightDir;
     float  g_lightDirPad;
-    float3 baseColor;
-    float  g_baseColorPad;
     float3 g_lightColor;
     float  g_lightColorPad;
     float3 g_ambientColor;
     float  g_ambientColorPad;
     float3 g_groundColor;
     float  g_exposure;
-    // 名前の無い物ごとの 4 つの値。 C++ の FrameCB::objectValues と同じ並び。 意味は口のファイル SurfaceHooks.hlsli が決める
-    float4 g_objectValues[4];
-    // 名前の無いシーンの値 2 つ。 C++ の FrameCB::sceneValues と同じ並び。 意味は口のファイル SurfaceHooks.hlsli が決める
+    // 名前の無いシーンの値 2 つ。 C++ の ViewConstants::sceneValues と同じ並び。 物の重みを掛けて読むので、 SceneValue から読む
     float4 g_sceneValues[2];
-    // 描く 1 回ごとの不透明度。 lit と unlit が出力 alpha に出し、 soft_circle は濃さに使う。 混ぜ方が Alpha の描画だけに効く
-    float  g_opacity;
-    float3 g_opacityPad;
     float3 g_cameraPosition;
     float  g_sceneTimeSeconds;
 };
+
+// 名前の無いシーンの値の index 番目に、物の重みを掛けて返す。 残像のコピーは重みが 0 なので、 シーンの値が効かない
+float4 SceneValue(uint index)
+{
+    return g_sceneValues[index] * g_sceneValuesWeight;
+}
 
 // 物ごとの見た目とシーンの値の使い方の口。 シェーダを読む時に渡したフォルダから先に探すので、 Game が中身を書いた物に差し替わる
 #include "SurfaceHooks.hlsli"

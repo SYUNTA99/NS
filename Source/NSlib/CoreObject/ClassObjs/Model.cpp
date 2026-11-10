@@ -216,7 +216,7 @@ namespace NS
             return;
         }
 
-        out.push_back(MakeDrawItem(context, m_drawnMaterial, DrawWorldMatrix(root, context.alpha)));
+        out.push_back(MakeDrawItem(m_drawnMaterial, DrawWorldMatrix(root, context.alpha)));
     }
 
     void Model::SetCopies(std::span<const ModelDraw> copies, int priority)
@@ -275,12 +275,12 @@ namespace NS
             {
                 world = DrawWorldMatrix(root, context.alpha);
             }
-            Gfx::DrawItem item = MakeDrawItem(context, world);
+            Gfx::DrawItem item = MakeDrawItem(world);
             item.blend = Gfx::BlendMode::Alpha;
             item.constants.opacity = draw.opacity;
             if (!draw.sceneValues)
             {
-                item.constants.sceneValues = {};
+                item.constants.sceneValuesWeight = 0.0f;
             }
             if (!draw.objectValues)
             {
@@ -323,9 +323,9 @@ namespace NS
 
     bool Model::CanDraw() const noexcept { return CanDraw(m_drawnMaterial); }
 
-    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context, const Matrix& world) const noexcept
+    Gfx::DrawItem Model::MakeDrawItem(const Matrix& world) const noexcept
     {
-        return MakeDrawItem(context, m_drawnMaterial, world);
+        return MakeDrawItem(m_drawnMaterial, world);
     }
 
     bool Model::CanDraw(const Material* material) const noexcept
@@ -333,29 +333,15 @@ namespace NS
         return GetMesh()->D3D() != nullptr && material->D3D() != nullptr;
     }
 
-    Gfx::DrawItem Model::MakeDrawItem(const Gfx::RenderContext& context,
-                                          const Material* material,
-                                          const Matrix& world) const noexcept
+    Gfx::DrawItem Model::MakeDrawItem(const Material* material, const Matrix& world) const noexcept
     {
-        // context.resolvedSettings は project 既定に配置された平行光まで解決済
-        const Gfx::RenderSettings& settings = context.resolvedSettings;
-
+        // 光・カメラ・シーンの値はビューごとの定数で SceneRenderer が送るので、ここでは物の値だけを書く
         Gfx::DrawItem item{};
         item.mesh = GetMesh()->D3D();
         item.material = material->D3D();
         item.blend = item.material->Blend();
         item.constants.world = world;
-        item.constants.viewProj = context.viewProjection;
-        item.constants.cameraPosition = context.cameraPosition;
-        item.constants.sceneTimeSeconds = context.sceneTimeSeconds;
-        item.constants.lightDir = settings.lightDir;
-        item.constants.lightDir.Normalize();
         item.constants.baseColor = DrawColor().ToVector3();
-        item.constants.lightColor = settings.lightColor;
-        item.constants.ambientColor = settings.ambientColor;
-        item.constants.groundColor = settings.groundColor;
-        item.constants.exposure = settings.exposure;
-        item.constants.sceneValues = context.sceneValues;
         item.constants.objectValues = m_drawValues;
         item.extraVsCb = m_perObjectVsCb;
         item.extraVsData = m_perObjectVsData;

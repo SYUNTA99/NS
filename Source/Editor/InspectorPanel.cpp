@@ -369,7 +369,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawAssetPreview(const Gfx::DrawItem& item)
+        void InspectorPanel::DrawAssetPreview(const AssetPreviewItem& item)
         {
             Application* app = Application::Get();
             if (app == nullptr || !app->IsValid())
@@ -397,7 +397,7 @@ namespace NS
 
         void InspectorPanel::DrawMaterialPreview(const Material& material)
         {
-            const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(material);
+            const std::optional<AssetPreviewItem> item = MakeAssetPreviewItem(material);
             if (!item)
             {
                 ImGui::TextDisabled("このマテリアルのプレビューには対応していません");
@@ -416,7 +416,7 @@ namespace NS
                 m_previewZoom = 1.0f;
             }
 
-            const std::optional<Gfx::DrawItem> item =
+            const std::optional<AssetPreviewItem> item =
                 MakeAssetPreviewItem(mesh, AssetPreviewPose{m_previewYaw, m_previewPitch, m_previewZoom});
             if (!item)
             {

@@ -257,7 +257,7 @@ namespace NS
             {
                 animation->BindToModel(actor->ModelClassObj());
             }
-            const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(*actor);
+            const std::optional<AssetPreviewItem> item = MakeAssetPreviewItem(*actor);
             if (!item)
             {
                 return nullptr;
@@ -314,7 +314,7 @@ namespace NS
             {
                 asset = assets.LoadMesh(*name);
             }
-            const std::optional<Gfx::DrawItem> item = MakeAssetPreviewItem(*asset);
+            const std::optional<AssetPreviewItem> item = MakeAssetPreviewItem(*asset);
             if (!item)
             {
                 return nullptr;

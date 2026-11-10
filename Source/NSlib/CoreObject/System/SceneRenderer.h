@@ -41,6 +41,10 @@ namespace NS
     }
     namespace Gfx
     {
+        class D3DBuffer;
+    }
+    namespace Gfx
+    {
         class ScreenPasses;
     }
     namespace Gfx
@@ -170,6 +174,8 @@ namespace NS
         [[nodiscard]] std::size_t EnabledShadowCount() const noexcept;
         [[nodiscard]] std::size_t EnabledOverlayCount() const noexcept;
         [[nodiscard]] std::size_t EnabledLightCount() const noexcept;
+        //! 前の Render でビューごとの定数を送った回数。1 つのビューにつき 1 回
+        [[nodiscard]] std::size_t ViewConstantsSentCount() const noexcept { return m_viewConstantsSent; }
 
         //! pass の段で描く DrawItem を、描く順に out へ積む。out は空にせず後ろへ足す
         //! 有効な組だけを、今の固定フレームの根で箱を読んで視錐台で絞る。Model の体と写しと Shadow を 1 つの列にする
@@ -234,6 +240,10 @@ namespace NS
 
         //! 体の型に写す描く物を、世界の深度で隠して型へ描く。写す物が無ければ型を描かない
         void DrawBodyMask(const Gfx::RenderContext& context, Gfx::ScreenPasses& screen);
+        // context の光・カメラ・シーンの値をビューごとの定数に書いて 1 回送り、頂点とピクセルの k_ViewConstantsSlot に差す
+        void SendViewConstants(const Gfx::RenderContext& context);
+        // 送ったビューごとの定数を差し直す。エフェクトの描画が同じ場所を差し替えた後に呼ぶ
+        void BindViewConstants();
 
         //! 描く部品と、描く時に渡す持ち主の根の組。指す物は全部非所有
         template <typename Part>
@@ -305,6 +315,8 @@ namespace NS
         std::unique_ptr<Gfx::Skybox> m_skybox;         // 空。装置未設定の間は空
         std::unique_ptr<Gfx::SceneDepthCopy> m_afterSkyDepth; // AfterSky の段が読む深度。装置未設定の間は空
         bool m_afterSkyDepthFailureLogged = false;
+        std::unique_ptr<Gfx::D3DBuffer> m_viewConstants; // ビューごとの定数。装置を差した時に作る。装置未設定の間は空
+        std::size_t m_viewConstantsSent = 0;             // 今の Render で送った回数。書くのは Render と SendViewConstants だけ
         float m_sceneTimeSeconds = 0.0f; // 固定更新の経過秒。ゲームを止めている間は進まない
 
         // 光のにじみと画面の段。ビュー列と同じ並び。装置を差し替えると畳み、描く時に作る

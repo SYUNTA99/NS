@@ -21,7 +21,9 @@
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/Render/SceneDepthCopy.h"
 #include "NSlib/Gfx/Render/Skybox.h"
+#include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
+#include "NSlib/Gfx/Render/DrawConstants.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
@@ -48,6 +50,7 @@ namespace NS
             m_overlay.reset();
             m_skybox.reset();
             m_afterSkyDepth.reset();
+            m_viewConstants.reset();
             m_debugShapes.reset();
             m_shaders = Gfx::BuiltinShaders{};
             return;
@@ -58,6 +61,12 @@ namespace NS
         m_overlay = std::make_unique<Gfx::ScreenOverlay>(device, m_shaders);
         m_skybox = std::make_unique<Gfx::Skybox>(m_shaders);
         m_afterSkyDepth = std::make_unique<Gfx::SceneDepthCopy>();
+        m_viewConstants = Gfx::D3DBuffer::Create(Gfx::MakeConstantBufferDesc(sizeof(Gfx::ViewConstants)));
+        if (!m_viewConstants->IsValid())
+        {
+            NS_LOG_ERROR(Graphics, "SceneRenderer: ビューごとの定数バッファを作れない (byteSize={})", sizeof(Gfx::ViewConstants));
+            m_viewConstants.reset();
+        }
         // 資源は今の装置の物なので、装置を差す度に作り直す。出荷では線を描かないので作らない
 #if !defined(NS_SHIPPING)
         m_debugShapes = std::make_unique<Gfx::DebugShapePass>(m_shaders);
@@ -466,6 +475,7 @@ namespace NS
         {
             return;
         }
+        m_viewConstantsSent = 0;
 
         // ビュー列が空なら現描画先へ実カメラの視点で 1 回だけ描く。描画先は BeginFrame が bind 済み
         if (m_sceneViews.empty())
@@ -512,6 +522,40 @@ namespace NS
             screen.DrawBodyMaskItem(*m_device, item);
         }
         screen.EndBodyMask(*m_device);
+    }
+
+    void SceneRenderer::SendViewConstants(const Gfx::RenderContext& context)
+    {
+        if (m_viewConstants == nullptr)
+        {
+            return;
+        }
+        // context.resolvedSettings は project 既定に配置された平行光まで解決済
+        const Gfx::RenderSettings& settings = context.resolvedSettings;
+        Gfx::ViewConstants view{};
+        view.viewProj = context.viewProjection;
+        view.lightDir = settings.lightDir;
+        view.lightDir.Normalize();
+        view.lightColor = settings.lightColor;
+        view.ambientColor = settings.ambientColor;
+        view.groundColor = settings.groundColor;
+        view.exposure = settings.exposure;
+        view.sceneValues = context.sceneValues;
+        view.cameraPosition = context.cameraPosition;
+        view.sceneTimeSeconds = context.sceneTimeSeconds;
+        m_device->Commands().UpdateSubresource(*m_viewConstants, &view, sizeof(view));
+        ++m_viewConstantsSent;
+        BindViewConstants();
+    }
+
+    void SceneRenderer::BindViewConstants()
+    {
+        if (m_viewConstants == nullptr)
+        {
+            return;
+        }
+        m_device->Commands().VSSetConstantBuffer(*m_viewConstants, Gfx::k_ViewConstantsSlot);
+        m_device->Commands().PSSetConstantBuffer(*m_viewConstants, Gfx::k_ViewConstantsSlot);
     }
 
     SceneRenderer::ViewPasses& SceneRenderer::PassesForView(std::size_t index)
@@ -614,6 +658,7 @@ namespace NS
         ctx.resolvedSettings = ResolveSceneSettings(Gfx::RenderSettings{});
         ctx.sceneValues = m_sceneValues;
         ctx.distortionRing = m_distortionRing;
+        SendViewConstants(ctx);
 
         // 物の絵は S 字で 1 以下に書くので、にじむのは 1 を超えて書いたエフェクトだけ
         // 深度は今の描画先の物を使うので、後で描くデバッグの線も世界の深度で隠れる
@@ -629,6 +674,7 @@ namespace NS
         }
         // 重ね描きとデバッグの線はにじませも歪ませもしないので、この後に今の描画先へ描く
         passes.bloom->EndWorld(*m_device);
+        BindViewConstants();
         DrawBodyMask(ctx, *passes.screen);
         passes.screen->Distort(*m_device, ToScreenRing(ctx.distortionRing, ctx.viewProjection, m_device->Size()));
         return ctx;
