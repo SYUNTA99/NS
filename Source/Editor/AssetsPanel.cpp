@@ -276,7 +276,7 @@ namespace NS
 
         const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file, LevelEditorController& editor)
         {
-            if (IsEffectAssetPath(file) || IsEffekseerAssetPath(file))
+            if (IsEffekseerAssetPath(file))
             {
                 return nullptr;
             }

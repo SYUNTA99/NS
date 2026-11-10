@@ -41,8 +41,8 @@ namespace NS
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skybox;
-        //! コースの曲の名前。名前が空なら曲は無い
-        SoundName music;
+        //! コースの曲の素材。空なら曲は無い
+        Sound* music = nullptr;
         //! 曲の音量 (0〜1)。曲が効果音より小さく鳴り、動きの音を埋もれさせないようにする。
         //! 0〜1 に収めるのは ClampMusicVolume で、ReadSceneEnvironment とエディタの SetSceneMusic が呼ぶ
         float musicVolume = 0.5f;

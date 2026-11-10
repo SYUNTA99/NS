@@ -7,213 +7,146 @@
 
 namespace NS
 {
-    void EffectObj::BeginStep(Gfx::EffectScene* effects)
+    uint32 EffectObj::Play(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc)
     {
-        // 前のフレームの終わりの更新で消えた記録。そのフレームの終わりに読んだ時点で残っていない
-        if (effects != nullptr)
-        {
-            for (EffectRecord& record : m_records)
-            {
-                if (record.endStep.has_value() || !record.handle.IsValid())
-                {
-                    continue;
-                }
-                if (!effects->Exists(record.handle))
-                {
-                    record.endStep = m_step;
-                }
-            }
-        }
-        ++m_step;
-        const int step = m_step;
-        std::erase_if(m_records, [step, this](const EffectRecord& record) {
-            return record.endStep.has_value() && step - record.endStep.value() > m_keepEndedSteps;
-        });
-        for (const ScheduledStop& scheduled : m_scheduledStops)
-        {
-            if (step >= scheduled.step)
-            {
-                Stop(effects, scheduled.id);
-            }
-        }
-        std::erase_if(m_scheduledStops, [step](const ScheduledStop& scheduled) { return step >= scheduled.step; });
+        return Start(effects, asset, desc, false);
     }
 
-    uint32 EffectObj::PlayResource(Gfx::EffectScene* effects,
-                                const Gfx::EffectResourceDesc& asset,
-                                const Gfx::EffectPlayDesc& desc)
+    uint32 EffectObj::PlayFollowing(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc)
     {
-        EffectRecord record;
-        record.id = m_nextId;
-        ++m_nextId;
-        record.name = asset.name;
-        // ファイルの見つからない識別子は名前を持たないので、記録には頼まれた識別子を残す
-        if (record.name.empty())
+        return Start(effects, asset, desc, true);
+    }
+
+    uint32 EffectObj::Start(Gfx::EffectScene* effects,
+                            const Effect* asset,
+                            const Gfx::EffectPlayDesc& desc,
+                            bool follows)
+    {
+        if (asset == nullptr || asset->Path().empty())
         {
-            record.name = asset.id;
+            return 0;
         }
-        record.assetId = asset.id;
-        record.startStep = m_step;
+        EffectRecord record;
+        record.asset = asset;
+        record.follows = follows;
+        record.scale = desc.scale;
         if (effects != nullptr)
         {
-            record.handle = effects->Play(asset, desc);
+            record.handle = effects->Play(asset->D3D(), desc);
+            // 読めない素材は再生されない。Effekseer に問えない物を一覧に残すと、外す時が来ない
+            if (!record.handle.IsValid())
+            {
+                return 0;
+            }
         }
+        record.id = m_nextId;
+        ++m_nextId;
         m_records.push_back(std::move(record));
         return m_records.back().id;
     }
 
-    void EffectObj::Preload(Gfx::EffectScene* effects, const Effect* asset)
-    {
-        if (effects != nullptr && asset != nullptr && asset->IsValid())
-        {
-            static_cast<void>(effects->Preload(asset->Resource()));
-        }
-    }
-
-    uint32 EffectObj::Play(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc)
-    {
-        if (asset == nullptr || asset->Id().empty())
-        {
-            return 0;
-        }
-        Gfx::EffectScene* destination = nullptr;
-        if (asset->IsValid())
-        {
-            destination = effects;
-        }
-        return PlayResource(destination, asset->Resource(), desc);
-    }
-
     void EffectObj::StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept
     {
-        EffectRecord* record = FindMutable(id);
-        if (record == nullptr || record->rootStopStep.has_value() || record->endStep.has_value())
-        {
-            return;
-        }
-        record->rootStopStep = m_step;
+        const Gfx::EffectHandle handle = TakeOut(id);
         if (effects != nullptr)
         {
-            effects->StopRoot(record->handle);
+            effects->StopRoot(handle);
         }
     }
 
     void EffectObj::Stop(Gfx::EffectScene* effects, uint32 id) noexcept
     {
-        EffectRecord* record = FindMutable(id);
-        if (record == nullptr || record->endStep.has_value())
-        {
-            return;
-        }
-        record->endStep = m_step;
+        const Gfx::EffectHandle handle = TakeOut(id);
         if (effects != nullptr)
         {
-            effects->Stop(record->handle);
+            effects->Stop(handle);
         }
     }
 
-    void EffectObj::StopAfter(uint32 id, int steps)
+    void EffectObj::StopRootAll(Gfx::EffectScene* effects) noexcept
     {
-        m_scheduledStops.push_back(ScheduledStop{.id = id, .step = m_step + steps});
+        if (effects != nullptr)
+        {
+            for (const EffectRecord& record : m_records)
+            {
+                effects->StopRoot(record.handle);
+            }
+        }
+        m_records.clear();
     }
 
     void EffectObj::SetTransform(Gfx::EffectScene* effects,
-                              uint32 id,
-                              const Vector3& position,
-                              const Quaternion& rotation,
-                              const Vector3& scale) noexcept
+                                 uint32 id,
+                                 const Vector3& position,
+                                 const Quaternion& rotation,
+                                 const Vector3& scale) noexcept
     {
-        const EffectRecord* record = Find(id);
-        if (record == nullptr || effects == nullptr)
+        const std::size_t index = IndexOf(id);
+        if (index == m_records.size() || effects == nullptr)
         {
             return;
         }
-        effects->SetTransform(record->handle, position, rotation, scale);
+        m_records[index].scale = scale;
+        effects->SetTransform(m_records[index].handle, position, rotation, scale);
     }
 
     void EffectObj::SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept
     {
-        const EffectRecord* record = Find(id);
-        if (record == nullptr || effects == nullptr)
+        const std::size_t recordIndex = IndexOf(id);
+        if (recordIndex == m_records.size() || effects == nullptr)
         {
             return;
         }
-        effects->SetDynamicInput(record->handle, index, value);
+        effects->SetDynamicInput(m_records[recordIndex].handle, index, value);
     }
 
-    void EffectObj::SetAmount(uint32 id, float amount) noexcept
+    void EffectObj::DropEnded(const Gfx::EffectScene* effects) noexcept
     {
-        EffectRecord* record = FindMutable(id);
-        if (record == nullptr)
+        if (effects == nullptr)
+        {
+            // 再生していないので、終わったかを問えない。出すだけの再生は止める呼び出しが来ないので、ここで外す
+            std::erase_if(m_records, [](const EffectRecord& record) { return !record.follows; });
+            return;
+        }
+        std::erase_if(m_records, [effects](const EffectRecord& record) { return !effects->Exists(record.handle); });
+    }
+
+    void EffectObj::Follow(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept
+    {
+        if (effects == nullptr)
         {
             return;
         }
-        record->amount = amount;
-    }
-
-    void EffectObj::SetRotation(uint32 id, const Quaternion& rotation) noexcept
-    {
-        EffectRecord* record = FindMutable(id);
-        if (record == nullptr)
-        {
-            return;
-        }
-        record->rotation = rotation;
-    }
-
-    const EffectRecord* EffectObj::Find(uint32 id) const noexcept
-    {
         for (const EffectRecord& record : m_records)
         {
-            if (record.id == id)
+            if (record.follows)
             {
-                return &record;
+                effects->SetTransform(record.handle, position, rotation, record.scale);
             }
         }
-        return nullptr;
     }
 
-    EffectRecord* EffectObj::FindMutable(uint32 id) noexcept
+    Gfx::EffectHandle EffectObj::TakeOut(uint32 id) noexcept
     {
-        return const_cast<EffectRecord*>(std::as_const(*this).Find(id));
-    }
-
-    void EffectObj::AppendStartedNames(std::vector<std::string>& out) const
-    {
-        for (const EffectRecord& record : m_records)
+        const std::size_t index = IndexOf(id);
+        if (index == m_records.size())
         {
-            if (record.startStep == m_step)
-            {
-                out.push_back(record.name);
-            }
+            return {};
         }
+        const Gfx::EffectHandle handle = m_records[index].handle;
+        m_records.erase(m_records.begin() + static_cast<std::ptrdiff_t>(index));
+        return handle;
     }
 
-    void EffectObj::AppendStartedAmounts(std::vector<std::optional<float>>& out) const
+    std::size_t EffectObj::IndexOf(uint32 id) const noexcept
     {
-        for (const EffectRecord& record : m_records)
+        for (std::size_t index = 0; index < m_records.size(); ++index)
         {
-            if (record.startStep == m_step)
+            if (m_records[index].id == id)
             {
-                out.push_back(record.amount);
+                return index;
             }
         }
-    }
-
-    void EffectObj::AppendLiveNames(const Gfx::EffectScene* effects, std::vector<std::string>& out) const
-    {
-        for (const EffectRecord& record : m_records)
-        {
-            if (record.endStep.has_value())
-            {
-                continue;
-            }
-            // 再生していない記録は Effekseer に問えないので、Stop までを残っている間とする
-            if (effects != nullptr && record.handle.IsValid() && !effects->Exists(record.handle))
-            {
-                continue;
-            }
-            out.push_back(record.name);
-        }
+        return m_records.size();
     }
 } // namespace NS

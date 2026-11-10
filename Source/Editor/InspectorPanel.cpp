@@ -1,5 +1,4 @@
 #include "Editor/InspectorPanel.h"
-#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/AssetPicker.h"
@@ -249,17 +248,17 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
-            if (m_musicSource != editor.SceneMusic().name || m_musicVolumeSource != editor.SceneMusicVolume())
+            if (m_musicSource != editor.SceneMusic() || m_musicVolumeSource != editor.SceneMusicVolume())
             {
-                m_musicSource = editor.SceneMusic().name;
+                m_musicSource = std::string{editor.SceneMusic()};
                 m_musicVolumeSource = editor.SceneMusicVolume();
                 m_musicDraft = m_musicSource;
                 m_musicVolumeDraft = m_musicVolumeSource;
             }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            SceneEnvironment fields{
-                .skybox = m_skyboxDraft, .music = SoundName{m_musicDraft}, .musicVolume = m_musicVolumeDraft};
+            SceneEnvironment fields{.skybox = m_skyboxDraft, .musicVolume = m_musicVolumeDraft};
+            LoadAssetField(fields.music, m_musicDraft);
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
@@ -268,7 +267,7 @@ namespace NS
                     m_skyboxDraft = fields.skybox;
                     m_skyboxPreviewPath.clear();
                 }
-                m_musicDraft = fields.music.name;
+                m_musicDraft = AssetFieldName(fields.music);
                 m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
             }
             static std::vector<AssetOption> options;
@@ -344,13 +343,13 @@ namespace NS
         void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
         {
             const bool changed =
-                m_musicDraft != editor.SceneMusic().name || m_musicVolumeDraft != editor.SceneMusicVolume();
+                m_musicDraft != editor.SceneMusic() || m_musicVolumeDraft != editor.SceneMusicVolume();
             ImGui::BeginDisabled(playing || !changed);
             if (ImGui::Button("曲を適用"))
             {
-                if (editor.SetSceneMusic(SoundName{m_musicDraft}, m_musicVolumeDraft))
+                if (editor.SetSceneMusic(m_musicDraft, m_musicVolumeDraft))
                 {
-                    m_musicSource = editor.SceneMusic().name;
+                    m_musicSource = std::string{editor.SceneMusic()};
                     m_musicVolumeSource = editor.SceneMusicVolume();
                     m_musicDraft = m_musicSource;
                     m_musicVolumeDraft = m_musicVolumeSource;
@@ -359,7 +358,7 @@ namespace NS
             ImGui::SameLine();
             if (ImGui::Button("曲の入力を戻す"))
             {
-                m_musicDraft = editor.SceneMusic().name;
+                m_musicDraft = std::string{editor.SceneMusic()};
                 m_musicVolumeDraft = editor.SceneMusicVolume();
             }
             ImGui::EndDisabled();
@@ -590,32 +589,6 @@ namespace NS
 
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
-            const auto duplicate = [&](const std::string& path) {
-                ImGui::InputText("複製名", m_effectCloneName, sizeof(m_effectCloneName));
-                if (!ImGui::Button("複製"))
-                {
-                    return false;
-                }
-                editor.CommitAssetEdit();
-                const std::optional<std::string> copy =
-                    AssetManager::Get().DuplicateEffectFile(path, m_effectCloneName);
-                if (!copy)
-                {
-                    NS_LOG_WARN(App, "複製できない。名前と未保存の変更を確認してください");
-                    return false;
-                }
-                m_effectCloneName[0] = '\0';
-                editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), *copy));
-                return true;
-            };
-
-            if (const Effect* effect = Cast<Effect>(&asset))
-            {
-                ImGui::TextUnformatted(effect->Label().c_str());
-                ImGui::TextWrapped("%s", effect->Path().c_str());
-                (void)duplicate(effect->Path());
-                return;
-            }
             if (Material* material = Cast<Material>(&asset))
             {
                 ImGui::TextUnformatted(material->Path().c_str());

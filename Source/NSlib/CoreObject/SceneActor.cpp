@@ -11,13 +11,13 @@
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
+#include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/WorldLines.h"
-#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -334,7 +334,6 @@ namespace NS
         }
         m_actorAction->ReloadActions(ActorFileName());
         RunActionOutputs();
-        PreloadActionSounds();
     }
 
     void SceneActor::ReloadActorFileOnlyValuesExceptActions()
@@ -343,7 +342,6 @@ namespace NS
         if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
         // clang-format on
-        PreloadHitReactionSounds();
     }
 
     void SceneActor::ReloadAssets()
@@ -447,6 +445,10 @@ namespace NS
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
         if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
+        // 出ていた粒は寿命まで残し、新しい粒だけを止める
+        if (m_effect) { m_effect->StopRootAll(GetEffectScene()); }
+        // 鳴らし続けていた音を、居ないアクターが鳴らし続けない
+        if (m_sound) { m_sound->StopAll(); }
     }
 
     namespace
@@ -490,14 +492,10 @@ namespace NS
 
             void operator()(const ActionEffectInfo& effect) const
             {
-                EffectObj* effects = actor.GetEffect();
-                if (effects == nullptr || effect.effect == nullptr)
-                {
-                    return;
-                }
                 Gfx::EffectPlayDesc desc;
                 desc.position = actor.Root().Position();
-                (void)effects->Play(actor.GetEffectScene(), effect.effect, desc);
+                // 出すだけで後から止めないので、番号は使わない
+                (void)PlayEffect(&actor, effect.effect, desc);
             }
 
             void operator()(const ActionPadInfo& pad) const
@@ -654,42 +652,6 @@ namespace NS
         return clock;
     }
 
-    void SceneActor::PreloadActionSounds()
-    {
-        if (!m_sound)
-        {
-            return;
-        }
-        for (const ActorActionInfo& action : m_actorAction->Actions())
-        {
-            for (const ActorActionEvent& event : action.events)
-            {
-                if (const ActionSoundInfo* sound = std::get_if<ActionSoundInfo>(&event.item))
-                {
-                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
-                }
-            }
-        }
-    }
-
-    void SceneActor::PreloadHitReactionSounds()
-    {
-        if (!m_sound || !m_hitReaction)
-        {
-            return;
-        }
-        for (const HitReactionSet& set : m_hitReaction->Sets())
-        {
-            for (const HitReactionEntry& entry : set.entries)
-            {
-                if (const HitSoundInfo* sound = entry.item.As<HitSoundInfo>())
-                {
-                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
-                }
-            }
-        }
-    }
-
     void SceneActor::RunActionOutputs()
     {
         // 入り切りは名前でセンサーを引く。持たないセンサーは .actor の誤りなので知らせて飛ばす
@@ -743,7 +705,8 @@ namespace NS
     {
         m_skipStateStep = false;
         // clang-format off
-        if (m_effect) { m_effect->BeginStep(GetEffectScene()); }
+        if (m_effect) { m_effect->DropEnded(GetEffectScene()); }
+        if (m_sound) { m_sound->Update(); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         DecideStep();
@@ -766,6 +729,8 @@ namespace NS
         // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
+        // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す
+        if (m_effect && IsAppeared()) { m_effect->Follow(GetEffectScene(), Root().Position(), Root().Rotation()); }
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }

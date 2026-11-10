@@ -9,6 +9,7 @@
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
@@ -124,7 +125,8 @@ TEST(PlayerAnimation, ClipsLiveInTheActionsAndGaitValuesInTheAppearance)
         }
     }
     ASSERT_NE(sound, nullptr);
-    EXPECT_EQ(sound->sound.name, "jump");
+    ASSERT_NE(sound->sound, nullptr);
+    EXPECT_EQ(sound->sound->Path(), "Assets/Sounds/jump.wav");
     EXPECT_FLOAT_EQ(sound->volume, 0.6f);
     EXPECT_FALSE(NS::SerializeClassObjFields(&player.Sounds()).contains("跳ぶ音"));
 }

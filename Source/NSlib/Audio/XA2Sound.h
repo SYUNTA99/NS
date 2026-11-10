@@ -21,13 +21,13 @@ namespace NS
         //!          (XAudio2 の範囲)。ファイルが無い・WAV でない・形式の値が壊れている・範囲の外の MS-ADPCM の時は
         //!          ERROR を出して IsValid() が false になる。読めても装置が無効な時は、
         //!          ERROR を出さずに IsValid() が false になる (音を作らない設定は失敗でないため)
-        class SoundClip : private NonCopyable
+        class XA2Sound : private NonCopyable
         {
         public:
             //! @param device 音を作る装置。nullptr でもよく、その時は無効な装置と同じに扱う
             //! @param path WAV のファイルの道筋 (UTF-8)
-            SoundClip(AudioDevice* device, std::string_view path);
-            ~SoundClip();
+            XA2Sound(AudioDevice* device, std::string_view path);
+            ~XA2Sound();
 
             //! 鳴らせる音か
             [[nodiscard]] bool IsValid() const noexcept

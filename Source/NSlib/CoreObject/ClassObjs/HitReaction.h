@@ -6,7 +6,6 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 
 #pragma warning(push, 0)
@@ -126,7 +125,7 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 持ち主の Sound で効果音を鳴らす。動作の項目 ActionSoundInfo と同じ頼む先
+    //! 持ち主のアクターで効果音を鳴らす。動作の項目 ActionSoundInfo と同じ頼む先
     struct HitSoundInfo
     {
         std::string_view typeName = "Sound";
@@ -134,8 +133,8 @@ namespace NS
 
         void Start(const HitReactionStart& start) const;
 
-        SoundName sound{};   // 鳴らす音
-        float volume = 1.0f; // 音量 0〜1
+        Sound* sound = nullptr; // 鳴らす音
+        float volume = 1.0f;        // 音量 0〜1
 
         NS_REFLECT_BEGIN(HitSoundInfo, void)
         NS_FIELD(sound, "音")

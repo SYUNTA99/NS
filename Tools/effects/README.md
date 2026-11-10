@@ -17,31 +17,11 @@
 
 ### 素材の参照と演出セット
 
-ゲームは `.efkefc` の名前を直接指定せず、`.effect` の識別子で素材を参照する。
-`.effect` は次の値を持つ。
-
-| 項目 | 意味 |
-|---|---|
-| `id` | 小文字の16進数32文字の識別子。改名・移動・再生成で変えない |
-| `label` | 素材の選択画面で見せる名前 |
-| `source` | ContentRoot からの `.efkefc` の道筋 |
-| `seed` | 粒の散り方を再現する乱数の基準 |
-| `recordName` | 再生記録に出す用途の名前。表示名の変更で記録の分類を変えない |
-
-`--install` は初回だけ `.effect` を作り、次からは識別子・表示名・乱数の基準を保つ。
-壊れた `.effect` を見つけた時は書き換えずに失敗する。出荷物は `.effect` もAssetsと一緒に配る。
-
-素材の型は `Effect`、再生中の状態と記録を持つ部品は `EffectObj`。
-`ImpactEffects` と `LaunchEffects` の素材参照は通常の `.actor` の項目で、永続IDを保存する。
-参照先の選択・保存・取り消しは通常のアクターの項目と同じ操作を使う。
-粒数・粒の速さ・光の大きさや曲線はEffekseerの素材で編集する。
+ゲームは ContentRoot からの `.efkefc` の相対の道 (`"Assets/Effects/*.efkefc"`) で素材を参照する。
+素材の姿は `NS::Effect` (中身は `Gfx::D3DEffect`)、再生中の状態と記録を持つ部品は `EffectObj`。
+粒の散り方を再現する乱数の基準は、拡張子を除いたファイル名 (stem) の FNV-1a 32 ビットから `D3DEffect::DefaultSeed` で決まり、再生記録には stem を出す。
+粒数・粒の速さ・光の大きさや曲線は Effekseer の素材で編集する。
 ゲーム側は発生判断、位置と向き、威力・質量・速度などの入力と停止の同期を持つ。
-
-素材のインスペクタの「複製」は新しい識別子と別のバイナリを作る。
-ファイルだけをコピーして識別子が重複した場合は両方を拒否する。
-識別子を保てば `Assets/Effects` の下で改名・移動できる。
-バイナリを移す場合は `.effect` の `source` と、Textureなどの相対依存も揃える。
-再起動か `ReloadEffectAssets` で読み直す。再生済みの粒は元の素材の寿命まで残る。
 
 主な動的入力:
 
@@ -78,10 +58,10 @@ Tools\@build_effects.cmd nobuild --defs Tools\effects\test_defs --out build\effe
 
 - 失敗が 1 本でもあれば終了コード 1。`--install` は全部通った時だけ写す
 - 作業の出力は `build/effects/` (注釈を外した写し・`.efkefc`・`Texture/`・`frames/<名前>/frame_NNN.png`・`frames/<名前>_sheet.png`・組んだ `efkxml`)
-- ゲームへ渡るのは `--install` で写す `Assets/Effects/<名前>.efkefc`・同名の `.effect` と `Assets/Effects/Texture/`。定義を `Assets/` の下に置かないのは、`@package_release.cmd` が `Assets` を丸ごと配るため
+- ゲームへ渡るのは `--install` で写す `Assets/Effects/<名前>.efkefc` と `Assets/Effects/Texture/`。定義を `Assets/` の下に置かないのは、`@package_release.cmd` が `Assets` を丸ごと配るため
 - `--install-dir` を渡すと `Assets/Effects/` の代わりにそこへ写す。試し用の絵を `Assets/` へ置くと出荷の絵に混ざり、試し `ShippedEffects` も読む
 - `efkprobe` は Debug で組む (premake の `EffectProbe`、`Tools/effects/premake.lua`)。出荷の構成では建たない
-- 置いた絵がゲームで読めるかは試し `ShippedEffects.EveryEffectPreloads` が縛る (`Assets/Effects/` の全 `.efkefc` を `EffectScene::Preload` し、素材の欠けで落ちる。1 本も無ければ「確かめられなかった」で落ちる)
+- 置いた絵がゲームで読めるかは試し `ShippedEffects.EveryEffectPreloads` が縛る (`Assets/Effects/` の全 `.efkefc` を `D3DEffect::LoadFromFile` で読み、素材の欠けで落ちる。1 本も無ければ「確かめられなかった」で落ちる)
 
 ## 置いてある物
 

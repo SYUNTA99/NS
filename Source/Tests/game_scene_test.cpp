@@ -9,12 +9,12 @@
 #include "NSlib/Audio/AudioDevice.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/Scene/SceneManager.h"
@@ -180,14 +180,18 @@ TEST(GameScene, RestartDoesNotStartTheMusicAgain)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(CourseWithPlayer());
+    EXPECT_FALSE(scene.Music().IsStarted());
 
-    EXPECT_TRUE(scene.StartMusic());
+    scene.StartPlay();
+    ASSERT_TRUE(scene.Music().IsStarted());
     scene.RestartCourse();
-    EXPECT_FALSE(scene.StartMusic());
+    EXPECT_TRUE(scene.Music().IsStarted());
 
-    // 止めた後は、次のプレイでまた始める
-    scene.StopMusic();
-    EXPECT_TRUE(scene.StartMusic());
+    // 組み直しでプレイを終えると止まり、次のプレイでまた始める
+    scene.ResetFromJson(CourseWithPlayer());
+    EXPECT_FALSE(scene.Music().IsStarted());
+    scene.StartPlay();
+    EXPECT_TRUE(scene.Music().IsStarted());
 }
 
 // 曲の名前が空のシーン (読めずに立てた空のシーン) は、音の装置があっても曲を読まない
@@ -204,12 +208,14 @@ TEST(GameScene, StartPlayOfAnEmptySceneReadsNoMusic)
     NS::Scene& scene = scenes.LoadEmptyScene<GL::Level::GameScene>();
 
     ASSERT_NE(scene.GetAudioDevice(), nullptr);
-    EXPECT_TRUE(scene.Environment().music.name.empty());
+    ASSERT_NE(scene.Environment().music, nullptr);
+    EXPECT_TRUE(scene.Environment().music->Path().empty());
+    EXPECT_FALSE(scene.Environment().music->IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);
     EXPECT_EQ(log.WarningCount(), 0);
 }
 
-// 当たりの下見のシーンは音の装置を受け取らないので、曲の名前があっても曲を読まない
+// 当たりの下見のシーンは音の装置を受け取らないので、曲があっても曲を鳴らさない
 TEST(GameScene, StartPlayWithoutAnAudioDeviceReadsNoMusic)
 {
     NS::Audio::AudioDevice device(false);
@@ -218,11 +224,12 @@ TEST(GameScene, StartPlayWithoutAnAudioDeviceReadsNoMusic)
     const NS::AssetManagerScope scope{assets};
     nlohmann::json doc = CourseWithPlayer();
     NS::SceneEnvironment environment = NS::ReadSceneEnvironment(doc);
-    environment.music = NS::SoundName{"missing_music"};
+    environment.music = assets.LoadSound("Assets/Sounds/bgm_course.wav");
     NS::WriteSceneEnvironment(doc, environment);
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    ASSERT_EQ(scene.Environment().music.name, "missing_music");
+    ASSERT_NE(scene.Environment().music, nullptr);
+    ASSERT_EQ(scene.Environment().music->Path(), "Assets/Sounds/bgm_course.wav");
     const TestLogCapture log;
 
     scene.StartPlay();

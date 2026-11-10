@@ -10,7 +10,6 @@
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #include "NSlib/Core/Types.h"
 #include <functional>
@@ -149,13 +148,13 @@ namespace NS
             //! プロジェクトからの相対パスを適用し、取り消しの履歴へ積む。空なら非表示。
             //! 参照先の形式が対応外、シーン未設定、プレイ中の場合は変更せず false。
             bool SetSkyboxPath(std::string_view path);
-            //! シーンの曲。シーンが無ければ名前が空
-            [[nodiscard]] const SoundName& SceneMusic() const noexcept;
+            //! シーンの曲の道。シーンが無いか未設定なら空
+            [[nodiscard]] const std::string& SceneMusic() const noexcept;
             //! シーンの曲の音量。シーンが無ければ SceneEnvironment の既定
             [[nodiscard]] float SceneMusicVolume() const noexcept;
             //! 曲と音量を適用し、変わった時だけ取り消しの履歴へ積む。音量は 0〜1 に収める。
             //! シーン未設定、プレイ中、音量が非数の場合は変更せず false。
-            bool SetSceneMusic(const SoundName& music, float volume);
+            bool SetSceneMusic(std::string_view music, float volume);
 
             //! 編集の自由視点カメラ。Inspector が感度をライブ編集する
             [[nodiscard]] EditorCamera& EditorFreeCamera() noexcept { return m_editorCamera; }

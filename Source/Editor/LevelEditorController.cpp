@@ -141,8 +141,8 @@ namespace NS
                 void Undo() noexcept override { m_scene.SetEnvironment(m_before); }
                 [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
                 {
-                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() + m_before.music.name.size() +
-                           m_after.music.name.size();
+                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() +
+                           AssetFieldName(m_before.music).size() + AssetFieldName(m_after.music).size();
                 }
 
             private:
@@ -232,9 +232,9 @@ namespace NS
             return true;
         }
 
-        const SoundName& LevelEditorController::SceneMusic() const noexcept
+        const std::string& LevelEditorController::SceneMusic() const noexcept
         {
-            return m_scene.Environment().music;
+            return AssetFieldName(m_scene.Environment().music);
         }
 
         float LevelEditorController::SceneMusicVolume() const noexcept
@@ -242,16 +242,16 @@ namespace NS
             return m_scene.Environment().musicVolume;
         }
 
-        bool LevelEditorController::SetSceneMusic(const SoundName& music, float volume)
+        bool LevelEditorController::SetSceneMusic(std::string_view music, float volume)
         {
             if (!IsSceneEditable() || !std::isfinite(volume))
             {
                 return false;
             }
             SceneEnvironment after = m_scene.Environment();
-            after.music = music;
+            LoadAssetField(after.music, music);
             after.musicVolume = ClampMusicVolume(volume);
-            if (after.music.name != m_scene.Environment().music.name ||
+            if (AssetFieldName(after.music) != AssetFieldName(m_scene.Environment().music) ||
                 after.musicVolume != m_scene.Environment().musicVolume)
             {
                 m_editor.Undo().Push(

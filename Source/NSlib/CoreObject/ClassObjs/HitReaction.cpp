@@ -2,7 +2,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
-#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/IGet/IGetCamera.h"
@@ -264,14 +264,10 @@ namespace NS
 
     void HitEffectInfo::Start(const HitReactionStart& start) const
     {
-        EffectObj* effects = start.owner.actor->GetEffect();
-        if (effects == nullptr || effect == nullptr)
-        {
-            return;
-        }
         Gfx::EffectPlayDesc desc;
         desc.position = start.position;
-        (void)effects->Play(start.owner.actor->GetEffectScene(), effect, desc);
+        // 出すだけで後から止めないので、番号は使わない
+        (void)PlayEffect(start.owner.actor, effect, desc);
     }
     HitReactionItem::HitReactionItem(const HitReactionItem& other)
     {

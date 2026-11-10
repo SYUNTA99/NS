@@ -10,6 +10,7 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
+#include "NSlib/CoreObject/System/MusicDirector.h"
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/SceneRenderer.h"
 #include "NSlib/CoreObject/System/ScreenFlashDirector.h"
@@ -103,6 +104,10 @@ namespace NS
         //! パッドの振動。HitReaction が頼む
         [[nodiscard]] PadRumbleDirector& PadRumble() noexcept { return m_padRumble; }
         [[nodiscard]] const PadRumbleDirector& PadRumble() const noexcept { return m_padRumble; }
+
+        //! シーンの曲。いつ始めて止めるかは派生が決める
+        [[nodiscard]] MusicDirector& Music() noexcept { return m_music; }
+        [[nodiscard]] const MusicDirector& Music() const noexcept { return m_music; }
 
         //! PhysicsScene への参照。Scene が値で持つので寿命は Scene と同じ
         [[nodiscard]] Phys::PhysicsScene& Physics() noexcept { return m_physics; }
@@ -264,6 +269,8 @@ namespace NS
         // アクターの動作と HitReaction が頼むので、アクターより先に宣言して後に破棄する
         ScreenFlashDirector m_screenFlash{m_sceneRenderer};
         PadRumbleDirector m_padRumble;
+        // 曲の素材は AssetManager が Clear まで持ち、シーンはそれより先に壊れるので、ループが素材より長く生きない
+        MusicDirector m_music;
 
         //! 衝突判定の PhysicsScene。Collision が出る時と動いた歩に body を入れる
         //! Collision が持ち主の OnDisappear で body を外し、Collider が借りるので、m_actors より先に宣言して後に破棄する

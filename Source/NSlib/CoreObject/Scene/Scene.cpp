@@ -465,6 +465,7 @@ namespace NS
         m_screenFlash.OnTick();
         StepViewEffects();
         m_padRumble.OnTick();
+        m_music.Update();
     }
 
     void Scene::OnShutdown()

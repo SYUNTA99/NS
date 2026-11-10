@@ -11,7 +11,6 @@
 #include "NSlib/CoreObject/ActorInitInfo.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
@@ -260,22 +259,11 @@ namespace NS
                         return AssetManager::Get().LoadTexture(*resolved);
                     }
                 }
-                if (IsEffectAssetPath(path))
-                {
-                    Object* asset = AssetManager::Get().LoadEffectFile(path);
-
-                    return asset;
-                }
                 return nullptr;
             }
 
             [[nodiscard]] bool IsReadable(const Object& asset)
             {
-
-                if (const Effect* effect = Cast<Effect>(&asset))
-                {
-                    return effect->IsValid();
-                }
                 if (const Material* material = Cast<Material>(&asset))
                 {
                     return !material->IsEmpty();

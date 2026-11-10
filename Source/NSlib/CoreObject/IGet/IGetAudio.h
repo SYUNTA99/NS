@@ -1,12 +1,11 @@
 #pragma once
 
-#include "NSlib/CoreObject/Reflection/SoundName.h"
-
-#include <initializer_list>
+#include "NSlib/Core/Types.h"
 
 namespace NS
 {
     class Sound;
+    class SoundObj;
 
     namespace Audio
     {
@@ -17,8 +16,8 @@ namespace NS
     class IGetAudio
     {
     public:
-        //! 読んだ音を覚える部品。部品 Sound を作っていないアクターでは nullptr
-        [[nodiscard]] virtual Sound* GetSound() const noexcept = 0;
+        //! 鳴らし続ける音を受け持つ部品。枠 Sound を作っていない個体では nullptr
+        [[nodiscard]] virtual SoundObj* GetSound() const noexcept = 0;
         //! 音を鳴らす装置。シーンに居ない間と、装置を受け取っていないシーンでは nullptr
         [[nodiscard]] virtual Audio::AudioDevice* GetAudioDevice() const noexcept = 0;
 
@@ -26,12 +25,20 @@ namespace NS
         ~IGetAudio() = default;
     };
 
-    //! @brief 鳴らす名前の音を先に読む。Sound が無ければ何もしない
-    //! @details AssetManager::Get() の装置で読み、シーンの装置は見ない。シーンが装置を受け取る前の OnStart で呼んでよい
-    void PreloadSounds(const IGetAudio* user, std::initializer_list<SoundName> names);
+    //! @brief 音を 1 回鳴らす。空の素材・nullptr・シーンが装置を持たない時は何もしない
+    //! @param[in] sound 鳴らす音の素材
+    //! @param[in] volume Audio::XA2Sound::Play に渡す音量
+    void PlaySound(const IGetAudio* user, const Sound* sound, float volume);
 
-    //! @brief 音を 1 回鳴らす。Sound が無い時と、シーンが装置を持たない時は何もしない
-    //! @param[in] name PreloadSounds に渡した名前
-    //! @param[in] volume Audio::SoundClip::Play に渡す音量
-    void PlaySound(const IGetAudio* user, const SoundName& name, float volume);
+    //! @brief 音をループで鳴らし始め、止めるまで鳴らし続ける。アクターが世界から外れる時は基底が止める
+    //! @param[in] sound 鳴らす音の素材
+    //! @param[in] volume Audio::SoundLoop::SetVolume に渡す音量
+    //! @return 音の番号。Sound が無い時・nullptr・空の道筋は 0
+    [[nodiscard]] uint32 PlayLoopSound(const IGetAudio* user, const Sound* sound, float volume);
+
+    //! PlayLoopSound で鳴らした音を止める。無い番号と Sound が無い時は何もしない
+    void StopSound(const IGetAudio* user, uint32 id) noexcept;
+
+    //! PlayLoopSound で鳴らした音の音量を変える。無い番号と Sound が無い時は何もしない
+    void SetSoundVolume(const IGetAudio* user, uint32 id, float volume) noexcept;
 } // namespace NS

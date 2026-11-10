@@ -37,7 +37,6 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
         private:
-            char m_effectCloneName[128]{};
             void DrawSceneSettings(LevelEditorController& editor);
             //! 曲の下書きを適用する・戻すボタンを描く。playing の間は押せない
             void DrawSceneMusicButtons(LevelEditorController& editor, bool playing);

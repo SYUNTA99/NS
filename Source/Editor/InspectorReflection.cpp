@@ -6,8 +6,6 @@
 #include "Editor/EditorUi.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
@@ -538,16 +536,6 @@ namespace NS
                 const ImGuiID wasOpenId = ImGui::GetID("asset-picker-was-open");
                 const bool wasOpen = storage->GetBool(wasOpenId, false);
                 std::string label = OS::FileSystem::FileName(value);
-                if (field.assetKind == AssetKind::Effect && !value.empty())
-                {
-                    const Effect* effect = AssetManager::Get().LoadEffectAsset(value);
-                    label = effect->Label();
-                    if (!effect->IsValid())
-                    {
-                        label = "参照切れ";
-                    }
-                }
-
                 if (label.empty())
                 {
                     label = "素材を選択...";

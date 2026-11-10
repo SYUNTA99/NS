@@ -135,7 +135,6 @@ TEST(ScreenFade, RepeatedRequestsDoNotRestartTheTransition)
 TEST(ScreenFade, SceneAdvancesOncePerStepWhileTheSceneIsStopped)
 {
     NS::Scene scene;
-    // 止めを持つだけのアクター。暗転を進める物は無い
     const NS::SceneActor* holder = SpawnFromActorFile<TestEmptyActor>(scene, "TestEmptyActor", "Holder");
     ASSERT_NE(holder, nullptr);
     scene.RequestStopScene(holder, 10);

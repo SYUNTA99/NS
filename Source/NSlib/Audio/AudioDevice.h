@@ -39,7 +39,7 @@ namespace NS
             //! 止めないと、XAudio2 のスレッドが捨てたデータを読み続ける。無効な装置では何もしない
             void Suspend() noexcept;
 
-            //! SoundClip が音を作る時に使う。無効な装置では nullptr
+            //! XA2Sound が音を作る時に使う。無効な装置では nullptr
             [[nodiscard]] DirectX::AudioEngine* Engine() const noexcept
             {
                 return m_engine.get();

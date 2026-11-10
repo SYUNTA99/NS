@@ -63,7 +63,7 @@
         },
         {
           "fields": {
-            "音": "jump",
+            "音": "Assets/Sounds/jump.wav",
             "音量": 0.6000000238418579
           },
           "length": 1,
@@ -198,14 +198,14 @@
       "頂点滞空倍率": 0.5
     },
     "PlayerSounds": {
-      "ゴールの音": "goal",
+      "ゴールの音": "Assets/Sounds/goal.wav",
       "ゴールの音の音量": 0.8999999761581421,
-      "反動の音": "rebound",
+      "反動の音": "Assets/Sounds/rebound.wav",
       "反動の音の音量": 0.699999988079071,
-      "着地の音": "land",
+      "着地の音": "Assets/Sounds/land.wav",
       "着地の音の最短の間隔": 0.15000000596046448,
       "着地の音の音量": 0.5,
-      "落下の音": "fall",
+      "落下の音": "Assets/Sounds/fall.wav",
       "落下の音の音量": 0.800000011920929
     },
     "ReboundPreview": {
@@ -237,7 +237,6 @@
       "最大投影距離": 12.0,
       "表面オフセット": 0.019999999552965164
     },
-    "Sound": {},
     "StateMachine": {},
     "TackleGhost": {
       "描く順": -1

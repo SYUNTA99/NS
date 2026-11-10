@@ -1,6 +1,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 
-#include "NSlib/Audio/SoundClip.h"
+#include "NSlib/Audio/XA2Sound.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Geometry/MeshPrimitives.h"
 #include "NSlib/Core/Logger.h"
@@ -13,8 +13,9 @@
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Asset/SkinnedModel.h"
-#include "NSlib/CoreObject/Asset/SoundClip.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/Asset/Texture.h"
+#include "NSlib/Gfx/D3DEffect.h"
 #include "NSlib/Gfx/D3DMaterial.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DShader.h"
@@ -634,29 +635,46 @@ namespace NS
         m_audioDevice = device;
     }
 
-    SoundClip* AssetManager::LoadSoundClip(std::string_view path)
+    Sound* AssetManager::LoadSound(std::string_view path)
     {
         const std::string key = NameKey(path);
-        return &FindOrAdd(m_soundClips, key, [this, &key]() -> std::unique_ptr<SoundClip> {
+        return &FindOrAdd(m_soundClips, key, [this, &key]() -> std::unique_ptr<Sound> {
             if (m_audioDevice == nullptr || key.empty())
             {
-                return std::make_unique<SoundClip>(key, nullptr);
+                return std::make_unique<Sound>(key, nullptr);
             }
             const std::optional<std::string> file = ResolveContentPath(key);
             if (!file)
             {
                 NS_LOG_ERROR(Audio, "音 {} は ContentRoot の外を指すので読まない", key);
-                return std::make_unique<SoundClip>(key, nullptr);
+                return std::make_unique<Sound>(key, nullptr);
             }
-            // 読めない理由は SoundClip が ERROR で出す
-            return std::make_unique<SoundClip>(key, std::make_unique<Audio::SoundClip>(m_audioDevice, *file));
+            // 読めない理由は Audio::XA2Sound が ERROR で出す
+            return std::make_unique<Sound>(key, std::make_unique<Audio::XA2Sound>(m_audioDevice, *file));
+        });
+    }
+
+    Effect* AssetManager::LoadEffect(std::string_view path)
+    {
+        const std::string key = NameKey(path);
+        return &FindOrAdd(m_effects, key, [this, &key]() -> std::unique_ptr<Effect> {
+            if (key.empty())
+            {
+                return std::make_unique<Effect>(key, nullptr);
+            }
+            const std::optional<std::string> file = OS::FileSystem::ResolveUnder(m_baseDir, key);
+            if (!file)
+            {
+                NS_LOG_ERROR(Scene, "エフェクト {} は ContentRoot の外を指すので読まない", key);
+                return std::make_unique<Effect>(key, nullptr);
+            }
+            return std::make_unique<Effect>(key, Gfx::D3DEffect::LoadFromFile(*file));
         });
     }
 
     void AssetManager::Clear() noexcept
     {
-        m_effectAssets.clear();
-        m_effectCatalogLoaded = false;
+        m_effects.clear();
         // 音は装置の声を持つので、装置を壊す Application より先にここで捨てる
         m_soundClips.clear();
         // material は shader / texture を参照するので先に解放する

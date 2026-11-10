@@ -1,6 +1,6 @@
 #include "NSlib/Audio/SoundLoop.h"
 
-#include "NSlib/Audio/SoundClip.h"
+#include "NSlib/Audio/XA2Sound.h"
 #include "NSlib/Audio/detail/SoundVolume.h"
 
 #include <Audio.h>
@@ -9,7 +9,7 @@ namespace NS
 {
     namespace Audio
     {
-        SoundLoop::SoundLoop(const SoundClip& clip)
+        SoundLoop::SoundLoop(const XA2Sound& clip)
         {
             if (!clip.IsValid())
             {

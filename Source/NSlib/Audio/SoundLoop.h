@@ -13,16 +13,16 @@ namespace NS
 {
     namespace Audio
     {
-        class SoundClip;
+        class XA2Sound;
 
-        //! @brief SoundClip を繰り返し鳴らす。曲のように、止めるまで鳴り続ける音に使う
-        //! @details 無効な SoundClip から作った物は IsValid() が false で音を出さない。
+        //! @brief XA2Sound を繰り返し鳴らす。曲のように、止めるまで鳴り続ける音に使う
+        //! @details 無効な XA2Sound から作った物は IsValid() が false で音を出さない。
         //!          IsPlaying() は装置の有無によらず、Play() から Stop() までの間 true を返す
         class SoundLoop : private NonCopyable
         {
         public:
             //! clip は、このループより長く生きている事
-            explicit SoundLoop(const SoundClip& clip);
+            explicit SoundLoop(const XA2Sound& clip);
             ~SoundLoop();
 
             //! 音を出せるループか

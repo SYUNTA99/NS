@@ -112,14 +112,14 @@ namespace
 
     struct EffectSettings
     {
-        NS::Effect* effect = NS::AssetManager::Get().LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
+        NS::Effect* effect = NS::AssetManager::Get().LoadEffect("Assets/Effects/impact.core.efkefc");
         NS_REFLECT_BEGIN(EffectSettings, void)
         NS_FIELD(effect, "エフェクト")
         NS_REFLECT_END_VALUE()
     };
 } // namespace
 
-TEST(AssetPickerCatalog, EffectAssetMemberIsSavedAsItsPersistentId)
+TEST(AssetPickerCatalog, EffectAssetMemberIsSavedAsItsPath)
 {
     const NS::ReflectionInfo& info = *EffectSettings::StaticReflection();
     const NS::FieldDesc* field = NS::FindField(&info, "エフェクト");
@@ -128,11 +128,11 @@ TEST(AssetPickerCatalog, EffectAssetMemberIsSavedAsItsPersistentId)
 
     EffectSettings settings;
     EXPECT_EQ(NS::SerializeReflectedFields(&settings, info)["エフェクト"],
-              nlohmann::json("6e4f2fccb9df5a339885b53d42fafd45"));
+              nlohmann::json("Assets/Effects/impact.core.efkefc"));
     EXPECT_EQ(
-        NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "fa2acc194fe252f6a26e9f1a0ce0b914"}}),
+        NS::ApplyReflectedFields(&settings, info, nlohmann::json{{"エフェクト", "Assets/Effects/slam.trail.efkefc"}}),
         0u);
-    EXPECT_EQ(settings.effect->Id(), "fa2acc194fe252f6a26e9f1a0ce0b914");
+    EXPECT_EQ(settings.effect->Path(), "Assets/Effects/slam.trail.efkefc");
 }
 
 TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)
@@ -224,21 +224,22 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
     EXPECT_EQ(models[0].value, "Assets/Models/folder/test.GLB");
 }
 
-TEST_F(AssetPickerCatalogTest, EffectChoicesUsePersistentIdsAndDisplayLabels)
+TEST_F(AssetPickerCatalogTest, EffectChoicesAreEfkefcUnderEffects)
 {
-    File("Assets/Effects/ignored.efkefc");
-    const nlohmann::json definition = {{"id", "11111111111111111111111111111111"}, {"label", "衝突"}};
-    const std::string text = definition.dump();
-    ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes((m_root / "Assets/Effects/contact.effect").generic_string(),
-                                                  std::as_bytes(std::span<const char>{text.data(), text.size()})));
+    File("Assets/Effects/sub/spark.efkefc");
+    File("Assets/Effects/contact.EFKEFC");
+    File("Assets/Effects/notes.txt");
+    File("Assets/Other/stray.efkefc");
     const std::vector<NS::Editor::AssetOption> options =
         NS::Editor::CollectAssetOptions(NS::AssetKind::Effect, m_root.generic_string());
-    ASSERT_EQ(options.size(), 1u);
-    EXPECT_EQ(options[0].value, "11111111111111111111111111111111");
-    EXPECT_EQ(options[0].label, "衝突");
+    ASSERT_EQ(options.size(), 2u);
+    EXPECT_EQ(options[0].value, "Assets/Effects/contact.EFKEFC");
+    EXPECT_EQ(options[0].label, "contact.EFKEFC");
+    EXPECT_EQ(options[1].value, "Assets/Effects/sub/spark.efkefc");
+    EXPECT_EQ(options[1].label, "spark.efkefc");
 }
 
-TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSoundsNamedWithoutExtension)
+TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSounds)
 {
     File("Assets/Sounds/player/jump.wav");
     File("Assets/Sounds/goal.WAV");
@@ -247,8 +248,8 @@ TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSoundsNamedWithoutExtensio
     const std::vector<NS::Editor::AssetOption> options =
         NS::Editor::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
     ASSERT_EQ(options.size(), 2);
-    EXPECT_EQ(options[0].value, "goal");
-    EXPECT_EQ(options[1].value, "player/jump");
+    EXPECT_EQ(options[0].value, "Assets/Sounds/goal.WAV");
+    EXPECT_EQ(options[1].value, "Assets/Sounds/player/jump.wav");
 }
 
 TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)

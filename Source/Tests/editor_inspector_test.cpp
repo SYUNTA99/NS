@@ -828,11 +828,11 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
     LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
-    ASSERT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
-    EXPECT_EQ(editor.SceneMusic().name, "bgm_course");
+    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f));
+    EXPECT_EQ(editor.SceneMusic(), "Assets/Sounds/bgm_course.wav");
     EXPECT_FLOAT_EQ(editor.SceneMusicVolume(), 0.4f);
-    EXPECT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
-    EXPECT_FALSE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f));
+    EXPECT_FALSE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", std::numeric_limits<float>::quiet_NaN()));
     EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
 
     ASSERT_TRUE(editor.Editor().PerformUndo());

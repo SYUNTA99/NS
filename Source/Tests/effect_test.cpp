@@ -1,8 +1,10 @@
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DEffect.h"
 #include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
@@ -13,7 +15,7 @@
 #include "NSlib/Core/Types.h"
 #include "TestSpawn.h"
 
-// 描画の無い世界の保持役は再生せず、出した記録だけを残す
+// 描画の無い世界の部品は再生せず、出した物を止めるまで一覧に残す
 
 namespace
 {
@@ -31,106 +33,104 @@ namespace
     using NS::EffectRecord;
 } // namespace
 
-TEST(EffectTest, PlayWithoutAnEffectSceneLeavesOneRecord)
+TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     EffectObj effect;
     const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
-    const EffectRecord* record = effect.Find(id);
-    ASSERT_NE(record, nullptr);
-    EXPECT_EQ(record->name, "test.spark");
-    EXPECT_EQ(record->startStep, 0);
-    EXPECT_FALSE(record->endStep.has_value());
-    EXPECT_FALSE(record->handle.IsValid());
+    const EffectRecord& record = effect.Records()[0];
+    EXPECT_EQ(record.id, id);
+    EXPECT_EQ(record.asset, &asset);
+    EXPECT_FALSE(record.follows);
+    EXPECT_FALSE(record.handle.IsValid());
 }
 
-TEST(EffectTest, StopWritesTheStepItEndedOn)
+TEST(EffectTest, PlayFollowingMarksTheRecordAndKeepsTheScale)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     EffectObj effect;
-    effect.BeginStep(nullptr);
-    const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    effect.BeginStep(nullptr);
-    effect.StopRoot(nullptr, id);
-    effect.BeginStep(nullptr);
-    effect.Stop(nullptr, id);
+    NS::Gfx::EffectPlayDesc desc;
+    desc.scale = NS::Vector3{2.0f, 3.0f, 4.0f};
+    const NS::uint32 id = effect.PlayFollowing(nullptr, &asset, desc);
 
-    const EffectRecord* record = effect.Find(id);
-    ASSERT_NE(record, nullptr);
-    EXPECT_EQ(record->startStep, 1);
-    ASSERT_TRUE(record->rootStopStep.has_value());
-    EXPECT_EQ(record->rootStopStep.value(), 2);
-    ASSERT_TRUE(record->endStep.has_value());
-    EXPECT_EQ(record->endStep.value(), 3);
+    EXPECT_NE(id, 0u);
+    ASSERT_EQ(effect.Records().size(), 1u);
+    EXPECT_TRUE(effect.Records()[0].follows);
+    EXPECT_EQ(effect.Records()[0].scale, desc.scale);
 }
 
-TEST(EffectTest, StopAfterEndsOnTheScheduledStep)
+TEST(EffectTest, EmptyAssetIsNotPlayed)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect empty{"", nullptr};
     EffectObj effect;
-    const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    effect.StopAfter(id, 2);
 
-    effect.BeginStep(nullptr);
-    EXPECT_FALSE(effect.Find(id)->endStep.has_value());
-    effect.BeginStep(nullptr);
-    ASSERT_TRUE(effect.Find(id)->endStep.has_value());
-    EXPECT_EQ(effect.Find(id)->endStep.value(), 2);
+    EXPECT_EQ(effect.Play(nullptr, nullptr, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(effect.Play(nullptr, &empty, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_TRUE(effect.Records().empty());
 }
 
-TEST(EffectTest, EndedRecordIsDroppedAfterTheKeepSteps)
+TEST(EffectTest, StopAndStopRootForgetOnlyTheirRecord)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    EffectObj effect{3};
-    const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    effect.Stop(nullptr, id);
-
-    for (int step = 0; step < 3; ++step)
-    {
-        effect.BeginStep(nullptr);
-    }
-    EXPECT_NE(effect.Find(id), nullptr);
-    effect.BeginStep(nullptr);
-    EXPECT_EQ(effect.Find(id), nullptr);
-}
-
-TEST(EffectTest, AmountAndRotationAreWrittenToTheRecord)
-{
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     EffectObj effect;
-    const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3{0.0f, 1.0f, 0.0f}, 1.0f);
-    effect.SetAmount(id, 2.5f);
-    effect.SetRotation(id, turned);
+    const NS::uint32 first = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 second = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 third = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    ASSERT_NE(first, second);
 
-    const EffectRecord* record = effect.Find(id);
-    ASSERT_NE(record, nullptr);
-    ASSERT_TRUE(record->amount.has_value());
-    EXPECT_FLOAT_EQ(record->amount.value(), 2.5f);
-    ASSERT_TRUE(record->rotation.has_value());
-    EXPECT_EQ(record->rotation.value(), turned);
+    effect.StopRoot(nullptr, first);
+    effect.Stop(nullptr, third);
+    // 無い番号は何もしない
+    effect.Stop(nullptr, first);
+
+    ASSERT_EQ(effect.Records().size(), 1u);
+    EXPECT_EQ(effect.Records()[0].id, second);
 }
 
-TEST(EffectTest, ActorUpdateAdvancesTheSlotKeeperOnce)
+TEST(EffectTest, StopRootAllForgetsEveryRecord)
 {
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
+    EffectObj effect;
+    (void)effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    (void)effect.PlayFollowing(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+
+    effect.StopRootAll(nullptr);
+
+    EXPECT_TRUE(effect.Records().empty());
+}
+
+// 描画の無い世界では終わったかを問えないので、出すだけの再生は次の歩の頭で外し、追従する再生は残す
+TEST(EffectTest, DropEndedWithoutRenderingForgetsOnlyTheRecordsThatDoNotFollow)
+{
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
+    EffectObj effect;
+    (void)effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 following = effect.PlayFollowing(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+
+    effect.DropEnded(nullptr);
+
+    ASSERT_EQ(effect.Records().size(), 1u);
+    EXPECT_EQ(effect.Records()[0].id, following);
+}
+
+// 世界から外れるアクターは、出していたエフェクトを基底が全部止める
+TEST(EffectTest, DisappearingActorStopsEveryEffectItPlayed)
+{
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     NS::Scene scene;
     TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    EffectObj* effect = actor.GetEffect();
-    ASSERT_NE(effect, nullptr);
-    ASSERT_EQ(effect->Step(), 0);
+    ASSERT_NE(NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
+    ASSERT_NE(NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
+    ASSERT_EQ(actor.GetEffect()->Records().size(), 2u);
 
-    actor.Update();
-    EXPECT_EQ(effect->Step(), 1);
+    actor.Disappear();
+
+    EXPECT_TRUE(actor.GetEffect()->Records().empty());
 }
 
 TEST(EffectTest, SlotKeeperIsOrderedAfterHitReaction)

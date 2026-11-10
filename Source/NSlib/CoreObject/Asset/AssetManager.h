@@ -47,7 +47,7 @@ namespace NS
     class AssetManager;
     class Shader;
     class SkinnedModel;
-    class SoundClip;
+    class Sound;
     class Texture;
 
     //! アセット相対パスを ContentRoot 配下の絶対パスへ正規化する
@@ -109,13 +109,13 @@ namespace NS
         //! Clear まで同じクリップを返す
         [[nodiscard]] AnimClip* LoadAnimClip(std::string_view name);
 
-        //! @brief 音を作る装置を渡す。LoadSoundClip を呼ぶ前に呼ぶ
-        //! @details 渡さない間 (テスト・Replay・差していない時の AssetManager) は、LoadSoundClip がファイルを読まない
+        //! @brief 音を作る装置を渡す。LoadSound を呼ぶ前に呼ぶ
+        //! @details 渡さない間 (テスト・Replay・差していない時の AssetManager) は、LoadSound がファイルを読まない
         void SetAudioDevice(Audio::AudioDevice* device) noexcept;
         //! @brief ContentRoot からの WAV の道筋の音を返す。nullptr を返さない
-        //! @details 装置を受け取っていない時は、ファイルを読まずに音の無い SoundClip を返し、ERROR を出さない。
-        //! 装置があって読めない時は ERROR を出して音の無い SoundClip を返す。Clear まで同じ SoundClip を返す
-        [[nodiscard]] SoundClip* LoadSoundClip(std::string_view path);
+        //! @details 装置を受け取っていない時は、ファイルを読まずに音の無い Sound を返し、ERROR を出さない。
+        //! 装置があって読めない時は ERROR を出して音の無い Sound を返す。Clear まで同じ Sound を返す
+        [[nodiscard]] Sound* LoadSound(std::string_view path);
 
         //! コードで作る組み込みの形 cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad の名前
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
@@ -145,10 +145,10 @@ namespace NS
         //! 読み直した後、材質の値の並びを取り直すために全部のマテリアルを作り直す
         std::size_t ReloadAllShaders();
 
-        [[nodiscard]] Effect* LoadEffectAsset(std::string_view id);
-        [[nodiscard]] Object* LoadEffectFile(std::string_view path);
-        void ReloadEffectAssets();
-        [[nodiscard]] std::optional<std::string> DuplicateEffectFile(std::string_view path, std::string_view newName);
+        //! ContentRoot からの .efkefc の道筋のエフェクトを返す。nullptr を返さない
+        //! 空の名前と読めない名前は、中身の空の Effect を返す
+        //! D3DDevice の無い場ではファイルを読まずに空の Effect を返し、ERROR を出さない
+        [[nodiscard]] Effect* LoadEffect(std::string_view path);
 
         //! 全キャッシュを解放する。D3DDevice 破棄より前に呼ぶ
         void Clear() noexcept;
@@ -181,8 +181,6 @@ namespace NS
         // アニメーションの glTF を path キーで 1 回だけ読む。読めなかった path も覚え、Clear まで読み直さない
         [[nodiscard]] const AnimSource* GetOrLoadAnimationSource(std::string_view path);
 
-        std::map<std::string, std::unique_ptr<Effect>> m_effectAssets;
-        bool m_effectCatalogLoaded = false;
         std::string m_baseDir; // 相対 path 解決の基準ディレクトリ
         std::map<std::string, std::unique_ptr<Shader>> m_shaders;
         std::map<std::string, std::unique_ptr<Texture>> m_textures;
@@ -192,10 +190,12 @@ namespace NS
         std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
         // 読めなかった名前も、中身の空のクリップとして覚える
         std::map<std::string, std::unique_ptr<AnimClip>> m_animClips;
+        // 読めなかった道筋も、中身の空の Effect として覚える
+        std::map<std::string, std::unique_ptr<Effect>> m_effects;
         // 音を作る装置。持ち主は Application で、AssetManager より長く生きる
         Audio::AudioDevice* m_audioDevice = nullptr;
-        // 読めなかった道筋も、音の無い SoundClip として覚える
-        std::map<std::string, std::unique_ptr<SoundClip>> m_soundClips;
+        // 読めなかった道筋も、音の無い Sound として覚える
+        std::map<std::string, std::unique_ptr<Sound>> m_soundClips;
     };
 
     //! 生きている間だけ AssetManager::Get() が assets を返すようにし、壊れる時に前の物へ戻す

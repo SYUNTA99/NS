@@ -6,11 +6,11 @@
 
 namespace
 {
-    // 部品 Sound も装置も持たないので、鳴らす関数は何もしない
+    // 装置を持たないので、鳴らす関数は何もしない
     class SilentAudio final : public NS::IGetAudio
     {
     public:
-        [[nodiscard]] NS::Sound* GetSound() const noexcept override { return nullptr; }
+        [[nodiscard]] NS::SoundObj* GetSound() const noexcept override { return nullptr; }
         [[nodiscard]] NS::Audio::AudioDevice* GetAudioDevice() const noexcept override { return nullptr; }
     };
 

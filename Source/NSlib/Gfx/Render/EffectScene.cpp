@@ -4,7 +4,7 @@
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Math.h"
-#include "NSlib/Core/Windows/StringUtils.h"
+#include "NSlib/Gfx/D3DEffect.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -72,67 +72,6 @@ namespace NS
                 }
                 return static_cast<uint8>(std::lround(value * 255.0f));
             }
-
-            std::string ToUtf8(const char16_t* path)
-            {
-                if (path == nullptr)
-                {
-                    return std::string{};
-                }
-                return OS::StringUtils::Utf8FromWide(reinterpret_cast<const wchar_t*>(path));
-            }
-
-            template <typename GetResource, typename GetPath>
-            int CountMissing(int32 count, GetResource getResource, GetPath getPath, std::string_view kind)
-            {
-                int missing = 0;
-                for (int32 i = 0; i < count; ++i)
-                {
-                    if (getResource(i) == nullptr)
-                    {
-                        NS_LOG_ERROR(Graphics, "EffectScene::Preload: {}を読めなかった ({})", kind, ToUtf8(getPath(i)));
-                        ++missing;
-                    }
-                }
-                return missing;
-            }
-
-            // Effect::Create は依存を読み損ねても成功を返し、色テクスチャが無ければ白で塗る。ここで数えて失敗にする
-            int CountMissingResources(const Effekseer::EffectRef& effect)
-            {
-                int missing = 0;
-                missing += CountMissing(
-                    effect->GetColorImageCount(),
-                    [&](int32 i) { return effect->GetColorImage(i); },
-                    [&](int32 i) { return effect->GetColorImagePath(i); },
-                    "テクスチャ");
-                missing += CountMissing(
-                    effect->GetNormalImageCount(),
-                    [&](int32 i) { return effect->GetNormalImage(i); },
-                    [&](int32 i) { return effect->GetNormalImagePath(i); },
-                    "法線テクスチャ");
-                missing += CountMissing(
-                    effect->GetDistortionImageCount(),
-                    [&](int32 i) { return effect->GetDistortionImage(i); },
-                    [&](int32 i) { return effect->GetDistortionImagePath(i); },
-                    "歪みテクスチャ");
-                missing += CountMissing(
-                    effect->GetModelCount(),
-                    [&](int32 i) { return effect->GetModel(i); },
-                    [&](int32 i) { return effect->GetModelPath(i); },
-                    "モデル");
-                missing += CountMissing(
-                    effect->GetMaterialCount(),
-                    [&](int32 i) { return effect->GetMaterial(i); },
-                    [&](int32 i) { return effect->GetMaterialPath(i); },
-                    "マテリアル");
-                missing += CountMissing(
-                    effect->GetCurveCount(),
-                    [&](int32 i) { return effect->GetCurve(i); },
-                    [&](int32 i) { return effect->GetCurvePath(i); },
-                    "カーブ");
-                return missing;
-            }
         } // namespace
 
         EffectScene::EffectScene() noexcept
@@ -169,7 +108,6 @@ namespace NS
                 return;
             }
 
-            // 読み込み時に座標系に合わせて値を反転するため、Effect::Create より先に決める
             manager->SetCoordinateSystem(Effekseer::CoordinateSystem::LH);
 
             manager->SetSpriteRenderer(renderer->CreateSpriteRenderer());
@@ -177,11 +115,6 @@ namespace NS
             manager->SetRingRenderer(renderer->CreateRingRenderer());
             manager->SetTrackRenderer(renderer->CreateTrackRenderer());
             manager->SetModelRenderer(renderer->CreateModelRenderer());
-
-            manager->SetTextureLoader(renderer->CreateTextureLoader());
-            manager->SetModelLoader(renderer->CreateModelLoader());
-            manager->SetMaterialLoader(renderer->CreateMaterialLoader());
-            manager->SetCurveLoader(Effekseer::MakeRefPtr<Effekseer::CurveLoader>());
 
             m_renderer = renderer;
             m_manager = manager;
@@ -191,7 +124,6 @@ namespace NS
         {
             // Sprite・Ribbon・Ring・Track の描画は Renderer を生ポインタで持つ
             // ModelRenderer の参照で Renderer が残るのに頼らず、Manager を先に放す
-            m_effects.clear();
             if (m_renderer != nullptr)
             {
                 m_renderer->SetDepth(nullptr, EffekseerRenderer::DepthReconstructionParameter{});
@@ -206,14 +138,9 @@ namespace NS
             return m_manager != nullptr && m_renderer != nullptr;
         }
 
-        bool EffectScene::Preload(const EffectResourceDesc& asset) noexcept
+        EffectHandle EffectScene::Play(const D3DEffect* effect, const EffectPlayDesc& desc) noexcept
         {
-            return PreloadFile(asset.id, asset.path, asset.seed);
-        }
-
-        EffectHandle EffectScene::Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept
-        {
-            if (!IsValid())
+            if (!IsValid() || effect == nullptr || !effect->IsValid())
             {
                 return EffectHandle{};
             }
@@ -227,33 +154,12 @@ namespace NS
                 }
             }
 
-            const std::unordered_map<std::string, std::string>::const_iterator source = m_resourcePaths.find(asset.id);
-            if (asset.path.empty() || source == m_resourcePaths.end() || source->second != asset.path)
-            {
-                if (m_warnedMissing.insert(asset.id).second)
-                {
-                    NS_LOG_WARN(Graphics, "エフェクト素材 {} を現在の定義で先に読み込んでいない", asset.id);
-                }
-                return EffectHandle{};
-            }
-            const std::string key(asset.id);
-            const std::unordered_map<std::string, Effekseer::EffectRef>::iterator found = m_effects.find(key);
-            if (found == m_effects.end())
-            {
-                // 続けて呼ばれてもログを埋めないよう、警告は名前ごとに 1 回
-                if (m_warnedMissing.emplace(key).second)
-                {
-                    NS_LOG_WARN(Graphics, "EffectScene::Play: Preload していないエフェクト ({})", key);
-                }
-                return EffectHandle{};
-            }
-
             const Effekseer::Handle handle =
-                m_manager->Play(found->second, desc.position.x, desc.position.y, desc.position.z);
+                m_manager->Play(effect->Native(), desc.position.x, desc.position.y, desc.position.z);
             // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
-            uint32& playCount = m_playCounts[key];
+            uint32& playCount = m_playCounts[effect];
             m_manager->SetRandomSeed(handle,
-                                     static_cast<int32>((m_seedBases[key] ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
+                                     static_cast<int32>((effect->Seed() ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
             ++playCount;
             // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
             m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
@@ -270,42 +176,6 @@ namespace NS
                 }
             }
             return EffectHandle{handle};
-        }
-
-        bool EffectScene::PreloadFile(std::string_view name, const std::string& path, uint32 seed) noexcept
-        {
-            if (!IsValid())
-            {
-                return false;
-            }
-
-            std::string key(name);
-            if (m_effects.contains(key) && m_resourcePaths[key] == path)
-            {
-                m_seedBases[key] = seed;
-                return true;
-            }
-
-            const std::wstring pathWide = OS::StringUtils::WideFromUtf8(path);
-            const std::u16string pathU16(pathWide.begin(), pathWide.end());
-
-            Effekseer::EffectRef effect = Effekseer::Effect::Create(m_manager, pathU16.c_str());
-            if (effect == nullptr)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "EffectScene::Preload: エフェクトを読めなかった ({})",
-                             OS::StringUtils::Utf8FromWide(pathWide));
-                return false;
-            }
-            if (CountMissingResources(effect) > 0)
-            {
-                return false;
-            }
-
-            m_seedBases[key] = seed;
-            m_resourcePaths[key] = path;
-            m_effects.insert_or_assign(key, std::move(effect));
-            return true;
         }
 
         void EffectScene::SetTransform(EffectHandle handle,
@@ -365,6 +235,7 @@ namespace NS
                 return;
             }
             m_manager->StopAllEffects();
+            m_playCounts.clear();
         }
 
         bool EffectScene::Exists(EffectHandle handle) const noexcept

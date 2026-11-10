@@ -1,27 +1,22 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 
+#include "NSlib/Gfx/D3DEffect.h"
+
 #include <utility>
 
 namespace NS
 {
-    Effect::Effect(std::string id) noexcept
+    Effect::Effect(std::string path) noexcept : m_path(std::move(path)) {}
+
+    Effect::Effect(std::string path, std::unique_ptr<Gfx::D3DEffect> effect) noexcept
+        : m_path(std::move(path)), m_effect(std::move(effect))
     {
-        m_resource.id = std::move(id);
     }
 
-    void Effect::Replace(std::string path, Gfx::EffectResourceDesc resource, std::string label) noexcept
-    {
-        m_path = std::move(path);
-        if (label.empty())
-        {
-            label = resource.name;
-        }
-        m_label = std::move(label);
-        m_resource = std::move(resource);
-    }
+    Effect::~Effect() = default;
 
-    void Effect::Invalidate() noexcept
+    bool Effect::IsEmpty() const noexcept
     {
-        m_resource.path.clear();
+        return m_effect == nullptr || !m_effect->IsValid();
     }
 } // namespace NS

@@ -35,7 +35,7 @@ namespace NS
     class WorldLines;
     class Collision;
     class EffectObj;
-    class Sound;
+    class SoundObj;
     class HitReaction;
     struct HitOwnerRun;
     class ActorAction;
@@ -98,11 +98,11 @@ namespace NS
         [[nodiscard]] Phys::PhysicsScene* GetPhysicsScene() const noexcept override;
         [[nodiscard]] HitSensorDirector* GetHitSensorDirector() const noexcept override;
         [[nodiscard]] SceneRenderer* GetSceneRenderer() const noexcept override;
-        // 出したエフェクトを記録する部品。持たなければ nullptr
+        // エフェクトの再生を受け持つ部品。持たなければ nullptr
         [[nodiscard]] EffectObj* GetEffect() const noexcept override { return m_effect.get(); }
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
-        // 読んだ音を覚える部品。持たなければ nullptr
-        [[nodiscard]] Sound* GetSound() const noexcept override { return m_sound.get(); }
+        // 鳴らし続ける音を受け持つ部品。持たなければ nullptr
+        [[nodiscard]] SoundObj* GetSound() const noexcept override { return m_sound.get(); }
         [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
@@ -182,12 +182,14 @@ namespace NS
         //! 1 固定フレームぶん進める。順は基盤が決め、派生は変えられない
         //! シーンは出ているアクターを全部、物理の前の 1 か所で一覧の順に 1 回ずつ呼ぶ
         //! (シーンが止まっている間も呼ぶ)。中の順は次のとおりで、部品は基盤が挟む。
-        //! - エフェクトの記録と、束が持ち主へ渡す項目を 1 フレーム進める
+        //! - 消えたエフェクトを一覧から外し、機器を繋ぎ直して止まった音を鳴らし直し、
+        //!   束が持ち主へ渡す項目を 1 フレーム進める
         //! - DecideStep を毎回 1 回
         //! - IsStopped でも SkipStateStep を呼んだフレームでもなければ、状態機械を 1 歩・動作のタイムライン・
         //!   AfterStateStep を 1 回ずつ
         //! - IsStopped でなければ BodyStep を 1 回 (状態機械の中で当たりの止めが始まったフレームは呼ばない)
-        //! - 出ていれば当たりを体の姿へそろえ、Model の揺れと震え、VisualStep の順に進める
+        //! - 出ていれば当たりを体の姿へそろえ、追従するエフェクトを根へ置き直し、Model の揺れと震え、
+        //!   VisualStep の順に進める
         //! - 止めの残りを 1 減らす
         void Update();
         virtual void PrepareRender();
@@ -319,10 +321,6 @@ namespace NS
         [[nodiscard]] ActionClock CurrentActionClock() const noexcept;
         // 動作の部品が記録した、センサーの入り切りと始まった事象の項目を、自分の部品へ頼む
         void RunActionOutputs();
-        // 動作の効果音の項目の音を、自分の Sound に読んでおく
-        void PreloadActionSounds();
-        // 当たりの束の効果音の項目の音を、自分の Sound に読んでおく
-        void PreloadHitReactionSounds();
 
         friend class ActorList;
         friend bool SendMsg(const Message& msg, HitSensor* receiver, HitSensor* sender);
@@ -407,7 +405,7 @@ namespace NS
         std::unique_ptr<HitSensorsObj> m_hitSensors;
         std::unique_ptr<HitReaction> m_hitReaction;
         std::unique_ptr<EffectObj> m_effect;
-        std::unique_ptr<Sound> m_sound;
+        std::unique_ptr<SoundObj> m_sound;
         std::unique_ptr<ActorAction> m_actorAction;
         // 状態が借りる部品より先に壊すので、部品の最後に置く。組むのは BuildStateMachine だけ
         std::unique_ptr<StateMachine> m_stateMachine;
