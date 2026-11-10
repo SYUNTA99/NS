@@ -28,6 +28,7 @@ namespace NS
     namespace Gfx
     {
         struct BuiltinShaders;
+        class D3DEffectLoader;
     }
 } // namespace NS
 
@@ -190,6 +191,8 @@ namespace NS
         std::map<std::string, std::unique_ptr<AnimSource>>  m_animationSources; // アニメの glTF。空の値は読み込み失敗の記録
         // 読めなかった名前も、中身の空のクリップとして覚える
         std::map<std::string, std::unique_ptr<AnimClip>> m_animClips;
+        // エフェクトの依存を読む物。LoadEffect が作り、D3DDevice が替わったら作り直す。Clear で m_effects の後に捨てる
+        std::unique_ptr<Gfx::D3DEffectLoader> m_effectLoader;
         // 読めなかった道筋も、中身の空の Effect として覚える
         std::map<std::string, std::unique_ptr<Effect>> m_effects;
         // 音を作る装置。持ち主は Application で、AssetManager より長く生きる

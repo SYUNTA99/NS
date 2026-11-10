@@ -14,9 +14,4 @@ namespace NS
     }
 
     Effect::~Effect() = default;
-
-    bool Effect::IsEmpty() const noexcept
-    {
-        return m_effect == nullptr || !m_effect->IsValid();
-    }
 } // namespace NS

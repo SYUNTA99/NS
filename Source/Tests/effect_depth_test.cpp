@@ -765,6 +765,64 @@ TEST(EffectAssetsRender, InvalidAssetDoesNotStartPlayback)
     EXPECT_TRUE(owner.Records().empty());
 }
 
+// エフェクトの道筋も、ほかの素材と同じく ContentRoot から解決する。AssetManager の基準フォルダには依らない
+TEST(EffectAssetsRender, LoadEffectResolvesUnderTheContentRoot)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクトの道筋の解決", .size = {32, 32}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::AssetManager assets(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Sounds"));
+
+    EXPECT_TRUE(assets.LoadEffect("Assets/Effects/impact.core.efkefc")->IsValid());
+}
+
+// 同じ D3DEffectLoader で読んだエフェクトは依存のテクスチャを使い回し、別の物で読むと別に読む
+TEST(EffectAssetsRender, EffectsReadWithOneLoaderShareTheirTextures)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクトの依存の使い回し", .size = {32, 32}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    const std::string path =
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Effects/impact.core.efkefc");
+    const std::unique_ptr<NS::Gfx::D3DEffectLoader> loader = NS::Gfx::D3DEffectLoader::Create();
+    ASSERT_NE(loader, nullptr);
+
+    const std::unique_ptr<NS::Gfx::D3DEffect> first = NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get());
+    const std::unique_ptr<NS::Gfx::D3DEffect> second = NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get());
+    const std::unique_ptr<NS::Gfx::D3DEffect> alone = NS::Gfx::D3DEffect::LoadFromFile(path, 1u);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    ASSERT_NE(alone, nullptr);
+    ASSERT_GT(first->Native()->GetColorImageCount(), 0);
+
+    EXPECT_EQ(first->Native()->GetColorImage(0), second->Native()->GetColorImage(0));
+    EXPECT_NE(first->Native()->GetColorImage(0), alone->Native()->GetColorImage(0));
+}
+
+// D3DDevice を作り直した後は、前の装置で作った D3DEffectLoader を使わせない
+TEST(EffectAssetsRender, LoaderOfAnOldDeviceIsNotUsed)
+{
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "装置を作り直した後の読み込み", .size = {32, 32}, .visible = false});
+    const std::string path =
+        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Effects/impact.core.efkefc");
+    std::unique_ptr<NS::Gfx::D3DEffectLoader> loader;
+    {
+        NS::Gfx::D3DDevice oldDevice(NS::Gfx::D3DDeviceDesc{}, window);
+        ASSERT_TRUE(oldDevice.IsValid());
+        loader = NS::Gfx::D3DEffectLoader::Create();
+        ASSERT_NE(loader, nullptr);
+        EXPECT_TRUE(loader->IsForCurrentDevice());
+    }
+    EXPECT_FALSE(loader->IsForCurrentDevice());
+
+    NS::Gfx::D3DDevice newDevice(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(newDevice.IsValid());
+    EXPECT_FALSE(loader->IsForCurrentDevice());
+    const TestLogCapture log;
+    EXPECT_EQ(NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get()), nullptr);
+    EXPECT_EQ(log.ErrorCount(), 1);
+}
+
 // 追従する再生は、アクターが動いた先へ基底が毎フレーム置き直す
 TEST(EffectPlayback, FollowingEffectIsPlacedAtTheActorsRootEveryStep)
 {

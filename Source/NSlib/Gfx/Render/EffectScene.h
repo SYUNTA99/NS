@@ -88,7 +88,7 @@ namespace NS
 
             Effekseer::ManagerRef m_manager;
             EffekseerRenderer::RendererRef m_renderer;
-            std::unordered_map<const D3DEffect*, uint32> m_playCounts;
+            std::unordered_map<std::string, uint32> m_playCounts; // D3DEffect::Path() ごとの、StopAll からの再生の回数
 
             SceneDepthCopy m_depth;
             std::array<DepthTextureRef, 2> m_depthTextures{};

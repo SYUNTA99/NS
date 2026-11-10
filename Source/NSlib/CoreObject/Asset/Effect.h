@@ -25,8 +25,8 @@ namespace NS
 
         [[nodiscard]] const std::string& Path() const noexcept { return m_path; }
         [[nodiscard]] const Gfx::D3DEffect* D3D() const noexcept { return m_effect.get(); }
-        [[nodiscard]] bool IsEmpty() const noexcept;
-        [[nodiscard]] bool IsValid() const noexcept { return !IsEmpty(); }
+        //! 再生できるエフェクトを持つか。読めなかった道筋と、D3DDevice の無い場で読んだ物は false
+        [[nodiscard]] bool IsValid() const noexcept { return m_effect != nullptr; }
 
         NS_REFLECT_NONE(Effect, Object)
 
