@@ -161,13 +161,13 @@ namespace NS
         return m_scene->GetEffectScene();
     }
 
-    Audio::AudioDevice* SceneActor::GetAudioDevice() const noexcept
+    Audio::SoundScene* SceneActor::GetSoundScene() const noexcept
     {
         if (m_scene == nullptr)
         {
             return nullptr;
         }
-        return m_scene->GetAudioDevice();
+        return m_scene->GetSoundScene();
     }
 
     CameraManager* SceneActor::GetCameraManager() const noexcept
@@ -447,8 +447,8 @@ namespace NS
         if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
         // 出ていた粒は寿命まで残し、新しい粒だけを止める
         if (m_effect) { m_effect->StopRootAll(GetEffectScene()); }
-        // 鳴らし続けていた音を、居ないアクターが鳴らし続けない
-        if (m_sound) { m_sound->StopAll(); }
+        // 鳴らし続けていた音を、居ないアクターが鳴らし続けない。1 回の音は最後まで鳴らす
+        if (m_sound) { m_sound->StopLoopAll(GetSoundScene()); }
     }
 
     namespace
@@ -706,7 +706,7 @@ namespace NS
         m_skipStateStep = false;
         // clang-format off
         if (m_effect) { m_effect->DropEnded(GetEffectScene()); }
-        if (m_sound) { m_sound->Update(); }
+        if (m_sound) { m_sound->DropEnded(GetSoundScene()); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         DecideStep();

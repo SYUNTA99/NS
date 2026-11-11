@@ -1,42 +1,31 @@
 #include "NSlib/CoreObject/System/MusicDirector.h"
 
-#include "NSlib/Audio/SoundLoop.h"
 #include "NSlib/CoreObject/Asset/Sound.h"
 
 namespace NS
 {
-    MusicDirector::MusicDirector() noexcept = default;
-
-    MusicDirector::~MusicDirector() noexcept = default;
-
-    bool MusicDirector::Start(const Audio::AudioDevice* device, const Sound* music, float volume)
+    bool MusicDirector::Start(Audio::SoundScene* sounds, const Sound* music, float volume)
     {
         if (m_started)
         {
             return false;
         }
         m_started = true;
-        if (device == nullptr || music == nullptr || !music->IsValid())
+        if (sounds == nullptr || music == nullptr)
         {
             return true;
         }
-        m_loop = std::make_unique<Audio::SoundLoop>(*music->XA2());
-        m_loop->SetVolume(volume);
-        m_loop->Play();
+        m_handle = sounds->Play(music->XA2(), volume, true);
         return true;
     }
 
-    void MusicDirector::Stop() noexcept
+    void MusicDirector::Stop(Audio::SoundScene* sounds) noexcept
     {
         m_started = false;
-        m_loop.reset();
-    }
-
-    void MusicDirector::Update()
-    {
-        if (m_loop)
+        if (sounds != nullptr)
         {
-            m_loop->Play();
+            sounds->Stop(m_handle);
         }
+        m_handle = {};
     }
 } // namespace NS

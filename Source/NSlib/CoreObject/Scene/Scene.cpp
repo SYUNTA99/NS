@@ -465,7 +465,8 @@ namespace NS
         m_screenFlash.OnTick();
         StepViewEffects();
         m_padRumble.OnTick();
-        m_music.Update();
+        // 曲とアクターの音。音の機器を繋ぎ直した後の鳴らし直しも、シーンが止まっている間に行う
+        m_sounds.Update();
     }
 
     void Scene::OnShutdown()
@@ -504,6 +505,25 @@ namespace NS
     }
 
     Gfx::EffectScene* Scene::GetEffectScene() const noexcept { return m_sceneRenderer.Effects(); }
+
+    void Scene::SetAudioDevice(Audio::AudioDevice* device) noexcept
+    {
+        if (device != m_audioDevice)
+        {
+            // GetSoundScene が nullptr を返すようになると、番号を持つ側が止められなくなる
+            m_sounds.StopAll();
+        }
+        m_audioDevice = device;
+    }
+
+    Audio::SoundScene* Scene::GetSoundScene() noexcept
+    {
+        if (m_audioDevice == nullptr)
+        {
+            return nullptr;
+        }
+        return &m_sounds;
+    }
 
     SceneCamera* Scene::MainCamera() noexcept { return &m_mainCamera; }
 } // namespace NS

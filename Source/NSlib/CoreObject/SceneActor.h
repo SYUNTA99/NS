@@ -103,7 +103,7 @@ namespace NS
         [[nodiscard]] Gfx::EffectScene* GetEffectScene() const noexcept override;
         // 鳴らし続ける音を受け持つ部品。持たなければ nullptr
         [[nodiscard]] SoundObj* GetSound() const noexcept override { return m_sound.get(); }
-        [[nodiscard]] Audio::AudioDevice* GetAudioDevice() const noexcept override;
+        [[nodiscard]] Audio::SoundScene* GetSoundScene() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
         [[nodiscard]] Transform& Root() noexcept;

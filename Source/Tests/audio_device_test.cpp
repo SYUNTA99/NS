@@ -1,6 +1,5 @@
 #include "NSlib/Audio/AudioDevice.h"
 #include "NSlib/Audio/XA2Sound.h"
-#include "NSlib/Audio/SoundLoop.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Sound.h"
@@ -156,8 +155,7 @@ TEST_F(XA2SoundTest, ValidWavWithInvalidDeviceIsInvalidWithoutError)
     const std::string path = WriteFile("ok.wav", MakePcmWav(2));
     const TestLogCapture log;
 
-    NS::Audio::XA2Sound clip(&m_device, path);
-    clip.Play(1.0f);
+    const NS::Audio::XA2Sound clip(&m_device, path);
 
     EXPECT_FALSE(clip.IsValid());
     EXPECT_EQ(log.ErrorCount(), 0);
@@ -334,18 +332,4 @@ TEST(SoundAssetTest, WithDeviceReportsUnreadableSound)
 
     EXPECT_FALSE(sound->IsValid());
     EXPECT_EQ(log.ErrorCount(), 1);
-}
-
-// 無効な音から作ったループは無効で、鳴っているかは Play から Stop までの間だけ true になる
-TEST_F(XA2SoundTest, LoopFromInvalidClipTracksPlayingState)
-{
-    const NS::Audio::XA2Sound clip(&m_device, WriteFile("ok.wav", MakePcmWav(2)));
-    NS::Audio::SoundLoop loop(clip);
-
-    EXPECT_FALSE(loop.IsValid());
-    EXPECT_FALSE(loop.IsPlaying());
-    loop.Play();
-    EXPECT_TRUE(loop.IsPlaying());
-    loop.Stop();
-    EXPECT_FALSE(loop.IsPlaying());
 }

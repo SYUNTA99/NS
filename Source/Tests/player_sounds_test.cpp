@@ -6,12 +6,12 @@
 
 namespace
 {
-    // 装置を持たないので、鳴らす関数は何もしない
+    // 音の部品も鳴らす先も持たないので、鳴らす関数は何もしない
     class SilentAudio final : public NS::IGetAudio
     {
     public:
         [[nodiscard]] NS::SoundObj* GetSound() const noexcept override { return nullptr; }
-        [[nodiscard]] NS::Audio::AudioDevice* GetAudioDevice() const noexcept override { return nullptr; }
+        [[nodiscard]] NS::Audio::SoundScene* GetSoundScene() const noexcept override { return nullptr; }
     };
 
     constexpr float k_Dt = 1.0f / 60.0f;

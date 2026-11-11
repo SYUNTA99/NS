@@ -1,23 +1,12 @@
 #include "NSlib/CoreObject/IGet/IGetAudio.h"
 
-#include "NSlib/Audio/XA2Sound.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 
 namespace NS
 {
-    void PlaySound(const IGetAudio* user, const Sound* sound, float volume)
-    {
-        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        if (user->GetAudioDevice() == nullptr || sound == nullptr || !sound->IsValid())
-        {
-            return;
-        }
-        sound->XA2()->Play(volume);
-    }
-
-    uint32 PlayLoopSound(const IGetAudio* user, const Sound* sound, float volume)
+    uint32 PlaySound(const IGetAudio* user, const Sound* sound, float volume, bool loop)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         SoundObj* part = user->GetSound();
@@ -25,7 +14,7 @@ namespace NS
         {
             return 0;
         }
-        return part->PlayLoop(user->GetAudioDevice(), sound, volume);
+        return part->Play(user->GetSoundScene(), sound, volume, loop);
     }
 
     void StopSound(const IGetAudio* user, uint32 id) noexcept
@@ -33,16 +22,16 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (SoundObj* part = user->GetSound())
         {
-            part->Stop(id);
+            part->Stop(user->GetSoundScene(), id);
         }
     }
 
-    void SetSoundVolume(const IGetAudio* user, uint32 id, float volume) noexcept
+    void SetSoundVolume(const IGetAudio* user, uint32 id, float volume)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (SoundObj* part = user->GetSound())
         {
-            part->SetVolume(id, volume);
+            part->SetVolume(user->GetSoundScene(), id, volume);
         }
     }
 } // namespace NS

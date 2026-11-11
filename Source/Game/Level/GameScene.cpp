@@ -36,7 +36,7 @@ namespace GL
             RestartCourse();
             // 前のプレイの曲は OnStopPlay で止めたので必ず始まる。RestartCourse は曲に触らず、やり直しても曲が続く
             const NS::SceneEnvironment& environment = Environment();
-            (void)Music().Start(GetAudioDevice(), environment.music, environment.musicVolume);
+            (void)Music().Start(GetSoundScene(), environment.music, environment.musicVolume);
         }
 
         void GameScene::OnStopPlay()
@@ -46,7 +46,7 @@ namespace GL
             m_playerDead = false;
             m_respawnPending = false;
             m_goalReached = false;
-            Music().Stop();
+            Music().Stop(GetSoundScene());
         }
 
         bool GameScene::NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept

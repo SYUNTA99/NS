@@ -51,7 +51,7 @@ TEST(SoundTest, SceneWithoutDeviceDoesNotPlay)
     NS::Scene scene;
     NS::SceneActor* actor = SpawnFromActorFile<TestEmptyActor>(scene, "TestEmptyActor");
     ASSERT_NE(actor, nullptr);
-    ASSERT_EQ(actor->GetAudioDevice(), nullptr);
+    ASSERT_EQ(actor->GetSoundScene(), nullptr);
     const TestLogCapture log;
 
     NS::PlaySound(actor, clip, 1.0f);

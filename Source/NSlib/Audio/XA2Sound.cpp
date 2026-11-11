@@ -1,7 +1,6 @@
 #include "NSlib/Audio/XA2Sound.h"
 
 #include "NSlib/Audio/AudioDevice.h"
-#include "NSlib/Audio/detail/SoundVolume.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/Core/Windows/StringUtils.h"
@@ -70,7 +69,7 @@ namespace NS
                 NS_LOG_ERROR(Audio, "XA2Sound: WAV の形式が PCM・IEEE float・MS-ADPCM でないか壊れている: {}", path);
                 return;
             }
-            // 受け付けない標本の数は SoundEffect を作れても、鳴らす時に XAudio2 が声を作れず DirectXTK が throw する
+            // 受け付けない標本の数は SoundEffect を作れても、鳴らす時に XAudio2 がソースボイスを作れず DirectXTK が例外を投げる
             if (!IsXAudio2AdpcmBlock(wav.wfx))
             {
                 NS_LOG_ERROR(Audio,
@@ -87,20 +86,11 @@ namespace NS
                 return;
             }
             // TODO: XAudio2 の中の失敗は DirectXTK が throw し、例外を切ったビルドでは終了する。
-            //       素材を読んだ時に落ちる報告が来たら、SoundEffect を使わず XAudio2 の声を直に作る
+            //       素材を読んだ時に落ちる報告が来たら、SoundEffect を使わず XAudio2 のソースボイスを直に作る
             m_effect = std::make_unique<DirectX::SoundEffect>(
                 device->Engine(), bytes, wav.wfx, wav.startAudio, static_cast<size_t>(wav.audioBytes));
         }
 
         XA2Sound::~XA2Sound() = default;
-
-        void XA2Sound::Play(float volume)
-        {
-            if (!m_effect)
-            {
-                return;
-            }
-            m_effect->Play(detail::ToXAudioVolume(volume), 0.0f, 0.0f);
-        }
     } // namespace Audio
 } // namespace NS

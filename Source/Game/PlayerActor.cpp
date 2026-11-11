@@ -29,6 +29,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
+#include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -123,6 +124,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_reboundPreview);
     CreateClassObj(m_worldLines);
     CreateClassObj(m_effect);
+    CreateClassObj(m_sound);
     CreateClassObj(m_playerSounds);
     // 着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep。跳ぶ音は動作 Jump の項目が鳴らす
     m_playerEvents.onJump.Subscribe([this] { m_playerSounds->AllowLand(); });

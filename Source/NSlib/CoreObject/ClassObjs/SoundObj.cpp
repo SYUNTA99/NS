@@ -4,7 +4,7 @@
 
 namespace NS
 {
-    uint32 SoundObj::PlayLoop(const Audio::AudioDevice* device, const Sound* sound, float volume)
+    uint32 SoundObj::Play(Audio::SoundScene* sounds, const Sound* sound, float volume, bool loop)
     {
         if (sound == nullptr || sound->Path().empty())
         {
@@ -12,12 +12,11 @@ namespace NS
         }
         SoundRecord record;
         record.asset = sound;
+        record.loop = loop;
         record.volume = volume;
-        if (device != nullptr && sound->IsValid())
+        if (sounds != nullptr)
         {
-            record.loop = std::make_unique<Audio::SoundLoop>(*sound->XA2());
-            record.loop->SetVolume(volume);
-            record.loop->Play();
+            record.handle = sounds->Play(sound->XA2(), volume, loop);
         }
         record.id = m_nextId;
         ++m_nextId;
@@ -25,23 +24,36 @@ namespace NS
         return m_records.back().id;
     }
 
-    void SoundObj::Stop(uint32 id) noexcept
+    void SoundObj::Stop(Audio::SoundScene* sounds, uint32 id) noexcept
     {
         const std::size_t index = IndexOf(id);
         if (index == m_records.size())
         {
             return;
         }
-        // ソースボイスは SoundLoop の破棄で止まる
+        if (sounds != nullptr)
+        {
+            sounds->Stop(m_records[index].handle);
+        }
         m_records.erase(m_records.begin() + static_cast<std::ptrdiff_t>(index));
     }
 
-    void SoundObj::StopAll() noexcept
+    void SoundObj::StopLoopAll(Audio::SoundScene* sounds) noexcept
     {
+        if (sounds != nullptr)
+        {
+            for (const SoundRecord& record : m_records)
+            {
+                if (record.loop)
+                {
+                    sounds->Stop(record.handle);
+                }
+            }
+        }
         m_records.clear();
     }
 
-    void SoundObj::SetVolume(uint32 id, float volume) noexcept
+    void SoundObj::SetVolume(Audio::SoundScene* sounds, uint32 id, float volume)
     {
         const std::size_t index = IndexOf(id);
         if (index == m_records.size())
@@ -49,21 +61,22 @@ namespace NS
             return;
         }
         m_records[index].volume = volume;
-        if (m_records[index].loop)
+        if (sounds != nullptr)
         {
-            m_records[index].loop->SetVolume(volume);
+            sounds->SetVolume(m_records[index].handle, volume);
         }
     }
 
-    void SoundObj::Update()
+    void SoundObj::DropEnded(const Audio::SoundScene* sounds) noexcept
     {
-        for (const SoundRecord& record : m_records)
+        if (sounds == nullptr)
         {
-            if (record.loop)
-            {
-                record.loop->Play();
-            }
+            // 鳴らしていないので、終わったかを問えない。1 回の音は止める呼び出しが来ないので、ここで外す
+            std::erase_if(m_records, [](const SoundRecord& record) { return !record.loop; });
+            return;
         }
+        std::erase_if(m_records,
+                      [sounds](const SoundRecord& record) { return !record.loop && !sounds->Exists(record.handle); });
     }
 
     std::size_t SoundObj::IndexOf(uint32 id) const noexcept
