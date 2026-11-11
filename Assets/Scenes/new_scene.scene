@@ -2,7 +2,8 @@
   "environment": {
     "music": "Assets/Sounds/bgm_course.wav",
     "musicVolume": 0.5,
-    "skybox": "Assets/Skybox/blue-sky/"
+    "skybox": "Assets/Skybox/blue-sky/",
+    "soundFullVolumeDistance": 10.0
   },
   "nextObjectId": 94,
   "objects": [

@@ -27,6 +27,7 @@ namespace NS
         m_mainCamera.SetUp({0.0f, 1.0f, 0.0f});
         m_cameraManager.SetCamera(&m_mainCamera);
         m_cameraManager.SetCollision(this);
+        m_sounds.SetFullVolumeDistance(m_environment.soundFullVolumeDistance);
     }
 
     Scene::~Scene()
@@ -73,7 +74,13 @@ namespace NS
         return scene;
     }
 
-    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept { m_environment = environment; }
+    void Scene::SetEnvironment(const SceneEnvironment& environment) noexcept
+    {
+        m_environment = environment;
+        m_environment.soundFullVolumeDistance = ValidSoundFullVolumeDistance(environment.soundFullVolumeDistance);
+        // 音の届く距離の正は m_environment。変わるたびに、鳴らす側へ渡し直す
+        m_sounds.SetFullVolumeDistance(m_environment.soundFullVolumeDistance);
+    }
 
     void Scene::SetSimulationEnabled(bool enabled) noexcept
     {

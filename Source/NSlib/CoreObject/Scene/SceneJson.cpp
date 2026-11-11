@@ -181,6 +181,15 @@ namespace NS
         return Clamp(volume, 0.0f, 1.0f);
     }
 
+    float ValidSoundFullVolumeDistance(float meters) noexcept
+    {
+        if (!std::isfinite(meters) || meters <= 0.0f)
+        {
+            return SceneEnvironment{}.soundFullVolumeDistance;
+        }
+        return meters;
+    }
+
     SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene)
     {
         SceneEnvironment environment{};
@@ -191,6 +200,7 @@ namespace NS
         }
         (void)ApplyReflectedFields(&environment, *SceneEnvironment::StaticReflection(), *found);
         environment.musicVolume = ClampMusicVolume(environment.musicVolume);
+        environment.soundFullVolumeDistance = ValidSoundFullVolumeDistance(environment.soundFullVolumeDistance);
         return environment;
     }
 

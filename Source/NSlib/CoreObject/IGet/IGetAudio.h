@@ -1,5 +1,6 @@
 #pragma once
 
+#include "NSlib/Core/Math.h"
 #include "NSlib/Core/Types.h"
 
 namespace NS
@@ -31,6 +32,12 @@ namespace NS
     //! @param[in] loop true なら StopSound まで繰り返す。false なら 1 回鳴らす
     //! @return 音の番号。捨ててよい。Sound が無い時・nullptr・空の道筋は 0
     uint32 PlaySound(const IGetAudio* user, const Sound* sound, float volume, bool loop = false);
+
+    //! @brief 世界の位置から音を鳴らす。聞く点から見た向きで左右に振り、離れるほど小さくする
+    //! @param[in] position 音の出る位置。鳴らした後は動かない
+    //! @details ほかの引数と戻り値は PlaySound と同じ。止める・音量を変えるのも StopSound・SetSoundVolume
+    uint32 PlaySoundAt(
+        const IGetAudio* user, const Sound* sound, const Vector3& position, float volume, bool loop = false);
 
     //! PlaySound で鳴らした音を止める。無い番号と Sound が無い時は何もしない
     void StopSound(const IGetAudio* user, uint32 id) noexcept;

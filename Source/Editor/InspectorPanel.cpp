@@ -248,16 +248,16 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
-            if (m_musicSource != editor.SceneMusic() || m_musicVolumeSource != editor.SceneMusicVolume())
+            if (m_musicSource != editor.SceneMusic() || m_musicVolumeSource != editor.SceneMusicVolume() ||
+                m_soundDistanceSource != editor.SceneSoundFullVolumeDistance())
             {
-                m_musicSource = std::string{editor.SceneMusic()};
-                m_musicVolumeSource = editor.SceneMusicVolume();
-                m_musicDraft = m_musicSource;
-                m_musicVolumeDraft = m_musicVolumeSource;
+                TakeSceneMusicFrom(editor);
             }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            SceneEnvironment fields{.skybox = m_skyboxDraft, .musicVolume = m_musicVolumeDraft};
+            SceneEnvironment fields{.skybox = m_skyboxDraft,
+                                    .musicVolume = m_musicVolumeDraft,
+                                    .soundFullVolumeDistance = m_soundDistanceDraft};
             LoadAssetField(fields.music, m_musicDraft);
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
@@ -269,6 +269,12 @@ namespace NS
                 }
                 m_musicDraft = AssetFieldName(fields.music);
                 m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
+                // 0 以下へドラッグした時は、手前の値で止める
+                // 使える値は ValidSoundFullVolumeDistance がそのまま返すので、値のコピーどうしを == で比べる
+                if (ValidSoundFullVolumeDistance(fields.soundFullVolumeDistance) == fields.soundFullVolumeDistance)
+                {
+                    m_soundDistanceDraft = fields.soundFullVolumeDistance;
+                }
             }
             static std::vector<AssetOption> options;
             if (ImGui::Button("画像を選択..."))
@@ -342,30 +348,37 @@ namespace NS
 
         void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
         {
-            const bool changed =
-                m_musicDraft != editor.SceneMusic() || m_musicVolumeDraft != editor.SceneMusicVolume();
+            const bool changed = m_musicDraft != editor.SceneMusic() ||
+                                 m_musicVolumeDraft != editor.SceneMusicVolume() ||
+                                 m_soundDistanceDraft != editor.SceneSoundFullVolumeDistance();
             ImGui::BeginDisabled(playing || !changed);
             if (ImGui::Button("曲を適用"))
             {
-                if (editor.SetSceneMusic(m_musicDraft, m_musicVolumeDraft))
+                if (editor.SetSceneMusic(m_musicDraft, m_musicVolumeDraft, m_soundDistanceDraft))
                 {
-                    m_musicSource = std::string{editor.SceneMusic()};
-                    m_musicVolumeSource = editor.SceneMusicVolume();
-                    m_musicDraft = m_musicSource;
-                    m_musicVolumeDraft = m_musicVolumeSource;
+                    TakeSceneMusicFrom(editor);
                 }
             }
             ImGui::SameLine();
             if (ImGui::Button("曲の入力を戻す"))
             {
-                m_musicDraft = std::string{editor.SceneMusic()};
-                m_musicVolumeDraft = editor.SceneMusicVolume();
+                TakeSceneMusicFrom(editor);
             }
             ImGui::EndDisabled();
             if (changed)
             {
-                ImGui::TextDisabled("入力した曲と音量は「曲を適用」でシーンに反映します");
+                ImGui::TextDisabled("入力した曲・音量・音の届く距離は「曲を適用」でシーンに反映します");
             }
+        }
+
+        void InspectorPanel::TakeSceneMusicFrom(const LevelEditorController& editor)
+        {
+            m_musicSource = std::string{editor.SceneMusic()};
+            m_musicVolumeSource = editor.SceneMusicVolume();
+            m_soundDistanceSource = editor.SceneSoundFullVolumeDistance();
+            m_musicDraft = m_musicSource;
+            m_musicVolumeDraft = m_musicVolumeSource;
+            m_soundDistanceDraft = m_soundDistanceSource;
         }
 
         void InspectorPanel::DrawAssetPreview(const AssetPreviewItem& item)

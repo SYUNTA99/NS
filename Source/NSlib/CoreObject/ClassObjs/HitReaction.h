@@ -135,10 +135,12 @@ namespace NS
 
         Sound* sound = nullptr; // 鳴らす音
         float volume = 1.0f;        // 音量 0〜1
+        bool positional = false;    // 束を始めた位置から鳴らす場合 true。偽なら距離と向きに関わらず同じに鳴る
 
         NS_REFLECT_BEGIN(HitSoundInfo, void)
         NS_FIELD(sound, "音")
         NS_FIELD(volume, "音量")
+        NS_FIELD(positional, "位置から鳴らす")
         NS_REFLECT_END_VALUE()
     };
 

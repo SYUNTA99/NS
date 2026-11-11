@@ -100,6 +100,7 @@ namespace
         NS::HitSoundInfo sound;
         sound.sound = NS::AssetManager::Get().LoadSound("Assets/Sounds/hit.wav");
         sound.volume = 0.4f;
+        sound.positional = true;
 
         set.entries = {
             {shape, 18},
@@ -204,6 +205,7 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     ASSERT_NE(sound->sound, nullptr);
     EXPECT_EQ(sound->sound->Path(), "Assets/Sounds/hit.wav");
     EXPECT_FLOAT_EQ(sound->volume, 0.4f);
+    EXPECT_TRUE(sound->positional);
 }
 
 TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)

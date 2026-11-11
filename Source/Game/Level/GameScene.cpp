@@ -2,11 +2,16 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
 
+#include <optional>
 #include <vector>
 
 namespace GL
@@ -37,6 +42,8 @@ namespace GL
             // 前のプレイの曲は OnStopPlay で止めたので必ず始まる。RestartCourse は曲に触らず、やり直しても曲が続く
             const NS::SceneEnvironment& environment = Environment();
             (void)Music().Start(GetSoundScene(), environment.music, environment.musicVolume);
+            // 最初の歩でアクターが位置から鳴らす音も、今の自機の位置で聞く
+            UpdateSoundListener();
         }
 
         void GameScene::OnStopPlay()
@@ -85,6 +92,33 @@ namespace GL
                 m_respawnPending = false;
                 RespawnActors();
             }
+        }
+
+        void GameScene::StepViewEffects()
+        {
+            m_hitScreen.OnTick();
+            // 仮想カメラが進んだ後で、音の Update の前。シーンが止まっている歩でも、聞く向きがカメラに付いていく
+            UpdateSoundListener();
+        }
+
+        void GameScene::UpdateSoundListener()
+        {
+            NS::Audio::SoundScene* sounds = GetSoundScene();
+            ::PlayerActor* player = FindPlayer(Actors());
+            if (sounds == nullptr || player == nullptr)
+            {
+                return;
+            }
+            // 聞く位置は自機にする。カメラの位置にすると、カメラが引いた時に自機の音が小さくなる
+            NS::Vector3 forward = sounds->Listener().forward;
+            NS::Vector3 up = sounds->Listener().up;
+            // 視点が無い時は、向きを前のままにする
+            if (const std::optional<NS::CameraPose> view = NS::GetCameraViewPose(this))
+            {
+                forward = view->target - view->position;
+                up = view->up;
+            }
+            sounds->SetListener(player->Root().Position(), forward, up);
         }
 
         void GameScene::RestartCourse()

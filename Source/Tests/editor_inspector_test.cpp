@@ -828,12 +828,25 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
     LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
-    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f));
+    const float distance = editor.SceneSoundFullVolumeDistance();
+
+    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance));
     EXPECT_EQ(editor.SceneMusic(), "Assets/Sounds/bgm_course.wav");
     EXPECT_FLOAT_EQ(editor.SceneMusicVolume(), 0.4f);
-    EXPECT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f));
-    EXPECT_FALSE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance));
+    EXPECT_FALSE(
+        editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", std::numeric_limits<float>::quiet_NaN(), distance));
     EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+
+    // 音の届く距離も同じ履歴に積む。0 以下と非数は受けない
+    EXPECT_FALSE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, 0.0f));
+    EXPECT_FALSE(
+        editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, std::numeric_limits<float>::quiet_NaN()));
+    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance + 5.0f));
+    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance + 5.0f);
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 2u);
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance);
 
     ASSERT_TRUE(editor.Editor().PerformUndo());
     EXPECT_EQ(scene.ToJson(), before);

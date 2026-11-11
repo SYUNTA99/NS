@@ -127,7 +127,7 @@ namespace NS
         [[nodiscard]] const std::string& SkyboxPath() const noexcept { return m_environment.skybox; }
 
         [[nodiscard]] const SceneEnvironment& Environment() const noexcept { return m_environment; }
-        //! environment を丸ごと替える
+        //! environment を丸ごと替える。音の届く距離は ValidSoundFullVolumeDistance を通して持ち、鳴らす側へ渡す
         void SetEnvironment(const SceneEnvironment& environment) noexcept;
 
         //! シーンのアクターの一覧

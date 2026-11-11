@@ -95,6 +95,7 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     NS::ActionSoundInfo sound;
     sound.sound = NS::AssetManager::Get().LoadSound("Assets/Sounds/jump.wav");
     sound.volume = 0.5f;
+    sound.positional = true;
     NS::ActionPadInfo pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
@@ -124,6 +125,7 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     ASSERT_NE(std::get<NS::ActionSoundInfo>(read->events[1].item).sound, nullptr);
     EXPECT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).sound->Path(), "Assets/Sounds/jump.wav");
     EXPECT_FLOAT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).volume, 0.5f);
+    EXPECT_TRUE(std::get<NS::ActionSoundInfo>(read->events[1].item).positional);
     EXPECT_EQ(std::get<NS::ActionPadInfo>(read->events[3].item).left, pad.left);
     EXPECT_FLOAT_EQ(std::get<NS::ActionCameraInfo>(read->events[4].item).trauma, 0.4f);
     EXPECT_FLOAT_EQ(std::get<NS::ActionScreenInfo>(read->events[5].item).alpha, 0.3f);

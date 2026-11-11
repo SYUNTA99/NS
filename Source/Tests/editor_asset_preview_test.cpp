@@ -213,7 +213,9 @@ TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackground)
 {
     (void)Frame();
-    Click(45.0f, 245.0f);
+    // 下の座標は、環境の欄が 3 つ (スカイボックス・曲・曲の音量) の時の物。後から足した音の届く距離の欄の分だけ下げる
+    const float addedRow = ImGui::GetFrameHeightWithSpacing();
+    Click(45.0f, 245.0f + addedRow);
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
     ImGuiWindow* popup = GImGui->OpenPopupStack[0].Window;
     ASSERT_NE(popup, nullptr);
@@ -223,9 +225,9 @@ TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackgr
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
     EXPECT_FALSE(m_editor.Editor().HasUnsavedChanges());
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/skybox-inspector-before-apply.png"));
-    Click(25.0f, 513.0f);
+    Click(25.0f, 513.0f + addedRow);
     ASSERT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");
-    Click(90.0f, 513.0f);
+    Click(90.0f, 513.0f + addedRow);
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
     ASSERT_TRUE(m_editor.Editor().PerformUndo());
     EXPECT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");

@@ -17,6 +17,17 @@ namespace NS
         return part->Play(user->GetSoundScene(), sound, volume, loop);
     }
 
+    uint32 PlaySoundAt(const IGetAudio* user, const Sound* sound, const Vector3& position, float volume, bool loop)
+    {
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        SoundObj* part = user->GetSound();
+        if (part == nullptr)
+        {
+            return 0;
+        }
+        return part->PlayAt(user->GetSoundScene(), sound, position, volume, loop);
+    }
+
     void StopSound(const IGetAudio* user, uint32 id) noexcept
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");

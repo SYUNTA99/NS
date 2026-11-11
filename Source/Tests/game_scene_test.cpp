@@ -7,6 +7,7 @@
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/Audio/AudioDevice.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Sound.h"
@@ -413,6 +414,50 @@ TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
     EXPECT_FLOAT_EQ(player->Root().Position().x, placedAt.x);
     EXPECT_FLOAT_EQ(player->Root().Position().y, placedAt.y);
     EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
+}
+
+// 位置から鳴らす音を聞く点は、歩ごとに自機の位置になる。届く距離はシーンの設定の値を始めに渡す
+TEST(GameScene, AStepPutsTheSoundListenerOnThePlayer)
+{
+    NS::Audio::AudioDevice device(false);
+    nlohmann::json doc = CourseWithPlayer();
+    NS::SceneEnvironment environment = NS::ReadSceneEnvironment(doc);
+    environment.soundFullVolumeDistance = 25.0f;
+    NS::WriteSceneEnvironment(doc, environment);
+    GL::Level::GameScene scene;
+    scene.SetAudioDevice(&device);
+    scene.ResetFromJson(doc);
+    NS::Audio::SoundScene* sounds = scene.GetSoundScene();
+    ASSERT_NE(sounds, nullptr);
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    ASSERT_NE(sounds->Listener().position.y, player->Root().Position().y);
+
+    scene.StartPlay();
+    EXPECT_FLOAT_EQ(sounds->FullVolumeDistance(), 25.0f);
+    // 始めに置かれた聞く点から自機を離す。歩の中で置き直さなければ、下の比べが食い違う
+    player->Root().SetPosition(NS::Vector3{7.0f, 9.0f, 3.0f});
+    ASSERT_NE(sounds->Listener().position.x, player->Root().Position().x);
+    scene.OnUpdate();
+
+    EXPECT_FLOAT_EQ(sounds->Listener().position.x, player->Root().Position().x);
+    EXPECT_FLOAT_EQ(sounds->Listener().position.y, player->Root().Position().y);
+    EXPECT_FLOAT_EQ(sounds->Listener().position.z, player->Root().Position().z);
+}
+
+// 0 以下の届く距離を書いたシーンは、既定の距離で読む。エディタの「曲を適用」が 0 以下を受けないため
+TEST(GameScene, ASoundDistanceThatIsNotPositiveReadsAsTheDefault)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneEnvironment environment;
+    const float standard = environment.soundFullVolumeDistance;
+    environment.soundFullVolumeDistance = 0.0f;
+    NS::WriteSceneEnvironment(doc, environment);
+    EXPECT_FLOAT_EQ(NS::ReadSceneEnvironment(doc).soundFullVolumeDistance, standard);
+
+    environment.soundFullVolumeDistance = -3.0f;
+    NS::WriteSceneEnvironment(doc, environment);
+    EXPECT_FLOAT_EQ(NS::ReadSceneEnvironment(doc).soundFullVolumeDistance, standard);
 }
 
 // 以下は知らせを歩 (scene.OnUpdate) の中で届かせ、その歩が終わった後のアクターの姿を見る。

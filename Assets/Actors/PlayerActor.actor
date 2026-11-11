@@ -63,6 +63,7 @@
         },
         {
           "fields": {
+            "位置から鳴らす": false,
             "音": "Assets/Sounds/jump.wav",
             "音量": 0.6000000238418579
           },

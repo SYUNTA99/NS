@@ -260,7 +260,15 @@ namespace NS
             HitOwnerRun{.item = *this, .length = start.length, .frame = 0, .position = start.position});
     }
 
-    void HitSoundInfo::Start(const HitReactionStart& start) const { PlaySound(start.owner.actor, sound, volume); }
+    void HitSoundInfo::Start(const HitReactionStart& start) const
+    {
+        if (positional)
+        {
+            PlaySoundAt(start.owner.actor, sound, start.position, volume);
+            return;
+        }
+        PlaySound(start.owner.actor, sound, volume);
+    }
 
     void HitEffectInfo::Start(const HitReactionStart& start) const
     {

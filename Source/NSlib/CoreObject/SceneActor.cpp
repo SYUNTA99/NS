@@ -488,7 +488,15 @@ namespace NS
                 animation->Play(anim.clip->Clip(), anim.blendSeconds);
             }
 
-            void operator()(const ActionSoundInfo& sound) const { PlaySound(&actor, sound.sound, sound.volume); }
+            void operator()(const ActionSoundInfo& sound) const
+            {
+                if (sound.positional)
+                {
+                    PlaySoundAt(&actor, sound.sound, actor.Root().Position(), sound.volume);
+                    return;
+                }
+                PlaySound(&actor, sound.sound, sound.volume);
+            }
 
             void operator()(const ActionEffectInfo& effect) const
             {

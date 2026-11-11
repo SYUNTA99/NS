@@ -84,6 +84,25 @@ TEST(SoundObjTest, PlayKeepsARecordUntilStop)
     EXPECT_EQ(sound.Records().size(), 1u);
 }
 
+// 位置から鳴らした音も、位置なしの音と同じに一覧に残り、同じ番号の列から番号を振る
+TEST(SoundObjTest, PlayAtKeepsARecordLikePlay)
+{
+    const NS::Sound clip{"Assets/Sounds/jump.wav", nullptr};
+    NS::Audio::SoundScene sounds;
+    NS::SoundObj sound;
+
+    const NS::uint32 first = sound.Play(&sounds, &clip, 0.5f, true);
+    const NS::uint32 second = sound.PlayAt(&sounds, &clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true);
+    const NS::uint32 silent = sound.PlayAt(nullptr, &clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true);
+
+    EXPECT_NE(second, 0u);
+    EXPECT_NE(second, first);
+    EXPECT_NE(silent, second);
+    ASSERT_EQ(sound.Records().size(), 3u);
+    EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.25f);
+    EXPECT_TRUE(sound.Records()[1].loop);
+}
+
 TEST(SoundObjTest, NullAndPathlessSoundsAreNotKept)
 {
     const NS::Sound pathless{"", nullptr};
@@ -91,6 +110,8 @@ TEST(SoundObjTest, NullAndPathlessSoundsAreNotKept)
 
     EXPECT_EQ(sound.Play(nullptr, nullptr, 1.0f, true), 0u);
     EXPECT_EQ(sound.Play(nullptr, &pathless, 1.0f, false), 0u);
+    EXPECT_EQ(sound.PlayAt(nullptr, nullptr, NS::Vector3{}, 1.0f, true), 0u);
+    EXPECT_EQ(sound.PlayAt(nullptr, &pathless, NS::Vector3{}, 1.0f, false), 0u);
     EXPECT_TRUE(sound.Records().empty());
 }
 
@@ -214,6 +235,7 @@ TEST(SoundObjTest, ActorWithoutThePartPlaysNothing)
 
     EXPECT_EQ(NS::PlaySound(actor, &clip, 0.5f, true), 0u);
     EXPECT_EQ(NS::PlaySound(actor, &clip, 0.5f), 0u);
+    EXPECT_EQ(NS::PlaySoundAt(actor, &clip, NS::Vector3{}, 0.5f), 0u);
     NS::StopSound(actor, 1u);
     NS::SetSoundVolume(actor, 1u, 0.5f);
 }

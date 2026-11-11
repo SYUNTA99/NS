@@ -34,6 +34,10 @@ namespace NS
         //! @return 音の番号。nullptr と空の道筋は 0 で、一覧に残さない
         [[nodiscard]] uint32 Play(Audio::SoundScene* sounds, const Sound* sound, float volume, bool loop);
 
+        //! 世界の位置から音を鳴らし始める。position は Audio::SoundScene::PlayAt に渡す。ほかは Play と同じ
+        [[nodiscard]] uint32 PlayAt(
+            Audio::SoundScene* sounds, const Sound* sound, const Vector3& position, float volume, bool loop);
+
         //! 止めて一覧から外す。無い番号なら何もしない
         void Stop(Audio::SoundScene* sounds, uint32 id) noexcept;
 
@@ -54,6 +58,10 @@ namespace NS
         NS_REFLECT_NONE(SoundObj, Object)
 
     private:
+        //! Play と PlayAt の中身。position が nullptr なら位置なし
+        [[nodiscard]] uint32 Start(
+            Audio::SoundScene* sounds, const Sound* sound, const Vector3* position, float volume, bool loop);
+
         //! 番号の音の、一覧の中の位置。無ければ一覧の長さ
         [[nodiscard]] std::size_t IndexOf(uint32 id) const noexcept;
 

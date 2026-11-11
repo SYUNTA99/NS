@@ -72,8 +72,8 @@ namespace GL
             //! 知らせを受けた分だけ流れを進める
             void StepGame() override;
 
-            //! 当たりの画面の演出を 1 フレーム進める。シーンが止まっている歩でも進む
-            void StepViewEffects() override { m_hitScreen.OnTick(); }
+            //! 当たりの画面の演出を 1 フレーム進め、音を聞く点を今の自機とカメラに合わせる。シーンが止まっている歩でも進む
+            void StepViewEffects() override;
 
             //! 当たりの画面の演出を全部消す。前の世界のアクターが頼んだ輪と波を次の世界へ持ち越さない
             void ClearViewEffects() override { m_hitScreen.Clear(); }
@@ -88,6 +88,10 @@ namespace GL
 
             //! PlacedActors の全員へ MsgCourseRestart を送る
             void SendRestart(const NS::SceneActor* skip);
+
+            //! 位置から鳴らす音を聞く点を、位置は自機、向きはカメラの視点にする。OnStartPlay と StepViewEffects が呼ぶ。
+            //! 自機が居ない歩と、音の装置を受け取っていないシーンでは何もしない
+            void UpdateSoundListener();
 
             float m_fadeOutSeconds = 0.0f;
             float m_fadeInSeconds = 0.0f;

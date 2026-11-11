@@ -6,6 +6,18 @@ namespace NS
 {
     uint32 SoundObj::Play(Audio::SoundScene* sounds, const Sound* sound, float volume, bool loop)
     {
+        return Start(sounds, sound, nullptr, volume, loop);
+    }
+
+    uint32 SoundObj::PlayAt(
+        Audio::SoundScene* sounds, const Sound* sound, const Vector3& position, float volume, bool loop)
+    {
+        return Start(sounds, sound, &position, volume, loop);
+    }
+
+    uint32 SoundObj::Start(
+        Audio::SoundScene* sounds, const Sound* sound, const Vector3* position, float volume, bool loop)
+    {
         if (sound == nullptr || sound->Path().empty())
         {
             return 0;
@@ -14,7 +26,11 @@ namespace NS
         record.asset = sound;
         record.loop = loop;
         record.volume = volume;
-        if (sounds != nullptr)
+        if (sounds != nullptr && position != nullptr)
+        {
+            record.handle = sounds->PlayAt(sound->XA2(), *position, volume, loop);
+        }
+        else if (sounds != nullptr)
         {
             record.handle = sounds->Play(sound->XA2(), volume, loop);
         }

@@ -1,6 +1,7 @@
 #include "NSlib/Audio/AudioDevice.h"
 #include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Audio/XA2Sound.h"
+#include "NSlib/Core/Math.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 
 #include "TestLogCapture.h"
@@ -8,6 +9,7 @@
 #include <Audio.h>
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <string>
 
 namespace
@@ -100,6 +102,95 @@ TEST(SoundSceneTest, UnknownHandlesAndAnEmptySceneDoNothing)
 
     EXPECT_FALSE(sounds.Exists(NS::Audio::SoundHandle{42}));
     EXPECT_EQ(log.ErrorCount(), 0);
+}
+
+// 位置から鳴らす音も、位置なしの音と同じに番号で持つ。nullptr は無効な番号
+TEST(SoundSceneTest, PlayAtKeepsTheSoundLikePlay)
+{
+    const NS::Audio::XA2Sound clip(nullptr, ShippedSoundPath());
+    NS::Audio::SoundScene sounds;
+
+    EXPECT_FALSE(sounds.PlayAt(nullptr, NS::Vector3{1.0f, 2.0f, 3.0f}, 1.0f).IsValid());
+    const NS::Audio::SoundHandle loop = sounds.PlayAt(&clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.5f, true);
+    const NS::Audio::SoundHandle oneShot = sounds.PlayAt(&clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.5f);
+
+    ASSERT_TRUE(loop.IsValid());
+    ASSERT_TRUE(oneShot.IsValid());
+    sounds.Update();
+    EXPECT_TRUE(sounds.Exists(loop));
+    EXPECT_FALSE(sounds.Exists(oneShot));
+}
+
+// 聞く点の前と上は、長さ 1 で直交した形に直して持つ
+TEST(SoundSceneTest, ListenerKeepsThePositionAndAnOrthonormalFrontAndUp)
+{
+    NS::Audio::SoundScene sounds;
+
+    sounds.SetListener(NS::Vector3{1.0f, 2.0f, 3.0f}, NS::Vector3{0.0f, 0.0f, 2.0f}, NS::Vector3{0.0f, 3.0f, 3.0f});
+
+    EXPECT_FLOAT_EQ(sounds.Listener().position.x, 1.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().position.y, 2.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().position.z, 3.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().forward.z, 1.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().up.x, 0.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().up.y, 1.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().up.z, 0.0f);
+}
+
+// 前の長さが 0 の時と、上が前と平行の時は、位置だけを替えて向きを前の値のままにする
+TEST(SoundSceneTest, ListenerKeepsTheOrientationWhenFrontOrUpCannotBeBuilt)
+{
+    NS::Audio::SoundScene sounds;
+    sounds.SetListener(NS::Vector3{}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
+
+    sounds.SetListener(NS::Vector3{4.0f, 0.0f, 0.0f}, NS::Vector3{}, NS::Vector3{0.0f, 1.0f, 0.0f});
+    EXPECT_FLOAT_EQ(sounds.Listener().position.x, 4.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().forward.x, 1.0f);
+
+    sounds.SetListener(NS::Vector3{5.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 0.0f, 1.0f}, NS::Vector3{0.0f, 0.0f, 2.0f});
+    EXPECT_FLOAT_EQ(sounds.Listener().position.x, 5.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().forward.x, 1.0f);
+    EXPECT_FLOAT_EQ(sounds.Listener().up.y, 1.0f);
+}
+
+TEST(SoundSceneTest, FullVolumeDistanceIgnoresValuesThatAreNotPositive)
+{
+    NS::Audio::SoundScene sounds;
+    sounds.SetFullVolumeDistance(8.0f);
+
+    sounds.SetFullVolumeDistance(0.0f);
+    sounds.SetFullVolumeDistance(-1.0f);
+    sounds.SetFullVolumeDistance(std::numeric_limits<float>::quiet_NaN());
+
+    EXPECT_FLOAT_EQ(sounds.FullVolumeDistance(), 8.0f);
+}
+
+// 音の機器がある PC でだけ動く。位置から鳴らした音は、聞く点を動かしながら Update を越えて鳴り続ける
+TEST(SoundSceneTest, WithADevicePositionalSoundsAreUpdatedEveryFrame)
+{
+    NS::Audio::AudioDevice device(true);
+    if (!device.IsValid() || !device.Engine()->IsAudioDevicePresent())
+    {
+        GTEST_SKIP() << "音の機器が無い";
+    }
+    const NS::Audio::XA2Sound clip(&device, ShippedSoundPath());
+    ASSERT_TRUE(clip.IsValid());
+    {
+        NS::Audio::SoundScene sounds;
+        sounds.SetFullVolumeDistance(5.0f);
+        // 聞こえない音量で鳴らす
+        const NS::Audio::SoundHandle loop = sounds.PlayAt(&clip, NS::Vector3{3.0f, 0.0f, 4.0f}, 0.0f, true);
+        const NS::Audio::SoundHandle onTheListener = sounds.PlayAt(&clip, NS::Vector3{}, 0.0f, true);
+
+        sounds.Update();
+        sounds.SetListener(NS::Vector3{3.0f, 0.0f, 4.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}, NS::Vector3{0.0f, 1.0f, 0.0f});
+        sounds.Update();
+
+        EXPECT_TRUE(sounds.Exists(loop));
+        EXPECT_TRUE(sounds.Exists(onTheListener));
+        sounds.StopAll();
+    }
+    device.Suspend();
 }
 
 // 音の機器がある PC でだけ動く。ソースボイスを作って鳴らし、番号で止められる

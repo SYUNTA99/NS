@@ -242,17 +242,26 @@ namespace NS
             return m_scene.Environment().musicVolume;
         }
 
-        bool LevelEditorController::SetSceneMusic(std::string_view music, float volume)
+        float LevelEditorController::SceneSoundFullVolumeDistance() const noexcept
         {
-            if (!IsSceneEditable() || !std::isfinite(volume))
+            return m_scene.Environment().soundFullVolumeDistance;
+        }
+
+        bool LevelEditorController::SetSceneMusic(std::string_view music, float volume, float soundFullVolumeDistance)
+        {
+            if (!IsSceneEditable() || !std::isfinite(volume) || !std::isfinite(soundFullVolumeDistance) ||
+                soundFullVolumeDistance <= 0.0f)
             {
                 return false;
             }
             SceneEnvironment after = m_scene.Environment();
             LoadAssetField(after.music, music);
             after.musicVolume = ClampMusicVolume(volume);
+            after.soundFullVolumeDistance = soundFullVolumeDistance;
+            // 触ったかを見る比べなので、値のコピーどうしを != で比べる
             if (AssetFieldName(after.music) != AssetFieldName(m_scene.Environment().music) ||
-                after.musicVolume != m_scene.Environment().musicVolume)
+                after.musicVolume != m_scene.Environment().musicVolume ||
+                after.soundFullVolumeDistance != m_scene.Environment().soundFullVolumeDistance)
             {
                 m_editor.Undo().Push(
                     std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
