@@ -161,8 +161,12 @@ TEST(SoundSceneTest, FullVolumeDistanceIgnoresValuesThatAreNotPositive)
     sounds.SetFullVolumeDistance(0.0f);
     sounds.SetFullVolumeDistance(-1.0f);
     sounds.SetFullVolumeDistance(std::numeric_limits<float>::quiet_NaN());
+    sounds.SetFullVolumeDistance(std::numeric_limits<float>::infinity());
 
     EXPECT_FLOAT_EQ(sounds.FullVolumeDistance(), 8.0f);
+    EXPECT_TRUE(NS::Audio::SoundScene::IsUsableFullVolumeDistance(8.0f));
+    EXPECT_FALSE(NS::Audio::SoundScene::IsUsableFullVolumeDistance(-0.0f));
+    EXPECT_FALSE(NS::Audio::SoundScene::IsUsableFullVolumeDistance(std::numeric_limits<float>::infinity()));
 }
 
 // 音の機器がある PC でだけ動く。位置から鳴らした音は、聞く点を動かしながら Update を越えて鳴り続ける

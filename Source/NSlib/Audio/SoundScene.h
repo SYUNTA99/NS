@@ -70,8 +70,11 @@ namespace NS
             [[nodiscard]] const SoundListener& Listener() const noexcept { return m_listener; }
 
             //! 位置から鳴らす音が、そのままの大きさで届く距離 (m)。これより離れると距離に反比例して小さくなる。
-            //! 非数・無限大・0 以下なら前の値のまま
+            //! IsUsableFullVolumeDistance が偽の値なら前の値のまま
             void SetFullVolumeDistance(float meters) noexcept;
+
+            //! 届く距離として使える値か。非数・無限大・0 以下は使えない
+            [[nodiscard]] static bool IsUsableFullVolumeDistance(float meters) noexcept;
 
             [[nodiscard]] float FullVolumeDistance() const noexcept { return m_fullVolumeDistance; }
 

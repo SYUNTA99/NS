@@ -10,6 +10,7 @@
 #include "Editor/MaterialParamFields.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -270,8 +271,7 @@ namespace NS
                 m_musicDraft = AssetFieldName(fields.music);
                 m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
                 // 0 以下へドラッグした時は、手前の値で止める
-                // 使える値は ValidSoundFullVolumeDistance がそのまま返すので、値のコピーどうしを == で比べる
-                if (ValidSoundFullVolumeDistance(fields.soundFullVolumeDistance) == fields.soundFullVolumeDistance)
+                if (Audio::SoundScene::IsUsableFullVolumeDistance(fields.soundFullVolumeDistance))
                 {
                     m_soundDistanceDraft = fields.soundFullVolumeDistance;
                 }

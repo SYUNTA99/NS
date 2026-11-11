@@ -1,4 +1,5 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
@@ -183,7 +184,7 @@ namespace NS
 
     float ValidSoundFullVolumeDistance(float meters) noexcept
     {
-        if (!std::isfinite(meters) || meters <= 0.0f)
+        if (!Audio::SoundScene::IsUsableFullVolumeDistance(meters))
         {
             return SceneEnvironment{}.soundFullVolumeDistance;
         }

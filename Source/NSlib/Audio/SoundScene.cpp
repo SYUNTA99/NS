@@ -51,10 +51,15 @@ namespace NS
 
         void SoundScene::SetFullVolumeDistance(float meters) noexcept
         {
-            if (std::isfinite(meters) && meters > 0.0f)
+            if (IsUsableFullVolumeDistance(meters))
             {
                 m_fullVolumeDistance = meters;
             }
+        }
+
+        bool SoundScene::IsUsableFullVolumeDistance(float meters) noexcept
+        {
+            return std::isfinite(meters) && meters > 0.0f;
         }
 
         SoundHandle SoundScene::Start(const XA2Sound* sound, float volume, bool loop, const Vector3* position)

@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -249,8 +250,8 @@ namespace NS
 
         bool LevelEditorController::SetSceneMusic(std::string_view music, float volume, float soundFullVolumeDistance)
         {
-            if (!IsSceneEditable() || !std::isfinite(volume) || !std::isfinite(soundFullVolumeDistance) ||
-                soundFullVolumeDistance <= 0.0f)
+            if (!IsSceneEditable() || !std::isfinite(volume) ||
+                !Audio::SoundScene::IsUsableFullVolumeDistance(soundFullVolumeDistance))
             {
                 return false;
             }
