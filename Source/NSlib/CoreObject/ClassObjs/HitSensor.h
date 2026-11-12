@@ -144,7 +144,7 @@ namespace NS
     {
     public:
         //! 形を答える関数を受けて作る
-        //! @param[in] volume 持ち主の root の世界行列から世界座標の形を返す関数。事前条件: 空でない。
+        //! @param[in] volume 持ち主の Transform の世界行列から世界座標の形を返す関数。事前条件: 空でない。
         //! 空なら WorldVolume は根に長さ 0 の球を返し、NS_LOG_ERROR で知らせる
         FollowHitSensor(SceneActor* owner,
                         std::string name,

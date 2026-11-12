@@ -66,7 +66,7 @@ namespace NS
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
         [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;
 
-        //! 実体のセル座標。Root の位置を最も近い整数へ丸めた値
+        //! 実体のセル座標。Transform の位置を最も近い整数へ丸めた値
         [[nodiscard]] int16 ActorCellX(const SceneActor* object) noexcept;
         [[nodiscard]] int16 ActorCellY(const SceneActor* object) noexcept;
         [[nodiscard]] int16 ActorCellZ(const SceneActor* object) noexcept;

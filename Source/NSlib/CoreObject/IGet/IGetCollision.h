@@ -59,10 +59,10 @@ namespace NS
 
     //! 当たりの body を 1 回だけ作り、物理シーンの外に置く。出る時に EnableCollision が入れる
     //! 形が何も入れない形状なら作らない。user がシーンに居なければ何もしない
-    //! @param[in] world 持ち主の root の世界行列
+    //! @param[in] world 持ち主の Transform の世界行列
     void InitCollision(const IGetCollision* user, Collision* collision, const Matrix& world);
     //! 外してある当たりの body を物理シーンへ戻し、world へ置き直す。body がまだ無ければ作る
-    //! @param[in] world 持ち主の root の世界行列
+    //! @param[in] world 持ち主の Transform の世界行列
     void EnableCollision(const IGetCollision* user, Collision* collision, const Matrix& world);
     //! 当たりの body を壊さずに物理シーンから外す
     void DisableCollision(const IGetCollision* user, Collision* collision);

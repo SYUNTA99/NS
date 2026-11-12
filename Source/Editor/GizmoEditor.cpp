@@ -465,7 +465,7 @@ namespace NS
             localBounds.reserve(candidates.size());
             visible.reserve(candidates.size());
             localMeshes.reserve(candidates.size());
-            // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
+            // 箱は Transform のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
             // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
             for (const SceneActor* obj : candidates)
             {

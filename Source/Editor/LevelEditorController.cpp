@@ -709,7 +709,7 @@ namespace NS
 
             if (objectMode)
             {
-                // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
+                // 追従カメラの Transform を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
                 SyncFollowCameraPoses();
 
                 // 組み直しで破棄されたアクターを参照しないよう、選択を現在の実体へ引き直す
@@ -723,7 +723,7 @@ namespace NS
                 // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
                 CaptureSelectionFromGizmo();
 
-                // 追従カメラを掴んでいたら Root 位置を初期姿勢へ逆算し ThirdPersonFollow
+                // 追従カメラを掴んでいたら Transform の位置を初期姿勢へ逆算し ThirdPersonFollow
                 // へ書き戻す。位置の書き戻しはこちら
                 ApplyFollowCameraGizmoDrag();
 
@@ -886,8 +886,8 @@ namespace NS
 
         void LevelEditorController::SyncFollowCameraPoses()
         {
-            // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Root を寄せて frustum / pick / ギズモを出す
-            // ドラッグ中の選択カメラだけは gizmo が Root を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
+            // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Transform を寄せて frustum / pick / ギズモを出す
+            // ドラッグ中の選択カメラだけは gizmo が Transform を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
             const ActorList& objects = m_scene.Actors();
             for (SceneActor* object : objects)
             {
@@ -907,8 +907,8 @@ namespace NS
 
         void LevelEditorController::ApplyFollowCameraGizmoDrag()
         {
-            // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の方位角・仰角/距離を逆算して
-            // 実体の部品へ書き戻す。Root 位置は初期姿勢由来なので保存対象は部品側になる
+            // ドラッグ中の追従カメラは、gizmo が動かした Transform の位置から初期姿勢の方位角・仰角/距離を逆算して
+            // 実体の部品へ書き戻す。Transform の位置は初期姿勢由来なので保存対象は部品側になる
             if (!m_gizmo.IsDragging())
             {
                 return;
@@ -1001,7 +1001,7 @@ namespace NS
             // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
             SetGizmoToolActive(true);
 
-            // player も含め全アクターが ActorList に居る。選択した Root を id で引いてギズモへ貼る
+            // player も含め全アクターが ActorList に居る。選択したアクターを id で引いて、その Transform をギズモへ貼る
             if (SceneActor* go = m_scene.Actors().FindByActorId(id))
             {
                 m_gizmo.SetSelected(&go->TransformObj());
@@ -1392,7 +1392,7 @@ namespace NS
             }
             m_transformEditing = false;
 
-            // ドラッグは実体の Root を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
+            // ドラッグは実体の Transform を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
             std::vector<std::unique_ptr<ICommand>> commands;
             for (TransformEditBaseline& entry : m_editBaselines)
             {

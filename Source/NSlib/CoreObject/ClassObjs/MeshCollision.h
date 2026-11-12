@@ -27,7 +27,7 @@ namespace NS
         //! 借りている当たり。なければ空
         [[nodiscard]] const Phys::MeshShape* Shape() const noexcept;
 
-        //! 持ち主の root の世界行列 world を各頂点に掛け、世界座標の三角形群を返す。当たりが無ければ空
+        //! 持ち主の Transform の世界行列 world を各頂点に掛け、世界座標の三角形群を返す。当たりが無ければ空
         [[nodiscard]] std::vector<Phys::Triangle> WorldTriangles(const Matrix& world) const;
 
         // 当たりはリフレクションで運ばない。持ち主の OnAssetsLoaded が Model のメッシュの名前から渡すので、型名だけ登録しておく
