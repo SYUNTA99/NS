@@ -656,7 +656,7 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateClassObj(m_effect);
+            CreateClassObj(m_effect, this, &TransformObj());
             CreateClassObj(part);
         }
     };

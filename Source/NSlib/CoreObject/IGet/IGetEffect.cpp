@@ -14,7 +14,7 @@ namespace NS
         {
             return 0;
         }
-        return effect->Play(user->GetEffectScene(), asset, desc);
+        return effect->Play(asset, desc);
     }
 
     uint32 PlayFollowingEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc)
@@ -25,7 +25,7 @@ namespace NS
         {
             return 0;
         }
-        return effect->PlayFollowing(user->GetEffectScene(), asset, desc);
+        return effect->PlayFollowing(asset, desc);
     }
 
     void StopEffect(const IGetEffect* user, uint32 id) noexcept
@@ -33,7 +33,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (EffectObj* effect = user->GetEffect())
         {
-            effect->Stop(user->GetEffectScene(), id);
+            effect->Stop(id);
         }
     }
 
@@ -42,7 +42,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (EffectObj* effect = user->GetEffect())
         {
-            effect->StopRoot(user->GetEffectScene(), id);
+            effect->StopRoot(id);
         }
     }
 
@@ -55,7 +55,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (EffectObj* effect = user->GetEffect())
         {
-            effect->SetTransform(user->GetEffectScene(), id, position, rotation, scale);
+            effect->SetTransform(id, position, rotation, scale);
         }
     }
 
@@ -64,7 +64,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (EffectObj* effect = user->GetEffect())
         {
-            effect->SetDynamicInput(user->GetEffectScene(), id, index, value);
+            effect->SetDynamicInput(id, index, value);
         }
     }
 } // namespace NS

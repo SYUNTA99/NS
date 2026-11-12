@@ -404,7 +404,7 @@ namespace
                 m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
-            CreateClassObj(m_effect);
+            CreateClassObj(m_effect, this, &TransformObj());
         }
         void AfterStateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }

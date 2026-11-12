@@ -760,8 +760,10 @@ TEST(EffectAssetsRender, InvalidAssetDoesNotStartPlayback)
     NS::Gfx::EffectScene scene;
     NS::Effect* asset = assets.LoadEffect("Assets/Effects/missing.efkefc");
     ASSERT_FALSE(asset->IsValid());
-    NS::EffectObj owner;
-    EXPECT_EQ(owner.Play(&scene, asset, {}), 0u);
+    const TestEffectUser user{&scene};
+    const NS::Transform transform;
+    NS::EffectObj owner{&user, &transform};
+    EXPECT_EQ(owner.Play(asset, {}), 0u);
     EXPECT_TRUE(owner.Records().empty());
 }
 

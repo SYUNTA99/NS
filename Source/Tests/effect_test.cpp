@@ -36,8 +36,10 @@ namespace
 TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
-    EffectObj effect;
-    const NS::uint32 id = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
+    const NS::uint32 id = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
@@ -51,10 +53,12 @@ TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
 TEST(EffectTest, PlayFollowingMarksTheRecordAndKeepsTheScale)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
-    EffectObj effect;
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
     NS::Gfx::EffectPlayDesc desc;
     desc.scale = NS::Vector3{2.0f, 3.0f, 4.0f};
-    const NS::uint32 id = effect.PlayFollowing(nullptr, &asset, desc);
+    const NS::uint32 id = effect.PlayFollowing(&asset, desc);
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
@@ -65,26 +69,30 @@ TEST(EffectTest, PlayFollowingMarksTheRecordAndKeepsTheScale)
 TEST(EffectTest, EmptyAssetIsNotPlayed)
 {
     NS::Effect empty{"", nullptr};
-    EffectObj effect;
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
 
-    EXPECT_EQ(effect.Play(nullptr, nullptr, NS::Gfx::EffectPlayDesc{}), 0u);
-    EXPECT_EQ(effect.Play(nullptr, &empty, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(effect.Play(nullptr, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(effect.Play(&empty, NS::Gfx::EffectPlayDesc{}), 0u);
     EXPECT_TRUE(effect.Records().empty());
 }
 
 TEST(EffectTest, StopAndStopRootForgetOnlyTheirRecord)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
-    EffectObj effect;
-    const NS::uint32 first = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 second = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 third = effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
+    const NS::uint32 first = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 second = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 third = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
     ASSERT_NE(first, second);
 
-    effect.StopRoot(nullptr, first);
-    effect.Stop(nullptr, third);
+    effect.StopRoot(first);
+    effect.Stop(third);
     // 無い番号は何もしない
-    effect.Stop(nullptr, first);
+    effect.Stop(first);
 
     ASSERT_EQ(effect.Records().size(), 1u);
     EXPECT_EQ(effect.Records()[0].id, second);
@@ -93,11 +101,13 @@ TEST(EffectTest, StopAndStopRootForgetOnlyTheirRecord)
 TEST(EffectTest, StopRootAllForgetsEveryRecord)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
-    EffectObj effect;
-    (void)effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    (void)effect.PlayFollowing(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
+    (void)effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    (void)effect.PlayFollowing(&asset, NS::Gfx::EffectPlayDesc{});
 
-    effect.StopRootAll(nullptr);
+    effect.StopRootAll();
 
     EXPECT_TRUE(effect.Records().empty());
 }
@@ -106,11 +116,13 @@ TEST(EffectTest, StopRootAllForgetsEveryRecord)
 TEST(EffectTest, UpdateWithoutRenderingForgetsOnlyTheRecordsThatDoNotFollow)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
-    EffectObj effect;
-    (void)effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 following = effect.PlayFollowing(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
+    const TestEffectUser user;
+    const NS::Transform transform;
+    EffectObj effect{&user, &transform};
+    (void)effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 following = effect.PlayFollowing(&asset, NS::Gfx::EffectPlayDesc{});
 
-    effect.Update(nullptr, NS::Vector3{}, NS::Quaternion::Identity);
+    effect.Update();
 
     ASSERT_EQ(effect.Records().size(), 1u);
     EXPECT_EQ(effect.Records()[0].id, following);

@@ -123,8 +123,9 @@ void PlayerActor::OnInit()
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
     CreateClassObj(m_worldLines);
-    CreateClassObj(m_effect);
-    CreateClassObj(m_sound);
+    // エフェクトと音の部品は、置き場を問う先 (自分の IGet〜) を作る時に受ける。エフェクトは追従する先の姿勢も受ける
+    CreateClassObj(m_effect, this, &TransformObj());
+    CreateClassObj(m_sound, this);
     CreateClassObj(m_playerSounds);
     // 着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep。跳ぶ音は動作 Jump の項目が鳴らす
     m_playerEvents.onJump.Subscribe([this] { m_playerSounds->AllowLand(); });

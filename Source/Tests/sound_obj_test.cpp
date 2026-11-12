@@ -26,7 +26,21 @@ namespace
         NS_REFLECT_NONE(TestSoundActor, NS::SceneActor)
 
     protected:
-        void OnInit() override { CreateClassObj(m_sound); }
+        void OnInit() override { CreateClassObj(m_sound, this); }
+    };
+
+    //! 部品を持たず、受けた鳴らす先だけを答える IGetAudio。SoundObj を単体で試す時に渡す
+    class TestAudioUser final : public NS::IGetAudio
+    {
+    public:
+        //! @param[in] sounds 答える鳴らす先。nullptr は音を出さない世界
+        explicit TestAudioUser(NS::Audio::SoundScene* sounds = nullptr) noexcept : m_sounds(sounds) {}
+
+        [[nodiscard]] NS::SoundObj* GetSound() const noexcept override { return nullptr; }
+        [[nodiscard]] NS::Audio::SoundScene* GetSoundScene() const noexcept override { return m_sounds; }
+
+    private:
+        NS::Audio::SoundScene* m_sounds = nullptr;
     };
 
     //! 音の機器がある PC でだけ動くテストの土台。機器が無ければ SetUp で飛ばす
@@ -60,10 +74,11 @@ NS_CLASS(TestSoundActor)
 TEST(SoundObjTest, PlayKeepsARecordUntilStop)
 {
     const NS::Sound clip{"Assets/Sounds/jump.wav", nullptr};
-    NS::SoundObj sound;
+    const TestAudioUser user;
+    NS::SoundObj sound{&user};
 
-    const NS::uint32 first = sound.Play(nullptr, &clip, 0.5f, true);
-    const NS::uint32 second = sound.Play(nullptr, &clip, 0.25f, true);
+    const NS::uint32 first = sound.Play(&clip, 0.5f, true);
+    const NS::uint32 second = sound.Play(&clip, 0.25f, true);
 
     EXPECT_NE(first, 0u);
     EXPECT_NE(second, first);
@@ -73,14 +88,14 @@ TEST(SoundObjTest, PlayKeepsARecordUntilStop)
     EXPECT_TRUE(sound.Records()[0].loop);
     EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.25f);
 
-    sound.SetVolume(nullptr, second, 0.75f);
+    sound.SetVolume(second, 0.75f);
     EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.75f);
 
-    sound.Stop(nullptr, first);
+    sound.Stop(first);
     ASSERT_EQ(sound.Records().size(), 1u);
     EXPECT_EQ(sound.Records()[0].id, second);
     // 無い番号を止めても、残りは変わらない
-    sound.Stop(nullptr, first);
+    sound.Stop(first);
     EXPECT_EQ(sound.Records().size(), 1u);
 }
 
@@ -89,76 +104,85 @@ TEST(SoundObjTest, PlayAtKeepsARecordLikePlay)
 {
     const NS::Sound clip{"Assets/Sounds/jump.wav", nullptr};
     NS::Audio::SoundScene sounds;
-    NS::SoundObj sound;
+    const TestAudioUser user{&sounds};
+    NS::SoundObj sound{&user};
 
-    const NS::uint32 first = sound.Play(&sounds, &clip, 0.5f, true);
-    const NS::uint32 second = sound.PlayAt(&sounds, &clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true);
-    const NS::uint32 silent = sound.PlayAt(nullptr, &clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true);
+    const NS::uint32 first = sound.Play(&clip, 0.5f, true);
+    const NS::uint32 second = sound.PlayAt(&clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true);
 
     EXPECT_NE(second, 0u);
     EXPECT_NE(second, first);
-    EXPECT_NE(silent, second);
-    ASSERT_EQ(sound.Records().size(), 3u);
+    ASSERT_EQ(sound.Records().size(), 2u);
     EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.25f);
     EXPECT_TRUE(sound.Records()[1].loop);
+
+    // 音を出さない世界でも、位置から鳴らした音は番号を受けて一覧に残る
+    const TestAudioUser silentUser;
+    NS::SoundObj silentSound{&silentUser};
+    EXPECT_NE(silentSound.PlayAt(&clip, NS::Vector3{1.0f, 2.0f, 3.0f}, 0.25f, true), 0u);
+    EXPECT_EQ(silentSound.Records().size(), 1u);
 }
 
 TEST(SoundObjTest, NullAndPathlessSoundsAreNotKept)
 {
     const NS::Sound pathless{"", nullptr};
-    NS::SoundObj sound;
+    const TestAudioUser user;
+    NS::SoundObj sound{&user};
 
-    EXPECT_EQ(sound.Play(nullptr, nullptr, 1.0f, true), 0u);
-    EXPECT_EQ(sound.Play(nullptr, &pathless, 1.0f, false), 0u);
-    EXPECT_EQ(sound.PlayAt(nullptr, nullptr, NS::Vector3{}, 1.0f, true), 0u);
-    EXPECT_EQ(sound.PlayAt(nullptr, &pathless, NS::Vector3{}, 1.0f, false), 0u);
+    EXPECT_EQ(sound.Play(nullptr, 1.0f, true), 0u);
+    EXPECT_EQ(sound.Play(&pathless, 1.0f, false), 0u);
+    EXPECT_EQ(sound.PlayAt(nullptr, NS::Vector3{}, 1.0f, true), 0u);
+    EXPECT_EQ(sound.PlayAt(&pathless, NS::Vector3{}, 1.0f, false), 0u);
     EXPECT_TRUE(sound.Records().empty());
 }
 
-// 音を出さない世界では鳴り終わったかを問えないので、1 回の音は次の DropEnded で外れ、ループは残る
+// 音を出さない世界では鳴り終わったかを問えないので、1 回の音は次の Update で外れ、ループは残る
 TEST(SoundObjTest, WithoutASoundSceneOneShotsAreDroppedAndLoopsStay)
 {
     const NS::Sound clip{"Assets/Sounds/jump.wav", nullptr};
-    NS::SoundObj sound;
-    const NS::uint32 loop = sound.Play(nullptr, &clip, 0.5f, true);
-    ASSERT_NE(sound.Play(nullptr, &clip, 0.5f, false), 0u);
+    const TestAudioUser user;
+    NS::SoundObj sound{&user};
+    const NS::uint32 loop = sound.Play(&clip, 0.5f, true);
+    ASSERT_NE(sound.Play(&clip, 0.5f, false), 0u);
     ASSERT_EQ(sound.Records().size(), 2u);
 
-    sound.DropEnded(nullptr);
+    sound.Update();
 
     ASSERT_EQ(sound.Records().size(), 1u);
     EXPECT_EQ(sound.Records()[0].id, loop);
 }
 
-// 音の無い素材は SoundScene に残らないので、1 回の音は次の DropEnded で外れ、ループは Stop まで残る
+// 音の無い素材は SoundScene に残らないので、1 回の音は次の Update で外れ、ループは Stop まで残る
 TEST(SoundObjTest, WithASoundSceneSilentOneShotsAreDroppedAndLoopsStay)
 {
     const NS::Sound clip{"Assets/Sounds/jump.wav", nullptr};
     NS::Audio::SoundScene sounds;
-    NS::SoundObj sound;
-    const NS::uint32 loop = sound.Play(&sounds, &clip, 0.5f, true);
-    ASSERT_NE(sound.Play(&sounds, &clip, 0.5f, false), 0u);
+    const TestAudioUser user{&sounds};
+    NS::SoundObj sound{&user};
+    const NS::uint32 loop = sound.Play(&clip, 0.5f, true);
+    ASSERT_NE(sound.Play(&clip, 0.5f, false), 0u);
 
-    sound.DropEnded(&sounds);
+    sound.Update();
 
     ASSERT_EQ(sound.Records().size(), 1u);
     EXPECT_EQ(sound.Records()[0].id, loop);
 }
 
-// 鳴っている 1 回の音は DropEnded で外れず、Stop で SoundScene からも外れる。音は聞こえない音量で鳴らす
+// 鳴っている 1 回の音は Update で外れず、Stop で SoundScene からも外れる。音は聞こえない音量で鳴らす
 TEST_F(SoundObjDeviceTest, PlayingOneShotStaysUntilItEndsOrIsStopped)
 {
     NS::Audio::SoundScene sounds;
-    NS::SoundObj sound;
-    const NS::uint32 oneShot = sound.Play(&sounds, m_clip.get(), 0.0f, false);
+    const TestAudioUser user{&sounds};
+    NS::SoundObj sound{&user};
+    const NS::uint32 oneShot = sound.Play(m_clip.get(), 0.0f, false);
     ASSERT_EQ(sound.Records().size(), 1u);
     const NS::Audio::SoundHandle handle = sound.Records()[0].handle;
     ASSERT_TRUE(handle.IsValid());
 
-    sound.DropEnded(&sounds);
+    sound.Update();
     EXPECT_EQ(sound.Records().size(), 1u);
 
-    sound.Stop(&sounds, oneShot);
+    sound.Stop(oneShot);
     EXPECT_TRUE(sound.Records().empty());
     EXPECT_FALSE(sounds.Exists(handle));
 }

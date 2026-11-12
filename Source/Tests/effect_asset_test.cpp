@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
+#include "Tests/TestEffectActor.h"
 #include "Tests/TestWarpGpu.h"
 
 #include <gtest/gtest.h>
@@ -19,7 +20,9 @@ TEST(EffectAssetMigration, PlayerDoesNotOwnTheObsoleteChargeRuntime)
 TEST(EffectNaming, ResourceAndClassObjKeepDifferentReflectionIdentities)
 {
     NS::Effect asset("Assets/Effects/hit_flash_min.efkefc");
-    NS::EffectObj owner;
+    const TestEffectUser user;
+    const NS::Transform transform;
+    NS::EffectObj owner{&user, &transform};
     EXPECT_STREQ(asset.GetReflection()->typeName, "Effect");
     EXPECT_STREQ(owner.GetReflection()->typeName, "EffectObj");
     EXPECT_EQ(NS::Cast<NS::EffectObj>(&asset), nullptr);
@@ -28,7 +31,9 @@ TEST(EffectNaming, ResourceAndClassObjKeepDifferentReflectionIdentities)
 
 TEST(EffectAssetMigration, PlayerEffectObjectsOnlyKeepPlaybackState)
 {
-    NS::EffectObj effect;
+    const TestEffectUser user;
+    const NS::Transform transform;
+    NS::EffectObj effect{&user, &transform};
     EXPECT_TRUE(NS::SerializeClassObjFields(&effect).empty());
 }
 

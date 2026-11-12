@@ -14,7 +14,7 @@ namespace NS
         {
             return 0;
         }
-        return part->Play(user->GetSoundScene(), sound, volume, loop);
+        return part->Play(sound, volume, loop);
     }
 
     uint32 PlaySoundAt(const IGetAudio* user, const Sound* sound, const Vector3& position, float volume, bool loop)
@@ -25,7 +25,7 @@ namespace NS
         {
             return 0;
         }
-        return part->PlayAt(user->GetSoundScene(), sound, position, volume, loop);
+        return part->PlayAt(sound, position, volume, loop);
     }
 
     void StopSound(const IGetAudio* user, uint32 id) noexcept
@@ -33,7 +33,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (SoundObj* part = user->GetSound())
         {
-            part->Stop(user->GetSoundScene(), id);
+            part->Stop(id);
         }
     }
 
@@ -42,7 +42,7 @@ namespace NS
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         if (SoundObj* part = user->GetSound())
         {
-            part->SetVolume(user->GetSoundScene(), id, volume);
+            part->SetVolume(id, volume);
         }
     }
 } // namespace NS

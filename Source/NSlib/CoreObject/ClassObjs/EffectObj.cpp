@@ -1,26 +1,33 @@
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
+#include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/IGet/IGetEffect.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
 
 #include <utility>
 
 namespace NS
 {
-    uint32 EffectObj::Play(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    EffectObj::EffectObj(const IGetEffect* user, const Transform* transform) noexcept
+        : m_user(user), m_transform(transform)
     {
-        return Start(effects, asset, desc, false);
+        NS_ASSERT(Scene, user != nullptr, "EffectObj に null の IGetEffect を渡している");
+        NS_ASSERT(Scene, transform != nullptr, "EffectObj に null の Transform を渡している");
     }
 
-    uint32 EffectObj::PlayFollowing(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    uint32 EffectObj::Play(const Effect* asset, const Gfx::EffectPlayDesc& desc)
     {
-        return Start(effects, asset, desc, true);
+        return Start(asset, desc, false);
     }
 
-    uint32 EffectObj::Start(Gfx::EffectScene* effects,
-                            const Effect* asset,
-                            const Gfx::EffectPlayDesc& desc,
-                            bool follows)
+    uint32 EffectObj::PlayFollowing(const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    {
+        return Start(asset, desc, true);
+    }
+
+    uint32 EffectObj::Start(const Effect* asset, const Gfx::EffectPlayDesc& desc, bool follows)
     {
         if (asset == nullptr || asset->Path().empty())
         {
@@ -30,7 +37,7 @@ namespace NS
         record.asset = asset;
         record.follows = follows;
         record.scale = desc.scale;
-        if (effects != nullptr)
+        if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
             record.handle = effects->Play(asset->D3D(), desc);
             // 読めない素材は再生されない。Effekseer に問えない物を一覧に残すと、外す時が来ない
@@ -45,27 +52,27 @@ namespace NS
         return m_records.back().id;
     }
 
-    void EffectObj::StopRoot(Gfx::EffectScene* effects, uint32 id) noexcept
+    void EffectObj::StopRoot(uint32 id) noexcept
     {
         const Gfx::EffectHandle handle = TakeOut(id);
-        if (effects != nullptr)
+        if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
             effects->StopRoot(handle);
         }
     }
 
-    void EffectObj::Stop(Gfx::EffectScene* effects, uint32 id) noexcept
+    void EffectObj::Stop(uint32 id) noexcept
     {
         const Gfx::EffectHandle handle = TakeOut(id);
-        if (effects != nullptr)
+        if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
             effects->Stop(handle);
         }
     }
 
-    void EffectObj::StopRootAll(Gfx::EffectScene* effects) noexcept
+    void EffectObj::StopRootAll() noexcept
     {
-        if (effects != nullptr)
+        if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
             for (const EffectRecord& record : m_records)
             {
@@ -75,13 +82,13 @@ namespace NS
         m_records.clear();
     }
 
-    void EffectObj::SetTransform(Gfx::EffectScene* effects,
-                                 uint32 id,
+    void EffectObj::SetTransform(uint32 id,
                                  const Vector3& position,
                                  const Quaternion& rotation,
                                  const Vector3& scale) noexcept
     {
         const std::size_t index = IndexOf(id);
+        Gfx::EffectScene* effects = m_user->GetEffectScene();
         if (index == m_records.size() || effects == nullptr)
         {
             return;
@@ -90,9 +97,10 @@ namespace NS
         effects->SetTransform(m_records[index].handle, position, rotation, scale);
     }
 
-    void EffectObj::SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept
+    void EffectObj::SetDynamicInput(uint32 id, int index, float value) noexcept
     {
         const std::size_t recordIndex = IndexOf(id);
+        Gfx::EffectScene* effects = m_user->GetEffectScene();
         if (recordIndex == m_records.size() || effects == nullptr)
         {
             return;
@@ -100,8 +108,9 @@ namespace NS
         effects->SetDynamicInput(m_records[recordIndex].handle, index, value);
     }
 
-    void EffectObj::Update(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept
+    void EffectObj::Update() noexcept
     {
+        Gfx::EffectScene* effects = m_user->GetEffectScene();
         if (effects == nullptr)
         {
             // 再生していないので、終わったかを問えない。出すだけの再生は止める呼び出しが来ないので、ここで外す
@@ -113,7 +122,7 @@ namespace NS
         {
             if (record.follows)
             {
-                effects->SetTransform(record.handle, position, rotation, record.scale);
+                effects->SetTransform(record.handle, m_transform->Position(), m_transform->Rotation(), record.scale);
             }
         }
     }

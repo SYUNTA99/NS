@@ -446,9 +446,9 @@ namespace NS
         if (m_collision) { DisableCollision(this, m_collision.get()); }
         if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
         // 出ていた粒は寿命まで残し、新しい粒だけを止める
-        if (m_effect) { m_effect->StopRootAll(GetEffectScene()); }
+        if (m_effect) { m_effect->StopRootAll(); }
         // 鳴らし続けていた音を、居ないアクターが鳴らし続けない。1 回の音は最後まで鳴らす
-        if (m_sound) { m_sound->StopLoopAll(GetSoundScene()); }
+        if (m_sound) { m_sound->StopLoopAll(); }
     }
 
     namespace
@@ -713,7 +713,7 @@ namespace NS
     {
         m_skipStateStep = false;
         // clang-format off
-        if (m_sound) { m_sound->DropEnded(GetSoundScene()); }
+        if (m_sound) { m_sound->Update(); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         DecideStep();
@@ -737,7 +737,7 @@ namespace NS
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(TransformObj().WorldMatrix(), this); }
         // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す。消えている間は OnDisappear が一覧を空にしている
-        if (m_effect) { m_effect->Update(GetEffectScene(), TransformObj().Position(), TransformObj().Rotation()); }
+        if (m_effect) { m_effect->Update(); }
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
