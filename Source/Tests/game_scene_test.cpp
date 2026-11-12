@@ -102,7 +102,7 @@ namespace
         {
             if (NS::IsMsg<GL::Level::MsgCourseStart>(msg))
             {
-                m_start = Root().Position();
+                m_start = TransformObj().Position();
                 return true;
             }
             if (NS::IsMsg<GL::Level::MsgCourseRestart>(msg))
@@ -112,7 +112,7 @@ namespace
                 {
                     return false;
                 }
-                Root().SetPosition(*m_start);
+                TransformObj().SetPosition(*m_start);
                 return true;
             }
             return NS::SceneActor::ReceiveMsg(msg, sender, receiver);
@@ -128,7 +128,7 @@ namespace
         CourseReturnActor* placed = SpawnFromActorFile<CourseReturnActor>(scene, "CourseReturnActor");
         if (placed != nullptr)
         {
-            placed->Root().SetPosition(NS::Vector3{5.0f, 1.0f, 0.0f});
+            placed->TransformObj().SetPosition(NS::Vector3{5.0f, 1.0f, 0.0f});
         }
         return placed;
     }
@@ -257,7 +257,7 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
     const float lockedSpeed = player->Body().LateralVelocity().Length();
     ASSERT_GT(lockedSpeed, 0.0f);
 
-    player->Root().SetPosition(SpawnOf(doc));
+    player->TransformObj().SetPosition(SpawnOf(doc));
     scene.OnUpdate();
     ASSERT_TRUE(scene.IsClearing());
 
@@ -278,10 +278,10 @@ TEST(GameScene, RestartReturnsActorsToTheirStart)
     NS::SceneActor* placed = PlaceCourseReturnActor(scene);
     ASSERT_NE(placed, nullptr);
     scene.StartPlay();
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
     scene.RestartCourse();
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 5.0f);
 }
 
 // 自機でないアクターが止め始めたヒットストップも、やり直しで解く。残すと出し直したアクターが止まったまま待つ
@@ -402,7 +402,7 @@ TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
     const NS::Vector3 placedAt{5.0f, 5.0f, 5.0f};
-    player->Root().SetPosition(placedAt);
+    player->TransformObj().SetPosition(placedAt);
     player->Body().SetVelocity(NS::Vector3{2.0f, 4.0f, 3.0f});
 
     scene.StartPlay();
@@ -411,9 +411,9 @@ TEST(GameScene, StartPlayStartsThePlayerAtRestFromThePlacedPose)
     EXPECT_FLOAT_EQ(player->Body().Velocity().x, 0.0f);
     EXPECT_FLOAT_EQ(player->Body().Velocity().y, 0.0f);
     EXPECT_FLOAT_EQ(player->Body().Velocity().z, 0.0f);
-    EXPECT_FLOAT_EQ(player->Root().Position().x, placedAt.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, placedAt.y);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, placedAt.z);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, placedAt.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, placedAt.y);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, placedAt.z);
 }
 
 // 位置から鳴らす音を聞く点は、歩ごとに自機の位置になる。届く距離はシーンの設定の値を始めに渡す
@@ -431,18 +431,18 @@ TEST(GameScene, AStepPutsTheSoundListenerOnThePlayer)
     ASSERT_NE(sounds, nullptr);
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    ASSERT_NE(sounds->Listener().position.y, player->Root().Position().y);
+    ASSERT_NE(sounds->Listener().position.y, player->TransformObj().Position().y);
 
     scene.StartPlay();
     EXPECT_FLOAT_EQ(sounds->FullVolumeDistance(), 25.0f);
     // 始めに置かれた聞く点から自機を離す。歩の中で置き直さなければ、下の比べが食い違う
-    player->Root().SetPosition(NS::Vector3{7.0f, 9.0f, 3.0f});
-    ASSERT_NE(sounds->Listener().position.x, player->Root().Position().x);
+    player->TransformObj().SetPosition(NS::Vector3{7.0f, 9.0f, 3.0f});
+    ASSERT_NE(sounds->Listener().position.x, player->TransformObj().Position().x);
     scene.OnUpdate();
 
-    EXPECT_FLOAT_EQ(sounds->Listener().position.x, player->Root().Position().x);
-    EXPECT_FLOAT_EQ(sounds->Listener().position.y, player->Root().Position().y);
-    EXPECT_FLOAT_EQ(sounds->Listener().position.z, player->Root().Position().z);
+    EXPECT_FLOAT_EQ(sounds->Listener().position.x, player->TransformObj().Position().x);
+    EXPECT_FLOAT_EQ(sounds->Listener().position.y, player->TransformObj().Position().y);
+    EXPECT_FLOAT_EQ(sounds->Listener().position.z, player->TransformObj().Position().z);
 }
 
 // 0 以下の届く距離を書いたシーンは、既定の距離で読む。エディタの「曲を適用」が 0 以下を受けないため
@@ -473,18 +473,18 @@ TEST(GameScene, DeathInAStepRestartsTheCourseBeforeTheNextStep)
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     // 落下死の範囲 (上面 y=-50) の中へ置く
-    player->Root().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
 
     scene.OnUpdate();
 
     EXPECT_FALSE(player->IsDead());
     const NS::Vector3 spawn = SpawnOf(doc);
-    EXPECT_FLOAT_EQ(player->Root().Position().x, spawn.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, spawn.y);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, spawn.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, spawn.y);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, spawn.z);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 5.0f);
     EXPECT_FALSE(scene.IsClearing());
 }
 
@@ -498,20 +498,20 @@ TEST(GameScene, RespawnButtonInAStepReturnsOtherActorsBeforeTheNextStep)
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     const NS::Vector3 spawn = SpawnOf(doc);
     const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
-    player->Root().SetPosition(movedTo);
+    player->TransformObj().SetPosition(movedTo);
 
     {
         const KeyPress press{NS::OS::Key::R};
         scene.OnUpdate();
     }
 
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 5.0f);
     // 自機は戻さない。縦は重力で動くので横だけを見る
-    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, movedTo.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, movedTo.z);
     EXPECT_FALSE(scene.IsClearing());
 }
 
@@ -525,7 +525,7 @@ TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
 
     scene.OnUpdate();
 
@@ -533,10 +533,10 @@ TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     ASSERT_TRUE(scene.IsClearing());
     EXPECT_TRUE(scene.Fade().IsFading());
     EXPECT_TRUE(player->Input().IsLocked());
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 9.0f);
     const NS::Vector3 spawn = SpawnOf(doc);
-    EXPECT_FLOAT_EQ(player->Root().Position().x, spawn.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, spawn.z);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, spawn.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, spawn.z);
 
     for (int i = 0; i < 600 && scene.IsClearing(); ++i)
     {
@@ -544,7 +544,7 @@ TEST(GameScene, GoalInAStepStartsTheClearAndRestartsBehindTheBlack)
     }
     EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(player->Input().IsLocked());
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 5.0f);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 5.0f);
 }
 
 // エディタは同じシーンのオブジェクトでプレイを何度も始め、その間に ResetFromJson で組み直す。
@@ -567,18 +567,18 @@ TEST(GameScene, RebuildingTheWorldDropsNoticesOfThePlay)
     scene.StartPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
-    placed->Root().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{9.0f, 1.0f, 0.0f});
     const NS::Vector3 spawn = SpawnOf(doc);
     const NS::Vector3 movedTo{spawn.x + 3.0f, spawn.y, spawn.z + 3.0f};
-    player->Root().SetPosition(movedTo);
+    player->TransformObj().SetPosition(movedTo);
 
     scene.OnUpdate();
 
     EXPECT_FALSE(scene.IsClearing());
     EXPECT_FALSE(scene.Fade().IsFading());
-    EXPECT_FLOAT_EQ(placed->Root().Position().x, 9.0f);
-    EXPECT_FLOAT_EQ(player->Root().Position().x, movedTo.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, movedTo.z);
+    EXPECT_FLOAT_EQ(placed->TransformObj().Position().x, 9.0f);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, movedTo.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, movedTo.z);
 }
 
 TEST(GameScene, RebuildingTheWorldEndsTheClearOfThePlay)

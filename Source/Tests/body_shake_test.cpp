@@ -117,10 +117,10 @@ TEST(BodyShake, ShakeRunMovesOnlyTheDrawnShapeAndEndsAfterTheLength)
 {
     NS::Scene scene;
     ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
-    actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    const NS::Matrix before = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+    const NS::Matrix before = model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f);
 
     constexpr int k_Length = 4;
     const GL::Level::BodyShakeDesc shake = SideShakeOf(k_Length);
@@ -138,13 +138,13 @@ TEST(BodyShake, ShakeRunMovesOnlyTheDrawnShapeAndEndsAfterTheLength)
     ASSERT_TRUE(moved.Advance(SelfOf(actor)));
     const NS::Vector3 offset = shake.OffsetAt(1);
     ASSERT_NE(offset.x, 0.0f);
-    const NS::Matrix after = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+    const NS::Matrix after = model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f);
     EXPECT_NEAR(after._41 - before._41, offset.x, 1.0e-5f);
     EXPECT_NEAR(after._42 - before._42, 0.0f, 1.0e-5f);
-    EXPECT_FLOAT_EQ(actor->Root().Position().x, 2.0f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().x, 2.0f);
 
     moved.Stop(SelfOf(actor));
-    const NS::Matrix reset = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+    const NS::Matrix reset = model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f);
     EXPECT_FLOAT_EQ(reset._41, before._41);
 }
 
@@ -267,11 +267,11 @@ TEST(BodyShake, DrawScaleInterpolatesAndSnapDoesNot)
     ASSERT_NE(model, nullptr);
     model->Snapshot();
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{1.0f, 0.5f, 1.0f}));
-    EXPECT_NEAR(model->DrawWorldMatrix(actor->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._22, 1.0f, 1.0e-5f);
-    EXPECT_NEAR(model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f)._22, 0.5f, 1.0e-5f);
+    EXPECT_NEAR(model->DrawWorldMatrix(actor->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._22, 1.0f, 1.0e-5f);
+    EXPECT_NEAR(model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f)._22, 0.5f, 1.0e-5f);
 
     ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
-    EXPECT_NEAR(model->DrawWorldMatrix(actor->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._22, 2.0f, 1.0e-5f);
+    EXPECT_NEAR(model->DrawWorldMatrix(actor->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._22, 2.0f, 1.0e-5f);
 
     EXPECT_FALSE(model->SetDrawScale(NS::Vector3{1.0f, 0.0f, 1.0f}));
     EXPECT_FALSE(model->SnapDrawScale(NS::Vector3{1.0f, std::numeric_limits<float>::quiet_NaN(), 1.0f}));
@@ -284,17 +284,17 @@ TEST(BodyShake, GhostsSitAtPlusAndMinusTheSpreadAroundTheRoot)
 {
     NS::Scene scene;
     ModelActor* actor = SpawnFromActorFile<ModelActor>(scene, "ModelActor");
-    actor->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::Model* model = actor->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    const NS::Matrix root = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+    const NS::Matrix root = model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f);
     GL::Level::BodyShakeRun run(SideShakeOf(6));
     ASSERT_TRUE(run.Advance(SelfOf(actor)));
     ASSERT_NE(model->GetDrawOffset().x, 0.0f);
     GL::Level::TackleGhost ghost;
     ASSERT_TRUE(ghost.SetSpread(NS::Vector3{0.3f, 0.0f, -0.2f}));
-    const NS::Matrix plus = ghost.SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, 1.0f);
-    const NS::Matrix minus = ghost.SideWorldMatrix(model, actor->Root().WorldMatrix(), 1.0f, -1.0f);
+    const NS::Matrix plus = ghost.SideWorldMatrix(model, actor->TransformObj().WorldMatrix(), 1.0f, 1.0f);
+    const NS::Matrix minus = ghost.SideWorldMatrix(model, actor->TransformObj().WorldMatrix(), 1.0f, -1.0f);
     EXPECT_NEAR(plus._41 - root._41, 0.3f, 1.0e-5f);
     EXPECT_NEAR(plus._43 - root._43, -0.2f, 1.0e-5f);
     EXPECT_NEAR(minus._41 - root._41, -0.3f, 1.0e-5f);

@@ -42,7 +42,7 @@ namespace
         {
             first = SpawnFromActorFile<FollowedProbeActor>(scene, "FollowedProbeActor", "first");
             second = SpawnFromActorFile<FollowedProbeActor>(scene, "FollowedProbeActor", "second");
-            second->Root().SetPosition({10.0f, 0.0f, 0.0f});
+            second->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
             nlohmann::json json = NS::MakeActorJson();
             NS::SetActorJsonId(json, 50);
             NS::SetActorJsonFile(json, "FollowCameraActor");
@@ -72,7 +72,7 @@ namespace
             NS_ASSERT(Game, m_log != nullptr, "WalkingTargetActor: 控える先が無い");
             vcam->SetFollowMotion(true, NS::Vector3{});
             m_log->push_back("camera");
-            seenPositions.push_back(Root().Position());
+            seenPositions.push_back(TransformObj().Position());
         }
         mutable std::vector<NS::Vector3> seenPositions; // 読まれた時の位置。書くのは WriteFollowState だけ
 
@@ -81,7 +81,7 @@ namespace
         {
             NS_ASSERT(Game, m_log != nullptr, "WalkingTargetActor: 控える先が無い");
             m_log->push_back("target");
-            Root().SetPosition(Root().Position() + NS::Vector3{1.0f, 0.0f, 0.0f});
+            TransformObj().SetPosition(TransformObj().Position() + NS::Vector3{1.0f, 0.0f, 0.0f});
         }
 
     private:
@@ -107,7 +107,7 @@ namespace
                 return;
             }
             m_log->push_back("course");
-            m_target->Root().SetPosition(m_target->Root().Position() + NS::Vector3{0.0f, 0.0f, 5.0f});
+            m_target->TransformObj().SetPosition(m_target->TransformObj().Position() + NS::Vector3{0.0f, 0.0f, 5.0f});
         }
 
     private:

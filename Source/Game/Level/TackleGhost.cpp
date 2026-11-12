@@ -32,7 +32,7 @@ namespace GL
             m_desc = TackleGhostDesc{
                 .axis = NS::Vector3{forward.z, 0.0f, -forward.x},
                 .spread =
-                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->Root().Position()),
+                    NS::ScreenPixelsToMeters(HitOwnerValue(item, "離れのピクセル", 0.0f), *pose, owner->TransformObj().Position()),
                 .sideOpacity = HitOwnerValue(item, "左右の残像の不透明度", 0.0f),
                 .stopLength = run.length,
                 .releaseFrames = HitOwnerFrames(item, "明けの残像のフレーム数", 0),
@@ -108,7 +108,7 @@ namespace GL
             if (m_running)
             {
                 ++m_frame;
-                m_running = m_desc.WriteTo(this, m_frame, model, owner->Root().WorldMatrix());
+                m_running = m_desc.WriteTo(this, m_frame, model, owner->TransformObj().WorldMatrix());
             }
             std::vector<NS::ModelDraw> draws;
             if (m_spread.LengthSquared() > 0.0f)

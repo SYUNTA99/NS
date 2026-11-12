@@ -427,7 +427,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
     ASSERT_TRUE(player->GetEffect()->Records()[0].handle.IsValid());
     ASSERT_TRUE(expected.Play(asset->D3D(), {}).IsValid());
     player->RequestHitStop(10);
-    const NS::Vector3 position = player->Root().Position();
+    const NS::Vector3 position = player->TransformObj().Position();
     for (int frame = 0; frame < 30; ++frame)
     {
         SCOPED_TRACE(frame);
@@ -436,7 +436,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
         expected.Update(1.0f / 60.0f);
         if (frame < 10)
         {
-            EXPECT_EQ(player->Root().Position(), position);
+            EXPECT_EQ(player->TransformObj().Position(), position);
         }
         ExpectSameEffectPixels(expected, *scene.GetEffectScene());
     }

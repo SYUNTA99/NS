@@ -218,9 +218,9 @@ TEST(HitSensor, WorldVolumeFollowsRootScale)
     NS::ShapeHitSensor* sensor = actor.m_sensor;
     ASSERT_NE(sensor, nullptr);
     sensor->SetSphere(0.5f);
-    actor.Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
-    actor.Root().SetScale(Vector3{2.0f, 2.0f, 2.0f});
-    const NS::SensorVolume volume = sensor->WorldVolume(actor.Root().WorldMatrix());
+    actor.TransformObj().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
+    actor.TransformObj().SetScale(Vector3{2.0f, 2.0f, 2.0f});
+    const NS::SensorVolume volume = sensor->WorldVolume(actor.TransformObj().WorldMatrix());
     EXPECT_FLOAT_EQ(volume.radius, 1.0f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);
 }
@@ -252,8 +252,8 @@ TEST(HitSensorDirector, TickTellsEveryOverlappingPairWhateverTheKinds)
     SensorProbeActor* area = SpawnProbe(scene, SensorKind::Area, 1.0f);
     SensorProbeActor* body = SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
     SensorProbeActor* other = SpawnProbe(scene, SensorKind::Unset, 0.5f);
-    body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
-    other->Root().SetPosition(Vector3{0.5f, 0.0f, 0.0f});
+    body->TransformObj().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
+    other->TransformObj().SetPosition(Vector3{0.5f, 0.0f, 0.0f});
 
     scene.HitSensors().OnTick();
 
@@ -269,7 +269,7 @@ TEST(HitSensorDirector, OverlapEntersOnceStaysThenExitsOnce)
     NS::Scene scene;
     SensorProbeActor* area = SpawnProbe(scene, SensorKind::Area, 1.0f);
     SensorProbeActor* body = SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
-    body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
+    body->TransformObj().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
 
     scene.HitSensors().OnTick();
     EXPECT_EQ(area->entered, (std::vector<NS::HitSensor*>{body->m_sensor}));
@@ -283,7 +283,7 @@ TEST(HitSensorDirector, OverlapEntersOnceStaysThenExitsOnce)
     EXPECT_EQ(body->stayed, (std::vector<NS::HitSensor*>{area->m_sensor, area->m_sensor}));
     EXPECT_TRUE(area->exited.empty());
 
-    body->Root().SetPosition(Vector3{5.0f, 0.0f, 0.0f});
+    body->TransformObj().SetPosition(Vector3{5.0f, 0.0f, 0.0f});
     scene.HitSensors().OnTick();
     scene.HitSensors().OnTick();
     EXPECT_EQ(area->entered.size(), 1u);
@@ -444,7 +444,7 @@ TEST(HitSensorDirector, EveryEnteredPairGetsExactlyOneExit)
     ASSERT_EQ(area->entered.size(), 1u);
 
     // 同じ固定フレームの間に、離れて・外されて・消えて・解放される
-    body->Root().SetPosition(Vector3{5.0f, 0.0f, 0.0f});
+    body->TransformObj().SetPosition(Vector3{5.0f, 0.0f, 0.0f});
     body->m_sensor->Invalidate();
     body->Disappear();
     scene.RemoveActor(body->Id());
@@ -459,7 +459,7 @@ TEST(HitSensorDirector, BothOwnersHearAnOverlap)
     NS::Scene scene;
     SensorProbeActor* area = SpawnProbe(scene, SensorKind::Area, 1.0f);
     SensorProbeActor* body = SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
-    body->Root().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
+    body->TransformObj().SetPosition(Vector3{1.0f, 0.0f, 0.0f});
 
     scene.HitSensors().OnTick();
 
@@ -664,7 +664,7 @@ TEST(HitSensorsObj, TwoSensorsAddedInOnInitExistWithTheirNames)
     EXPECT_EQ(attack->Name(), "Attack");
     EXPECT_TRUE(GL::Level::IsSensorKind(attack, SensorKind::PlayerBody));
     EXPECT_EQ(attack->Host(), actor);
-    actor->Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
+    actor->TransformObj().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     const NS::SensorVolume volume = NS::HitSensorDirector::VolumeOf(attack);
     EXPECT_FLOAT_EQ(volume.radius, 0.25f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);

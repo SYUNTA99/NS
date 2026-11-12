@@ -102,7 +102,7 @@ namespace NS
             nlohmann::json& parts = ActorJsonClassObjs(object);
             ForEachReflectedClassObj(
                 obj, [&](const ClassObjInfo& field, Object*) { parts[field.key] = nlohmann::json::object(); });
-            SetActorJsonPosition(object, obj->Root().Position());
+            SetActorJsonPosition(object, obj->TransformObj().Position());
             return object;
         }
 
@@ -177,19 +177,19 @@ namespace NS
         int16 ActorCellX(const SceneActor* object) noexcept
         {
             NS_ASSERT(App, object != nullptr, "ActorCellX: アクターが null");
-            return static_cast<int16>(std::lround(object->Root().Position().x));
+            return static_cast<int16>(std::lround(object->TransformObj().Position().x));
         }
 
         int16 ActorCellY(const SceneActor* object) noexcept
         {
             NS_ASSERT(App, object != nullptr, "ActorCellY: アクターが null");
-            return static_cast<int16>(std::lround(object->Root().Position().y));
+            return static_cast<int16>(std::lround(object->TransformObj().Position().y));
         }
 
         int16 ActorCellZ(const SceneActor* object) noexcept
         {
             NS_ASSERT(App, object != nullptr, "ActorCellZ: アクターが null");
-            return static_cast<int16>(std::lround(object->Root().Position().z));
+            return static_cast<int16>(std::lround(object->TransformObj().Position().z));
         }
 
         uint32 FindActorIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept

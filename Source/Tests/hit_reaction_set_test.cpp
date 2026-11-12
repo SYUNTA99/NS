@@ -448,7 +448,7 @@ namespace
         ReactionProbeActor* probe = SpawnFromActorFile<ReactionProbeActor>(scene, k_ProbeName);
         if (probe != nullptr)
         {
-            probe->Root().SetPosition(position);
+            probe->TransformObj().SetPosition(position);
         }
         return probe;
     }
@@ -729,7 +729,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         EXPECT_LT(probes.self->ModelClassObj()->GetDrawOffset().x * side, 0.0f);
         const NS::Vector3 offset =
             GL::Level::BodyTremor::FromDrawValues(probes.self->ModelClassObj()->DrawValues()).contactOffset;
-        EXPECT_NEAR((offset - (contact - probes.self->Root().Position())).Length(), 0.0f, 1.0e-5f);
+        EXPECT_NEAR((offset - (contact - probes.self->TransformObj().Position())).Length(), 0.0f, 1.0e-5f);
     }
 }
 

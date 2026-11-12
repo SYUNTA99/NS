@@ -388,7 +388,7 @@ namespace NS
             Vector3 startCenter{0.0f, 0.0f, 0.0f};
             if (focusActor != nullptr)
             {
-                startCenter = focusActor->Root().Position();
+                startCenter = focusActor->TransformObj().Position();
             }
             m_editorCamera.SetCenter(startCenter);
             m_editorCamera.SetDistance(5.0f);
@@ -901,7 +901,7 @@ namespace NS
                 {
                     continue;
                 }
-                object->Root().SetPosition(follow->EvaluatePose(1.0f).position);
+                object->TransformObj().SetPosition(follow->EvaluatePose(1.0f).position);
             }
         }
 
@@ -923,7 +923,7 @@ namespace NS
             {
                 return;
             }
-            follow->SetInitialPoseFromCameraPosition(go->Root().Position());
+            follow->SetInitialPoseFromCameraPosition(go->TransformObj().Position());
         }
 
         void LevelEditorController::SelectActorById(uint32 id) noexcept
@@ -1004,7 +1004,7 @@ namespace NS
             // player も含め全アクターが ActorList に居る。選択した Root を id で引いてギズモへ貼る
             if (SceneActor* go = m_scene.Actors().FindByActorId(id))
             {
-                m_gizmo.SetSelected(&go->Root());
+                m_gizmo.SetSelected(&go->TransformObj());
                 m_lastGizmoSelected = m_gizmo.Selected();
                 return;
             }
@@ -1030,7 +1030,7 @@ namespace NS
             // player も ActorList に居るので、ビューポートのピックと同じ経路で引ける
             for (SceneActor* object : m_scene.Actors())
             {
-                if (&object->Root() == selected)
+                if (&object->TransformObj() == selected)
                 {
                     // ビューポートのクリックは 1 体に絞る。複数選択はアクター一覧の Ctrl / Shift で組む
                     m_selectedActorId = object->Id();
@@ -1057,7 +1057,7 @@ namespace NS
             {
                 if (SceneActor* go = m_scene.Actors().FindByActorId(m_selectedActorId))
                 {
-                    Transform* root = &go->Root();
+                    Transform* root = &go->TransformObj();
                     if (m_gizmo.Selected() != root)
                     {
                         m_gizmo.SetSelected(root);
@@ -1260,7 +1260,7 @@ namespace NS
                 {
                     continue;
                 }
-                const Matrix world = object->Root().WorldMatrix();
+                const Matrix world = object->TransformObj().WorldMatrix();
                 const Vector3 center{world._41, world._42, world._43};
                 centers.push_back(center);
                 sum += center;
@@ -1300,7 +1300,7 @@ namespace NS
             {
                 return;
             }
-            m_dragPrimaryWorld = primary->Root().WorldMatrix();
+            m_dragPrimaryWorld = primary->TransformObj().WorldMatrix();
 
             for (const uint32 id : m_selectionIds)
             {
@@ -1314,7 +1314,7 @@ namespace NS
                     continue;
                 }
 
-                m_dragFollowers.push_back(DragFollower{id, object->Root().WorldMatrix()});
+                m_dragFollowers.push_back(DragFollower{id, object->TransformObj().WorldMatrix()});
             }
         }
 
@@ -1331,7 +1331,7 @@ namespace NS
             }
 
             // 主対象が動いた分をワールド空間の差分として取り、残りへ同じだけ効かせる
-            const Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
+            const Matrix delta = m_dragPrimaryWorld.Invert() * primary->TransformObj().WorldMatrix();
             for (const DragFollower& follower : m_dragFollowers)
             {
                 SceneActor* object = m_scene.Actors().FindByActorId(follower.id);
@@ -1349,9 +1349,9 @@ namespace NS
                 {
                     continue;
                 }
-                object->Root().SetPosition(position);
-                object->Root().SetRotation(rotation);
-                object->Root().SetScale(scale);
+                object->TransformObj().SetPosition(position);
+                object->TransformObj().SetRotation(rotation);
+                object->TransformObj().SetScale(scale);
             }
         }
 

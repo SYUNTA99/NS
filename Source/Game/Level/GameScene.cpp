@@ -118,7 +118,7 @@ namespace GL
                 forward = view->target - view->position;
                 up = view->up;
             }
-            sounds->SetListener(player->Root().Position(), forward, up);
+            sounds->SetListener(player->TransformObj().Position(), forward, up);
         }
 
         void GameScene::RestartCourse()

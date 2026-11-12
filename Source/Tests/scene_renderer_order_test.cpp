@@ -131,7 +131,7 @@ namespace
             EXPECT_NE(actor, nullptr);
             if (actor != nullptr)
             {
-                actor->Root().SetPosition(position);
+                actor->TransformObj().SetPosition(position);
             }
             return actor;
         }

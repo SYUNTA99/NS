@@ -88,7 +88,7 @@ namespace GL
             {
                 return nullptr;
             }
-            return &m_target->Root();
+            return &m_target->TransformObj();
         }
 
         void ThirdPersonFollow::SetFollowMotion(bool grounded, const NS::Vector3& velocity) noexcept

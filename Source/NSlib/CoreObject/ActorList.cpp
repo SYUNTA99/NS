@@ -235,7 +235,7 @@ namespace NS
             Collision* collision = actor->CollisionClassObj();
             if (collision != nullptr && actor->IsAppeared())
             {
-                collision->SyncToPhysics(actor->Root().WorldMatrix(), actor.get());
+                collision->SyncToPhysics(actor->TransformObj().WorldMatrix(), actor.get());
             }
         }
     }

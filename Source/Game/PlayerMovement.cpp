@@ -61,10 +61,10 @@ void PlayerActor::MoveBody(float dt) noexcept
         }
     }
 
-    const NS::Vector3 before = Root().Position();
+    const NS::Vector3 before = TransformObj().Position();
     m_airDash.m_intended = m_body->Velocity();
-    m_body->Move(&Root(), m_collider.get(), dt, m_params->m_maxStepHeight, MoveMaxSlopeRadians());
-    const NS::Vector3 delta = Root().Position() - before;
+    m_body->Move(&TransformObj(), m_collider.get(), dt, m_params->m_maxStepHeight, MoveMaxSlopeRadians());
+    const NS::Vector3 delta = TransformObj().Position() - before;
     m_lastMoveDistance = delta.Length();
     SyncGroundState();
     TryBeginTerrainRebound();
@@ -271,7 +271,7 @@ void PlayerActor::ChangeCurled(bool curled) noexcept
     }
     // TODO: 低い天井で立ち姿へ戻す検査は無い。現在のコースでは次の接触解決に任せる
     // 形の変更を動きとして補間しないよう、前フレームの位置もずらす
-    Root().ShiftPosition(NS::Vector3{0.0f, rise, 0.0f});
+    TransformObj().ShiftPosition(NS::Vector3{0.0f, rise, 0.0f});
 }
 
 void PlayerActor::UncurlWhenSettled() noexcept
@@ -420,7 +420,7 @@ bool PlayerActor::LedgeGrab() noexcept
     // 縁は立ち姿の手の高さで測る。玉の寸法では低すぎる所を探し、落下中に掴めない
     const NS::Collider& collider = *m_collider;
     const float halfHeight = collider.StandingHalfHeight();
-    NS::Vector3 pos = Root().Position();
+    NS::Vector3 pos = TransformObj().Position();
     pos.y += halfHeight - collider.CapsuleHalfHeight();
     // 帯の上は今フレーム動いた距離まで。速く落ちると 1 フレームで縁の上端を通り過ぎて掴み損ねる
     const LedgeBand band{pos.y + halfHeight, m_params->m_ledgeGrabBelowHand, m_lastMoveDistance};
@@ -433,7 +433,7 @@ bool PlayerActor::LedgeGrab() noexcept
     // 立ち姿でぶら下がる。ぶら下がる位置は立ち姿の中心なので、
     // 置く前に解く。置いた後に解くと根が半長ぶん上がる
     ChangeCurled(false);
-    Root().SetPosition(ledge.hangPos);
+    TransformObj().SetPosition(ledge.hangPos);
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_ledgeTopY = ledge.topY;
     m_ledgeFaceNormal = ledge.faceNormal;
@@ -448,7 +448,7 @@ bool PlayerActor::HoldLedge() noexcept
     float top = 0.0f;
     NS::Vector3 faceNormal{};
     NS::Vector3 hangPos{};
-    if (!FindLedgeTopAt(Root().Position(), top, faceNormal, hangPos))
+    if (!FindLedgeTopAt(TransformObj().Position(), top, faceNormal, hangPos))
     {
         DropLedge();
         return false;
@@ -457,7 +457,7 @@ bool PlayerActor::HoldLedge() noexcept
     m_ledgeTopY = top;
     m_ledgeFaceNormal = faceNormal;
     m_facingDir = -faceNormal;
-    Root().SetPosition(hangPos);
+    TransformObj().SetPosition(hangPos);
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     return true;
 }
@@ -479,7 +479,7 @@ void PlayerActor::ClimbLedge() noexcept
 {
     NS::Body& body = *m_body;
     const NS::Collider& collider = *m_collider;
-    const NS::Vector3 pos = Root().Position();
+    const NS::Vector3 pos = TransformObj().Position();
     m_ledgeMantleStart = pos;
     m_ledgeMantleEnd =
         MantleEnd(collider, collider.CapsuleHalfHeight(), LedgeSpot{pos, m_ledgeFaceNormal, m_ledgeTopY});
@@ -504,7 +504,7 @@ void PlayerActor::Shimmy(float dt) noexcept
     if (m_input->ClimbRight() != 0.0f)
     {
         // 面法線に水平直交する縁方向へ進め、移動先で見つけた面から半径だけ外と上面の高さへ置き直す。面が折れていても面に沿う
-        const NS::Vector3 pos = Root().Position();
+        const NS::Vector3 pos = TransformObj().Position();
         const NS::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
         const NS::Vector3 step = alongDir * (m_input->ClimbRight() * m_params->m_ledgeShimmySpeed * dt);
         const NS::Vector3 shimmied = pos + step;
@@ -527,7 +527,7 @@ void PlayerActor::Shimmy(float dt) noexcept
             m_ledgeFaceNormal = faceNormal;
             m_ledgeTopY = top;
             m_facingDir = -faceNormal;
-            Root().SetPosition(placed);
+            TransformObj().SetPosition(placed);
         }
     }
 }
@@ -558,12 +558,12 @@ void PlayerActor::UpdateLedgeClimb() noexcept
         pos.z = NS::Lerp(m_ledgeMantleStart.z, m_ledgeMantleEnd.z, u);
         pos.y = m_ledgeMantleEnd.y;
     }
-    Root().SetPosition(pos);
+    TransformObj().SetPosition(pos);
     body.SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
 
     if (t >= 1.0f)
     {
-        Root().SetPosition(m_ledgeMantleEnd);
+        TransformObj().SetPosition(m_ledgeMantleEnd);
         (void)m_states->Change<GL::Player::IdlePlayerState>();
         body.SetGrounded(true);
         // SetGrounded は前の接地も真にするので、次の移動は着地と読まない。ここで着地の分を戻す

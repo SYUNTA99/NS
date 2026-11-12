@@ -36,7 +36,7 @@ namespace
         TestBoxActor* box = SpawnFromActorFile<TestBoxActor>(scene, "TestBoxActor");
         if (box != nullptr)
         {
-            box->Root().SetPosition(position);
+            box->TransformObj().SetPosition(position);
         }
         return box;
     }

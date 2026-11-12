@@ -30,7 +30,7 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateClassObj(collider, GetPhysicsScene(), &Root());
+            CreateClassObj(collider, GetPhysicsScene(), &TransformObj());
             CreateClassObj(sphere);
         }
     };
@@ -127,14 +127,14 @@ TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
 {
     const std::unique_ptr<CollisionProbeActor> looseOwned = NS::CreateActor<CollisionProbeActor>();
     CollisionProbeActor& loose = *looseOwned;
-    loose.sphere->SyncToPhysics(loose.Root().WorldMatrix(), &loose);
+    loose.sphere->SyncToPhysics(loose.TransformObj().WorldMatrix(), &loose);
     EXPECT_TRUE(loose.sphere->BodyId().IsInvalid());
 
     NS::Scene scene;
     CollisionProbeActor* placed = SpawnFromActorFile<CollisionProbeActor>(scene, "CollisionProbeActor");
     const NS::Vector3 above{0.0f, 2.0f, 0.0f};
     EXPECT_FALSE(HitsDownFrom(scene, above));
-    placed->sphere->SyncToPhysics(placed->Root().WorldMatrix(), placed);
+    placed->sphere->SyncToPhysics(placed->TransformObj().WorldMatrix(), placed);
     const JPH::BodyID body = placed->sphere->BodyId();
     EXPECT_FALSE(body.IsInvalid());
     EXPECT_TRUE(HitsDownFrom(scene, above));
@@ -143,7 +143,7 @@ TEST(CollisionWindow, CollisionSyncsIntoItsOwnersPhysicsScene)
     placed->sphere->RemoveFromPhysics(placed);
     EXPECT_EQ(placed->sphere->BodyId(), body);
     EXPECT_FALSE(HitsDownFrom(scene, above));
-    placed->sphere->ReturnToPhysics(placed->Root().WorldMatrix(), placed);
+    placed->sphere->ReturnToPhysics(placed->TransformObj().WorldMatrix(), placed);
     EXPECT_EQ(placed->sphere->BodyId(), body);
     EXPECT_TRUE(HitsDownFrom(scene, above));
 }

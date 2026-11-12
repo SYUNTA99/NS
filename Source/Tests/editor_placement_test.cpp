@@ -102,9 +102,9 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnFromJson(object);
     ASSERT_NE(actor, nullptr);
-    EXPECT_FLOAT_EQ(actor->Root().Position().z, 3.0f);
-    EXPECT_FLOAT_EQ(actor->Root().Rotation().y, rotation.y);
-    EXPECT_FLOAT_EQ(actor->Root().Scale().x, 2.0f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().z, 3.0f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Rotation().y, rotation.y);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Scale().x, 2.0f);
 }
 
 TEST(EditorPlacement, UndoRemovesPlacedActor)
@@ -190,9 +190,9 @@ TEST(StageBuild, FreePlacementUsesPartDimensionsAboveTheEmptySpacePlane)
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(std::string_view{actor->ClassName()}, "MapPartsActor");
     EXPECT_EQ(actor->ModelClassObj()->MeshRef(), "cube");
-    EXPECT_FLOAT_EQ(actor->Root().Scale().x, 3.5f);
-    EXPECT_FLOAT_EQ(actor->Root().Scale().z, 0.75f);
-    EXPECT_NEAR(actor->Root().Rotation().y, std::sin(NS::DegreesToRadians(15.0f)), 0.0001f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Scale().x, 3.5f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Scale().z, 0.75f);
+    EXPECT_NEAR(actor->TransformObj().Rotation().y, std::sin(NS::DegreesToRadians(15.0f)), 0.0001f);
 }
 
 TEST(StageBuild, PlacementUsesTheActualSlopeRatherThanItsBounds)
@@ -252,8 +252,8 @@ TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
     const NS::SceneActor* actor = restored.Actors().FindByActorId(first);
     ASSERT_NE(actor, nullptr);
     EXPECT_EQ(actor->ModelClassObj()->MeshRef(), "wedge45");
-    EXPECT_FLOAT_EQ(actor->Root().Scale().z, 3.5f);
-    EXPECT_FLOAT_EQ(actor->Root().Position().x, 1.25f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Scale().z, 3.5f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().x, 1.25f);
 
     editor.EnterPlay();
     const std::size_t count = scene.Actors().ActorCount();

@@ -317,8 +317,8 @@ TEST(InterpolationSnapshot, ModelWrittenDuringTheStepStartsFromTheValueBeforeThe
 
     scene.OnUpdate();
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().WorldMatrix(), 1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
 }
 
 TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
@@ -334,7 +334,7 @@ TEST(InterpolationSnapshot, PausedSceneFreezesTheModelLikeTheRoot)
 
     scene.OnUpdate();
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
 }
 
 TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
@@ -345,11 +345,11 @@ TEST(InterpolationSnapshot, SnapStartsTheModelAtTheNewScale)
     NS::Model* model = drawn->ModelClassObj();
     ASSERT_NE(model, nullptr);
     ASSERT_TRUE(model->SetDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 1.0f);
 
     ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
 
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().InterpolatedWorldMatrix(0.0f), 0.0f)._11, 2.0f);
 }
 
 // 止まっている歩はアクターの Update と UI を回し、ゲームの流れ StepGame を回さない
@@ -390,12 +390,12 @@ TEST(ModelLocalScale, ScalesAroundTheMeshOriginAndMovesTheDrawScalePivot)
     ASSERT_NE(model, nullptr);
     model->SetLocalBoundsOverride(NS::AABB{NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3{1.0f, 1.0f, 1.0f}});
     ASSERT_TRUE(model->SetLocalScale(NS::Vector3{2.0f, 2.0f, 2.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._11, 2.0f);
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._42, 0.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().WorldMatrix(), 1.0f)._11, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().WorldMatrix(), 1.0f)._42, 0.0f);
 
     // 倍率を掛けた形の下端は -2。縦に 2 倍すると、形の中心は下端から 2 × 2 の高さへ上がる
     ASSERT_TRUE(model->SnapDrawScale(NS::Vector3{1.0f, 2.0f, 1.0f}));
-    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->Root().WorldMatrix(), 1.0f)._42, 2.0f);
+    EXPECT_FLOAT_EQ(model->DrawWorldMatrix(drawn->TransformObj().WorldMatrix(), 1.0f)._42, 2.0f);
 
     EXPECT_FALSE(model->SetLocalScale(NS::Vector3{0.0f, 1.0f, 1.0f}));
     EXPECT_FLOAT_EQ(model->LocalScale().x, 2.0f);

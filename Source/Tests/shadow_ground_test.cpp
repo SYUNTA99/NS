@@ -38,7 +38,7 @@ namespace
         {
             if (target != nullptr)
             {
-                target->Root().SetPosition(destination);
+                target->TransformObj().SetPosition(destination);
             }
         }
     };
@@ -104,7 +104,7 @@ TEST(ShadowGround, TheStepFindsTheGroundAndAStoppedWorldStillFollowsEdits)
     NS::Scene scene;
     AddGround(scene);
     ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
-    actor->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
 
     scene.OnUpdate();
     ASSERT_TRUE(actor->Ground()->HasGround());
@@ -112,7 +112,7 @@ TEST(ShadowGround, TheStepFindsTheGroundAndAStoppedWorldStillFollowsEdits)
 
     // エディタで止めている間はアクターの Update が回らない。地面の外へ動かした影も探し直す
     scene.SetSimulationEnabled(false);
-    actor->Root().SetPosition(NS::Vector3{30.0f, 3.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{30.0f, 3.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_FALSE(actor->Ground()->HasGround());
 }
@@ -123,7 +123,7 @@ TEST(ShadowGround, FindsTheGroundAfterLaterActorsMovedIt)
     NS::Scene scene;
     AddGround(scene);
     ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
-    actor->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     MoverActor* mover = SpawnFromActorFile<MoverActor>(scene, "MoverActor");
     mover->target = actor;
     mover->destination = NS::Vector3{30.0f, 3.0f, 0.0f};
@@ -139,12 +139,12 @@ TEST(ShadowGround, AppearingFindsTheGroundWhereItAppears)
     NS::Scene scene;
     AddGround(scene);
     ShadowActor* actor = SpawnFromActorFile<ShadowActor>(scene, "ShadowActor");
-    actor->Root().SetPosition(NS::Vector3{30.0f, 3.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{30.0f, 3.0f, 0.0f});
     scene.OnUpdate();
     ASSERT_FALSE(actor->Ground()->HasGround());
 
     actor->Disappear();
-    actor->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     actor->Appear();
 
     EXPECT_TRUE(actor->Ground()->HasGround());

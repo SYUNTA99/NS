@@ -106,8 +106,8 @@ namespace NS
         [[nodiscard]] Audio::SoundScene* GetSoundScene() const noexcept override;
 
         //! 個体の位置・回転・大きさを持つ部品
-        [[nodiscard]] Transform& Root() noexcept;
-        [[nodiscard]] const Transform& Root() const noexcept;
+        [[nodiscard]] Transform& TransformObj() noexcept;
+        [[nodiscard]] const Transform& TransformObj() const noexcept;
         [[nodiscard]] IStateMachine* GetStateMachine() noexcept override;
         [[nodiscard]] const IStateMachine* GetStateMachine() const noexcept override;
 

@@ -93,7 +93,7 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
     ASSERT_NE(owner, nullptr);
     NS::Model* model = owner->ModelClassObj();
     ASSERT_NE(model, nullptr);
-    owner->Root().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
+    owner->TransformObj().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
     ASSERT_TRUE(owner->ghost.SetSpread(NS::Vector3{1.0f, 0.0f, 0.0f}));
     ASSERT_TRUE(owner->ghost.SetSideOpacity(0.5f));
     ASSERT_TRUE(owner->ghost.SetAfterimageOpacity(0.25f));
@@ -101,7 +101,7 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
 
     NS::Gfx::RenderContext context{};
     std::vector<NS::Gfx::DrawItem> drawn;
-    model->CollectCopies(context, owner->Root().WorldMatrix(), drawn);
+    model->CollectCopies(context, owner->TransformObj().WorldMatrix(), drawn);
     ASSERT_EQ(drawn.size(), 3u);
     EXPECT_FLOAT_EQ(drawn[0].constants.world._41, 5.0f);
     EXPECT_FLOAT_EQ(drawn[1].constants.world._41, 3.0f);
@@ -112,7 +112,7 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
     EXPECT_EQ(drawn[0].blend, NS::Gfx::BlendMode::Alpha);
     EXPECT_FLOAT_EQ(drawn[0].constants.sceneValuesWeight, 0.0f);
     std::vector<NS::Gfx::DrawItem> body;
-    model->Collect(context, owner->Root().WorldMatrix(), body);
+    model->Collect(context, owner->TransformObj().WorldMatrix(), body);
     ASSERT_EQ(body.size(), 1u);
     EXPECT_EQ(drawn[0].mesh, body[0].mesh);
     EXPECT_EQ(drawn[2].material, body[0].material);
@@ -121,11 +121,11 @@ TEST(TackleGhost, CopiesDrawTheOwnersModelAtTheSideAndAfterimagePlaces)
     EXPECT_EQ(model->CopyPriority(), -1);
 
     // 左右の写しは描く時に補間した根から作るので、割合 0.5 では前と今の根の真ん中に描く。明けの写しは控えた所に残る
-    owner->Root().Snapshot();
-    owner->Root().SetPosition(NS::Vector3{8.0f, 0.0f, 0.0f});
+    owner->TransformObj().Snapshot();
+    owner->TransformObj().SetPosition(NS::Vector3{8.0f, 0.0f, 0.0f});
     context.alpha = 0.5f;
     drawn.clear();
-    model->CollectCopies(context, owner->Root().InterpolatedWorldMatrix(0.5f), drawn);
+    model->CollectCopies(context, owner->TransformObj().InterpolatedWorldMatrix(0.5f), drawn);
     ASSERT_EQ(drawn.size(), 3u);
     EXPECT_FLOAT_EQ(drawn[0].constants.world._41, 7.0f);
     EXPECT_FLOAT_EQ(drawn[1].constants.world._41, 5.0f);
@@ -171,8 +171,8 @@ TEST(TackleGhost, TheAfterimageStaysWhereItWasCapturedWhenTheRootMoves)
     PlayerActor* player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "player");
     ASSERT_NE(player, nullptr);
     scene.OnUpdate();
-    player->Ghost()->CaptureAfterimage(player->ModelClassObj(), player->Root().WorldMatrix());
+    player->Ghost()->CaptureAfterimage(player->ModelClassObj(), player->TransformObj().WorldMatrix());
     const NS::Matrix captured = player->Ghost()->AfterimageWorldMatrix();
-    player->Root().ShiftPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
+    player->TransformObj().ShiftPosition(NS::Vector3{10.0f, 0.0f, 0.0f});
     EXPECT_EQ(player->Ghost()->AfterimageWorldMatrix(), captured);
 }

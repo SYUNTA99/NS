@@ -114,7 +114,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_appearance);
     CreateClassObj(m_body);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
-    CreateClassObj(m_collider, GetPhysicsScene(), &Root());
+    CreateClassObj(m_collider, GetPhysicsScene(), &TransformObj());
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
@@ -427,7 +427,7 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
     }
     if (NS::IsMsg<GL::Level::MsgCourseStart>(msg))
     {
-        m_courseStartPosition = Root().Position();
+        m_courseStartPosition = TransformObj().Position();
         return true;
     }
     if (NS::IsMsg<GL::Level::MsgCourseRestart>(msg))
@@ -449,7 +449,7 @@ void PlayerActor::Restart() noexcept
     // 出ている自機は Appear が前の位置をそろえないので、戻した直後の 1 歩が元の位置から補間されないように前の位置も書く
     if (m_courseStartPosition.has_value())
     {
-        Root().Teleport(*m_courseStartPosition);
+        TransformObj().Teleport(*m_courseStartPosition);
     }
     ResetState();
     ResetHealth();

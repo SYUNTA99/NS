@@ -95,7 +95,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     ASSERT_NE(actor, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(actor->ShadowClassObj(), nlohmann::json{{"基本直径", 1.5f}}), 0u);
     actor->AddSceneOverride("Shadow", "基本直径");
-    actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
     actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
 
     const nlohmann::json saved = scene.ToJson();
@@ -111,9 +111,9 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     EXPECT_EQ(std::string_view{again->ClassName()}, "PlayerActor");
     ASSERT_NE(again->ShadowClassObj(), nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(again->ShadowClassObj()), "基本直径", 0.0f), 1.5f);
-    EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
-    EXPECT_FLOAT_EQ(again->Root().Position().y, 4.0f);
-    EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().x, 3.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().y, 4.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().z, 5.0f);
 }
 
 TEST(SceneActor, UnknownClassObjKeyKeepsThePlacementAsJson)
@@ -392,17 +392,17 @@ TEST(SceneActor, ApplyFromJsonShowsAHiddenActorAtTheSnapshotPosition)
     NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
     const NS::Vector3 shown{4.0f, 0.0f, 0.0f};
-    actor->Root().SetPosition(shown);
+    actor->TransformObj().SetPosition(shown);
     actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
     const nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
-    actor->Root().SetPosition(NS::Vector3{});
+    actor->TransformObj().SetPosition(NS::Vector3{});
     actor->Disappear();
-    actor->Root().Snapshot();
+    actor->TransformObj().Snapshot();
 
     ASSERT_EQ(ApplySnapshot(scene, snapshot), actor);
     EXPECT_TRUE(actor->IsAppeared());
-    EXPECT_FLOAT_EQ(actor->Root().Position().x, shown.x);
-    EXPECT_FLOAT_EQ(actor->Root().PreviousPosition().x, shown.x);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().x, shown.x);
+    EXPECT_FLOAT_EQ(actor->TransformObj().PreviousPosition().x, shown.x);
 }
 
 TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
@@ -450,9 +450,9 @@ TEST(SceneActor, RestartBeforeTheCourseStartsKeepsThePosition)
     ASSERT_LT(player->Health(), fullHealth);
 
     player->Restart();
-    EXPECT_FLOAT_EQ(player->Root().Position().x, placed.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, placed.y);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, placed.z);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, placed.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, placed.y);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, placed.z);
     EXPECT_EQ(player->Health(), fullHealth);
 }
 
@@ -774,7 +774,7 @@ TEST(SceneActor, SpawnFromActorFileWritesTheSceneOverridesOverTheActorFile)
         SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "Goal", overrides);
     ASSERT_NE(goal, nullptr);
     EXPECT_EQ(goal->ActorFileName(), "GoalActor");
-    EXPECT_FLOAT_EQ(goal->Root().Position().y, 2.0f);
+    EXPECT_FLOAT_EQ(goal->TransformObj().Position().y, 2.0f);
     EXPECT_NE(goal->Id(), 0u);
     EXPECT_EQ(scene.Actors().ActorCount(), 1u);
 }

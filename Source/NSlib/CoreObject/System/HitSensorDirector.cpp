@@ -220,6 +220,6 @@ namespace NS
     {
         NS_ASSERT(Scene, sensor != nullptr, "VolumeOf: センサーが null");
         NS_ASSERT(Scene, sensor->Host() != nullptr, "VolumeOf: センサーの持ち主が null");
-        return sensor->WorldVolume(sensor->Host()->Root().WorldMatrix());
+        return sensor->WorldVolume(sensor->Host()->TransformObj().WorldMatrix());
     }
 } // namespace NS

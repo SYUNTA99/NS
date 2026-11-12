@@ -227,7 +227,7 @@ namespace GL
             const std::optional<NS::CameraPose> pose = NS::GetCameraViewPose(owner.actor);
             if (pose.has_value())
             {
-                tremor = MakeBodyTremor(m_desc, m_elapsed, owner.actor->Root().Position(), *pose);
+                tremor = MakeBodyTremor(m_desc, m_elapsed, owner.actor->TransformObj().Position(), *pose);
             }
             // 有限でない震えは描く形を消すので書かず、前の震えのまま描く
             if (tremor.IsFinite())

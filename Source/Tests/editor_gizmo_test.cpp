@@ -138,7 +138,7 @@ TEST(EditorGizmo, BatchedMeshBoundsDoNotBlockSmallObjects)
         mouse.OnMove(view.width / 2, view.height / 2);
         mouse.OnButtonDown(NS::OS::MouseButton::Left);
         gizmo.Tick(camera * projection, view, true, false, reader.Read(), scene.Actors());
-        EXPECT_EQ(gizmo.Selected(), &smallObject->Root());
+        EXPECT_EQ(gizmo.Selected(), &smallObject->TransformObj());
         mouse.OnMove(startX, startY);
         mouse.ClearState();
         mouse.Update();

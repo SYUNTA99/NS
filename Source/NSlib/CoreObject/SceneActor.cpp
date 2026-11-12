@@ -59,12 +59,12 @@ namespace NS
         Appear();
     }
 
-    Transform& SceneActor::Root() noexcept
+    Transform& SceneActor::TransformObj() noexcept
     {
         return *m_transform;
     }
 
-    const Transform& SceneActor::Root() const noexcept
+    const Transform& SceneActor::TransformObj() const noexcept
     {
         return *m_transform;
     }
@@ -259,17 +259,17 @@ namespace NS
         {
             if (m_model)
             {
-                renderer->RegisterModel(m_model.get(), &Root());
+                renderer->RegisterModel(m_model.get(), &TransformObj());
                 renderer->SetModelEnabled(m_model.get(), IsAppeared());
             }
             if (m_shadow)
             {
-                renderer->RegisterShadow(m_shadow.get(), &Root());
+                renderer->RegisterShadow(m_shadow.get(), &TransformObj());
                 renderer->SetShadowEnabled(m_shadow.get(), IsAppeared());
             }
             if (m_light)
             {
-                renderer->RegisterLight(m_light.get(), &Root());
+                renderer->RegisterLight(m_light.get(), &TransformObj());
                 renderer->SetLightEnabled(m_light.get(), IsAppeared());
             }
             if (m_worldLines)
@@ -395,7 +395,7 @@ namespace NS
         // 描く物は OnInit の直後に RegisterDrawParts が、センサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
-        if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }
+        if (m_collision) { InitCollision(this, m_collision.get(), TransformObj().WorldMatrix()); }
         // clang-format on
         // 一覧には全部のアクターが入っているので、自分より後ろのアクターも取得できる
         ResolveActorRefs();
@@ -418,7 +418,7 @@ namespace NS
         if (m_shadow) { ShowModel(this, m_shadow.get()); }
         if (m_light) { EnableLight(this, m_light.get()); }
         if (m_worldLines) { ShowModel(this, m_worldLines.get()); }
-        if (m_collision) { EnableCollision(this, m_collision.get(), Root().WorldMatrix()); }
+        if (m_collision) { EnableCollision(this, m_collision.get(), TransformObj().WorldMatrix()); }
         if (m_hitSensors) { m_hitSensors->EnableAll(); }
         // clang-format on
         // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
@@ -492,7 +492,7 @@ namespace NS
             {
                 if (sound.positional)
                 {
-                    PlaySoundAt(&actor, sound.sound, actor.Root().Position(), sound.volume);
+                    PlaySoundAt(&actor, sound.sound, actor.TransformObj().Position(), sound.volume);
                     return;
                 }
                 PlaySound(&actor, sound.sound, sound.volume);
@@ -501,7 +501,7 @@ namespace NS
             void operator()(const ActionEffectInfo& effect) const
             {
                 Gfx::EffectPlayDesc desc;
-                desc.position = actor.Root().Position();
+                desc.position = actor.TransformObj().Position();
                 // 出すだけで後から止めないので、番号は使わない
                 (void)PlayEffect(&actor, effect.effect, desc);
             }
@@ -735,9 +735,9 @@ namespace NS
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
         // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
-        if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
+        if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(TransformObj().WorldMatrix(), this); }
         // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す。消えている間は OnDisappear が一覧を空にしている
-        if (m_effect) { m_effect->Update(GetEffectScene(), Root().Position(), Root().Rotation()); }
+        if (m_effect) { m_effect->Update(GetEffectScene(), TransformObj().Position(), TransformObj().Rotation()); }
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
@@ -753,13 +753,13 @@ namespace NS
     {
         if (m_shadow && m_scene)
         {
-            m_shadow->Update(m_scene, Root().Position());
+            m_shadow->Update(m_scene, TransformObj().Position());
         }
     }
 
     void SceneActor::SnapshotForInterpolation() noexcept
     {
-        Root().Snapshot();
+        TransformObj().Snapshot();
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
         if (m_worldLines) { m_worldLines->Snapshot(); }
