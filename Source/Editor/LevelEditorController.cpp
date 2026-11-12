@@ -1,4 +1,5 @@
 #include "Editor/LevelEditorController.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -141,8 +142,8 @@ namespace NS
                 void Undo() noexcept override { m_scene.SetEnvironment(m_before); }
                 [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
                 {
-                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() + m_before.music.name.size() +
-                           m_after.music.name.size();
+                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() +
+                           AssetFieldName(m_before.music).size() + AssetFieldName(m_after.music).size();
                 }
 
             private:
@@ -232,9 +233,9 @@ namespace NS
             return true;
         }
 
-        const SoundName& LevelEditorController::SceneMusic() const noexcept
+        const std::string& LevelEditorController::SceneMusic() const noexcept
         {
-            return m_scene.Environment().music;
+            return AssetFieldName(m_scene.Environment().music);
         }
 
         float LevelEditorController::SceneMusicVolume() const noexcept
@@ -242,17 +243,26 @@ namespace NS
             return m_scene.Environment().musicVolume;
         }
 
-        bool LevelEditorController::SetSceneMusic(const SoundName& music, float volume)
+        float LevelEditorController::SceneSoundFullVolumeDistance() const noexcept
         {
-            if (!IsSceneEditable() || !std::isfinite(volume))
+            return m_scene.Environment().soundFullVolumeDistance;
+        }
+
+        bool LevelEditorController::SetSceneMusic(std::string_view music, float volume, float soundFullVolumeDistance)
+        {
+            if (!IsSceneEditable() || !std::isfinite(volume) ||
+                !Audio::SoundScene::IsUsableFullVolumeDistance(soundFullVolumeDistance))
             {
                 return false;
             }
             SceneEnvironment after = m_scene.Environment();
-            after.music = music;
+            LoadAssetField(after.music, music);
             after.musicVolume = ClampMusicVolume(volume);
-            if (after.music.name != m_scene.Environment().music.name ||
-                after.musicVolume != m_scene.Environment().musicVolume)
+            after.soundFullVolumeDistance = soundFullVolumeDistance;
+            // 触ったかを見る比べなので、値のコピーどうしを != で比べる
+            if (AssetFieldName(after.music) != AssetFieldName(m_scene.Environment().music) ||
+                after.musicVolume != m_scene.Environment().musicVolume ||
+                after.soundFullVolumeDistance != m_scene.Environment().soundFullVolumeDistance)
             {
                 m_editor.Undo().Push(
                     std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
@@ -378,7 +388,7 @@ namespace NS
             Vector3 startCenter{0.0f, 0.0f, 0.0f};
             if (focusActor != nullptr)
             {
-                startCenter = focusActor->Root().Position();
+                startCenter = focusActor->TransformObj().Position();
             }
             m_editorCamera.SetCenter(startCenter);
             m_editorCamera.SetDistance(5.0f);
@@ -699,7 +709,7 @@ namespace NS
 
             if (objectMode)
             {
-                // 追従カメラの Root を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
+                // 追従カメラの Transform を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
                 SyncFollowCameraPoses();
 
                 // 組み直しで破棄されたアクターを参照しないよう、選択を現在の実体へ引き直す
@@ -713,7 +723,7 @@ namespace NS
                 // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
                 CaptureSelectionFromGizmo();
 
-                // 追従カメラを掴んでいたら Root 位置を初期姿勢へ逆算し ThirdPersonFollow
+                // 追従カメラを掴んでいたら Transform の位置を初期姿勢へ逆算し ThirdPersonFollow
                 // へ書き戻す。位置の書き戻しはこちら
                 ApplyFollowCameraGizmoDrag();
 
@@ -876,8 +886,8 @@ namespace NS
 
         void LevelEditorController::SyncFollowCameraPoses()
         {
-            // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Root を寄せて frustum / pick / ギズモを出す
-            // ドラッグ中の選択カメラだけは gizmo が Root を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
+            // 追従カメラは位置を持たないので、edit 中は実プレイの視点位置へ Transform を寄せて frustum / pick / ギズモを出す
+            // ドラッグ中の選択カメラだけは gizmo が Transform を握るため触らず、その位置を初期姿勢へ逆算する側に任せる
             const ActorList& objects = m_scene.Actors();
             for (SceneActor* object : objects)
             {
@@ -891,14 +901,14 @@ namespace NS
                 {
                     continue;
                 }
-                object->Root().SetPosition(follow->EvaluatePose(1.0f).position);
+                object->TransformObj().SetPosition(follow->EvaluatePose(1.0f).position);
             }
         }
 
         void LevelEditorController::ApplyFollowCameraGizmoDrag()
         {
-            // ドラッグ中の追従カメラは、gizmo が動かした Root 位置から初期姿勢の方位角・仰角/距離を逆算して
-            // 実体の部品へ書き戻す。Root 位置は初期姿勢由来なので保存対象は部品側になる
+            // ドラッグ中の追従カメラは、gizmo が動かした Transform の位置から初期姿勢の方位角・仰角/距離を逆算して
+            // 実体の部品へ書き戻す。Transform の位置は初期姿勢由来なので保存対象は部品側になる
             if (!m_gizmo.IsDragging())
             {
                 return;
@@ -913,7 +923,7 @@ namespace NS
             {
                 return;
             }
-            follow->SetInitialPoseFromCameraPosition(go->Root().Position());
+            follow->SetInitialPoseFromCameraPosition(go->TransformObj().Position());
         }
 
         void LevelEditorController::SelectActorById(uint32 id) noexcept
@@ -991,10 +1001,10 @@ namespace NS
             // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
             SetGizmoToolActive(true);
 
-            // player も含め全アクターが ActorList に居る。選択した Root を id で引いてギズモへ貼る
+            // player も含め全アクターが ActorList に居る。選択したアクターを id で引いて、その Transform をギズモへ貼る
             if (SceneActor* go = m_scene.Actors().FindByActorId(id))
             {
-                m_gizmo.SetSelected(&go->Root());
+                m_gizmo.SetSelected(&go->TransformObj());
                 m_lastGizmoSelected = m_gizmo.Selected();
                 return;
             }
@@ -1020,7 +1030,7 @@ namespace NS
             // player も ActorList に居るので、ビューポートのピックと同じ経路で引ける
             for (SceneActor* object : m_scene.Actors())
             {
-                if (&object->Root() == selected)
+                if (&object->TransformObj() == selected)
                 {
                     // ビューポートのクリックは 1 体に絞る。複数選択はアクター一覧の Ctrl / Shift で組む
                     m_selectedActorId = object->Id();
@@ -1047,7 +1057,7 @@ namespace NS
             {
                 if (SceneActor* go = m_scene.Actors().FindByActorId(m_selectedActorId))
                 {
-                    Transform* root = &go->Root();
+                    Transform* root = &go->TransformObj();
                     if (m_gizmo.Selected() != root)
                     {
                         m_gizmo.SetSelected(root);
@@ -1250,7 +1260,7 @@ namespace NS
                 {
                     continue;
                 }
-                const Matrix world = object->Root().WorldMatrix();
+                const Matrix world = object->TransformObj().WorldMatrix();
                 const Vector3 center{world._41, world._42, world._43};
                 centers.push_back(center);
                 sum += center;
@@ -1290,7 +1300,7 @@ namespace NS
             {
                 return;
             }
-            m_dragPrimaryWorld = primary->Root().WorldMatrix();
+            m_dragPrimaryWorld = primary->TransformObj().WorldMatrix();
 
             for (const uint32 id : m_selectionIds)
             {
@@ -1304,7 +1314,7 @@ namespace NS
                     continue;
                 }
 
-                m_dragFollowers.push_back(DragFollower{id, object->Root().WorldMatrix()});
+                m_dragFollowers.push_back(DragFollower{id, object->TransformObj().WorldMatrix()});
             }
         }
 
@@ -1321,7 +1331,7 @@ namespace NS
             }
 
             // 主対象が動いた分をワールド空間の差分として取り、残りへ同じだけ効かせる
-            const Matrix delta = m_dragPrimaryWorld.Invert() * primary->Root().WorldMatrix();
+            const Matrix delta = m_dragPrimaryWorld.Invert() * primary->TransformObj().WorldMatrix();
             for (const DragFollower& follower : m_dragFollowers)
             {
                 SceneActor* object = m_scene.Actors().FindByActorId(follower.id);
@@ -1339,9 +1349,9 @@ namespace NS
                 {
                     continue;
                 }
-                object->Root().SetPosition(position);
-                object->Root().SetRotation(rotation);
-                object->Root().SetScale(scale);
+                object->TransformObj().SetPosition(position);
+                object->TransformObj().SetRotation(rotation);
+                object->TransformObj().SetScale(scale);
             }
         }
 
@@ -1382,7 +1392,7 @@ namespace NS
             }
             m_transformEditing = false;
 
-            // ドラッグは実体の Root を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
+            // ドラッグは実体の Transform を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
             std::vector<std::unique_ptr<ICommand>> commands;
             for (TransformEditBaseline& entry : m_editBaselines)
             {

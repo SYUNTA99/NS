@@ -2,6 +2,8 @@
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Windows/Clock.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
+#include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/Animation.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -91,8 +93,9 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     anim.blendSeconds = 0.2f;
     anim.looping = false;
     NS::ActionSoundInfo sound;
-    sound.sound.name = "Player/Jump";
+    sound.sound = NS::AssetManager::Get().LoadSound("Assets/Sounds/jump.wav");
     sound.volume = 0.5f;
+    sound.positional = true;
     NS::ActionPadInfo pad;
     pad.left.count = 1;
     pad.left.keys[0] = NS::Curve::Key{0.0f, 0.7f};
@@ -119,8 +122,10 @@ TEST(ActorActionInfo, EachActionItemKindRoundTripsThroughTheFileForm)
     ASSERT_TRUE(read.has_value()) << error;
     EXPECT_FLOAT_EQ(std::get<NS::ActionAnimInfo>(read->events[0].item).blendSeconds, 0.2f);
     EXPECT_FALSE(std::get<NS::ActionAnimInfo>(read->events[0].item).looping);
-    EXPECT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).sound.name, "Player/Jump");
+    ASSERT_NE(std::get<NS::ActionSoundInfo>(read->events[1].item).sound, nullptr);
+    EXPECT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).sound->Path(), "Assets/Sounds/jump.wav");
     EXPECT_FLOAT_EQ(std::get<NS::ActionSoundInfo>(read->events[1].item).volume, 0.5f);
+    EXPECT_TRUE(std::get<NS::ActionSoundInfo>(read->events[1].item).positional);
     EXPECT_EQ(std::get<NS::ActionPadInfo>(read->events[3].item).left, pad.left);
     EXPECT_FLOAT_EQ(std::get<NS::ActionCameraInfo>(read->events[4].item).trauma, 0.4f);
     EXPECT_FLOAT_EQ(std::get<NS::ActionScreenInfo>(read->events[5].item).alpha, 0.3f);
@@ -407,11 +412,11 @@ namespace
 {
     constexpr const char* k_ActionProbeName = "ActionProbeActor";
 
-    // 名前 name の効果音を鳴らす項目。音の部品を持たない試しのアクターでは鳴らず、始まった事だけが残る
+    // 名前 name の効果音を鳴らす項目。音の装置を持たない試しの場では鳴らず、始まった事だけが残る
     NS::ActorActionEvent SoundEvent(std::string name, int start)
     {
         NS::ActionSoundInfo item;
-        item.sound.name = std::move(name);
+        item.sound = NS::AssetManager::Get().LoadSound(name);
         return NS::ActorActionEvent{.item = item, .start = start, .length = 1};
     }
 
@@ -457,7 +462,14 @@ namespace
             {
                 if (const NS::ActionSoundInfo* sound = std::get_if<NS::ActionSoundInfo>(&action->events[index].item))
                 {
-                    started.push_back(sound->sound.name);
+                    if (sound->sound != nullptr)
+                    {
+                        started.push_back(sound->sound->Path());
+                    }
+                    else
+                    {
+                        started.emplace_back();
+                    }
                 }
             }
         }

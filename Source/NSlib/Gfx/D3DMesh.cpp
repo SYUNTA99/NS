@@ -1,4 +1,5 @@
 #include "NSlib/Gfx/D3DMesh.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
@@ -6,7 +7,7 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 
 #include <span>
@@ -108,7 +109,7 @@ namespace NS
             m_vertexCount = vertexCount;
             m_indexCount = indexCount;
             m_usingFallback = usingFallback;
-            m_valid = (m_vb != nullptr && m_ib != nullptr && Gpu().device != nullptr);
+            m_valid = (m_vb != nullptr && m_ib != nullptr && detail::CurrentDevice() != nullptr);
             return true;
         }
 
@@ -137,7 +138,7 @@ namespace NS
                 return;
             }
 
-            ID3D11Device* device = Gpu().device;
+            ID3D11Device* device = detail::CurrentDevice();
             if (device == nullptr || m_layoutElements.empty())
             {
                 NS_LOG_ERROR(Graphics, "D3DMesh::CreateInputLayout: device が無効か、レイアウト要素が空");

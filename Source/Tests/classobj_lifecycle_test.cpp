@@ -103,7 +103,7 @@ TEST(ClassObjLifecycle, LightStaysRegisteredAndIsSkippedWhileDisappeared)
     light->Appear();
     const NS::Gfx::RenderSettings lit = scene.GetSceneRenderer()->ResolveSceneSettings(defaults);
     EXPECT_FLOAT_EQ(lit.exposure, light->LightClassObj()->Exposure());
-    const NS::Vector3 direction = light->LightClassObj()->Direction(light->Root().WorldMatrix());
+    const NS::Vector3 direction = light->LightClassObj()->Direction(light->TransformObj().WorldMatrix());
     EXPECT_NEAR(lit.lightDir.y, direction.y, 1.0e-5f);
 }
 

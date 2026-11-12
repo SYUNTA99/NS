@@ -103,8 +103,8 @@ namespace NS
         class D3DShader : public NonCopyable
         {
         public:
-            //! HLSLファイルからシェーダを生成する
-            [[nodiscard]] static std::unique_ptr<D3DShader> Create(std::string_view hlslPath);
+            //! 参照先を必ず返す。生成の成否は IsValid() で確認する
+            [[nodiscard]] static std::unique_ptr<D3DShader> Create(std::string_view hlslPath) noexcept;
 
             [[nodiscard]] bool IsValid() const noexcept;
 
@@ -132,11 +132,8 @@ namespace NS
             [[nodiscard]] bool Reload(std::string_view hlslPath);
 
         private:
-            explicit D3DShader(std::string_view hlslPath);
+            D3DShader() noexcept = default;
 
-            [[nodiscard]] bool Compile(std::string_view hlslPath,
-                                       ComPtr<ID3D11DeviceChild>& outShader,
-                                       ComPtr<ID3DBlob>& outBytecode) const noexcept;
             //! コンパイルした中身の MaterialParams の並びを持ち直し、頂点シェーダーならバイトコードも持つ
             void TakeBytecode(ComPtr<ID3DBlob> bytecode, std::string_view hlslPath);
 
@@ -147,5 +144,6 @@ namespace NS
             uint64 m_bytecodeId = 0;
             bool m_fallback = false;
         };
+
     } // namespace Gfx
 } // namespace NS

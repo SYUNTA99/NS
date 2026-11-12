@@ -2,7 +2,6 @@
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
 #include "NSlib/Gfx/D3DDevice.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Core/Windows/Window.h"
 #include "NSlib/Core/Animation/AnimClip.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
@@ -79,7 +78,7 @@ TEST(MeshAsset, SkinnedFileHoldsTheSkinnedMeshAndItsSkeleton)
 // D3DDevice の無い場では、骨付きの Mesh も描く形を作らずに骨格だけを持ち、ERROR を出さない
 TEST(MeshAsset, SkinnedFileWithoutADeviceHoldsOnlyTheSkeletonAndLogsNoError)
 {
-    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const TestLogCapture log;
     const NS::Mesh* mesh = assets.LoadMesh("Assets/Models/Xbot.glb");

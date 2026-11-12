@@ -1,5 +1,4 @@
 #include "Editor/InspectorPanel.h"
-#include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/AssetPicker.h"
@@ -11,6 +10,7 @@
 #include "Editor/MaterialParamFields.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/CameraData.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -249,17 +249,17 @@ namespace NS
                 m_skyboxDraft = m_skyboxSource;
                 m_skyboxPreviewPath.clear();
             }
-            if (m_musicSource != editor.SceneMusic().name || m_musicVolumeSource != editor.SceneMusicVolume())
+            if (m_musicSource != editor.SceneMusic() || m_musicVolumeSource != editor.SceneMusicVolume() ||
+                m_soundDistanceSource != editor.SceneSoundFullVolumeDistance())
             {
-                m_musicSource = editor.SceneMusic().name;
-                m_musicVolumeSource = editor.SceneMusicVolume();
-                m_musicDraft = m_musicSource;
-                m_musicVolumeDraft = m_musicVolumeSource;
+                TakeSceneMusicFrom(editor);
             }
             const bool playing = !editor.IsSceneEditable();
             ImGui::BeginDisabled(playing);
-            SceneEnvironment fields{
-                .skybox = m_skyboxDraft, .music = SoundName{m_musicDraft}, .musicVolume = m_musicVolumeDraft};
+            SceneEnvironment fields{.skybox = m_skyboxDraft,
+                                    .musicVolume = m_musicVolumeDraft,
+                                    .soundFullVolumeDistance = m_soundDistanceDraft};
+            LoadAssetField(fields.music, m_musicDraft);
             const ValueEditResult edit = DrawReflectedValue(fields);
             if (edit.changed)
             {
@@ -268,8 +268,13 @@ namespace NS
                     m_skyboxDraft = fields.skybox;
                     m_skyboxPreviewPath.clear();
                 }
-                m_musicDraft = fields.music.name;
+                m_musicDraft = AssetFieldName(fields.music);
                 m_musicVolumeDraft = ClampMusicVolume(fields.musicVolume);
+                // 0 以下へドラッグした時は、手前の値で止める
+                if (Audio::SoundScene::IsUsableFullVolumeDistance(fields.soundFullVolumeDistance))
+                {
+                    m_soundDistanceDraft = fields.soundFullVolumeDistance;
+                }
             }
             static std::vector<AssetOption> options;
             if (ImGui::Button("画像を選択..."))
@@ -343,30 +348,37 @@ namespace NS
 
         void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
         {
-            const bool changed =
-                m_musicDraft != editor.SceneMusic().name || m_musicVolumeDraft != editor.SceneMusicVolume();
+            const bool changed = m_musicDraft != editor.SceneMusic() ||
+                                 m_musicVolumeDraft != editor.SceneMusicVolume() ||
+                                 m_soundDistanceDraft != editor.SceneSoundFullVolumeDistance();
             ImGui::BeginDisabled(playing || !changed);
             if (ImGui::Button("曲を適用"))
             {
-                if (editor.SetSceneMusic(SoundName{m_musicDraft}, m_musicVolumeDraft))
+                if (editor.SetSceneMusic(m_musicDraft, m_musicVolumeDraft, m_soundDistanceDraft))
                 {
-                    m_musicSource = editor.SceneMusic().name;
-                    m_musicVolumeSource = editor.SceneMusicVolume();
-                    m_musicDraft = m_musicSource;
-                    m_musicVolumeDraft = m_musicVolumeSource;
+                    TakeSceneMusicFrom(editor);
                 }
             }
             ImGui::SameLine();
             if (ImGui::Button("曲の入力を戻す"))
             {
-                m_musicDraft = editor.SceneMusic().name;
-                m_musicVolumeDraft = editor.SceneMusicVolume();
+                TakeSceneMusicFrom(editor);
             }
             ImGui::EndDisabled();
             if (changed)
             {
-                ImGui::TextDisabled("入力した曲と音量は「曲を適用」でシーンに反映します");
+                ImGui::TextDisabled("入力した曲・音量・音の届く距離は「曲を適用」でシーンに反映します");
             }
+        }
+
+        void InspectorPanel::TakeSceneMusicFrom(const LevelEditorController& editor)
+        {
+            m_musicSource = std::string{editor.SceneMusic()};
+            m_musicVolumeSource = editor.SceneMusicVolume();
+            m_soundDistanceSource = editor.SceneSoundFullVolumeDistance();
+            m_musicDraft = m_musicSource;
+            m_musicVolumeDraft = m_musicVolumeSource;
+            m_soundDistanceDraft = m_soundDistanceSource;
         }
 
         void InspectorPanel::DrawAssetPreview(const AssetPreviewItem& item)
@@ -590,32 +602,6 @@ namespace NS
 
         void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
         {
-            const auto duplicate = [&](const std::string& path) {
-                ImGui::InputText("複製名", m_effectCloneName, sizeof(m_effectCloneName));
-                if (!ImGui::Button("複製"))
-                {
-                    return false;
-                }
-                editor.CommitAssetEdit();
-                const std::optional<std::string> copy =
-                    AssetManager::Get().DuplicateEffectFile(path, m_effectCloneName);
-                if (!copy)
-                {
-                    NS_LOG_WARN(App, "複製できない。名前と未保存の変更を確認してください");
-                    return false;
-                }
-                m_effectCloneName[0] = '\0';
-                editor.SelectAsset(OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), *copy));
-                return true;
-            };
-
-            if (const Effect* effect = Cast<Effect>(&asset))
-            {
-                ImGui::TextUnformatted(effect->Label().c_str());
-                ImGui::TextWrapped("%s", effect->Path().c_str());
-                (void)duplicate(effect->Path());
-                return;
-            }
             if (Material* material = Cast<Material>(&asset))
             {
                 ImGui::TextUnformatted(material->Path().c_str());

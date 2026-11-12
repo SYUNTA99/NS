@@ -357,9 +357,9 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
     NS::SceneActor actor;
     NS::Transform* transform = NS::Cast<NS::Transform>(PartAt(&actor, "Transform"));
     ASSERT_NE(transform, nullptr);
-    EXPECT_EQ(&actor.Root(), transform);
+    EXPECT_EQ(&actor.TransformObj(), transform);
     NS::ApplyJsonFields(transform, nlohmann::json{{"位置", {2.0f, 3.0f, 4.0f}}});
-    EXPECT_EQ(actor.Root().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
+    EXPECT_EQ(actor.TransformObj().Position(), (NS::Vector3{2.0f, 3.0f, 4.0f}));
     // 姿勢はグローバルの項目なので、シーンの上書きの一覧に載せた物を保存で書く
     actor.AddSceneOverride("Transform", "位置");
     EXPECT_EQ(NS::ActorToJson(&actor)["classObjs"]["Transform"]["位置"], (nlohmann::json::array({2.0f, 3.0f, 4.0f})));
@@ -369,11 +369,11 @@ TEST(FixedParts, TransformUsesTheSamePartLookupAndFieldEditing)
 TEST(FixedParts, TransformClampsOnlyTheScaleFromTheField)
 {
     NS::SceneActor actor;
-    NS::ApplyJsonFields(&actor.Root(), nlohmann::json{{"スケール", {0.001f, -1.0f, 2.0f}}});
-    EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.01f, 0.01f, 2.0f}));
+    NS::ApplyJsonFields(&actor.TransformObj(), nlohmann::json{{"スケール", {0.001f, -1.0f, 2.0f}}});
+    EXPECT_EQ(actor.TransformObj().Scale(), (NS::Vector3{0.01f, 0.01f, 2.0f}));
 
-    actor.Root().SetScale(NS::Vector3{0.0f, 1.0f, 0.0f});
-    EXPECT_EQ(actor.Root().Scale(), (NS::Vector3{0.0f, 1.0f, 0.0f}));
+    actor.TransformObj().SetScale(NS::Vector3{0.0f, 1.0f, 0.0f});
+    EXPECT_EQ(actor.TransformObj().Scale(), (NS::Vector3{0.0f, 1.0f, 0.0f}));
 }
 
 TEST(FixedParts, ClassObjBaseHasNoUpdate)

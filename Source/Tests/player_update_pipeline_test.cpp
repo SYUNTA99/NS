@@ -82,12 +82,12 @@ TEST(PlayerUpdatePipeline, StoppedWorldHoldsThePlayerWithItsPartsAwake)
     player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     // 自機の更新が実機の入力で歩きを消しても、回っていればこの速さで動く
     player->Body().SetVelocity(NS::Vector3{0.0f, 2.0f, 0.0f});
-    const NS::Vector3 position = player->Root().Position();
+    const NS::Vector3 position = player->TransformObj().Position();
 
     for (int frame = 0; frame < 30; ++frame)
     {
         scene.OnUpdate();
     }
 
-    ExpectSameVector(player->Root().Position(), position);
+    ExpectSameVector(player->TransformObj().Position(), position);
 }

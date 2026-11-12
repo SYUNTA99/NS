@@ -1,29 +1,37 @@
 #pragma once
 
 #include "NSlib/CoreObject/Object.h"
-#include "NSlib/Gfx/Render/EffectTypes.h"
 
+#include <memory>
 #include <string>
 
 namespace NS
 {
+    namespace Gfx
+    {
+        class D3DEffect;
+    } // namespace Gfx
+} // namespace NS
+
+namespace NS
+{
+    //! Effekseer のエフェクト素材。ContentRoot からの相対パスと、GPU 上の D3DEffect を持つ
     class Effect : public Object
     {
     public:
-        explicit Effect(std::string id) noexcept;
-        const std::string& Id() const noexcept { return m_resource.id; }
-        const std::string& Path() const noexcept { return m_path; }
-        const std::string& Label() const noexcept { return m_label; }
-        bool IsValid() const noexcept { return !m_resource.path.empty(); }
-        const Gfx::EffectResourceDesc& Resource() const noexcept { return m_resource; }
-        void Replace(std::string path, Gfx::EffectResourceDesc resource, std::string label = {}) noexcept;
-        void Invalidate() noexcept;
+        explicit Effect(std::string path) noexcept;
+        Effect(std::string path, std::unique_ptr<Gfx::D3DEffect> effect) noexcept;
+        ~Effect() override;
+
+        [[nodiscard]] const std::string& Path() const noexcept { return m_path; }
+        [[nodiscard]] const Gfx::D3DEffect* D3D() const noexcept { return m_effect.get(); }
+        //! 再生できるエフェクトを持つか。読めなかった道筋と、D3DDevice の無い場で読んだ物は false
+        [[nodiscard]] bool IsValid() const noexcept { return m_effect != nullptr; }
 
         NS_REFLECT_NONE(Effect, Object)
 
     private:
         std::string m_path;
-        std::string m_label;
-        Gfx::EffectResourceDesc m_resource;
+        std::unique_ptr<Gfx::D3DEffect> m_effect;
     };
 } // namespace NS

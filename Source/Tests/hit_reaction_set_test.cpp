@@ -10,11 +10,11 @@
 #include "NSlib/Core/Windows/Input.h"
 #include "NSlib/CoreObject/Action/ActorActionInfo.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
-#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -98,8 +98,9 @@ namespace
         ghost.name = "Ghost";
         ghost.values = {{"離れの画素", 112.5f}, {"明けの残像のフレーム数", 0.0f}};
         NS::HitSoundInfo sound;
-        sound.sound.name = "Player/Hit";
+        sound.sound = NS::AssetManager::Get().LoadSound("Assets/Sounds/hit.wav");
         sound.volume = 0.4f;
+        sound.positional = true;
 
         set.entries = {
             {shape, 18},
@@ -201,8 +202,10 @@ TEST(HitReactionSet, EveryKindRoundTripsThroughTheFileForm)
     EXPECT_EQ(ghost->values, written.entries[14].item.As<NS::HitOwnerInfo>()->values);
     const NS::HitSoundInfo* sound = read->entries[15].item.As<NS::HitSoundInfo>();
     ASSERT_NE(sound, nullptr);
-    EXPECT_EQ(sound->sound.name, "Player/Hit");
+    ASSERT_NE(sound->sound, nullptr);
+    EXPECT_EQ(sound->sound->Path(), "Assets/Sounds/hit.wav");
     EXPECT_FLOAT_EQ(sound->volume, 0.4f);
+    EXPECT_TRUE(sound->positional);
 }
 
 TEST(HitReactionSet, MissingFieldsKeepTheDefaultsAndUnknownFieldsAreSkipped)
@@ -401,8 +404,7 @@ namespace
                 m_hitSensors->AddShape(this, "Body", GL::Level::SensorKind::Unset, NS::HitSensorShape::Sphere);
             NS::Cast<NS::ShapeHitSensor>(m_bodySensor)->SetSphere(0.5f);
             CreateClassObj(m_hitReaction);
-            CreateClassObj(m_sound);
-            CreateClassObj(m_effect);
+            CreateClassObj(m_effect, this, &TransformObj());
         }
         void AfterStateStep() override { ++stateSteps; }
         void BodyStep() override { ++bodySteps; }
@@ -446,7 +448,7 @@ namespace
         ReactionProbeActor* probe = SpawnFromActorFile<ReactionProbeActor>(scene, k_ProbeName);
         if (probe != nullptr)
         {
-            probe->Root().SetPosition(position);
+            probe->TransformObj().SetPosition(position);
         }
         return probe;
     }
@@ -562,32 +564,31 @@ TEST(HitReactionStart, EveryItemStartsOnTheSameFrame)
     EXPECT_EQ(log.WarningCount(), 1);
 }
 
-// 効果音とエフェクトの項目は、持ち主の部品 Sound と EffectObj へ頼む。効果音は束を読んだ時に Sound へ先に読む
+// 効果音とエフェクトの項目は、持ち主のインターフェースと部品 EffectObj へ頼む。効果音は束を読んだ時に AssetManager が読む
 TEST(HitReactionStart, SoundAndEffectItemsAskTheOwnersParts)
 {
     NS::Audio::AudioDevice device(false);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     assets.SetAudioDevice(&device);
     const NS::AssetManagerScope scope{assets};
-    NS::HitSoundInfo sound;
-    sound.sound.name = "missing";
-    NS::HitEffectInfo effect;
-    effect.effect = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
-    ASSERT_NE(effect.effect, nullptr);
     const TestLogCapture log;
+    NS::HitSoundInfo sound;
+    sound.sound = assets.LoadSound("Assets/Sounds/missing.wav");
+    NS::HitEffectInfo effect;
+    effect.effect = assets.LoadEffect("Assets/Effects/impact.core.efkefc");
+    ASSERT_NE(effect.effect, nullptr);
     ProbeScene probes({SetOf("Hit", 0, {{sound, 1}, {effect, 1}})}, NS::Vector3{0.0f, 1.0f, 4.0f});
     ASSERT_NE(probes.self, nullptr);
-    // 無い音を先に読もうとして、AssetManager が ERROR を出す
+    // 無い音を読もうとして、AssetManager が ERROR を出す
     EXPECT_GE(log.ErrorCount(), 1);
     probes.scene.SetAudioDevice(&device);
     const int warnings = log.WarningCount();
 
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
-    // 先に読んだ名前なので、Sound::Play は「読んでいない音」の WARN を出さない
     EXPECT_EQ(log.WarningCount(), warnings);
     const std::vector<NS::EffectRecord>& records = probes.self->GetEffect()->Records();
     ASSERT_EQ(records.size(), 1u);
-    EXPECT_EQ(records[0].assetId, "6e4f2fccb9df5a339885b53d42fafd45");
+    EXPECT_EQ(records[0].asset, effect.effect);
 }
 
 // 重ねる振動の項目は、走っている振動を始め直さずに足す
@@ -728,7 +729,7 @@ TEST(HitReactionStart, DirectionsComeFromTheTwoSensors)
         EXPECT_LT(probes.self->ModelClassObj()->GetDrawOffset().x * side, 0.0f);
         const NS::Vector3 offset =
             GL::Level::BodyTremor::FromDrawValues(probes.self->ModelClassObj()->DrawValues()).contactOffset;
-        EXPECT_NEAR((offset - (contact - probes.self->Root().Position())).Length(), 0.0f, 1.0e-5f);
+        EXPECT_NEAR((offset - (contact - probes.self->TransformObj().Position())).Length(), 0.0f, 1.0e-5f);
     }
 }
 

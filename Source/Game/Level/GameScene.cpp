@@ -2,15 +2,16 @@
 
 #include "Game/Level/LevelMessages.h"
 #include "Game/PlayerActor.h"
-#include "NSlib/Audio/SoundLoop.h"
+#include "NSlib/Audio/SoundScene.h"
 #include "NSlib/CoreObject/ActorList.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/Asset/SoundClip.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
+#include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
+#include "NSlib/CoreObject/IGet/IGetCamera.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
 
+#include <optional>
 #include <vector>
 
 namespace GL
@@ -38,7 +39,11 @@ namespace GL
                 (void)SendMsgCourseStart(actor);
             }
             RestartCourse();
-            (void)StartMusic(); // 前のプレイの曲は Scene が OnStopPlay で止めたので必ず始まる
+            // 前のプレイの曲は OnStopPlay で止めたので必ず始まる。RestartCourse は曲に触らず、やり直しても曲が続く
+            const NS::SceneEnvironment& environment = Environment();
+            (void)Music().Start(GetSoundScene(), environment.music, environment.musicVolume);
+            // 最初の歩でアクターが位置から鳴らす音も、今の自機の位置で聞く
+            UpdateSoundListener();
         }
 
         void GameScene::OnStopPlay()
@@ -48,7 +53,7 @@ namespace GL
             m_playerDead = false;
             m_respawnPending = false;
             m_goalReached = false;
-            StopMusic();
+            Music().Stop(GetSoundScene());
         }
 
         bool GameScene::NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
@@ -65,11 +70,6 @@ namespace GL
 
         void GameScene::StepGame()
         {
-            // 音の機器を繋ぎ直すと曲が止まるので、鳴らし直す。鳴っている間は何もしない
-            if (m_music)
-            {
-                m_music->Play();
-            }
             if (m_sequences.IsRunning())
             {
                 m_sequences.Tick(NS::OS::FrameTimer::FixedDelta());
@@ -94,6 +94,33 @@ namespace GL
             }
         }
 
+        void GameScene::StepViewEffects()
+        {
+            m_hitScreen.OnTick();
+            // 仮想カメラが進んだ後で、音の Update の前。シーンが止まっている歩でも、聞く向きがカメラに付いていく
+            UpdateSoundListener();
+        }
+
+        void GameScene::UpdateSoundListener()
+        {
+            NS::Audio::SoundScene* sounds = GetSoundScene();
+            ::PlayerActor* player = FindPlayer(Actors());
+            if (sounds == nullptr || player == nullptr)
+            {
+                return;
+            }
+            // 聞く位置は自機にする。カメラの位置にすると、カメラが引いた時に自機の音が小さくなる
+            NS::Vector3 forward = sounds->Listener().forward;
+            NS::Vector3 up = sounds->Listener().up;
+            // 視点が無い時は、向きを前のままにする
+            if (const std::optional<NS::CameraPose> view = NS::GetCameraViewPose(this))
+            {
+                forward = view->target - view->position;
+                up = view->up;
+            }
+            sounds->SetListener(player->TransformObj().Position(), forward, up);
+        }
+
         void GameScene::RestartCourse()
         {
             SendRestart(nullptr);
@@ -102,37 +129,6 @@ namespace GL
         void GameScene::RespawnActors()
         {
             SendRestart(FindPlayer(Actors()));
-        }
-
-        bool GameScene::StartMusic()
-        {
-            if (m_musicStarted)
-            {
-                return false;
-            }
-            m_musicStarted = true;
-            const NS::SceneEnvironment& environment = Environment();
-            // 当たりの下見のシーンは装置を受け取らないので、曲を読まない
-            if (GetAudioDevice() == nullptr || environment.music.name.empty())
-            {
-                return true;
-            }
-            const NS::SoundClip* sound = NS::AssetManager::Get().LoadSoundClip(NS::SoundPathOf(environment.music.name));
-            if (sound == nullptr || !sound->IsValid())
-            {
-                return true;
-            }
-            // 曲の音は AssetManager が Clear まで持ち、シーンはそれより先に壊れるので、ループが音より長く生きない
-            m_music = std::make_unique<NS::Audio::SoundLoop>(*sound->Clip());
-            m_music->SetVolume(environment.musicVolume);
-            m_music->Play();
-            return true;
-        }
-
-        void GameScene::StopMusic()
-        {
-            m_musicStarted = false;
-            m_music.reset();
         }
 
         std::vector<NS::SceneActor*> GameScene::PlacedActors(const NS::SceneActor* skip)

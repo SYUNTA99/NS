@@ -2,7 +2,6 @@
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -178,9 +177,8 @@ namespace NS
                 return;
             }
 
-            (void)device;
-            ID3D11Device* d3d11Device = Gfx::Gpu().device;
-            ID3D11DeviceContext* context = Gfx::Gpu().context;
+            ID3D11Device* d3d11Device = device.Native();
+            ID3D11DeviceContext* context = device.NativeContext();
             if (d3d11Device == nullptr || context == nullptr || !::ImGui_ImplDX11_Init(d3d11Device, context))
             {
                 NS_LOG_ERROR(UI, "ImGui_ImplDX11_Init 失敗、 stub mode に fallback");

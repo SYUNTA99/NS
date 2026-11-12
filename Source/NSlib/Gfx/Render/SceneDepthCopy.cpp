@@ -1,6 +1,7 @@
 #include "NSlib/Gfx/Render/SceneDepthCopy.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
 namespace NS
@@ -13,7 +14,7 @@ namespace NS
         SceneDepthCopy::CaptureResult SceneDepthCopy::Capture() noexcept
         {
             ++m_captureCount;
-            ID3D11DeviceContext* context = Gpu().context;
+            ID3D11DeviceContext* context = detail::CurrentContext();
             ComPtr<ID3D11DepthStencilView> dsv;
             if (context != nullptr)
             {

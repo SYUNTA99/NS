@@ -4,6 +4,7 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/Gfx/D3DEffect.h"
 #include "TestEffectActor.h"
 
 #include <gtest/gtest.h>
@@ -14,17 +15,11 @@
 // TestEffectActor.h の型の登録。effect_test.cpp も同じ型を使う
 NS_CLASS(TestEffectActor)
 
-// エフェクトの関数は窓口だけを受け、個体の枠の保持役へ渡す
+// エフェクトの関数はインターフェースだけを受け、個体の部品 EffectObj へ渡す
 
-namespace
+TEST(IGetEffectTest, PlayEffectKeepsOneRecordInTheActorsPart)
 {
-    using NS::EffectRecord;
-} // namespace
-
-TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
-{
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     NS::Scene scene;
     TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
@@ -34,71 +29,40 @@ TEST(IGetEffectTest, PlayEffectLeavesOneRecordInTheSlotKeeper)
     const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
 
     EXPECT_NE(id, 0u);
-    EXPECT_EQ(actor.GetEffect()->Records().size(), 1u);
-    const EffectRecord* record = NS::FindEffect(&actor, id);
-    ASSERT_NE(record, nullptr);
-    EXPECT_EQ(record->name, "test.spark");
+    ASSERT_EQ(actor.GetEffect()->Records().size(), 1u);
+    EXPECT_EQ(actor.GetEffect()->Records()[0].id, id);
+    EXPECT_EQ(actor.GetEffect()->Records()[0].asset, &asset);
 }
 
-TEST(IGetEffectTest, StopEffectWritesTheEndStepFoundByFindEffect)
+TEST(IGetEffectTest, StopEffectAndStopEffectRootForgetTheRecord)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     NS::Scene scene;
     TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
-    actor.Update();
-    ASSERT_EQ(NS::GetEffectStep(&actor), 1);
+    const NS::uint32 stopped = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 rootStopped = NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
+    ASSERT_EQ(actor.GetEffect()->Records().size(), 2u);
 
-    NS::SetEffectAmount(&actor, id, 3.0f);
-    NS::StopEffectRoot(&actor, id);
-    NS::StopEffect(&actor, id);
+    NS::StopEffect(&actor, stopped);
+    ASSERT_EQ(actor.GetEffect()->Records().size(), 1u);
+    EXPECT_EQ(actor.GetEffect()->Records()[0].id, rootStopped);
+    NS::StopEffectRoot(&actor, rootStopped);
 
-    const EffectRecord* record = NS::FindEffect(&actor, id);
-    ASSERT_NE(record, nullptr);
-    ASSERT_TRUE(record->amount.has_value());
-    EXPECT_FLOAT_EQ(record->amount.value(), 3.0f);
-    ASSERT_TRUE(record->rootStopStep.has_value());
-    EXPECT_EQ(record->rootStopStep.value(), 1);
-    ASSERT_TRUE(record->endStep.has_value());
-    EXPECT_EQ(record->endStep.value(), 1);
+    EXPECT_TRUE(actor.GetEffect()->Records().empty());
 }
 
-TEST(IGetEffectTest, StopEffectAfterEndsOnTheScheduledStep)
+TEST(IGetEffectTest, ActorWithoutThePartDoesNothing)
 {
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
-    NS::Scene scene;
-    TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
-    ASSERT_NE(spawned, nullptr);
-    TestEffectActor& actor = *spawned;
-    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
-    NS::StopEffectAfter(&actor, id, 2);
-
-    actor.Update();
-    EXPECT_FALSE(NS::FindEffect(&actor, id)->endStep.has_value());
-    actor.Update();
-    EXPECT_TRUE(NS::FindEffect(&actor, id)->endStep.has_value());
-}
-
-TEST(IGetEffectTest, ActorWithoutTheSlotDoesNothing)
-{
-    NS::Effect asset{"11111111111111111111111111111111"};
-    asset.Replace({}, NS::Gfx::EffectResourceDesc{asset.Id(), "test.spark", {}, 1});
+    NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffect(), nullptr);
 
-    NS::PreloadEffects(&actor, {&asset});
     EXPECT_EQ(NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
     NS::StopEffect(&actor, 1);
     NS::StopEffectRoot(&actor, 1);
-    NS::StopEffectAfter(&actor, 1, 1);
     NS::SetEffectTransform(&actor, 1, NS::Vector3{}, NS::Quaternion::Identity, NS::Vector3{1.0f, 1.0f, 1.0f});
     NS::SetEffectDynamicInput(&actor, 1, 0, 1.0f);
-    NS::SetEffectAmount(&actor, 1, 1.0f);
-    NS::SetEffectRotation(&actor, 1, NS::Quaternion::Identity);
-    EXPECT_EQ(NS::FindEffect(&actor, 1), nullptr);
-    EXPECT_EQ(NS::GetEffectStep(&actor), 0);
 }

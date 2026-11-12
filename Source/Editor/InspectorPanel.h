@@ -37,10 +37,11 @@ namespace NS
             void Render(LevelEditorController& editor) noexcept;
 
         private:
-            char m_effectCloneName[128]{};
             void DrawSceneSettings(LevelEditorController& editor);
             //! 曲の下書きを適用する・戻すボタンを描く。playing の間は押せない
             void DrawSceneMusicButtons(LevelEditorController& editor, bool playing);
+            //! 曲・音量・音の届く距離の元の値と下書きを、シーンの今の値にする
+            void TakeSceneMusicFrom(const LevelEditorController& editor);
             bool DrawSkyboxPreview(std::string_view path);
             void DrawSelectedAsset(LevelEditorController& editor, Object& asset);
             void DrawMaterialPreview(const Material& material);
@@ -66,6 +67,9 @@ namespace NS
             float m_musicVolumeSource = 0.0f;
             std::string m_musicDraft;
             float m_musicVolumeDraft = 0.0f;
+            // 位置から鳴らす音の届く距離の元の値と下書き。曲と同じボタンで適用する
+            float m_soundDistanceSource = 0.0f;
+            float m_soundDistanceDraft = 0.0f;
             std::string m_previewMeshPath;
             float m_previewYaw = 0.45f;
             float m_previewPitch = -0.15f;

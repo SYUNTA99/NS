@@ -1,7 +1,8 @@
 #include "NSlib/Gfx/D3DSkeletalMesh.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 
 #include "NSlib/Core/Types.h"
 
@@ -12,7 +13,7 @@ namespace NS
         std::unique_ptr<D3DSkeletalMesh> D3DSkeletalMesh::Create(const D3DSkeletalMeshDesc& desc)
         {
             // D3DDevice の無い場 (GPU の無い試し) では、静的なメッシュと同じく ERROR を出さずに作らない
-            if (Gpu().device == nullptr || Gpu().context == nullptr)
+            if (detail::CurrentDevice() == nullptr || detail::CurrentContext() == nullptr)
             {
                 return nullptr;
             }

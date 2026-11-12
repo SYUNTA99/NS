@@ -56,9 +56,8 @@ namespace NS
         class D3DPipeline : public NonCopyable
         {
         public:
-            //! パイプラインを生成する
-            //! @return 生成失敗時も非nullのインスタンスを返すが、無効な状態となる
-            [[nodiscard]] static std::unique_ptr<D3DPipeline> Create(const D3DPipelineDesc& desc);
+            //! 参照先を必ず返す。生成の成否は IsValid() で確認する
+            [[nodiscard]] static std::unique_ptr<D3DPipeline> Create(const D3DPipelineDesc& desc) noexcept;
 
             ~D3DPipeline();
 
@@ -72,7 +71,7 @@ namespace NS
             [[nodiscard]] ID3D11DepthStencilState* DepthStencilState() const noexcept;
 
         private:
-            explicit D3DPipeline(const D3DPipelineDesc& desc) noexcept;
+            D3DPipeline() noexcept = default;
 
             D3DPipelineDesc m_desc{};
             ComPtr<ID3D11RasterizerState> m_rasterizer;
@@ -80,5 +79,6 @@ namespace NS
             ComPtr<ID3D11DepthStencilState> m_depthStencil;
             bool m_valid = false;
         };
+
     } // namespace Gfx
 } // namespace NS

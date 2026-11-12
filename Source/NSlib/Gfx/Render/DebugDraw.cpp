@@ -1,4 +1,5 @@
 #include "NSlib/Gfx/Render/DebugDraw.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/AABB.h"
@@ -8,11 +9,10 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/Render/BuiltinShaders.h"
-#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 
 namespace
@@ -219,7 +219,7 @@ namespace NS
             m_layoutBytecodeId = vertexShader.BytecodeId();
             m_inputLayout.Reset();
 
-            ID3D11Device* d3d11Device = Gpu().device;
+            ID3D11Device* d3d11Device = detail::CurrentDevice();
             const std::span<const std::byte> bytecode = vertexShader.VertexShaderBytecode();
             if (d3d11Device == nullptr || bytecode.empty())
             {

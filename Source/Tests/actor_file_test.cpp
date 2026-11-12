@@ -491,7 +491,7 @@ TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
     const GL::Level::FollowCameraActor* camera = NS::Cast<GL::Level::FollowCameraActor>(actor.get());
     ASSERT_NE(camera, nullptr);
     EXPECT_EQ(camera->Vcam().TargetRef(), NS::ActorRef{1});
-    EXPECT_FLOAT_EQ(actor->Root().Position().y, 2.0f);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().y, 2.0f);
 
     const nlohmann::json saved = NS::ActorToJson(actor.get());
     const nlohmann::json* savedVcam = NS::ClassObjFields(saved, "Vcam");
@@ -594,7 +594,7 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         {player, &player->Params(), "反動の線を描く", NS::FieldDestination::ActorFile},
         {player, player->ShadowClassObj(), "基本直径", NS::FieldDestination::Scene},
         {camera, &camera->Vcam(), "追従対象", NS::FieldDestination::Scene},
-        {player, &player->Root(), NS::k_PositionFieldName, NS::FieldDestination::Scene},
+        {player, &player->TransformObj(), NS::k_PositionFieldName, NS::FieldDestination::Scene},
     };
     // シーンへ書く欄だけを塗り、.actor へ書く欄は塗らない
     NS::Editor::EditorAppearance appearance;
@@ -698,7 +698,7 @@ TEST(ActorFile, EachLayerCanWriteOnlyItsFieldKinds)
         {NS::FindField(info, "共有"), true, false, false},
         {NS::FindField(info, "派生ごと"), true, true, false},
         {NS::FindField(info, "シーンごと"), true, true, true},
-        {NS::FindField(player.Root().GetReflection(), NS::k_PositionFieldName), true, true, true},
+        {NS::FindField(player.TransformObj().GetReflection(), NS::k_PositionFieldName), true, true, true},
         {NS::FindField(camera->Vcam().GetReflection(), "追従対象"), false, false, true},
     };
     for (const Case& c : cases)
@@ -856,8 +856,8 @@ TEST(ActorFile, ActorFileScaleReachesOnlyActorsThatDoNotOverrideIt)
     const NS::SceneActor* reached = scene.Actors().FindByActorId(2);
     ASSERT_NE(kept, nullptr);
     ASSERT_NE(reached, nullptr);
-    EXPECT_EQ(kept->Root().Scale(), (NS::Vector3{3.0f, 3.0f, 3.0f}));
-    EXPECT_EQ(reached->Root().Scale(), (NS::Vector3{2.0f, 2.0f, 2.0f}));
+    EXPECT_EQ(kept->TransformObj().Scale(), (NS::Vector3{3.0f, 3.0f, 3.0f}));
+    EXPECT_EQ(reached->TransformObj().Scale(), (NS::Vector3{2.0f, 2.0f, 2.0f}));
 }
 
 // new_scene の 8 体は、直す前と同じ姿勢で立つ。回転とスケールは既定と違う物だけをシーンに書く
@@ -892,9 +892,9 @@ TEST(ActorFile, ShippedSceneKeepsThePosesAndWritesOnlyRotationsAndScalesThatDiff
         SCOPED_TRACE(e.id);
         const NS::SceneActor* actor = scene.Actors().FindByActorId(e.id);
         ASSERT_NE(actor, nullptr);
-        EXPECT_EQ(actor->Root().Position(), e.position);
-        EXPECT_EQ(actor->Root().Rotation(), e.rotation);
-        EXPECT_EQ(actor->Root().Scale(), e.scale);
+        EXPECT_EQ(actor->TransformObj().Position(), e.position);
+        EXPECT_EQ(actor->TransformObj().Rotation(), e.rotation);
+        EXPECT_EQ(actor->TransformObj().Scale(), e.scale);
 
         const nlohmann::json& entry = NS::SceneJsonActors(doc)[NS::FindActorIndexById(doc, e.id)];
         const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");

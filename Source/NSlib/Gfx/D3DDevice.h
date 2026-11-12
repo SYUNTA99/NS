@@ -36,7 +36,16 @@ namespace NS
             //! 描画システムを構築する
             //! @param[in,out] window 紐づける対象のウィンドウ
             D3DDevice(const D3DDeviceDesc& desc, OS::Window& window) noexcept;
+            //! ウィンドウを持たない描画基盤。描画先は呼び手が用意する。WARP の GPU テストでも使う
+            D3DDevice(const D3DDeviceDesc& desc, D3D_DRIVER_TYPE driverType) noexcept;
             ~D3DDevice();
+
+            //! 現在の描画基盤。未構築時は nullptr。同時に構築できるのは 1 つ
+            [[nodiscard]] static D3DDevice* Current() noexcept;
+
+            //! リソース生成と外部ライブラリとの接続で使う非所有ポインタ
+            [[nodiscard]] ID3D11Device* Native() const noexcept;
+            [[nodiscard]] ID3D11DeviceContext* NativeContext() const noexcept;
 
             //! 描画できる状態か。構築失敗のほか、Present で device 喪失を検知した後も false になる
             [[nodiscard]] bool IsValid() const noexcept;
@@ -107,6 +116,10 @@ namespace NS
             [[nodiscard]] const D3DPipeline& OccludedPipeline(bool twoSided = false) const noexcept;
 
         private:
+            [[nodiscard]] bool InitializeResources() noexcept;
+
+            static D3DDevice* s_instance;
+
             // 描画先とビューポートを差し、Size() が返す大きさを控える
             void BindTarget(ID3D11RenderTargetView* rtv, ID3D11DepthStencilView* dsv, Size2D size) noexcept;
 

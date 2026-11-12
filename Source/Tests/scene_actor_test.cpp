@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/Action/ActorAction.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Effect.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
@@ -94,7 +95,7 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     ASSERT_NE(actor, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(actor->ShadowClassObj(), nlohmann::json{{"基本直径", 1.5f}}), 0u);
     actor->AddSceneOverride("Shadow", "基本直径");
-    actor->Root().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
+    actor->TransformObj().SetPosition(NS::Vector3{3.0f, 4.0f, 5.0f});
     actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
 
     const nlohmann::json saved = scene.ToJson();
@@ -110,9 +111,9 @@ TEST(SceneActor, ToJsonKeepsClassAndValues)
     EXPECT_EQ(std::string_view{again->ClassName()}, "PlayerActor");
     ASSERT_NE(again->ShadowClassObj(), nullptr);
     EXPECT_FLOAT_EQ(NS::FieldFloat(NS::SerializeClassObjFields(again->ShadowClassObj()), "基本直径", 0.0f), 1.5f);
-    EXPECT_FLOAT_EQ(again->Root().Position().x, 3.0f);
-    EXPECT_FLOAT_EQ(again->Root().Position().y, 4.0f);
-    EXPECT_FLOAT_EQ(again->Root().Position().z, 5.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().x, 3.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().y, 4.0f);
+    EXPECT_FLOAT_EQ(again->TransformObj().Position().z, 5.0f);
 }
 
 TEST(SceneActor, UnknownClassObjKeyKeepsThePlacementAsJson)
@@ -185,16 +186,18 @@ TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
 {
     nlohmann::json doc = NS::MakeSceneJson();
     NS::WriteSceneEnvironment(doc,
-                              NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt",
-                                                   .music = NS::SoundName{"bgm_course"},
-                                                   .musicVolume = 0.3f});
+                              NS::SceneEnvironment{
+                                  .skybox = "Assets/Skybox/kurt",
+                                  .music = NS::AssetManager::Get().LoadSound("Assets/Sounds/bgm_course.wav"),
+                                  .musicVolume = 0.3f});
 
     const std::string text = NS::SerializeSceneToJson(doc);
     nlohmann::json decoded;
     ASSERT_TRUE(NS::DeserializeSceneFromJson(decoded, text));
     const NS::SceneEnvironment read = NS::ReadSceneEnvironment(decoded);
     EXPECT_EQ(read.skybox, "Assets/Skybox/kurt");
-    EXPECT_EQ(read.music.name, "bgm_course");
+    ASSERT_NE(read.music, nullptr);
+    EXPECT_EQ(read.music->Path(), "Assets/Sounds/bgm_course.wav");
     EXPECT_FLOAT_EQ(read.musicVolume, 0.3f);
 
     NS::Scene scene;
@@ -202,7 +205,8 @@ TEST(SceneActor, EnvironmentRoundTripsThroughFileAndScene)
     EXPECT_EQ(scene.SkyboxPath(), "Assets/Skybox/kurt");
     const NS::SceneEnvironment saved = NS::ReadSceneEnvironment(scene.ToJson());
     EXPECT_EQ(saved.skybox, "Assets/Skybox/kurt");
-    EXPECT_EQ(saved.music.name, "bgm_course");
+    ASSERT_NE(saved.music, nullptr);
+    EXPECT_EQ(saved.music->Path(), "Assets/Sounds/bgm_course.wav");
     EXPECT_FLOAT_EQ(saved.musicVolume, 0.3f);
 }
 
@@ -388,17 +392,17 @@ TEST(SceneActor, ApplyFromJsonShowsAHiddenActorAtTheSnapshotPosition)
     NS::SceneActor* actor = scene.Actors().FindByActorId(1);
     ASSERT_NE(actor, nullptr);
     const NS::Vector3 shown{4.0f, 0.0f, 0.0f};
-    actor->Root().SetPosition(shown);
+    actor->TransformObj().SetPosition(shown);
     actor->AddSceneOverride("Transform", NS::k_PositionFieldName);
     const nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
-    actor->Root().SetPosition(NS::Vector3{});
+    actor->TransformObj().SetPosition(NS::Vector3{});
     actor->Disappear();
-    actor->Root().Snapshot();
+    actor->TransformObj().Snapshot();
 
     ASSERT_EQ(ApplySnapshot(scene, snapshot), actor);
     EXPECT_TRUE(actor->IsAppeared());
-    EXPECT_FLOAT_EQ(actor->Root().Position().x, shown.x);
-    EXPECT_FLOAT_EQ(actor->Root().PreviousPosition().x, shown.x);
+    EXPECT_FLOAT_EQ(actor->TransformObj().Position().x, shown.x);
+    EXPECT_FLOAT_EQ(actor->TransformObj().PreviousPosition().x, shown.x);
 }
 
 TEST(SceneActor, PhysicsSettingsIsNotAPlaceableClassObj)
@@ -446,9 +450,9 @@ TEST(SceneActor, RestartBeforeTheCourseStartsKeepsThePosition)
     ASSERT_LT(player->Health(), fullHealth);
 
     player->Restart();
-    EXPECT_FLOAT_EQ(player->Root().Position().x, placed.x);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, placed.y);
-    EXPECT_FLOAT_EQ(player->Root().Position().z, placed.z);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().x, placed.x);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, placed.y);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().z, placed.z);
     EXPECT_EQ(player->Health(), fullHealth);
 }
 
@@ -639,7 +643,7 @@ namespace
         NS_REFLECT_END()
     };
 
-    // 部品 EffectFieldPart の資産を、素材を読み終えた時に先に読む
+    // 部品 EffectFieldPart を持つアクター
     class EffectFieldActor final : public NS::SceneActor
     {
     public:
@@ -652,21 +656,15 @@ namespace
     protected:
         void OnInit() override
         {
-            CreateClassObj(m_effect);
+            CreateClassObj(m_effect, this, &TransformObj());
             CreateClassObj(part);
-        }
-
-        void OnAssetsLoaded() override
-        {
-            NS::SceneActor::OnAssetsLoaded();
-            NS::PreloadEffects(this, {part->asset});
         }
     };
 } // namespace
 
 NS_CLASS(EffectFieldActor)
 
-TEST(SceneActor, SnapshotReloadsEffectPreload)
+TEST(SceneActor, SnapshotReloadsEffectAsset)
 {
     NS::OS::Window window(NS::OS::WindowDesc{.title = "控えのエフェクトの試し", .size = {32, 32}, .visible = false});
     NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
@@ -675,7 +673,7 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
     const NS::AssetManagerScope useAssets{assets};
     const ScopedActorFile plain{"EffectFieldActor", CodeValuesActorFile("EffectFieldActor")};
     nlohmann::json sparkFile = CodeValuesActorFile("EffectFieldActor");
-    NS::ActorJsonClassObjs(sparkFile)["EffectFieldPart"]["資産"] = "6e4f2fccb9df5a339885b53d42fafd45";
+    NS::ActorJsonClassObjs(sparkFile)["EffectFieldPart"]["資産"] = "Assets/Effects/impact.core.efkefc";
     const ScopedActorFile spark{"SparkRock", std::move(sparkFile)};
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "EffectFieldActor", 1);
@@ -684,13 +682,15 @@ TEST(SceneActor, SnapshotReloadsEffectPreload)
     scene.ResetFromJson(doc);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
-    const NS::Effect* core = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
-    ASSERT_FALSE(effects->Play(core->Resource(), {}).IsValid());
+    EffectFieldActor* actor = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(1));
+    ASSERT_NE(actor, nullptr);
+    ASSERT_NE(actor->part->asset, nullptr);
+    ASSERT_FALSE(effects->Play(actor->part->asset->D3D(), {}).IsValid());
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "SparkRock");
     ASSERT_NE(ApplySnapshot(scene, snapshot), nullptr);
-    EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
+    EXPECT_TRUE(effects->Play(actor->part->asset->D3D(), {}).IsValid());
 }
 
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
@@ -774,7 +774,7 @@ TEST(SceneActor, SpawnFromActorFileWritesTheSceneOverridesOverTheActorFile)
         SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "Goal", overrides);
     ASSERT_NE(goal, nullptr);
     EXPECT_EQ(goal->ActorFileName(), "GoalActor");
-    EXPECT_FLOAT_EQ(goal->Root().Position().y, 2.0f);
+    EXPECT_FLOAT_EQ(goal->TransformObj().Position().y, 2.0f);
     EXPECT_NE(goal->Id(), 0u);
     EXPECT_EQ(scene.Actors().ActorCount(), 1u);
 }
@@ -857,7 +857,7 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
     EXPECT_GT(checked, 0);
 }
 
-TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
+TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
 {
     const ScopedActorFileDirectory directory("DirectEffectEdit");
     NS::OS::Window window(NS::OS::WindowDesc{.title = "素材の参照の編集", .size = {32, 32}, .visible = false});
@@ -875,10 +875,10 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     scene.ResetFromJson(doc);
     NS::Gfx::EffectScene* effects = scene.GetEffectScene();
     ASSERT_NE(effects, nullptr);
-    const NS::Effect* core = assets.LoadEffectAsset("6e4f2fccb9df5a339885b53d42fafd45");
-    ASSERT_FALSE(effects->Play(core->Resource(), {}).IsValid());
+    const NS::Effect* core = assets.LoadEffect("Assets/Effects/impact.core.efkefc");
     EffectFieldActor* rock = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(rock, nullptr);
+    ASSERT_FALSE(effects->Play(rock->part->asset->D3D(), {}).IsValid());
     const NS::FieldDesc* field = NS::FindField(rock->part->GetReflection(), "資産");
     ASSERT_NE(field, nullptr);
     const NS::ClassObjInfo* row = nullptr;
@@ -894,27 +894,27 @@ TEST(SceneActor, DirectEffectEditPreloadsAndUndoesOnceForAllActorsOfTheFile)
     controller.SelectActorById(1);
     const std::size_t undoBefore = controller.Editor().Undo().UndoSize();
     controller.BeginClassObjEdit();
-    ASSERT_EQ(NS::ApplyJsonFields(rock->part.get(), {{"資産", core->Id()}}), 0u);
+    ASSERT_EQ(NS::ApplyJsonFields(rock->part.get(), {{"資産", core->Path()}}), 0u);
     controller.FinishFieldWrite(rock, field->type);
     controller.NoteFieldEdit(rock, *row, field->name);
     controller.CommitClassObjEdit();
     EXPECT_EQ(controller.Editor().Undo().UndoSize(), undoBefore + 1);
-    EXPECT_TRUE(effects->Play(core->Resource(), {}).IsValid());
+    EXPECT_TRUE(effects->Play(rock->part->asset->D3D(), {}).IsValid());
     for (const NS::uint32 id : {1u, 2u})
     {
         const EffectFieldActor* instance = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(id));
         ASSERT_NE(instance, nullptr);
-        EXPECT_EQ(NS::SerializeClassObjFields(instance->part.get())["資産"], core->Id());
+        EXPECT_EQ(NS::SerializeClassObjFields(instance->part.get())["資産"], core->Path());
     }
     ASSERT_TRUE(controller.Editor().PerformUndo());
     EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("EffectEditorRock"), before);
     EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], "");
     ASSERT_TRUE(controller.Editor().PerformRedo());
-    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], core->Id());
+    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], core->Path());
     const std::optional<nlohmann::json> written =
         NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "EffectEditorRock.actor"));
     ASSERT_TRUE(written.has_value());
-    EXPECT_EQ(NS::ActorJsonClassObjs(*written)["EffectFieldPart"]["資産"], core->Id());
+    EXPECT_EQ(NS::ActorJsonClassObjs(*written)["EffectFieldPart"]["資産"], core->Path());
 }
 
 // インスペクターの欄の編集は編集するたびに書く。外で変わったファイルには書かず、未保存のまま残す

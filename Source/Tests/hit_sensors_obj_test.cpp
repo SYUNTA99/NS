@@ -112,7 +112,7 @@ TEST(HitSensorsObj, AddFollowMakesANamedSensorThatReadsTheVolume)
     EXPECT_TRUE(GL::Level::IsSensorKind(attack, SensorKind::PlayerBody));
     EXPECT_EQ(attack->Host(), owner);
     EXPECT_EQ(ListedCount(scene, attack), 1u);
-    owner->Root().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
+    owner->TransformObj().SetPosition(Vector3{1.0f, 2.0f, 3.0f});
     const NS::SensorVolume volume = NS::HitSensorDirector::VolumeOf(attack);
     EXPECT_FLOAT_EQ(volume.radius, 0.25f);
     EXPECT_FLOAT_EQ(volume.Center().y, 2.0f);

@@ -70,7 +70,7 @@ namespace NS
                     return std::nullopt;
                 }
                 const AABB& localBounds = *model->DrawnLocalBounds();
-                const Matrix actorWorld = model->DrawWorldMatrix(actor->Root().WorldMatrix(), 1.0f);
+                const Matrix actorWorld = model->DrawWorldMatrix(actor->TransformObj().WorldMatrix(), 1.0f);
                 const std::optional<Matrix> world = FitPreviewWorld(localBounds, actorWorld, pose);
                 if (!world)
                 {

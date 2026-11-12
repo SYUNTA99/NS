@@ -93,7 +93,7 @@ namespace NS
         ~SceneRenderer();
 
         //! 装置を非所有で差す。EffectScene と描く段を作り直し、未設定なら畳む
-        //! EffectScene は構築時に Gpu() を読む。D3DDevice が立つまで作れない
+        //! EffectScene は構築時に現在の描画装置を読む。D3DDevice が立つまで作れない
         //! 描く段のシェーダーはここで AssetManager::Get() から引くので、AssetManager を差した後に呼ぶ
         void SetDevice(Gfx::D3DDevice* device) noexcept;
 

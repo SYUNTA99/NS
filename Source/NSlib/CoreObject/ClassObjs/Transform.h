@@ -16,7 +16,7 @@ namespace NS
     inline constexpr const char* k_ScaleFieldName = "スケール";
 
     //! 個体の姿勢を持つ部品。Snapshot で控えた固定更新間の姿勢を描画時に補間する
-    //! SceneActor::Root() はこの部品を返す。持ち主なしでも作れる
+    //! SceneActor::TransformObj() はこの部品を返す。持ち主なしでも作れる
     class Transform : public Object
     {
     public:

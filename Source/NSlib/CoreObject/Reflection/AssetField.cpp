@@ -5,6 +5,7 @@
 #include "NSlib/CoreObject/Asset/Effect.h"
 #include "NSlib/CoreObject/Asset/Material.h"
 #include "NSlib/CoreObject/Asset/Mesh.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
@@ -43,6 +44,16 @@ namespace NS
         field = AssetManager::Get().LoadAnimClip(name);
     }
 
+    void LoadAssetField(Effect*& field, std::string_view name)
+    {
+        field = AssetManager::Get().LoadEffect(name);
+    }
+
+    void LoadAssetField(Sound*& field, std::string_view name)
+    {
+        field = AssetManager::Get().LoadSound(name);
+    }
+
     const std::string& AssetFieldName(const Mesh* field) noexcept
     {
         return PathOrEmpty(field);
@@ -58,20 +69,15 @@ namespace NS
         return PathOrEmpty(field);
     }
 
-    void LoadAssetField(Effect*& field, std::string_view id)
-    {
-        field = AssetManager::Get().LoadEffectAsset(id);
-    }
-
     const std::string& AssetFieldName(const Effect* field) noexcept
     {
-        if (field == nullptr)
-        {
-            return k_NoName;
-        }
-        return field->Id();
+        return PathOrEmpty(field);
     }
 
+    const std::string& AssetFieldName(const Sound* field) noexcept
+    {
+        return PathOrEmpty(field);
+    }
 
     void LoadAssetFields(SceneActor* actor)
     {

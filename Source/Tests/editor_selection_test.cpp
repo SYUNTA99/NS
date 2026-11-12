@@ -64,15 +64,15 @@ namespace
         NS_ASSERT(Game, actor != nullptr, "WritePoseField: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = nullptr;
         NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& candidate, const NS::Object* part) {
-            if (part == &actor->Root())
+            if (part == &actor->TransformObj())
             {
                 row = &candidate;
             }
         });
         ASSERT_NE(row, nullptr);
-        const NS::FieldDesc* field = NS::FindField(actor->Root().GetReflection(), fieldName);
+        const NS::FieldDesc* field = NS::FindField(actor->TransformObj().GetReflection(), fieldName);
         ASSERT_NE(field, nullptr);
-        ASSERT_EQ(field->set(&actor->Root(), &value), NS::FieldWriteResult::Written);
+        ASSERT_EQ(field->set(&actor->TransformObj(), &value), NS::FieldWriteResult::Written);
         editor.NoteFieldEdit(actor, *row, fieldName);
     }
 
@@ -81,7 +81,7 @@ namespace
                                               const NS::Editor::ViewRect& view)
     {
         NS_ASSERT(Game, target != nullptr, "FindMoveHandle: 渡したアクターか部品が無い");
-        const NS::AffineDecomposition world = NS::DecomposeAffine(target->Root().WorldMatrix());
+        const NS::AffineDecomposition world = NS::DecomposeAffine(target->TransformObj().WorldMatrix());
         for (int y = 0; y < view.height; ++y)
         {
             for (int x = 0; x < view.width; ++x)
@@ -229,7 +229,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
         NS::SceneActor* prop = scene.Actors().FindByActorId(id);
         ASSERT_NE(prop, nullptr);
         editor.BeginTransformEdit();
-        prop->Root().SetPosition(NS::Vector3{3.0f, 0.0f, 7.0f});
+        prop->TransformObj().SetPosition(NS::Vector3{3.0f, 0.0f, 7.0f});
         editor.CommitTransformEdit();
 
         editor.EnterPlay();
@@ -259,7 +259,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 
     // ギズモは掴んでいる間に実体の姿勢を直に書き、離した時に CommitTransformEdit で閉じる
     editor.BeginTransformEdit();
-    prop->Root().SetScale(NS::Vector3{2.0f, 2.0f, 2.0f});
+    prop->TransformObj().SetScale(NS::Vector3{2.0f, 2.0f, 2.0f});
     editor.CommitTransformEdit();
     EXPECT_TRUE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
     EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_RotationFieldName));
@@ -273,7 +273,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     ASSERT_TRUE(editor.Editor().PerformUndo());
     prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
-    EXPECT_EQ(prop->Root().Scale(), NS::Vector3::One);
+    EXPECT_EQ(prop->TransformObj().Scale(), NS::Vector3::One);
     EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
 }
 
@@ -298,7 +298,7 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
             return NS::SerializeClassObjFields(actor->ModelClassObj())["基本色"];
         };
         const nlohmann::json colorBefore = colorOf();
-        const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->Root().Position();
+        const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->TransformObj().Position();
         NS::Editor::ActionTimelinePanel timeline;
 
         // 何も変えずに戻る
@@ -309,11 +309,11 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 
         // 位置だけがプレイで動く
         editor.EnterPlay();
-        scene.Actors().FindByActorId(id)->Root().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
+        scene.Actors().FindByActorId(id)->TransformObj().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
         EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
-        EXPECT_EQ(scene.Actors().FindByActorId(id)->Root().Position(), positionBefore);
+        EXPECT_EQ(scene.Actors().FindByActorId(id)->TransformObj().Position(), positionBefore);
 
         // インスペクタの道で色の欄を変える
         editor.EnterPlay();
@@ -406,9 +406,9 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
         ASSERT_TRUE(handle.has_value());
 
         const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
-        const NS::Vector3 before = camera->Root().Position();
+        const NS::Vector3 before = camera->TransformObj().Position();
         DragHandle(editor, mouse, *handle);
-        EXPECT_NE(editor.SelectedActor()->Root().Position(), before);
+        EXPECT_NE(editor.SelectedActor()->TransformObj().Position(), before);
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
@@ -446,7 +446,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         editor.Tick();
 
         const auto worldPosition = [&scene](NS::uint32 id) {
-            return scene.Actors().FindByActorId(id)->Root().WorldMatrix().Translation();
+            return scene.Actors().FindByActorId(id)->TransformObj().WorldMatrix().Translation();
         };
         const NS::SceneActor* actor = scene.Actors().FindByActorId(actorId);
         ASSERT_NE(actor, nullptr);
@@ -481,7 +481,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
-        const NS::Vector3 placed = scene.Actors().FindByActorId(actorId)->Root().Position();
+        const NS::Vector3 placed = scene.Actors().FindByActorId(actorId)->TransformObj().Position();
         WritePoseField(editor,
                        scene.Actors().FindByActorId(actorId),
                        NS::k_PositionFieldName,
@@ -499,14 +499,14 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
 
         const NS::SceneActor* actor = scene.Actors().FindByActorId(actorId);
         ASSERT_NE(actor, nullptr);
-        ASSERT_EQ(actor->Root().Position(), actor->Root().WorldMatrix().Translation());
+        ASSERT_EQ(actor->TransformObj().Position(), actor->TransformObj().WorldMatrix().Translation());
         const std::optional<NS::Vector2> handle =
             FindMoveHandle(actor, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
-        const NS::Vector3 before = actor->Root().WorldMatrix().Translation();
+        const NS::Vector3 before = actor->TransformObj().WorldMatrix().Translation();
         DragHandle(editor, mouse, *handle);
-        const NS::Vector3 after = scene.Actors().FindByActorId(actorId)->Root().WorldMatrix().Translation();
+        const NS::Vector3 after = scene.Actors().FindByActorId(actorId)->TransformObj().WorldMatrix().Translation();
         EXPECT_NE(after, before);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
@@ -613,7 +613,7 @@ TEST(EditorBrush, RotateKeepsTheTilt)
         WritePoseField(
             editor, scene.Actors().FindByActorId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
         const auto up = [&scene, id] {
-            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Actors().FindByActorId(id)->Root().Rotation());
+            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Actors().FindByActorId(id)->TransformObj().Rotation());
         };
         const float tiltBefore = up().y;
 
@@ -757,9 +757,9 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     LevelEditorController editor(scene);
     editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
     const NS::uint32 id = editor.SelectedActorId();
-    const NS::Vector3 beforePosition = editor.SelectedActor()->Root().Position();
-    const NS::Vector3 beforeScale = editor.SelectedActor()->Root().Scale();
-    const NS::Quaternion beforeRotation = editor.SelectedActor()->Root().Rotation();
+    const NS::Vector3 beforePosition = editor.SelectedActor()->TransformObj().Position();
+    const NS::Vector3 beforeScale = editor.SelectedActor()->TransformObj().Scale();
+    const NS::Quaternion beforeRotation = editor.SelectedActor()->TransformObj().Rotation();
     const std::size_t beforeUndo = editor.Editor().Undo().UndoSize();
     NS::Editor::InspectorPanel inspector;
     const auto frame = [&] {
@@ -803,7 +803,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
         frame();
         EXPECT_EQ(editor.Editor().Undo().UndoSize(), beforeUndo + row + 1);
     }
-    const NS::Transform& edited = scene.Actors().FindByActorId(id)->Root();
+    const NS::Transform& edited = scene.Actors().FindByActorId(id)->TransformObj();
     EXPECT_FLOAT_EQ(edited.Position().x, beforePosition.x);
     EXPECT_FLOAT_EQ(edited.Position().y, 12.5f);
     EXPECT_FLOAT_EQ(edited.Position().z, beforePosition.z);
@@ -815,7 +815,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     {
         EXPECT_TRUE(editor.Editor().PerformUndo());
     }
-    const NS::Transform& restored = scene.Actors().FindByActorId(id)->Root();
+    const NS::Transform& restored = scene.Actors().FindByActorId(id)->TransformObj();
     EXPECT_EQ(restored.Position(), beforePosition);
     EXPECT_EQ(restored.Rotation(), beforeRotation);
     EXPECT_EQ(restored.Scale(), beforeScale);

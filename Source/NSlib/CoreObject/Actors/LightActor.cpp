@@ -10,7 +10,7 @@ namespace NS
         CreateClassObj(m_light);
         Vector3 initialDirection{-0.3f, -1.0f, -0.2f};
         initialDirection.Normalize();
-        Root().SetRotation(Quaternion::FromToRotation(Vector3::UnitZ, initialDirection));
+        TransformObj().SetRotation(Quaternion::FromToRotation(Vector3::UnitZ, initialDirection));
     }
 
     NS_PLACEABLE(LightActor, "ライト")

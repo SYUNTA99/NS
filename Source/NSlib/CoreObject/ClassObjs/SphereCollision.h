@@ -25,10 +25,10 @@ namespace NS
         void SetCenterOffset(const Vector3& offset) noexcept;
         [[nodiscard]] Vector3 CenterOffset() const noexcept;
 
-        //! 持ち主の root の世界行列 world に offset を重ねた球を返す。半径は world の拡縮の最大成分で拡縮する
+        //! 持ち主の Transform の世界行列 world に offset を重ねた球を返す。半径は world の拡縮の最大成分で拡縮する
         [[nodiscard]] Sphere WorldSphere(const Matrix& world) const noexcept;
 
-        //! 持ち主の root の世界行列 world を反映した世界軸並行 AABB を返す
+        //! 持ち主の Transform の世界行列 world を反映した世界軸並行 AABB を返す
         [[nodiscard]] AABB WorldAABB(const Matrix& world) const noexcept;
 
         NS_REFLECT_BEGIN(SphereCollision, Collision)

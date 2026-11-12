@@ -10,11 +10,6 @@
 namespace NS
 {
     class SceneActor;
-
-    namespace Audio
-    {
-        class SoundLoop;
-    } // namespace Audio
 } // namespace NS
 
 namespace GL
@@ -62,14 +57,6 @@ namespace GL
             //! 自機の他のアクターへ MsgCourseRestart を送り、開始の時の姿へ戻す。自機の位置と状態は変えない
             void RespawnActors();
 
-            //! @brief シーンの設定の曲をループで鳴らし始める。RestartCourse は曲に触らないので、やり直しても曲が続く
-            //! @details シーンが音の装置を持たない時と、曲が空の時は音を出さずに始めた事にする
-            //! @return 今の呼び出しで始めたか。StopMusic までの間にもう一度呼ぶと false
-            bool StartMusic();
-
-            //! 曲を止める。次の StartMusic は最初から鳴らす
-            void StopMusic();
-
             //! 当たりの画面の演出 (歪みの輪・床の波)。当たりの反応の項目が頼む
             [[nodiscard]] HitScreenDirector& HitScreen() noexcept { return m_hitScreen; }
             [[nodiscard]] const HitScreenDirector& HitScreen() const noexcept { return m_hitScreen; }
@@ -85,8 +72,8 @@ namespace GL
             //! 知らせを受けた分だけ流れを進める
             void StepGame() override;
 
-            //! 当たりの画面の演出を 1 フレーム進める。シーンが止まっている歩でも進む
-            void StepViewEffects() override { m_hitScreen.OnTick(); }
+            //! 当たりの画面の演出を 1 フレーム進め、音を聞く点を今の自機とカメラに合わせる。シーンが止まっている歩でも進む
+            void StepViewEffects() override;
 
             //! 当たりの画面の演出を全部消す。前の世界のアクターが頼んだ輪と波を次の世界へ持ち越さない
             void ClearViewEffects() override { m_hitScreen.Clear(); }
@@ -102,6 +89,10 @@ namespace GL
             //! PlacedActors の全員へ MsgCourseRestart を送る
             void SendRestart(const NS::SceneActor* skip);
 
+            //! 位置から鳴らす音を聞く点を、位置は自機、向きはカメラの視点にする。OnStartPlay と StepViewEffects が呼ぶ。
+            //! 自機が居ない歩と、音の装置を受け取っていないシーンでは何もしない
+            void UpdateSoundListener();
+
             float m_fadeOutSeconds = 0.0f;
             float m_fadeInSeconds = 0.0f;
 
@@ -109,9 +100,6 @@ namespace GL
             bool m_playerDead = false;       // 次の StepGame でやり直すか
             bool m_respawnPending = false;
             bool m_goalReached = false; // 次の StepGame でクリアの流れを始めるか
-            // 曲はアクターの音でなくコースの寿命の物なので、アクターの部品 Sound を通さずに持つ
-            std::unique_ptr<NS::Audio::SoundLoop> m_music; // 音を出せない時は nullptr
-            bool m_musicStarted = false;                   // StartMusic から StopMusic までの間か
             HitScreenDirector m_hitScreen{*GetSceneRenderer()};
         };
 

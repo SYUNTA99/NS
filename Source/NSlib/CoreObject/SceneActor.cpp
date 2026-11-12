@@ -11,13 +11,13 @@
 #include "NSlib/CoreObject/ClassObjs/Collision.h"
 #include "NSlib/CoreObject/ClassObjs/DirectionalLight.h"
 #include "NSlib/CoreObject/ClassObjs/EffectObj.h"
+#include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/MeshCollision.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
 #include "NSlib/CoreObject/ClassObjs/WorldLines.h"
-#include "NSlib/CoreObject/ClassObjs/Sound.h"
 #include "NSlib/CoreObject/Object.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -59,12 +59,12 @@ namespace NS
         Appear();
     }
 
-    Transform& SceneActor::Root() noexcept
+    Transform& SceneActor::TransformObj() noexcept
     {
         return *m_transform;
     }
 
-    const Transform& SceneActor::Root() const noexcept
+    const Transform& SceneActor::TransformObj() const noexcept
     {
         return *m_transform;
     }
@@ -161,13 +161,13 @@ namespace NS
         return m_scene->GetEffectScene();
     }
 
-    Audio::AudioDevice* SceneActor::GetAudioDevice() const noexcept
+    Audio::SoundScene* SceneActor::GetSoundScene() const noexcept
     {
         if (m_scene == nullptr)
         {
             return nullptr;
         }
-        return m_scene->GetAudioDevice();
+        return m_scene->GetSoundScene();
     }
 
     CameraManager* SceneActor::GetCameraManager() const noexcept
@@ -259,17 +259,17 @@ namespace NS
         {
             if (m_model)
             {
-                renderer->RegisterModel(m_model.get(), &Root());
+                renderer->RegisterModel(m_model.get(), &TransformObj());
                 renderer->SetModelEnabled(m_model.get(), IsAppeared());
             }
             if (m_shadow)
             {
-                renderer->RegisterShadow(m_shadow.get(), &Root());
+                renderer->RegisterShadow(m_shadow.get(), &TransformObj());
                 renderer->SetShadowEnabled(m_shadow.get(), IsAppeared());
             }
             if (m_light)
             {
-                renderer->RegisterLight(m_light.get(), &Root());
+                renderer->RegisterLight(m_light.get(), &TransformObj());
                 renderer->SetLightEnabled(m_light.get(), IsAppeared());
             }
             if (m_worldLines)
@@ -334,7 +334,6 @@ namespace NS
         }
         m_actorAction->ReloadActions(ActorFileName());
         RunActionOutputs();
-        PreloadActionSounds();
     }
 
     void SceneActor::ReloadActorFileOnlyValuesExceptActions()
@@ -343,7 +342,6 @@ namespace NS
         if (m_hitSensors) { m_hitSensors->ReloadValues(this); }
         if (m_hitReaction) { m_hitReaction->ReloadSets(this); }
         // clang-format on
-        PreloadHitReactionSounds();
     }
 
     void SceneActor::ReloadAssets()
@@ -397,7 +395,7 @@ namespace NS
         // 描く物は OnInit の直後に RegisterDrawParts が、センサーは OnInit で入れてある。当たりの body は配置と素材を読んだ後の形で 1 回だけ作り、
         // 出ている物だけを OnAppear が物理シーンへ入れる
         // clang-format off
-        if (m_collision) { InitCollision(this, m_collision.get(), Root().WorldMatrix()); }
+        if (m_collision) { InitCollision(this, m_collision.get(), TransformObj().WorldMatrix()); }
         // clang-format on
         // 一覧には全部のアクターが入っているので、自分より後ろのアクターも取得できる
         ResolveActorRefs();
@@ -420,7 +418,7 @@ namespace NS
         if (m_shadow) { ShowModel(this, m_shadow.get()); }
         if (m_light) { EnableLight(this, m_light.get()); }
         if (m_worldLines) { ShowModel(this, m_worldLines.get()); }
-        if (m_collision) { EnableCollision(this, m_collision.get(), Root().WorldMatrix()); }
+        if (m_collision) { EnableCollision(this, m_collision.get(), TransformObj().WorldMatrix()); }
         if (m_hitSensors) { m_hitSensors->EnableAll(); }
         // clang-format on
         // 出た所から描き始める。前の値が原点や消えた所のままだと、そこから補間して見える
@@ -447,6 +445,10 @@ namespace NS
         if (m_hitSensors) { m_hitSensors->DisableAll(); }
         if (m_collision) { DisableCollision(this, m_collision.get()); }
         if (m_hitReaction) { m_hitReaction->StopAll(HitReactionSelf{.actor = this, .model = m_model.get()}); }
+        // 出ていた粒は寿命まで残し、新しい粒だけを止める
+        if (m_effect) { m_effect->StopRootAll(); }
+        // 鳴らし続けていた音を、居ないアクターが鳴らし続けない。1 回の音は最後まで鳴らす
+        if (m_sound) { m_sound->StopLoopAll(); }
     }
 
     namespace
@@ -486,18 +488,22 @@ namespace NS
                 animation->Play(anim.clip->Clip(), anim.blendSeconds);
             }
 
-            void operator()(const ActionSoundInfo& sound) const { PlaySound(&actor, sound.sound, sound.volume); }
+            void operator()(const ActionSoundInfo& sound) const
+            {
+                if (sound.positional)
+                {
+                    PlaySoundAt(&actor, sound.sound, actor.TransformObj().Position(), sound.volume);
+                    return;
+                }
+                PlaySound(&actor, sound.sound, sound.volume);
+            }
 
             void operator()(const ActionEffectInfo& effect) const
             {
-                EffectObj* effects = actor.GetEffect();
-                if (effects == nullptr || effect.effect == nullptr)
-                {
-                    return;
-                }
                 Gfx::EffectPlayDesc desc;
-                desc.position = actor.Root().Position();
-                (void)effects->Play(actor.GetEffectScene(), effect.effect, desc);
+                desc.position = actor.TransformObj().Position();
+                // 出すだけで後から止めないので、番号は使わない
+                (void)PlayEffect(&actor, effect.effect, desc);
             }
 
             void operator()(const ActionPadInfo& pad) const
@@ -654,42 +660,6 @@ namespace NS
         return clock;
     }
 
-    void SceneActor::PreloadActionSounds()
-    {
-        if (!m_sound)
-        {
-            return;
-        }
-        for (const ActorActionInfo& action : m_actorAction->Actions())
-        {
-            for (const ActorActionEvent& event : action.events)
-            {
-                if (const ActionSoundInfo* sound = std::get_if<ActionSoundInfo>(&event.item))
-                {
-                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
-                }
-            }
-        }
-    }
-
-    void SceneActor::PreloadHitReactionSounds()
-    {
-        if (!m_sound || !m_hitReaction)
-        {
-            return;
-        }
-        for (const HitReactionSet& set : m_hitReaction->Sets())
-        {
-            for (const HitReactionEntry& entry : set.entries)
-            {
-                if (const HitSoundInfo* sound = entry.item.As<HitSoundInfo>())
-                {
-                    m_sound->Preload(&AssetManager::Get(), sound->sound.name);
-                }
-            }
-        }
-    }
-
     void SceneActor::RunActionOutputs()
     {
         // 入り切りは名前でセンサーを引く。持たないセンサーは .actor の誤りなので知らせて飛ばす
@@ -743,7 +713,7 @@ namespace NS
     {
         m_skipStateStep = false;
         // clang-format off
-        if (m_effect) { m_effect->BeginStep(GetEffectScene()); }
+        if (m_sound) { m_sound->Update(); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
         DecideStep();
@@ -765,7 +735,9 @@ namespace NS
         // 置く側の当たりは体を動かした後の姿へ揃える。姿も形も変わっていなければ Collision は何もしない
         // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
-        if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
+        if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(TransformObj().WorldMatrix(), this); }
+        // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す。消えている間は OnDisappear が一覧を空にしている
+        if (m_effect) { m_effect->Update(); }
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
@@ -781,13 +753,13 @@ namespace NS
     {
         if (m_shadow && m_scene)
         {
-            m_shadow->Update(m_scene, Root().Position());
+            m_shadow->Update(m_scene, TransformObj().Position());
         }
     }
 
     void SceneActor::SnapshotForInterpolation() noexcept
     {
-        Root().Snapshot();
+        TransformObj().Snapshot();
         // clang-format off
         if (m_model) { m_model->Snapshot(); }
         if (m_worldLines) { m_worldLines->Snapshot(); }

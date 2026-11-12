@@ -95,7 +95,7 @@ bool PlayerActor::BeginAirDash() noexcept
     SetCurled(true);
     if (curlInAir)
     {
-        Root().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
+        TransformObj().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
     }
     StartAirControlReturn();
     // 状態に入るのが止めで遅れても、面に当たった時の返る速さがこの控えを読む
@@ -385,7 +385,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
 
     NS::Vector3 reflected = GL::Level::ReflectAcross(incoming, normal);
     reflected.Normalize();
-    m_airDash.m_last = GL::Player::TerrainReboundRecord{.point = Root().Position(),
+    m_airDash.m_last = GL::Player::TerrainReboundRecord{.point = TransformObj().Position(),
                                                         .incoming = incoming,
                                                         .normal = normal,
                                                         .reflected = reflected,
@@ -403,7 +403,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     (void)m_states->Change<GL::Player::DashReboundPlayerState>();
     // 入力が合ったかは明けまで分からないので、当たったフレームの束は当て方だけで選ぶ
     m_playerSounds->PlayRebound(this);
-    StartTerrainReboundReaction(Root().Position() - normal * m_collider->CapsuleRadius(),
+    StartTerrainReboundReaction(TransformObj().Position() - normal * m_collider->CapsuleRadius(),
                                 facing >= m_params->m_reboundFullFacing);
     // 止めの間にスティックを入れる猶予。向きは明けのフレームに ChooseReboundAtRelease が選ぶ
     RequestHitStop(m_params->m_reboundStopMinFrames);
@@ -513,7 +513,7 @@ void PlayerActor::DrawTerrainRebound() const
     // 黄は今の進む向き (曲げの後)。輪は段の色で、赤が操作なし、黄が補正
     NS::Vector3 now = m_body->Velocity();
     now.Normalize();
-    const NS::Vector3 center = Root().Position();
+    const NS::Vector3 center = TransformObj().Position();
     NS::Gfx::DrawDebugLine(center, center + now * length, NS::Color{1.0f, 1.0f, 0.0f, 1.0f});
     NS::Color stage{1.0f, 0.0f, 0.0f, 1.0f};
     if (m_airDash.m_steerStarted)
@@ -613,7 +613,7 @@ void PlayerActor::StartShiftedReboundReaction() noexcept
         screen->Scale(this, scale);
     }
     m_ghost->ScaleOpacity(scale);
-    (void)StartHitReaction("地形の反動[ずらし]", Root().Position(), self, self);
+    (void)StartHitReaction("地形の反動[ずらし]", TransformObj().Position(), self, self);
 }
 
 GL::Level::ScreenAxes PlayerActor::ReboundScreenAxes() const noexcept

@@ -75,7 +75,7 @@ namespace
         PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
         if (player != nullptr)
         {
-            player->Root().SetPosition(NS::Vector3{0.0f, 5.0f, 0.0f});
+            player->TransformObj().SetPosition(NS::Vector3{0.0f, 5.0f, 0.0f});
         }
         return player;
     }
@@ -163,7 +163,7 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     const float distance = ParamsFields(player).at("エアダッシュの距離").get<float>();
     ASSERT_GT(AirDashFrames(player), 0);
     const float speed = DashSpeed(player);
-    const float startX = player->Root().Position().x;
+    const float startX = player->TransformObj().Position().x;
 
     MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
@@ -179,7 +179,7 @@ TEST(PlayerAirDashTest, PressFrameStartsTheDashAtTheDashSpeed)
     EXPECT_FALSE(player->IsAirDashing());
     EXPECT_EQ(player->AirDash().Remaining(), 0);
     // 距離はダッシュの速さで進む分。終わるフレームは残る速さで進むので、1 フレームで進む分だけずれてよい
-    EXPECT_NEAR(player->Root().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
+    EXPECT_NEAR(player->TransformObj().Position().x - startX, distance, speed * NS::OS::FrameTimer::FixedDelta());
 }
 
 // やり直しの後に一度も接地しないまま宙で動いても、その後の着地の音は鳴る
@@ -582,7 +582,7 @@ TEST(PlayerAirDashTest, GroundReboundStillLocksTheDashWhileTheCountIsBack)
     AddFrontWall(scene);
     // 床に立たせてから壁へダッシュする。接地の間は回数が戻るので、止めるのは操作なしの段だけ
     AddBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{50.0f, 0.5f, 50.0f});
-    player->Root().SetPosition(NS::Vector3{0.0f, 0.9f, 0.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, 0.9f, 0.0f});
     for (int frame = 0; frame < 5; ++frame)
     {
         player->Update(false);
@@ -858,9 +858,9 @@ TEST(PlayerAirDashTest, MovingStickExtendsTheReboundStopEvenWhenTheShortestIsOne
             tilt = NS::Vector3{0.8f, 0.0f, 0.6f};
         }
         MoveStick(player, tilt, 1.0f);
-        const NS::Vector3 before = player->Root().Position();
+        const NS::Vector3 before = player->TransformObj().Position();
         player->Update(false);
-        if (player->Root().Position() != before)
+        if (player->TransformObj().Position() != before)
         {
             break;
         }
@@ -924,7 +924,7 @@ TEST(PlayerAirDashTest, ReboundLeavingASteepSlopeKeepsTheChosenVelocity)
     ASSERT_NE(PlaceViewCamera(scene, NS::Vector3{0.0f, 6.34f, -5.0f}, NS::Vector3{0.0f, 5.0f, 0.0f}), nullptr);
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
-    player->Root().SetPosition(NS::Vector3{0.0f, 5.0f, 0.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, 5.0f, 0.0f});
     const NS::Quaternion tilt = NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitX, -NS::k_Pi / 4.0f);
     scene.Physics().AddBox(NS::MakeOBB(NS::Vector3{0.0f, 5.0f, 4.5f}, tilt, NS::Vector3{20.0f, 0.5f, 20.0f}),
                            NS::Phys::k_TerrainObjectLayer);
@@ -1003,13 +1003,13 @@ TEST(PlayerAirDashTest, PressInTheAirKeepsTheBallAtTheBodyCenter)
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_FALSE(player->Body().IsGrounded());
-    const float before = player->Root().Position().y;
+    const float before = player->TransformObj().Position().y;
 
     MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
     ASSERT_TRUE(player->IsCurled());
-    EXPECT_NEAR(player->Root().Position().y, before, 1.0e-3f);
+    EXPECT_NEAR(player->TransformObj().Position().y, before, 1.0e-3f);
 }
 
 // ダッシュの間も地形の反動の間も、玉は今の進む向きへ前転し、進んだ距離に合う角度だけ回る
@@ -1211,12 +1211,12 @@ TEST(PlayerAirDashTest, BounceArrowFollowsTheVelocityWhileTheDashSlidesAlongAWal
     player->Update(true);
     ASSERT_TRUE(player->IsAirDashing());
 
-    for (int frame = 0; frame < 30 && player->IsAirDashing() && player->Root().Position().z < 1.0f; ++frame)
+    for (int frame = 0; frame < 30 && player->IsAirDashing() && player->TransformObj().Position().z < 1.0f; ++frame)
     {
         player->Update(true);
     }
     ASSERT_TRUE(player->IsAirDashing());
-    const NS::Vector3 position = player->Root().Position();
+    const NS::Vector3 position = player->TransformObj().Position();
     ASSERT_NEAR(position.x, sideFace - radius, 2.0e-2f) << "横の壁に沿って滑っている";
     ASSERT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-2f) << "滑る間の速度は壁に沿う";
 
@@ -1234,7 +1234,7 @@ TEST(PlayerAirDashTest, WallBeyondTheDashReachShowsNoArrowBeforeOrDuringTheDash)
     PlayerActor* player = PlaceFloatingPlayer(scene);
     ASSERT_NE(player, nullptr);
     const float distance = ParamsFields(player).at("エアダッシュの距離").get<float>();
-    const float wallFace = player->Root().Position().z + distance * 1.5f;
+    const float wallFace = player->TransformObj().Position().z + distance * 1.5f;
     AddBox(scene, NS::Vector3{0.0f, 5.0f, wallFace + 0.5f}, NS::Vector3{20.0f, 20.0f, 0.5f});
 
     MoveStick(player, NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);

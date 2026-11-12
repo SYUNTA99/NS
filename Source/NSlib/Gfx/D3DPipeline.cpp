@@ -1,7 +1,8 @@
 #include "NSlib/Gfx/D3DPipeline.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 
 #include "NSlib/Core/Logger.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/detail/PipelineDepth.h"
 
 namespace NS
@@ -93,26 +94,24 @@ namespace NS
             }
         } // namespace
 
-        std::unique_ptr<D3DPipeline> D3DPipeline::Create(const D3DPipelineDesc& desc)
+        std::unique_ptr<D3DPipeline> D3DPipeline::Create(const D3DPipelineDesc& desc) noexcept
         {
-            return std::unique_ptr<D3DPipeline>(new D3DPipeline(desc));
-        }
-
-        D3DPipeline::D3DPipeline(const D3DPipelineDesc& desc) noexcept : m_desc(desc)
-        {
-            ID3D11Device* device = Gpu().device;
+            std::unique_ptr<D3DPipeline> resource(new D3DPipeline());
+            resource->m_desc = desc;
+            ID3D11Device* device = detail::CurrentDevice();
             if (device == nullptr)
             {
                 NS_LOG_ERROR(Graphics, "D3DPipeline: Device 不在のため構築不可");
-                return;
+                return resource;
             }
-            if (!CreateRasterizer(device, desc, m_rasterizer) || !CreateBlend(device, desc, m_blend) ||
-                !CreateDepthStencil(device, desc, m_depthStencil))
+            if (!CreateRasterizer(device, desc, resource->m_rasterizer) || !CreateBlend(device, desc, resource->m_blend) ||
+                !CreateDepthStencil(device, desc, resource->m_depthStencil))
             {
                 NS_LOG_ERROR(Graphics, "D3DPipeline: ステートオブジェクトの構築失敗");
-                return;
+                return resource;
             }
-            m_valid = true;
+            resource->m_valid = true;
+            return resource;
         }
 
         D3DPipeline::~D3DPipeline() = default;

@@ -1,23 +1,20 @@
 #pragma once
 
-#include "NSlib/Gfx/Render/SceneDepthCopy.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/Core/NonCopyable.h"
+#include "NSlib/Core/Types.h"
 #include "NSlib/Gfx/Render/EffectTypes.h"
+#include "NSlib/Gfx/Render/SceneDepthCopy.h"
 
 #pragma warning(push, 0)
 #include <Effekseer.h>
 #include <EffekseerRendererCommon/EffekseerRenderer.Renderer.h>
 #pragma warning(pop)
 
-#include "NSlib/Core/Types.h"
 #include <array>
-#include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 namespace NS
 {
@@ -28,9 +25,10 @@ namespace NS
 {
     namespace Gfx
     {
+        class D3DEffect;
         class D3DTexture;
 
-        //! Effekseer の再生と描画。D3DDevice の構築後に作り、Preload 後に再生する
+        //! Effekseer の再生と描画。D3DDevice の構築後に作り、D3DEffect を渡して再生する
         class EffectScene : public NonCopyable
         {
         public:
@@ -39,11 +37,8 @@ namespace NS
 
             [[nodiscard]] bool IsValid() const noexcept;
 
-            //! 同じ識別子でファイルの道が変わった場合は読み直す
-            [[nodiscard]] bool Preload(const EffectResourceDesc& asset) noexcept;
-            //! 読み込み済みのファイルと定義の道が一致しない場合は無効なハンドルを返す
-            [[nodiscard]] EffectHandle Play(const EffectResourceDesc& asset, const EffectPlayDesc& desc) noexcept;
-
+            //! エフェクトを再生し、操作用のハンドルを返す
+            [[nodiscard]] EffectHandle Play(const D3DEffect* effect, const EffectPlayDesc& desc) noexcept;
 
             //! ワールド座標の姿勢を設定する (次の Update で反映)
             void SetTransform(EffectHandle handle,
@@ -87,19 +82,13 @@ namespace NS
                 Effekseer::Backend::TextureRef effekseerTexture;
             };
 
-            bool PreloadFile(std::string_view id, const std::string& path, uint32 seed) noexcept;
-            std::unordered_map<std::string, uint32> m_seedBases;
-            std::unordered_map<std::string, std::string> m_resourcePaths;
-
             void PassDepth(const CameraData& camera) noexcept;
             [[nodiscard]] Effekseer::Backend::TextureRef DepthTextureFor(const SceneDepthCopy::CaptureResult& capture) noexcept;
             void FallBackWithoutDepth(std::string_view reason, uint32 width, uint32 height) noexcept;
 
             Effekseer::ManagerRef m_manager;
             EffekseerRenderer::RendererRef m_renderer;
-            std::unordered_map<std::string, Effekseer::EffectRef> m_effects;
-            std::unordered_set<std::string> m_warnedMissing;
-            std::unordered_map<std::string, uint32> m_playCounts;
+            std::unordered_map<std::string, uint32> m_playCounts; // D3DEffect::Path() ごとの、StopAll からの再生の回数
 
             SceneDepthCopy m_depth;
             std::array<DepthTextureRef, 2> m_depthTextures{};

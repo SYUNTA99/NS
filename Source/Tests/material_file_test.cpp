@@ -4,7 +4,6 @@
 #include "NSlib/CoreObject/Asset/Shader.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/Gfx/D3DMaterial.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -299,7 +298,7 @@ TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
 // 装置の無い場では作り直せない。前の D3DMaterial を残し、同じ道は同じマテリアルを返す
 TEST(MaterialFile, FailedRebuildKeepsThePreviousD3DMaterial)
 {
-    ASSERT_EQ(NS::Gfx::Gpu().device, nullptr);
+    ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
     const NS::Gfx::D3DMaterial* drawn = material->D3D();

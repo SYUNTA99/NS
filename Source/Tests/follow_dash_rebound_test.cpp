@@ -71,7 +71,7 @@ namespace
         dash.target->rebound.verticalLean = verticalLean;
         for (int frame = 0; frame < 60; ++frame)
         {
-            dash.target->Root().SetPosition(NS::Vector3{0.0f, 0.1f * static_cast<float>(frame), 0.0f});
+            dash.target->TransformObj().SetPosition(NS::Vector3{0.0f, 0.1f * static_cast<float>(frame), 0.0f});
             dash.Step(1);
         }
         return dash.Pose();
@@ -101,7 +101,7 @@ namespace
         {
             floor = AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
             Step(30);
-            target->Root().SetPosition(NS::Vector3{0.0f, 8.0f, 0.0f});
+            target->TransformObj().SetPosition(NS::Vector3{0.0f, 8.0f, 0.0f});
             target->rebound.rebounding = true;
         }
 
@@ -116,7 +116,7 @@ namespace
 
         [[nodiscard]] float FloorBelowCenter() const
         {
-            const NS::Vector3 root = target->Root().Position();
+            const NS::Vector3 root = target->TransformObj().Position();
             return BelowCenterOnScreen(Pose(), NS::Vector3{root.x, 0.0f, root.z});
         }
 
@@ -166,7 +166,7 @@ TEST(FollowDashRebound, LandingReturnsTheAddedAngle)
     fall.Step(60);
     ASSERT_GT(fall.AddedDegrees(), 1.0f);
 
-    fall.target->Root().SetPosition(NS::Vector3{0.0f, 1.0f, 0.0f});
+    fall.target->TransformObj().SetPosition(NS::Vector3{0.0f, 1.0f, 0.0f});
     fall.target->rebound.rebounding = false;
     fall.target->grounded = true;
     fall.target->velocity = NS::Vector3{};
@@ -185,7 +185,7 @@ TEST(FollowDashRebound, DoesNotReturnTheAddedAngleWhileFalling)
 
     for (int frame = 0; frame < 60; ++frame)
     {
-        fall.target->Root().SetPosition(NS::Vector3{0.0f, 8.0f - 0.1f * static_cast<float>(frame), 0.0f});
+        fall.target->TransformObj().SetPosition(NS::Vector3{0.0f, 8.0f - 0.1f * static_cast<float>(frame), 0.0f});
         fall.Step(1);
     }
     EXPECT_GE(fall.AddedDegrees(), before - 0.01f);
@@ -272,10 +272,10 @@ TEST(FollowDashRebound, ReboundTowardTheCameraKeepsTheDistance)
     float smallestGap = startGap;
     for (int frame = 1; frame <= 30; ++frame)
     {
-        dash.target->Root().SetPosition(toCamera * (14.0f / 60.0f) * static_cast<float>(frame));
+        dash.target->TransformObj().SetPosition(toCamera * (14.0f / 60.0f) * static_cast<float>(frame));
         dash.Step(1);
         const NS::CameraPose pose = dash.Pose();
-        NS::Vector3 gap = pose.position - dash.target->Root().Position();
+        NS::Vector3 gap = pose.position - dash.target->TransformObj().Position();
         gap.y = 0.0f;
         smallestGap = std::min(smallestGap, gap.Length());
     }
@@ -322,7 +322,7 @@ TEST(FollowDashRebound, LookInsideTheWallDoesNotCollapseTheDistance)
     float shortest = distance;
     for (int frame = 1; frame <= 40; ++frame)
     {
-        dash.target->Root().SetPosition(NS::Vector3{0.0f, 0.25f * static_cast<float>(frame), 0.0f});
+        dash.target->TransformObj().SetPosition(NS::Vector3{0.0f, 0.25f * static_cast<float>(frame), 0.0f});
         dash.Step(1);
         shortest = std::min(shortest, DistanceOf(dash.Pose()));
     }
@@ -366,7 +366,7 @@ TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
     back.y = 0.0f;
     back.Normalize();
     ASSERT_GT(std::fabs(back.z), 0.99f);
-    const float headAboveRoot = open.target.y - dash.target->Root().Position().y;
+    const float headAboveRoot = open.target.y - dash.target->TransformObj().Position().y;
 
     // 根が 4.5 m まで上がった時の頭の 0.2 m 上に下の面がある天井。自機の真上からカメラの側へ 1.5 m 張り出す
     const float topRoot = 4.5f;
@@ -381,7 +381,7 @@ TEST(FollowDashRebound, CeilingAboveTheViewLineDoesNotShortenTheDistance)
     float shortest = distance;
     for (int frame = 1; frame <= 30; ++frame)
     {
-        dash.target->Root().SetPosition(NS::Vector3{0.0f, topRoot * static_cast<float>(frame) / 30.0f, 0.0f});
+        dash.target->TransformObj().SetPosition(NS::Vector3{0.0f, topRoot * static_cast<float>(frame) / 30.0f, 0.0f});
         dash.Step(1);
         shortest = std::min(shortest, DistanceOf(dash.Pose()));
     }

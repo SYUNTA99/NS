@@ -32,7 +32,7 @@ namespace
         static constexpr float k_Speed = 6.0f;
 
     protected:
-        void BodyStep() override { Root().ShiftPosition(NS::Vector3{k_Speed * NS::GetFrameDelta(this), 0.0f, 0.0f}); }
+        void BodyStep() override { TransformObj().ShiftPosition(NS::Vector3{k_Speed * NS::GetFrameDelta(this), 0.0f, 0.0f}); }
     };
 
     void PlaceBodies(NS::Scene& scene, bool withPlayer)
@@ -81,13 +81,13 @@ TEST(ActorBodyTime, ActorAtScaleTwoMovesTwoStepsInOne)
         slowActor->Update();
         slowActor->Update();
         fastActor->Update();
-        const NS::Vector3 slow = slowActor->Root().Position();
-        const NS::Vector3 fastPosition = fastActor->Root().Position();
+        const NS::Vector3 slow = slowActor->TransformObj().Position();
+        const NS::Vector3 fastPosition = fastActor->TransformObj().Position();
         EXPECT_NEAR(fastPosition.x, slow.x, 1.0e-3f) << step;
         EXPECT_NEAR(fastPosition.y, slow.y, 1.0e-3f) << step;
         EXPECT_NEAR(fastPosition.z, slow.z, 1.0e-3f) << step;
     }
-    EXPECT_GT(slowActor->Root().Position().x, 0.5f);
+    EXPECT_GT(slowActor->TransformObj().Position().x, 0.5f);
     EXPECT_EQ(NS::GetFrameDelta(player), NS::OS::FrameTimer::FixedDelta());
 }
 

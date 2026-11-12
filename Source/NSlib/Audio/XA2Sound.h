@@ -16,18 +16,18 @@ namespace NS
     {
         class AudioDevice;
 
-        //! @brief 1 本の WAV の音を持ち、鳴らし切る
+        //! @brief 1 本の WAV の音を持つ。鳴らすのは SoundScene
         //! @details 読めるのは PCM・IEEE float・MS-ADPCM の WAV。MS-ADPCM は 1 ブロックが 32〜512 標本の物だけ
         //!          (XAudio2 の範囲)。ファイルが無い・WAV でない・形式の値が壊れている・範囲の外の MS-ADPCM の時は
         //!          ERROR を出して IsValid() が false になる。読めても装置が無効な時は、
         //!          ERROR を出さずに IsValid() が false になる (音を作らない設定は失敗でないため)
-        class SoundClip : private NonCopyable
+        class XA2Sound : private NonCopyable
         {
         public:
             //! @param device 音を作る装置。nullptr でもよく、その時は無効な装置と同じに扱う
             //! @param path WAV のファイルの道筋 (UTF-8)
-            SoundClip(AudioDevice* device, std::string_view path);
-            ~SoundClip();
+            XA2Sound(AudioDevice* device, std::string_view path);
+            ~XA2Sound();
 
             //! 鳴らせる音か
             [[nodiscard]] bool IsValid() const noexcept
@@ -35,10 +35,7 @@ namespace NS
                 return m_effect != nullptr;
             }
 
-            //! 1 回鳴らし切る。音量が非数か負なら 0 にする。無効な音では何もしない
-            void Play(float volume);
-
-            //! SoundLoop がループの声を作る時に使う。無効な音では nullptr
+            //! SoundScene がソースボイスを作る時に使う。無効な音では nullptr
             [[nodiscard]] DirectX::SoundEffect* Effect() const noexcept
             {
                 return m_effect.get();

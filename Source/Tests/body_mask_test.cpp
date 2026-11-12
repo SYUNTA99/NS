@@ -7,7 +7,6 @@
 #include "NSlib/Gfx/D3DRenderTarget.h"
 #include "NSlib/Gfx/Render/ScreenPasses.h"
 #include "NSlib/Gfx/D3DTexture.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/Window.h"
@@ -37,7 +36,7 @@ namespace
         TestBoxActor* box = SpawnFromActorFile<TestBoxActor>(scene, "TestBoxActor");
         if (box != nullptr)
         {
-            box->Root().SetPosition(position);
+            box->TransformObj().SetPosition(position);
         }
         return box;
     }
@@ -58,13 +57,13 @@ namespace
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         desc.MiscFlags = 0;
         Microsoft::WRL::ComPtr<ID3D11Texture2D> staging;
-        if (FAILED(NS::Gfx::Gpu().device->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
+        if (FAILED(NS::Gfx::D3DDevice::Current()->Native()->CreateTexture2D(&desc, nullptr, staging.GetAddressOf())))
         {
             return {};
         }
-        NS::Gfx::Gpu().context->CopyResource(staging.Get(), texture);
+        NS::Gfx::D3DDevice::Current()->NativeContext()->CopyResource(staging.Get(), texture);
         D3D11_MAPPED_SUBRESOURCE mapped{};
-        if (FAILED(NS::Gfx::Gpu().context->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
+        if (FAILED(NS::Gfx::D3DDevice::Current()->NativeContext()->Map(staging.Get(), 0, D3D11_MAP_READ, 0, &mapped)))
         {
             return {};
         }
@@ -74,7 +73,7 @@ namespace
             const NS::uint8* row = static_cast<const NS::uint8*>(mapped.pData) + y * mapped.RowPitch;
             pixels.insert(pixels.end(), row, row + desc.Width);
         }
-        NS::Gfx::Gpu().context->Unmap(staging.Get(), 0);
+        NS::Gfx::D3DDevice::Current()->NativeContext()->Unmap(staging.Get(), 0);
         return pixels;
     }
 

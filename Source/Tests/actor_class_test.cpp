@@ -85,16 +85,16 @@ TEST(ActorClass, LightShinesAlongItsRotation)
 
     NS::Vector3 initial{-0.3f, -1.0f, -0.2f};
     initial.Normalize();
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).x, initial.x, 1.0e-5f);
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).y, initial.y, 1.0e-5f);
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).z, initial.z, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).x, initial.x, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).y, initial.y, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).z, initial.z, 1.0e-5f);
 
     const NS::Quaternion turned = NS::Quaternion::CreateFromAxisAngle(NS::Vector3::UnitY, 1.0f);
-    light.Root().SetRotation(turned);
+    light.TransformObj().SetRotation(turned);
     const NS::Vector3 expected = NS::Vector3::Transform(NS::Vector3::UnitZ, turned);
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).x, expected.x, 1.0e-5f);
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).y, expected.y, 1.0e-5f);
-    EXPECT_NEAR(sun->Direction(light.Root().WorldMatrix()).z, expected.z, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).x, expected.x, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).y, expected.y, 1.0e-5f);
+    EXPECT_NEAR(sun->Direction(light.TransformObj().WorldMatrix()).z, expected.z, 1.0e-5f);
 }
 
 TEST(ActorClass, PlayerBuildsWholeCompositionInInit)

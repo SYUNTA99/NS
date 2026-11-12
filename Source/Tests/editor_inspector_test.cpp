@@ -552,13 +552,13 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     editor.PlaceItem(*NS::Editor::FindPlacementItem("SphereProbeActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
-    ASSERT_EQ(prop->Root().Scale(), NS::Vector3::One);
+    ASSERT_EQ(prop->TransformObj().Scale(), NS::Vector3::One);
     const NS::ClassObjInfo* row = RowOf(prop, prop->CollisionClassObj());
     ASSERT_NE(row, nullptr);
     scene.OnUpdate();
 
     // 中心から横へ 2 ずらした真上。半径 3 の球なら中心より上に当たる
-    const NS::Vector3 above = prop->Root().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
+    const NS::Vector3 above = prop->TransformObj().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
     const std::optional<float> before = DownHit(scene, above);
     EXPECT_TRUE(!before.has_value() || *before > 10.0f);
 
@@ -593,7 +593,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
-    const NS::ClassObjInfo* row = RowOf(prop, &prop->Root());
+    const NS::ClassObjInfo* row = RowOf(prop, &prop->TransformObj());
     ASSERT_NE(row, nullptr);
     ASSERT_FALSE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
 
@@ -601,7 +601,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     frames.Frame();
     frames.Frame();
     const ImGuiID input =
-        ImHashStr("##value", 0, ImHashStr("X", 0, FieldRowId(*row, &prop->Root(), NS::k_ScaleFieldName)));
+        ImHashStr("##value", 0, ImHashStr("X", 0, FieldRowId(*row, &prop->TransformObj(), NS::k_ScaleFieldName)));
     ImGui::ActivateItemByID(input);
     GImGui->NavNextActivateFlags = ImGuiActivateFlags_PreferInput;
     frames.Frame();
@@ -614,7 +614,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     io.AddKeyEvent(ImGuiKey_Enter, false);
     frames.Frame();
 
-    EXPECT_FLOAT_EQ(prop->Root().Scale().x, 2.0f);
+    EXPECT_FLOAT_EQ(prop->TransformObj().Scale().x, 2.0f);
     EXPECT_TRUE(prop->IsSceneOverride(row->key, NS::k_ScaleFieldName));
     const nlohmann::json saved = NS::ActorToJson(prop);
     const nlohmann::json* transform = NS::ClassObjFields(saved, row->key);
@@ -639,7 +639,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     const NS::Mesh* cubeMesh = model->GetMesh();
 
     // 坂の低い側の真上。立方体の上面と坂の面で距離が違う
-    const NS::Vector3 above = parts->Root().Position() + NS::Vector3{0.0f, 2.0f, -0.4f};
+    const NS::Vector3 above = parts->TransformObj().Position() + NS::Vector3{0.0f, 2.0f, -0.4f};
     const std::optional<float> cubeHit = DownHit(scene, above);
     ASSERT_TRUE(cubeHit.has_value());
 
@@ -689,12 +689,12 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     NS::SceneActor* follower = editor.SelectedActor();
     ASSERT_NE(follower, nullptr);
     ASSERT_NE(follower, source);
-    ASSERT_EQ(follower->Root().Scale(), NS::Vector3::One);
-    follower->Root().SetPosition(source->Root().Position() + NS::Vector3{5.0f, 0.0f, 0.0f});
+    ASSERT_EQ(follower->TransformObj().Scale(), NS::Vector3::One);
+    follower->TransformObj().SetPosition(source->TransformObj().Position() + NS::Vector3{5.0f, 0.0f, 0.0f});
     scene.OnUpdate();
 
     // 中心から横へ 2 ずらした真上。半径 3 の球なら中心より上に当たる
-    const NS::Vector3 above = follower->Root().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
+    const NS::Vector3 above = follower->TransformObj().Position() + NS::Vector3{2.0f, 10.0f, 0.0f};
     const std::optional<float> before = DownHit(scene, above);
     EXPECT_TRUE(!before.has_value() || *before > 10.0f);
 
@@ -829,12 +829,25 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
     LevelEditorController editor(scene);
     const nlohmann::json before = scene.ToJson();
 
-    ASSERT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
-    EXPECT_EQ(editor.SceneMusic().name, "bgm_course");
+    const float distance = editor.SceneSoundFullVolumeDistance();
+
+    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance));
+    EXPECT_EQ(editor.SceneMusic(), "Assets/Sounds/bgm_course.wav");
     EXPECT_FLOAT_EQ(editor.SceneMusicVolume(), 0.4f);
-    EXPECT_TRUE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, 0.4f));
-    EXPECT_FALSE(editor.SetSceneMusic(NS::SoundName{"bgm_course"}, std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance));
+    EXPECT_FALSE(
+        editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", std::numeric_limits<float>::quiet_NaN(), distance));
     EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+
+    // 音の届く距離も同じ履歴に積む。0 以下と非数は受けない
+    EXPECT_FALSE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, 0.0f));
+    EXPECT_FALSE(
+        editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, std::numeric_limits<float>::quiet_NaN()));
+    ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance + 5.0f));
+    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance + 5.0f);
+    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 2u);
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance);
 
     ASSERT_TRUE(editor.Editor().PerformUndo());
     EXPECT_EQ(scene.ToJson(), before);

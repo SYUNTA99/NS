@@ -7,10 +7,12 @@ namespace GL
 {
     namespace Player
     {
-        void PlayerSounds::Preload(const NS::IGetAudio* audio)
+        PlayerSounds::PlayerSounds()
         {
-            NS_ASSERT(Game, audio != nullptr, "PlayerSounds::Preload: 音を鳴らすアクターが空");
-            NS::PreloadSounds(audio, {m_landSound, m_goalSound, m_fallSound, m_reboundSound});
+            NS::LoadAssetField(m_landSound, "Assets/Sounds/land.wav");
+            NS::LoadAssetField(m_goalSound, "Assets/Sounds/goal.wav");
+            NS::LoadAssetField(m_fallSound, "Assets/Sounds/fall.wav");
+            NS::LoadAssetField(m_reboundSound, "Assets/Sounds/rebound.wav");
         }
 
         void PlayerSounds::AllowLand() noexcept

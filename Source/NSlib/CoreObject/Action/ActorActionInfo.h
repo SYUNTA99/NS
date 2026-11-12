@@ -3,7 +3,6 @@
 #include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Curve.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #pragma warning(push, 0)
 #include "ThirdParty/nlohmann/json.hpp"
@@ -36,18 +35,20 @@ namespace NS
         NS_REFLECT_END_VALUE()
     };
 
-    //! 持ち主の Sound で効果音を鳴らす
+    //! 持ち主のアクターで効果音を鳴らす
     struct ActionSoundInfo
     {
         std::string_view typeName = "Sound";
         std::string_view label = "効果音";
 
-        SoundName sound{};   // 鳴らす音
-        float volume = 1.0f; // 音量 0〜1
+        Sound* sound = nullptr; // 鳴らす音
+        float volume = 1.0f;        // 音量 0〜1
+        bool positional = false;    // 持ち主の位置から鳴らす場合 true。偽なら距離と向きに関わらず同じに鳴る
 
         NS_REFLECT_BEGIN(ActionSoundInfo, void)
         NS_FIELD(sound, "音")
         NS_FIELD(volume, "音量")
+        NS_FIELD(positional, "位置から鳴らす")
         NS_REFLECT_END_VALUE()
     };
 

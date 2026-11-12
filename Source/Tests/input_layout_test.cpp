@@ -1,6 +1,6 @@
 #include "NSlib/Core/Geometry/Vertex.h"
 #include "NSlib/Core/Types.h"
-#include "NSlib/Gfx/D3DGlobal.h"
+#include "NSlib/Gfx/D3DDevice.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DStaticMesh.h"
 #include "NSlib/Core/Windows/Filesystem.h"

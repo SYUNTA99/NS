@@ -41,21 +41,29 @@ namespace NS
     {
         //! skybox cubemap のディレクトリまたは .dds の ContentRoot 配下相対パス。空文字なら skybox を描かない
         std::string skybox;
-        //! コースの曲の名前。名前が空なら曲は無い
-        SoundName music;
+        //! コースの曲の素材。空なら曲は無い
+        Sound* music = nullptr;
         //! 曲の音量 (0〜1)。曲が効果音より小さく鳴り、動きの音を埋もれさせないようにする。
         //! 0〜1 に収めるのは ClampMusicVolume で、ReadSceneEnvironment とエディタの SetSceneMusic が呼ぶ
         float musicVolume = 0.5f;
+        //! 位置から鳴らす音が、そのままの大きさで届く距離 (m)。これより離れると距離に反比例して小さくなる。
+        //! 使える値にするのは ValidSoundFullVolumeDistance。鳴らす側へは Scene::SetEnvironment が渡す
+        float soundFullVolumeDistance = 10.0f;
 
         NS_REFLECT_BEGIN(SceneEnvironment, void)
         NS_FIELD(skybox, "skybox", "スカイボックス")
         NS_FIELD(music, "music", "曲")
         NS_FIELD(musicVolume, "musicVolume", "曲の音量")
+        NS_FIELD(soundFullVolumeDistance, "soundFullVolumeDistance", "音がそのままの大きさで届く距離")
         NS_REFLECT_END_VALUE()
     };
 
     //! 曲の音量を 0〜1 に収める。非数と無限大は SceneEnvironment の既定の音量にする
     [[nodiscard]] float ClampMusicVolume(float volume) noexcept;
+
+    //! 位置から鳴らす音の届く距離として使える値にする。非数・無限大・0 以下は SceneEnvironment の既定の距離にする。
+    //! ReadSceneEnvironment と Scene::SetEnvironment が呼ぶ
+    [[nodiscard]] float ValidSoundFullVolumeDistance(float meters) noexcept;
 
     //! environment を読む。無い欄と壊れた欄は SceneEnvironment の既定
     [[nodiscard]] SceneEnvironment ReadSceneEnvironment(const nlohmann::json& scene);

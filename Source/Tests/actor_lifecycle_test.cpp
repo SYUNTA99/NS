@@ -56,7 +56,7 @@ namespace
     NS::Vector3 InterpolatedStart(const NS::SceneActor* actor)
     {
         NS_ASSERT(Game, actor != nullptr, "InterpolatedStart: 渡したアクターか部品が無い");
-        return actor->Root().InterpolatedWorldMatrix(0.0f).Translation();
+        return actor->TransformObj().InterpolatedWorldMatrix(0.0f).Translation();
     }
 
     class LifeProbeActor final : public NS::SceneActor
@@ -220,8 +220,8 @@ TEST(ActorLifecycle, DisappearingOneActorKeepsTheOtherRegistered)
     GL::Level::GoalActor* actorGoal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     NS::MapPartsActor* other = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor");
     GL::Level::GoalActor* otherGoal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
-    other->Root().SetPosition({10.0f, 0.0f, 0.0f});
-    otherGoal->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    other->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
+    otherGoal->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     const std::size_t renderables = scene.GetSceneRenderer()->EnabledModelCount();
     const std::size_t sensors = EnabledSensorCount(scene);
@@ -256,7 +256,7 @@ TEST(ActorLifecycle, AppearAgainKeepsRegistrationOrder)
     NS::Scene scene;
     GL::Level::GoalActor* first = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
     GL::Level::GoalActor* second = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
-    second->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    second->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     const std::vector<NS::HitSensor*> sensors = scene.HitSensors().Sensors();
     ASSERT_GE(sensors.size(), 2u);
@@ -301,7 +301,7 @@ TEST(ActorLifecycle, EveryWayInGivesTheCollisionRightAway)
     EXPECT_TRUE(HitsDownAt(scene, 0.0f));
 
     NS::SceneActor* placed = SpawnFromActorFile<LifeBoxActor>(scene, "LifeBoxActor", "Placed");
-    placed->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    placed->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_TRUE(HitsDownAt(scene, 10.0f));
 
@@ -408,13 +408,13 @@ TEST(ActorLifecycle, MovedCollisionFollowsOnTheNextStep)
     NS::SceneActor* actor = scene.SpawnFromJson(LifeBoxJson(50, "Box", 0.0f));
     ASSERT_NE(actor, nullptr);
 
-    actor->Root().SetPosition({10.0f, 0.0f, 0.0f});
+    actor->TransformObj().SetPosition({10.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_FALSE(HitsDownAt(scene, 0.0f));
     EXPECT_TRUE(HitsDownAt(scene, 10.0f));
 
     scene.SetSimulationEnabled(false);
-    actor->Root().SetPosition({20.0f, 0.0f, 0.0f});
+    actor->TransformObj().SetPosition({20.0f, 0.0f, 0.0f});
     scene.OnUpdate();
     EXPECT_FALSE(HitsDownAt(scene, 10.0f));
     EXPECT_TRUE(HitsDownAt(scene, 20.0f));

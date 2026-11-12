@@ -82,7 +82,7 @@ namespace GL
             }
             start.reaction->AddRun(std::make_unique<BodyShakeRun>(
                 BodyShakeDesc{.axis = start.cameraRight,
-                              .amplitude = NS::ScreenPixelsToMeters(amplitudePixels, *pose, actor->Root().Position()),
+                              .amplitude = NS::ScreenPixelsToMeters(amplitudePixels, *pose, actor->TransformObj().Position()),
                               .length = start.length,
                               .seed = start.seed,
                               .firstSign = firstSign,
@@ -98,7 +98,7 @@ namespace GL
             }
             // 裏まで届くのに長さを使い切ると震えが残らないので、届くのは長さの半分まで
             start.reaction->AddRun(std::make_unique<BodyTremorRun>(
-                BodyTremorDesc{.contactOffset = start.position - start.owner.actor->Root().Position(),
+                BodyTremorDesc{.contactOffset = start.position - start.owner.actor->TransformObj().Position(),
                                .amplitudePixels = amplitudePixels,
                                .amplitudeRatio = radiusRatio,
                                .reachFrames = std::min(reachFrames, start.length / 2),

@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/System/PadRumbleDirector.h"
 #include "NSlib/CoreObject/System/ScreenFlashDirector.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/D3DEffect.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
 #include "NSlib/Gfx/Render/EffectScene.h"
 #include "TestSpawn.h"
@@ -100,14 +101,13 @@ namespace
 
             m_scene.Fade().BeginOut(10.0f);
 
-            const NS::Gfx::EffectResourceDesc stream{
-                "scene-step-stream",
-                "stream_life10",
-                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Source/Tests/data/effects/stream_life10.efkefc"),
-                1};
+            m_streamEffect = NS::Gfx::D3DEffect::LoadFromFile(
+                NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(),
+                                            "Source/Tests/data/effects/stream_life10.efkefc"),
+                1u);
+            ASSERT_NE(m_streamEffect, nullptr);
             NS::Gfx::EffectScene* effects = m_scene.GetEffectScene();
-            ASSERT_TRUE(effects->Preload(stream));
-            m_effect = effects->Play(stream, NS::Gfx::EffectPlayDesc{});
+            m_effect = effects->Play(m_streamEffect.get(), NS::Gfx::EffectPlayDesc{});
             ASSERT_TRUE(m_effect.IsValid());
 
             m_scene.ScreenFlash().Start(holder, 1000, 1.0f);
@@ -162,6 +162,7 @@ namespace
         NS::Scene m_scene;
         SensorStayActor* m_sensorA = nullptr;
         SensorStayActor* m_sensorB = nullptr;
+        std::unique_ptr<NS::Gfx::D3DEffect> m_streamEffect;
         NS::Gfx::EffectHandle m_effect{};
     };
 } // namespace

@@ -6,7 +6,6 @@
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
-#include "NSlib/Gfx/D3DGlobal.h"
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DRenderTarget.h"
@@ -27,6 +26,8 @@ namespace NS
 {
     namespace Gfx
     {
+        D3DDevice* D3DDevice::s_instance = nullptr;
+
         namespace
         {
             bool TryCreateDeviceAndSwapChain(HWND hwnd,
@@ -155,6 +156,11 @@ namespace NS
 
         D3DDevice::D3DDevice(const D3DDeviceDesc& desc, OS::Window& window) noexcept
         {
+            if (s_instance != nullptr)
+            {
+                NS_LOG_ERROR(Graphics, "D3DDevice は同時に複数構築できない");
+                return;
+            }
             m_window = &window;
             m_vsync = desc.vsync;
             m_clearColor = desc.clearColor;
@@ -189,43 +195,19 @@ namespace NS
                 return;
             }
 
-            // 単一 device 前提。既に別 D3DDevice が公開済みならグローバルを上書きするため検知する
-            if (Gpu().device != nullptr)
-            {
-                NS_LOG_ERROR(Graphics,
-                             "D3DDevice を同時に複数構築している (単一 device 前提、 グローバルが上書きされる)");
-            }
-            // backbuffer D3DTexture 構築より前にグローバル公開する。構築が Gpu() を引くため
-            Gpu().device = m_device.Get();
-            Gpu().context = m_context.Get();
-
             SuppressAltEnter(m_swapchain.Get(), hwnd);
 
-            // コンストラクタは friend の D3DDevice にだけ開いているので、make_unique では呼べない
-            m_commands.reset(new D3DCommandList(m_context.Get()));
-
+            if (!InitializeResources())
+            {
+                return;
+            }
             if (!BuildBackbufferTargets(m_swapchain.Get(), m_backbuffer, m_depth))
             {
                 NS_LOG_ERROR(Graphics, "backbuffer / depth D3DTexture の構築失敗");
+                s_instance = nullptr;
                 return;
             }
             m_boundSize = m_backbuffer->Size();
-
-            // D3DCommonStates の private コンストラクタは make_unique から呼べない。例外を使わず nothrow new で構築し
-            // 確保できたかは参照先の有無で判定する
-            m_states.reset(new (std::nothrow) D3DCommonStates(m_device.Get()));
-            if (!m_states)
-            {
-                NS_LOG_ERROR(Graphics, "D3DCommonStates の確保失敗");
-                return;
-            }
-
-            // 共通 D3DPipeline を 1 回だけ生成して使い回す
-            if (!detail::CreateCommonPipelines(m_commonPipelines, m_occludedPipelines))
-            {
-                NS_LOG_ERROR(Graphics, "共通 D3DPipeline の構築失敗");
-                return;
-            }
 
             window.SetResizeCallback([this](Size2D rs) { this->Resize(rs); });
             m_resizeCallbackRegistered = true;
@@ -240,6 +222,67 @@ namespace NS
                          desc.enableDebugLayer);
         }
 
+        D3DDevice::D3DDevice(const D3DDeviceDesc& desc, D3D_DRIVER_TYPE driverType) noexcept
+            : m_clearColor(desc.clearColor), m_vsync(desc.vsync)
+        {
+            if (s_instance != nullptr)
+            {
+                NS_LOG_ERROR(Graphics, "D3DDevice は同時に複数構築できない");
+                return;
+            }
+            UINT flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+            if (desc.enableDebugLayer)
+            {
+                flags |= D3D11_CREATE_DEVICE_DEBUG;
+            }
+            const D3D_FEATURE_LEVEL levels[]{D3D_FEATURE_LEVEL_11_0};
+            const auto create = [&](UINT createFlags) {
+                return ::D3D11CreateDevice(nullptr, driverType, nullptr, createFlags, levels,
+                                          static_cast<UINT>(std::size(levels)), D3D11_SDK_VERSION,
+                                          m_device.GetAddressOf(), nullptr, m_context.GetAddressOf());
+            };
+            HRESULT hr = create(flags);
+            if (FAILED(hr) && desc.enableDebugLayer)
+            {
+                NS_LOG_WARN(Graphics, "Debug Layer なしでウィンドウのない D3DDevice の構築を再試行");
+                m_device.Reset();
+                m_context.Reset();
+                flags &= ~static_cast<UINT>(D3D11_CREATE_DEVICE_DEBUG);
+                hr = create(flags);
+            }
+            if (FAILED(hr))
+            {
+                NS_LOG_ERROR(Graphics, "ウィンドウのない D3DDevice の構築失敗 (hr=0x{:X})", static_cast<uint>(hr));
+                return;
+            }
+            m_valid = InitializeResources();
+        }
+
+        bool D3DDevice::InitializeResources() noexcept
+        {
+            // private コンストラクタは make_unique から呼べない
+            m_commands.reset(new (std::nothrow) D3DCommandList(m_context.Get()));
+            m_states.reset(new (std::nothrow) D3DCommonStates(m_device.Get()));
+            if (!m_commands || !m_states || !m_states->IsValid())
+            {
+                NS_LOG_ERROR(Graphics, "描画コマンドと共通サンプラーの構築失敗");
+                return false;
+            }
+            // 生成関数が所有者から装置を取るため、共通パイプラインを作る前に公開する
+            s_instance = this;
+            if (!detail::CreateCommonPipelines(m_commonPipelines, m_occludedPipelines))
+            {
+                NS_LOG_ERROR(Graphics, "共通 D3DPipeline の構築失敗");
+                s_instance = nullptr;
+                return false;
+            }
+            return true;
+        }
+
+        D3DDevice* D3DDevice::Current() noexcept { return s_instance; }
+        ID3D11Device* D3DDevice::Native() const noexcept { return m_device.Get(); }
+        ID3D11DeviceContext* D3DDevice::NativeContext() const noexcept { return m_context.Get(); }
+
         D3DDevice::~D3DDevice()
         {
             // コンストラクタで登録したリサイズ購読を解除し、Window 側の発火で無効参照を踏むのを防ぐ
@@ -247,10 +290,9 @@ namespace NS
             {
                 m_window->SetResizeCallback(nullptr);
             }
-            // 自分が公開したグローバルだけを戻す。別 D3DDevice が上書きしている場合は触らない
-            if (m_device && Gpu().device == m_device.Get())
+            if (s_instance == this)
             {
-                Gpu() = {};
+                s_instance = nullptr;
             }
             if (m_context)
             {
@@ -258,7 +300,7 @@ namespace NS
                 m_context->Flush();
             }
             // この後 m_states / m_backbuffer / m_depth 等のメンバ破棄が宣言の逆順で走るが、
-            // Gpu() は既に空のため各リソースのデストラクタから Gpu() を参照しないこと
+            // 現在の装置の参照は既に空のため、各リソースのデストラクタは装置を取得しないこと
         }
 
         bool D3DDevice::IsValid() const noexcept { return m_valid; }
@@ -329,7 +371,7 @@ namespace NS
             desc.MiscFlags = 0u;
 
             ComPtr<ID3D11Texture2D> staging;
-            ID3D11Device* device = Gpu().device;
+            ID3D11Device* device = m_device.Get();
             if (device == nullptr)
             {
                 return false;
@@ -473,7 +515,7 @@ namespace NS
 
         void D3DDevice::Resize(Size2D size) noexcept
         {
-            if (!IsValid())
+            if (!IsValid() || !m_swapchain)
             {
                 return;
             }

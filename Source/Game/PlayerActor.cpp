@@ -29,7 +29,7 @@
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/ClassObjs/Shadow.h"
-#include "NSlib/CoreObject/ClassObjs/Sound.h"
+#include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -114,7 +114,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_appearance);
     CreateClassObj(m_body);
     // シーンは OnInit の前に決まっている。当たりは作る時に地形と根を受け取り、持ち主を持たない
-    CreateClassObj(m_collider, GetPhysicsScene(), &Root());
+    CreateClassObj(m_collider, GetPhysicsScene(), &TransformObj());
     CreateClassObj(m_input);
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
@@ -123,8 +123,9 @@ void PlayerActor::OnInit()
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
     CreateClassObj(m_worldLines);
-    CreateClassObj(m_effect);
-    CreateClassObj(m_sound);
+    // エフェクトと音の部品は、置き場を問う先 (自分の IGet〜) を作る時に受ける。エフェクトは追従する先の姿勢も受ける
+    CreateClassObj(m_effect, this, &TransformObj());
+    CreateClassObj(m_sound, this);
     CreateClassObj(m_playerSounds);
     // 着地は出来事の受け手が頼むだけで、鳴らすのは閃光と同じ VisualStep。跳ぶ音は動作 Jump の項目が鳴らす
     m_playerEvents.onJump.Subscribe([this] { m_playerSounds->AllowLand(); });
@@ -375,7 +376,6 @@ void PlayerActor::OnAssetsLoaded()
     {
         m_appearance->Uncurl(m_model.get());
     }
-    m_playerSounds->Preload(this);
 }
 
 void PlayerActor::OnEndPlay()
@@ -428,7 +428,7 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
     }
     if (NS::IsMsg<GL::Level::MsgCourseStart>(msg))
     {
-        m_courseStartPosition = Root().Position();
+        m_courseStartPosition = TransformObj().Position();
         return true;
     }
     if (NS::IsMsg<GL::Level::MsgCourseRestart>(msg))
@@ -450,7 +450,7 @@ void PlayerActor::Restart() noexcept
     // 出ている自機は Appear が前の位置をそろえないので、戻した直後の 1 歩が元の位置から補間されないように前の位置も書く
     if (m_courseStartPosition.has_value())
     {
-        Root().Teleport(*m_courseStartPosition);
+        TransformObj().Teleport(*m_courseStartPosition);
     }
     ResetState();
     ResetHealth();

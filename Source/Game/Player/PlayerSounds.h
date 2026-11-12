@@ -1,8 +1,8 @@
 #pragma once
 
 #include "NSlib/CoreObject/Object.h"
+#include "NSlib/CoreObject/Reflection/AssetField.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
-#include "NSlib/CoreObject/Reflection/SoundName.h"
 
 #include <limits>
 
@@ -24,8 +24,8 @@ namespace GL
         class PlayerSounds : public NS::Object
         {
         public:
-            //! 鳴らす名前の音を先に読む
-            void Preload(const NS::IGetAudio* audio);
+            //! 音の欄は、作る時に既定の道の素材を AssetManager::Get() から引く
+            PlayerSounds();
 
             //! 足場を離れたフレーム・跳んだフレーム・エアダッシュを始めたフレームに呼ぶ。次の着地の音を鳴らせるようにする
             void AllowLand() noexcept;
@@ -65,14 +65,14 @@ namespace GL
             NS_REFLECT_END()
 
         private:
-            NS::SoundName m_landSound{"land"};
+            NS::Sound* m_landSound = nullptr;
             float m_landVolume = 0.5f;
             float m_landMinInterval = 0.15f; // 着地の音を鳴らしてから、次を鳴らせるまでの秒
-            NS::SoundName m_goalSound{"goal"};
+            NS::Sound* m_goalSound = nullptr;
             float m_goalVolume = 0.9f;
-            NS::SoundName m_fallSound{"fall"};
+            NS::Sound* m_fallSound = nullptr;
             float m_fallVolume = 0.8f;
-            NS::SoundName m_reboundSound{"rebound"};
+            NS::Sound* m_reboundSound = nullptr;
             float m_reboundVolume = 0.7f;
 
             bool m_landRequested = false;

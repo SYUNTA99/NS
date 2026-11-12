@@ -1,33 +1,48 @@
 #include "NSlib/CoreObject/IGet/IGetAudio.h"
 
 #include "NSlib/Core/Assert.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
-#include "NSlib/CoreObject/ClassObjs/Sound.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
+#include "NSlib/CoreObject/ClassObjs/SoundObj.h"
 
 namespace NS
 {
-    void PreloadSounds(const IGetAudio* user, std::initializer_list<SoundName> names)
+    uint32 PlaySound(const IGetAudio* user, const Sound* sound, float volume, bool loop)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        Sound* sound = user->GetSound();
-        if (sound == nullptr)
+        SoundObj* part = user->GetSound();
+        if (part == nullptr)
         {
-            return;
+            return 0;
         }
-        for (const SoundName& name : names)
+        return part->Play(sound, volume, loop);
+    }
+
+    uint32 PlaySoundAt(const IGetAudio* user, const Sound* sound, const Vector3& position, float volume, bool loop)
+    {
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        SoundObj* part = user->GetSound();
+        if (part == nullptr)
         {
-            sound->Preload(&AssetManager::Get(), name.name);
+            return 0;
+        }
+        return part->PlayAt(sound, position, volume, loop);
+    }
+
+    void StopSound(const IGetAudio* user, uint32 id) noexcept
+    {
+        NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
+        if (SoundObj* part = user->GetSound())
+        {
+            part->Stop(id);
         }
     }
 
-    void PlaySound(const IGetAudio* user, const SoundName& name, float volume)
+    void SetSoundVolume(const IGetAudio* user, uint32 id, float volume)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
-        Sound* sound = user->GetSound();
-        if (sound == nullptr || user->GetAudioDevice() == nullptr)
+        if (SoundObj* part = user->GetSound())
         {
-            return;
+            part->SetVolume(id, volume);
         }
-        sound->Play(name.name, volume);
     }
 } // namespace NS

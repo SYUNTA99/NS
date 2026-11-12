@@ -161,7 +161,7 @@ TEST(ColliderShape, PlayerBodySensorFollowsARadiusEditWithoutRestart)
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(&player->Collider(), {{"半径", 0.8f}}), 0u);
-    const NS::SensorVolume volume = player->HitSensorsClassObj()->Find("Body")->WorldVolume(player->Root().WorldMatrix());
+    const NS::SensorVolume volume = player->HitSensorsClassObj()->Find("Body")->WorldVolume(player->TransformObj().WorldMatrix());
     EXPECT_FLOAT_EQ(volume.radius, 0.8f);
 }
 
@@ -173,12 +173,12 @@ TEST(ColliderShape, ScaledPlayerRootDoesNotScaleTheBodySensor)
     PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
     ASSERT_NE(player, nullptr);
 
-    player->Root().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
-    const NS::SensorVolume volume = player->HitSensorsClassObj()->Find("Body")->WorldVolume(player->Root().WorldMatrix());
-    const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->Root().Position());
+    player->TransformObj().SetScale(NS::Vector3{1.2f, 1.2f, 1.2f});
+    const NS::SensorVolume volume = player->HitSensorsClassObj()->Find("Body")->WorldVolume(player->TransformObj().WorldMatrix());
+    const NS::Phys::Capsule capsule = player->Collider().CapsuleAt(player->TransformObj().Position());
     EXPECT_FLOAT_EQ(volume.radius, capsule.radius);
     EXPECT_FLOAT_EQ((volume.b - volume.a).Length(), capsule.halfHeight * 2.0f);
-    EXPECT_FLOAT_EQ(volume.Center().y, player->Root().Position().y);
+    EXPECT_FLOAT_EQ(volume.Center().y, player->TransformObj().Position().y);
 }
 
 TEST(ColliderShape, FollowBodySensorFollowsACollisionRadiusEdit)
@@ -187,15 +187,15 @@ TEST(ColliderShape, FollowBodySensorFollowsACollisionRadiusEdit)
     NS::Scene scene;
     NS::SceneActor* placed = SpawnFromActorFile<FollowSphereActor>(scene, "FollowSphereActor");
     ASSERT_NE(placed, nullptr);
-    placed->Root().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
+    placed->TransformObj().SetPosition(NS::Vector3{2.0f, 1.0f, 0.0f});
     NS::SphereCollision* collision = NS::Cast<NS::SphereCollision>(placed->CollisionClassObj());
     ASSERT_NE(collision, nullptr);
 
     ASSERT_EQ(NS::ApplyJsonFields(collision,
                                   {{"半径", 0.8f}, {"中心オフセット", {0.0f, 0.25f, 0.0f}}}),
               0u);
-    const NS::Sphere sphere = collision->WorldSphere(placed->Root().WorldMatrix());
-    const NS::SensorVolume volume = placed->HitSensorsClassObj()->Find("Body")->WorldVolume(placed->Root().WorldMatrix());
+    const NS::Sphere sphere = collision->WorldSphere(placed->TransformObj().WorldMatrix());
+    const NS::SensorVolume volume = placed->HitSensorsClassObj()->Find("Body")->WorldVolume(placed->TransformObj().WorldMatrix());
     EXPECT_FLOAT_EQ(sphere.radius, 0.8f);
     EXPECT_FLOAT_EQ(volume.radius, sphere.radius);
     EXPECT_FLOAT_EQ(volume.Center().x, sphere.center.x);

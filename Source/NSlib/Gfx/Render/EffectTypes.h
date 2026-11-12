@@ -1,24 +1,15 @@
 #pragma once
 
 #include "NSlib/Core/Math.h"
-
 #include "NSlib/Core/Types.h"
+
 #include <array>
 #include <optional>
-#include <string>
 
 namespace NS
 {
     namespace Gfx
     {
-        struct EffectResourceDesc
-        {
-            std::string id;
-            std::string name;
-            std::string path;
-            uint32 seed = 0;
-        };
-
         struct EffectHandle
         {
             int32 value = -1;

@@ -1,4 +1,5 @@
 #include "NSlib/Gfx/Render/ScreenOverlay.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
@@ -7,9 +8,8 @@
 #include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DPipeline.h"
 #include "NSlib/Gfx/D3DShader.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/Render/BuiltinShaders.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/Render/BuiltinShaders.h"
 
 #include <cmath>
 
@@ -40,7 +40,7 @@ namespace NS
             if (!pass.tried)
             {
                 pass.tried = true;
-                if (Gpu().device == nullptr)
+                if (detail::CurrentDevice() == nullptr)
                 {
                     return false;
                 }

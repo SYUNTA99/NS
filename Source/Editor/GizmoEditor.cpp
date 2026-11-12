@@ -465,11 +465,11 @@ namespace NS
             localBounds.reserve(candidates.size());
             visible.reserve(candidates.size());
             localMeshes.reserve(candidates.size());
-            // 箱は Root のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
+            // 箱は Transform のローカル空間のまま。WorldMatrix が拡縮を含むので、箱にも掛けると拡大したアクターの箱が
             // 拡縮の 2 乗に膨らみ、近くのクリックを先に取る
             for (const SceneActor* obj : candidates)
             {
-                worldMatrices.push_back(obj->Root().WorldMatrix());
+                worldMatrices.push_back(obj->TransformObj().WorldMatrix());
                 localBounds.push_back(PickLocalBounds(obj));
                 const Model* model = obj->ModelClassObj();
                 visible.push_back(static_cast<uint8>(model != nullptr));
@@ -490,7 +490,7 @@ namespace NS
 
             if (hit >= 0)
             {
-                m_selected = &candidates[static_cast<std::size_t>(hit)]->Root();
+                m_selected = &candidates[static_cast<std::size_t>(hit)]->TransformObj();
             }
             else
             {

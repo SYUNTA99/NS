@@ -74,7 +74,7 @@ namespace
             return nullptr;
         }
         AddTerrainBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, 100.0f, 0.5f, 100.0f);
-        player->Root().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
+        player->TransformObj().SetPosition(NS::Vector3{0.0f, 10.0f, 0.0f});
         player->Body().SetGrounded(false);
         if (byClimb)
         {
@@ -108,15 +108,15 @@ TEST(PlayerStateSequence, LedgeClimbKeepsItsTwoStageTiming)
     NS::Body* movement = &player->Body();
     // 4 フレームで登ると、1 歩目が前半の中ほど、2 歩目が前半の終わりになる
     ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), nlohmann::json{{"よじ登りのフレーム数", 4}}), 0u);
-    player->Root().SetPosition(NS::Vector3{});
+    player->TransformObj().SetPosition(NS::Vector3{});
     player->ClimbLedge();
     ASSERT_TRUE(player->States().IsCurrent<GL::Player::LedgeClimbingPlayerState>());
-    EXPECT_FLOAT_EQ(player->Root().Position().y, 0.0f);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, 0.0f);
     const float top = player->Collider().CapsuleHalfHeight() + player->Collider().CapsuleRadius();
     player->States().Step(NS::OS::FrameTimer::FixedDelta());
-    EXPECT_NEAR(player->Root().Position().y, top * 0.5f, 0.00001f);
+    EXPECT_NEAR(player->TransformObj().Position().y, top * 0.5f, 0.00001f);
     player->States().Step(NS::OS::FrameTimer::FixedDelta());
-    EXPECT_NEAR(player->Root().Position().y, top, 0.00001f);
+    EXPECT_NEAR(player->TransformObj().Position().y, top, 0.00001f);
     player->States().Step(NS::OS::FrameTimer::FixedDelta());
     EXPECT_FALSE(player->States().IsCurrent<GL::Player::IdlePlayerState>());
     player->States().Step(NS::OS::FrameTimer::FixedDelta());
@@ -132,9 +132,9 @@ TEST(PlayerStateSequence, LeavingClimbCannotResumeAnOldPositionWrite)
     player->ClimbLedge();
     player->States().Step(0.0625f);
     ASSERT_TRUE(player->States().Change<GL::Player::IdlePlayerState>());
-    player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, 3.0f);
 }
 
 // 着地で戻す物 (跳べる回数・コヨーテ) は、よじ登りの終わりでも普通の着地でも同じ。
@@ -192,7 +192,7 @@ namespace
         }
         AddTerrainBox(scene, NS::Vector3{0.0f, -1.0f, 2.0f}, 2.0f, 1.0f, 1.0f);
         const NS::Collider& collider = player->Collider();
-        player->Root().SetPosition(NS::Vector3{0.0f, 0.2f - collider.CapsuleHalfHeight(), 0.3f});
+        player->TransformObj().SetPosition(NS::Vector3{0.0f, 0.2f - collider.CapsuleHalfHeight(), 0.3f});
         player->Body().SetGrounded(false);
         player->Body().SetLateralVelocity(NS::Vector3{0.0f, 0.0f, 1.0f});
         return player;
@@ -285,9 +285,9 @@ TEST(PlayerStateSequence, HangingKeepsHoldingWhenTheTopIsSlightlyAboveTheHand)
     PlayerActor* player = PlaceBelowLedge(scene);
     ASSERT_NE(player, nullptr);
     ASSERT_TRUE(FallUntilHanging(player));
-    NS::Vector3 lowered = player->Root().Position();
+    NS::Vector3 lowered = player->TransformObj().Position();
     lowered.y -= 2.0e-5f;
-    player->Root().SetPosition(lowered);
+    player->TransformObj().SetPosition(lowered);
     EXPECT_TRUE(player->HoldLedge());
     EXPECT_TRUE(player->States().IsCurrent<GL::Player::LedgeHangingPlayerState>());
 }
@@ -310,7 +310,7 @@ namespace
         const float away = outWall.halfExtentZ + collider.CapsuleRadius() + 0.05f;
         NS::Vector3 start = outWall.center + faceNormal * away;
         start.y = 0.2f - collider.CapsuleHalfHeight();
-        player->Root().SetPosition(start);
+        player->TransformObj().SetPosition(start);
         player->Body().SetGrounded(false);
         player->Body().SetLateralVelocity(-faceNormal);
         return player;
@@ -319,7 +319,7 @@ namespace
     float DistanceToNearFace(const PlayerActor* player, const NS::OBB& wall)
     {
         const NS::Vector3 faceNormal = -wall.axisZ;
-        NS::Vector3 offset = player->Root().Position() - wall.center;
+        NS::Vector3 offset = player->TransformObj().Position() - wall.center;
         offset.y = 0.0f;
         return offset.Dot(faceNormal) - wall.halfExtentZ;
     }
@@ -337,7 +337,7 @@ TEST(PlayerStateSequence, TiltedSlopeIsNotALedge)
         slope.center.y + slope.halfExtentY * std::abs(slope.axisY.y) + slope.halfExtentZ * std::abs(slope.axisZ.y);
 
     const NS::Collider& collider = player->Collider();
-    player->Root().SetPosition(NS::Vector3{0.0f, boundingTop + 0.2f - collider.CapsuleHalfHeight(), 1.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, boundingTop + 0.2f - collider.CapsuleHalfHeight(), 1.0f});
     player->Body().SetGrounded(false);
     player->Body().SetLateralVelocity(NS::Vector3{0.0f, 0.0f, 1.0f});
 
@@ -354,13 +354,13 @@ TEST(PlayerStateSequence, TurnedWallIsHeldAtItsVisibleFace)
     const float radius = player->Collider().CapsuleRadius();
     EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
 
-    const NS::Vector3 hangPos = player->Root().Position();
+    const NS::Vector3 hangPos = player->TransformObj().Position();
     player->Input().SetClimbMove(1.0f, 0.0f);
     for (int frame = 0; frame < 20; ++frame)
     {
         player->Shimmy(1.0f / 60.0f);
     }
-    NS::Vector3 moved = player->Root().Position() - hangPos;
+    NS::Vector3 moved = player->TransformObj().Position() - hangPos;
     moved.y = 0.0f;
     EXPECT_GT(moved.Length(), 0.3f);
     EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
@@ -389,10 +389,10 @@ namespace
         float longest = 0.0f;
         for (int frame = 0; frame < 90; ++frame)
         {
-            const NS::Vector3 before = player->Root().Position();
+            const NS::Vector3 before = player->TransformObj().Position();
             player->Shimmy(1.0f / 60.0f);
             EXPECT_TRUE(player->HoldLedge()) << "frame " << frame;
-            NS::Vector3 moved = player->Root().Position() - before;
+            NS::Vector3 moved = player->TransformObj().Position() - before;
             moved.y = 0.0f;
             longest = std::max(longest, moved.Length());
         }
@@ -401,7 +401,7 @@ namespace
 
     float PastTheBend(const PlayerActor* player, const NS::OBB& bent)
     {
-        NS::Vector3 pastCorner = player->Root().Position() - NS::Vector3{2.0f, -1.0f, 1.0f};
+        NS::Vector3 pastCorner = player->TransformObj().Position() - NS::Vector3{2.0f, -1.0f, 1.0f};
         pastCorner.y = 0.0f;
         return pastCorner.Dot(bent.axisX);
     }
@@ -477,16 +477,16 @@ TEST(PlayerStateSequence, CurlingKeepsTheLowerSphereInPlace)
     NS::Scene scene;
     PlayerActor* player = PlaceSequencePlayer(scene);
     ASSERT_NE(player, nullptr);
-    player->Root().SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
+    player->TransformObj().SetPosition(NS::Vector3{1.0f, 2.0f, 3.0f});
     ASSERT_FALSE(player->IsCurled());
     const float standingHalf = player->Collider().StandingHalfHeight();
     ASSERT_GT(standingHalf, 0.0f);
-    const NS::Vector3 standingRoot = player->Root().Position();
+    const NS::Vector3 standingRoot = player->TransformObj().Position();
     const NS::Phys::Capsule standing = player->Collider().WorldCapsule();
 
     player->SetCurled(true);
     ASSERT_TRUE(player->IsCurled());
-    const NS::Vector3 curledRoot = player->Root().Position();
+    const NS::Vector3 curledRoot = player->TransformObj().Position();
     const NS::Phys::Capsule curled = player->Collider().WorldCapsule();
     EXPECT_FLOAT_EQ(curledRoot.y, standingRoot.y - standingHalf);
     EXPECT_FLOAT_EQ(curledRoot.x, standingRoot.x);
@@ -495,7 +495,7 @@ TEST(PlayerStateSequence, CurlingKeepsTheLowerSphereInPlace)
     EXPECT_FLOAT_EQ(curled.radius, standing.radius);
 
     player->SetCurled(false);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, standingRoot.y);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, standingRoot.y);
 }
 
 // 丸まりの正は当たりの形。丸まる・解く・やり直しの直後に、丸まりの答え・当たりの形・描くメッシュが揃う
@@ -542,9 +542,9 @@ TEST(PlayerStateSequence, EndPlayCancelsTheClimbBeforePartsLeave)
     player->ClimbLedge();
     player->States().Step(0.0625f);
     player->OnEndPlay();
-    player->Root().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, 3.0f, 0.0f});
     player->States().Step(0.0625f);
-    EXPECT_FLOAT_EQ(player->Root().Position().y, 3.0f);
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, 3.0f);
 }
 
 TEST(PlayerStateSequence, TheBaseOwnsTheMachineFromInit)

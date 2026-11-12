@@ -53,15 +53,15 @@ namespace NS
             {
                 if (BoxCollision* box = Cast<BoxCollision>(object.CollisionClassObj()))
                 {
-                    shapes.OBB(box->WorldOBB(object.Root().WorldMatrix()), color);
+                    shapes.OBB(box->WorldOBB(object.TransformObj().WorldMatrix()), color);
                 }
                 else if (SphereCollision* sphere = Cast<SphereCollision>(object.CollisionClassObj()))
                 {
-                    shapes.Sphere(sphere->WorldSphere(object.Root().WorldMatrix()), color);
+                    shapes.Sphere(sphere->WorldSphere(object.TransformObj().WorldMatrix()), color);
                 }
                 else if (CapsuleCollision* capsule = Cast<CapsuleCollision>(object.CollisionClassObj()))
                 {
-                    Phys::Capsule worldCapsule = capsule->WorldCapsule(object.Root().WorldMatrix());
+                    Phys::Capsule worldCapsule = capsule->WorldCapsule(object.TransformObj().WorldMatrix());
                     worldCapsule.axis.Normalize();
                     shapes.Capsule(
                         worldCapsule.center, worldCapsule.axis * worldCapsule.halfHeight, worldCapsule.radius, color);
@@ -69,7 +69,7 @@ namespace NS
                 else if (const Collider* collider = ColliderOf(object))
                 {
                     // 移動が掃引するのと同じ、根を中心にした縦のカプセル。根の拡縮は掛けない
-                    const Phys::Capsule bodyCapsule = collider->CapsuleAt(object.Root().Position());
+                    const Phys::Capsule bodyCapsule = collider->CapsuleAt(object.TransformObj().Position());
                     shapes.Capsule(
                         bodyCapsule.center, bodyCapsule.axis * bodyCapsule.halfHeight, bodyCapsule.radius, color);
                 }
@@ -82,7 +82,7 @@ namespace NS
                         return;
                     }
                     const AABB& local = *renderer->GetMesh()->LocalBounds();
-                    const Matrix world = object.Root().WorldMatrix();
+                    const Matrix world = object.TransformObj().WorldMatrix();
                     const AffineDecomposition parts = DecomposeAffine(world);
                     const Vector3 center = Vector3::Transform(Vector3{local.Center}, world);
                     const Vector3 half{local.Extents.x * std::abs(parts.scale.x),
@@ -103,7 +103,7 @@ namespace NS
                 }
                 for (const HitSensor* sensor : sensors->Sensors())
                 {
-                    const SensorVolume volume = sensor->WorldVolume(object.Root().WorldMatrix());
+                    const SensorVolume volume = sensor->WorldVolume(object.TransformObj().WorldMatrix());
                     if (volume.isBox)
                     {
                         shapes.OBB(volume.box, color);
@@ -268,7 +268,7 @@ namespace NS
                     continue;
                 }
 
-                const Matrix world = object->Root().WorldMatrix();
+                const Matrix world = object->TransformObj().WorldMatrix();
                 const AffineDecomposition parts = DecomposeAffine(world);
                 // 1m 立方の cube mesh の半サイズ 0.5 に拡縮を掛ける
                 const Vector3 half{

@@ -1,4 +1,5 @@
 #include "NSlib/Gfx/D3DMaterial.h"
+#include "NSlib/Gfx/detail/D3DDeviceAccess.h"
 #include "NSlib/Core/Types.h"
 
 #include "NSlib/Core/Assert.h"
@@ -6,9 +7,8 @@
 #include "NSlib/Gfx/D3DBuffer.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
-#include "NSlib/Gfx/D3DGlobal.h"
-#include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DDevice.h"
+#include "NSlib/Gfx/D3DMesh.h"
 #include "NSlib/Gfx/D3DShader.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
@@ -32,7 +32,7 @@ namespace NS
 
             // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに空のマテリアルを返す
             // ゲームでは D3DDevice を先に作るので、ここで返らない
-            if (Gpu().device == nullptr)
+            if (detail::CurrentDevice() == nullptr)
             {
                 return;
             }
