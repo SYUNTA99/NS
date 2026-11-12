@@ -182,7 +182,10 @@ namespace NS
     {
     public:
         HitReactionItem() = default;
-        template <HitReactionItemInfo Info>
+        // 自分の型を先に外す。HitReactionItem がコピーできるかを調べる時にこの関数も候補になり、
+        // HitReactionItemInfo<HitReactionItem> がまた std::copy_constructible<HitReactionItem> を調べると、clang が止める
+        template <class Info>
+            requires(!std::same_as<Info, HitReactionItem> && HitReactionItemInfo<Info>)
         HitReactionItem(Info info) : m_value(std::make_unique<Holder<Info>>(std::move(info)))
         {
         }

@@ -57,12 +57,14 @@ namespace NS
         //! 光の色とは別に掛かる。透明度は使わず rgb だけを描く
         void SetColorOverride(const std::optional<Color>& color) noexcept { m_colorOverride = color; }
         [[nodiscard]] const std::optional<Color>& ColorOverride() const noexcept { return m_colorOverride; }
-        //! 描く色。上書きが入っていればその色、空なら描くマテリアル (DrawnMaterial) の基本色。掛け合わせない
+        //! 描く色。上書きが入っていればその色、空なら欄のマテリアルの Material::DrawColor。掛け合わせない
         [[nodiscard]] Color DrawColor() const noexcept;
 
         //! 欄を替えずに、描くメッシュを替える。保存する名前は欄のメッシュのまま
         //! nullptr で欄のメッシュに戻す。SceneActor::ReloadAssets も欄のメッシュに戻す
         void SetMesh(Mesh* mesh) noexcept { m_shownMesh = mesh; }
+        //! メッシュの欄の Mesh。SetMesh で替えた描くメッシュは見ない。nullptr にならない
+        [[nodiscard]] const Mesh* MeshField() const noexcept { return m_mesh; }
         //! 描くメッシュ。SetMesh で替えていればその物、無ければ欄のメッシュ
         [[nodiscard]] const Mesh* GetMesh() const noexcept;
 
@@ -71,17 +73,10 @@ namespace NS
         //! 名前のメッシュをその場で AssetManager::Get() から引き、欄に入れる
         void SetMeshRef(std::string_view ref);
 
-        //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は DrawnMaterial を描く
+        //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は灰色の既定で描く
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return AssetFieldName(m_material); }
         //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる
         void SetMaterialRef(std::string_view ref);
-
-        //! 描くマテリアル。欄が空でなければ欄の物、空なら描くメッシュが決めた物 (Mesh::UseUnsetMaterial)
-        //! 選び直すのは ChooseDrawnMaterial を呼んだ時だけ。保存はしない
-        [[nodiscard]] const Material* DrawnMaterial() const noexcept { return m_drawnMaterial; }
-        //! 今の欄と描くメッシュで、描くマテリアルを選び直す
-        //! 作る時・名前の欄を書いた時・SceneActor::ReloadAssets の最後に呼ぶ。マテリアルの無いファイルのモデルは、メッシュごとに 1 回 ERROR を出す
-        void ChooseDrawnMaterial();
 
         //! 個体ごとの頂点シェーダーの定数を設定する。同じ SceneActor の Animation がプレイの始まりに設定する
         //! cpuData があれば、描画側が毎回バッファーへ転送してから設定する
@@ -147,15 +142,15 @@ namespace NS
 
         //! 描く形と欄のマテリアルの描く D3DMaterial が揃っている場合 true
         [[nodiscard]] bool CanDraw() const noexcept;
-        //! 描くマテリアルと DrawColor で、world に描く DrawItem を作る
+        //! 欄のマテリアルと DrawColor で、world に描く DrawItem を作る
         //! 混ぜ方はマテリアルの物。CanDraw が true の時だけ呼ぶ
         [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Matrix& world) const noexcept;
         //! 描く形の局所の境界。差された境界を先に、無ければメッシュの境界。どちらも無ければ nullptr
         [[nodiscard]] const AABB* DrawnLocalBounds() const noexcept;
 
         //! 体を描く段と順と箱。root は持ち主の根の今の固定フレームの世界行列
-        //! 段は、SetDrawsAfterSky の後は AfterSky、他は描くマテリアルの混ぜ方が不透明なら Opaque、それ以外は Transparent
-        //! 中心は根の位置、優先度は描くマテリアルの renderPriority
+        //! 段は、SetDrawsAfterSky の後は AfterSky、他は欄のマテリアルの混ぜ方が不透明なら Opaque、それ以外は Transparent
+        //! 中心は根の位置、優先度は欄のマテリアルの renderPriority
         //! 箱は、SetNeverCulled の後は原点を中心に全域を覆い、他は描く形の局所の境界を根で包む。
         //! 描く倍率は前と今の大きい方で包み、描く時だけのずれを足す。描くメッシュが無ければ空の箱
         [[nodiscard]] Gfx::RenderBounds Bounds(const Matrix& root) const noexcept;
@@ -196,10 +191,6 @@ namespace NS
         NS_REFLECT_END()
 
     private:
-        // 描く形と material の描く D3DMaterial が揃っている場合 true
-        [[nodiscard]] bool CanDraw(const Material* material) const noexcept;
-        // CanDraw が true の時だけ呼ぶ
-        [[nodiscard]] Gfx::DrawItem MakeDrawItem(const Material* material, const Matrix& world) const noexcept;
         // 体の箱。Bounds の箱の決まりで作る
         [[nodiscard]] AABB WorldBounds(const Matrix& root) const noexcept;
         // copies の写しごとに、この Model の姿で半透明の DrawItem を積む。描けなければ何も積まない
@@ -215,10 +206,9 @@ namespace NS
         int m_copyPriority = 0;
 
         // 素材は AssetManager が持つ。欄は nullptr にならない
-        Mesh* m_mesh = nullptr;              // 描くメッシュ
+        Mesh* m_mesh = nullptr;              // メッシュの欄。m_shownMesh が無い間はこれを描く
         Material* m_material = nullptr;
         Mesh* m_shownMesh = nullptr;         // 欄を替えずに描くメッシュ。保存しない
-        Material* m_drawnMaterial = nullptr; // ChooseDrawnMaterial が選ぶ。保存しない
         std::optional<Color> m_colorOverride;
         bool m_drawsAfterSky = false; // 保存しない。決めるのはアクターのクラス
         bool m_neverCulled = false;   // 保存しない。決めるのはアクターのクラス

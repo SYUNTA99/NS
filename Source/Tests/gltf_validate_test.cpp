@@ -1,5 +1,6 @@
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Geometry/GltfParser.h"
+#include "NSlib/Core/Windows/FileSystem.h"
 #include "TestLogCapture.h"
 
 #include <gtest/gtest.h>
@@ -120,7 +121,7 @@ TEST(GltfConvert, StaticAndSkinnedReadTheSameTriangle)
 {
     const TestLogCapture log;
     const NS::MeshGeometry staticMesh = NS::ParseGltfMesh(SkinnedTriangleFile());
-    const NS::SkinnedMeshData skinnedMesh = NS::ParseGltfSkinnedMesh(SkinnedTriangleFile());
+    const NS::SkinnedMeshGeometry skinnedMesh = NS::ParseGltfSkinnedMesh(SkinnedTriangleFile()).first;
     EXPECT_EQ(log.ErrorCount(), 2); // 点の primitive を読み方ごとに 1 回断る
 
     ASSERT_EQ(staticMesh.vertices.size(), 3u);
@@ -152,6 +153,27 @@ TEST(GltfConvert, StaticBoundsMatchTheTriangleVertices)
     EXPECT_FLOAT_EQ(geom.bounds.Extents.x, 0.5f);
     EXPECT_FLOAT_EQ(geom.bounds.Extents.y, 0.5f);
     EXPECT_FLOAT_EQ(geom.bounds.Extents.z, 0.0f);
+}
+
+// スキンの有無はファイルの中身で決まる。骨付きの Xbot と手で組んだ三角形は true、スキンの無い旗は false
+TEST(GltfSkin, OnlyFilesWithASkinnedMeshNodeHaveASkin)
+{
+    const auto readFile = [](const char* relative) {
+        const std::optional<std::vector<std::byte>> bytes = NS::OS::FileSystem::ReadAllBytes(
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), relative));
+        EXPECT_TRUE(bytes.has_value()) << relative;
+        return bytes.value_or(std::vector<std::byte>{});
+    };
+    const std::vector<std::byte> xbot = readFile("Assets/Models/Xbot.glb");
+    const std::vector<std::byte> flag = readFile("Assets/Models/GoalFlag.glb");
+    NS::GltfFileDesc file{};
+    file.bytes = xbot;
+    file.name = "Xbot.glb";
+    EXPECT_TRUE(NS::HasGltfSkin(file));
+    file.bytes = flag;
+    file.name = "GoalFlag.glb";
+    EXPECT_FALSE(NS::HasGltfSkin(file));
+    EXPECT_TRUE(NS::HasGltfSkin(SkinnedTriangleFile()));
 }
 
 // 包む箱の関数は、幅を空けて並んだ位置の最小・最大の箱を返す

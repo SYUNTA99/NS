@@ -296,7 +296,7 @@ TEST(MaterialFile, OnlyMaterialsReadFromAFileAreWritten)
 }
 
 // 装置の無い場では作り直せない。前の D3DMaterial を残し、同じ道は同じマテリアルを返す
-TEST(MaterialFile, FailedRebuildKeepsTheDrawnMaterial)
+TEST(MaterialFile, FailedRebuildKeepsThePreviousD3DMaterial)
 {
     ASSERT_EQ(NS::Gfx::D3DDevice::Current(), nullptr);
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};

@@ -12,6 +12,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace NS
@@ -34,23 +35,21 @@ namespace NS
     //! 三角形以外の描画形状や圧縮されたデータには対応しない。読み込み失敗時はエラーログを出力し、空のデータを返す
     [[nodiscard]] MeshGeometry ParseGltfMesh(const GltfFileDesc& file);
 
-    //! スキニング対応モデルの読み込み結果
-    struct SkinnedMeshData
+    //! スキン付きのメッシュの頂点とインデックス。骨格は ParseGltfSkinnedMesh が組で返す
+    struct SkinnedMeshGeometry
     {
         std::vector<SkinnedVertex> vertices; // スキニング用の頂点データ列
         std::vector<uint32> indices;         // 全プリミティブを連結したインデックス列
-        Anim::Skeleton skeleton;             // ボーン階層と逆バインド行列
-
-        [[nodiscard]] bool IsValid() const noexcept
-        {
-            return !vertices.empty() && !indices.empty() && skeleton.BoneCount() > 0;
-        }
     };
+
+    //! glTF にスキン付きのメッシュの node があれば true。バッファは読まず、壊れたファイルは false
+    //! 静的なメッシュとして読むか、スキン付きのメッシュとして読むかを決めるのに使う
+    [[nodiscard]] bool HasGltfSkin(const GltfFileDesc& file);
 
     //! スキニング対応モデルを読む
     //! ボーンのインデックスやウェイト、スキン階層などのスキニング情報を付与する
-    //! @return 読み込み失敗時は無効な状態のデータを返す
-    [[nodiscard]] SkinnedMeshData ParseGltfSkinnedMesh(const GltfFileDesc& file);
+    //! @return 頂点と骨格の組。読み込み失敗時は頂点も骨格も空
+    [[nodiscard]] std::pair<SkinnedMeshGeometry, Anim::Skeleton> ParseGltfSkinnedMesh(const GltfFileDesc& file);
 
     //! スキニング情報に依存しないアニメーションデータの読み込み結果
     //! メッシュやスキン情報を持たない、アニメーション専用のファイルからも読み込み可能

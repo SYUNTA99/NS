@@ -25,7 +25,6 @@ namespace NS
         None,
         Mesh,
         Material,
-        Model,
         Animation,
         Effect,
         Sound,
@@ -40,10 +39,6 @@ namespace NS
         else if constexpr (std::is_same_v<T, Material*>)
         {
             return AssetKind::Material;
-        }
-        else if constexpr (std::is_same_v<T, SkinnedModel*>)
-        {
-            return AssetKind::Model;
         }
         else if constexpr (std::is_same_v<T, AnimClip*>)
         {

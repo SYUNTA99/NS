@@ -39,6 +39,7 @@ namespace NS
         [[nodiscard]] std::optional<Matrix> DrawWorldMatrix(const Vector3& origin) const noexcept;
 
         //! 根の真下の地面に影の板の DrawItem を積む。地面が無い・素材が描けない時は何も積まない
+        //! マテリアルの欄が空の時は、ほかのマテリアルの欄と同じく既定の灰色 (default.mat) で描く
         //! @param[in] root 持ち主の根の世界行列。context.alpha で補間した物を渡す
         void Collect(const Gfx::RenderContext& context, const Matrix& root, std::vector<Gfx::DrawItem>& out) const;
         //! 段は Transparent、中心は根の位置、優先度は 0
