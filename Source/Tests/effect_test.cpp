@@ -102,15 +102,15 @@ TEST(EffectTest, StopRootAllForgetsEveryRecord)
     EXPECT_TRUE(effect.Records().empty());
 }
 
-// 描画の無い世界では終わったかを問えないので、出すだけの再生は次の歩の頭で外し、追従する再生は残す
-TEST(EffectTest, DropEndedWithoutRenderingForgetsOnlyTheRecordsThatDoNotFollow)
+// 描画の無い世界では終わったかを問えないので、出すだけの再生は次の Update で外し、追従する再生は残す
+TEST(EffectTest, UpdateWithoutRenderingForgetsOnlyTheRecordsThatDoNotFollow)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     EffectObj effect;
     (void)effect.Play(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
     const NS::uint32 following = effect.PlayFollowing(nullptr, &asset, NS::Gfx::EffectPlayDesc{});
 
-    effect.DropEnded(nullptr);
+    effect.Update(nullptr, NS::Vector3{}, NS::Quaternion::Identity);
 
     ASSERT_EQ(effect.Records().size(), 1u);
     EXPECT_EQ(effect.Records()[0].id, following);

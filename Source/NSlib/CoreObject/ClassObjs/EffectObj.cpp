@@ -100,7 +100,7 @@ namespace NS
         effects->SetDynamicInput(m_records[recordIndex].handle, index, value);
     }
 
-    void EffectObj::DropEnded(const Gfx::EffectScene* effects) noexcept
+    void EffectObj::Update(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept
     {
         if (effects == nullptr)
         {
@@ -109,14 +109,6 @@ namespace NS
             return;
         }
         std::erase_if(m_records, [effects](const EffectRecord& record) { return !effects->Exists(record.handle); });
-    }
-
-    void EffectObj::Follow(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept
-    {
-        if (effects == nullptr)
-        {
-            return;
-        }
         for (const EffectRecord& record : m_records)
         {
             if (record.follows)

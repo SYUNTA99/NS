@@ -42,7 +42,7 @@ namespace NS
         //!         描画のある世界では、再生できなかった素材も 0 で一覧に残さない
         [[nodiscard]] uint32 Play(Gfx::EffectScene* effects, const Effect* asset, const Gfx::EffectPlayDesc& desc);
 
-        //! Play と同じに出し、Follow のたびに持ち主の根の位置と向きへ置き直す
+        //! Play と同じに出し、Update のたびに持ち主の根の位置と向きへ置き直す
         //! @param[in] desc 出すフレームの姿勢。大きさは追従の間も保つ
         [[nodiscard]] uint32 PlayFollowing(Gfx::EffectScene* effects,
                                            const Effect* asset,
@@ -69,13 +69,11 @@ namespace NS
         //! @param[in] index 動的入力の番号。0 から 3
         void SetDynamicInput(Gfx::EffectScene* effects, uint32 id, int index, float value) noexcept;
 
-        //! Effekseer から消えた再生を一覧から外す。SceneActor::Update が頭で 1 回呼ぶ
-        //! 描画の無い世界では、追従しない再生を全部外す (出した歩の終わりまでは一覧に残る)
-        void DropEnded(const Gfx::EffectScene* effects) noexcept;
-
-        //! 追従する再生を、持ち主の根の位置と向きへ置き直す。SceneActor::Update が体を動かした後に 1 回呼ぶ
+        //! Effekseer から消えた再生を一覧から外し、追従する再生を持ち主の根の位置と向きへ置き直す。
+        //! SceneActor::Update が体を動かした後に 1 回呼ぶ
+        //! 描画の無い世界では、追従しない再生を全部外し、置き直しはしない
         //! @param[in] position 持ち主の根のワールド座標の位置
-        void Follow(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept;
+        void Update(Gfx::EffectScene* effects, const Vector3& position, const Quaternion& rotation) noexcept;
 
         //! 出した順に並んだ、止めていない再生
         [[nodiscard]] const std::vector<EffectRecord>& Records() const noexcept { return m_records; }

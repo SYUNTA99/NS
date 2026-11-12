@@ -713,7 +713,6 @@ namespace NS
     {
         m_skipStateStep = false;
         // clang-format off
-        if (m_effect) { m_effect->DropEnded(GetEffectScene()); }
         if (m_sound) { m_sound->DropEnded(GetSoundScene()); }
         if (m_hitReaction) { m_hitReaction->AdvanceOwnerRuns(); }
         // clang-format on
@@ -737,8 +736,8 @@ namespace NS
         // 状態機械の中で消えたアクターの body は物理シーンの外にあるので揃えない
         // clang-format off
         if (m_collision && IsAppeared()) { m_collision->SyncToPhysics(Root().WorldMatrix(), this); }
-        // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す
-        if (m_effect && IsAppeared()) { m_effect->Follow(GetEffectScene(), Root().Position(), Root().Rotation()); }
+        // 追従するエフェクトも、体を動かした後の位置と向きへ置き直す。消えている間は OnDisappear が一覧を空にしている
+        if (m_effect) { m_effect->Update(GetEffectScene(), Root().Position(), Root().Rotation()); }
         // clang-format on
         // clang-format off
         if (m_hitReaction) { m_hitReaction->AdvanceRuns(HitReactionSelf{.actor = this, .model = m_model.get()}); }
