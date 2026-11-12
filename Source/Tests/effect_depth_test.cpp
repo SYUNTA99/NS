@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <limits>
 #include <memory>
@@ -135,6 +136,9 @@ namespace
             std::count_if(pixels.begin(), pixels.end(), [](NS::uint32 pixel) { return (pixel & 0x00FFFFFFu) != 0; }));
     }
 
+    // TODO: CI でだけ出る差を調べる間の旗。原因が分かったら消す
+    bool g_pixelTrace = false;
+
     void ExpectSameEffectPixels(NS::Gfx::EffectScene& expectedScene, NS::Gfx::EffectScene& actualScene)
     {
         const std::vector<NS::uint32> expected = CaptureEffectPixels(expectedScene);
@@ -152,6 +156,57 @@ namespace
             }
         }
         EXPECT_LE(largestDifference, 1u);
+        // TODO: CI でだけ出る差を調べる間の出力。原因が分かったら消す
+        if (largestDifference > 1u || g_pixelTrace)
+        {
+            int expectedLit = 0;
+            int actualLit = 0;
+            int differing = 0;
+            int minX = 128;
+            int minY = 128;
+            int maxX = -1;
+            int maxY = -1;
+            NS::uint32 firstExpected = 0;
+            NS::uint32 firstActual = 0;
+            for (std::size_t pixel = 0; pixel < expected.size(); ++pixel)
+            {
+                if ((expected[pixel] & 0x00FFFFFFu) != 0)
+                {
+                    ++expectedLit;
+                }
+                if ((actual[pixel] & 0x00FFFFFFu) != 0)
+                {
+                    ++actualLit;
+                }
+                if (expected[pixel] != actual[pixel])
+                {
+                    if (differing == 0)
+                    {
+                        firstExpected = expected[pixel];
+                        firstActual = actual[pixel];
+                    }
+                    ++differing;
+                    const int x = static_cast<int>(pixel % 128);
+                    const int y = static_cast<int>(pixel / 128);
+                    minX = std::min(minX, x);
+                    minY = std::min(minY, y);
+                    maxX = std::max(maxX, x);
+                    maxY = std::max(maxY, y);
+                }
+            }
+            std::printf("[pixel-trace] largest=%u expectedLit=%d actualLit=%d differing=%d box=(%d,%d)-(%d,%d) "
+                        "first=%08X/%08X\n",
+                        largestDifference,
+                        expectedLit,
+                        actualLit,
+                        differing,
+                        minX,
+                        minY,
+                        maxX,
+                        maxY,
+                        firstExpected,
+                        firstActual);
+        }
     }
 } // namespace
 
@@ -518,7 +573,18 @@ TEST(EffectAssetsRender, ParticleMaterialsDeriveTheirCountsAndMotionFromGameInpu
                         material.Update(1.0f / 60.0f);
                         EXPECT_EQ(legacy.Exists(oldHandle), material.Exists(newHandle));
                         visible |= CountEffectPixels(legacy) > 0;
+                        g_pixelTrace = name == "sparks" && wide && power == 0.7f && motion == 0.0f;
+                        if (g_pixelTrace)
+                        {
+                            std::printf("[pixel-trace] %s %g/%g/%d frame=%d\n",
+                                        name.c_str(),
+                                        static_cast<double>(power),
+                                        static_cast<double>(motion),
+                                        static_cast<int>(wide),
+                                        frame);
+                        }
                         ExpectSameEffectPixels(legacy, material);
+                        g_pixelTrace = false;
                     }
                     EXPECT_TRUE(visible);
                     legacy.StopAll();
