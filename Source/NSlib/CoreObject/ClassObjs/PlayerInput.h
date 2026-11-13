@@ -13,15 +13,13 @@ namespace NS
     class PlayerInput : public Object
     {
     public:
-        //! 水平の基準方向。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
+        //! 水平の基準方向から入力用の行列を作り直す。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
+        //! 書いた後の世界の向きは、次に SetStick か Update でスティックを書いた時に決まる
         void SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept;
 
-        //! 目標の移動方向と速度スケールを直接書く
-        //! @param[in] worldDir 世界座標系の目標移動方向。そのまま控える
-        //! @param[in] speedScale01 目標速度スケール。0..1 に丸める
-        void SetDesiredMove(const Vector3& worldDir, float speedScale01) noexcept;
-        //! 掴まりで使うローカル入力を直接書く。どちらも -1..1 に丸める
-        void SetClimbMove(float localRight, float localForward) noexcept;
+        //! カメラで回す前のスティックを直接書く。長さが 1 を超えたら向きを保って 1 に縮め、
+        //! 入力用の行列で回した世界の向きと、長さを速度スケールとして書く
+        void SetStick(float right, float forward) noexcept;
         //! 跳びの押した瞬間を立てる。ConsumePressed が下ろす
         void SetJumpPressed() noexcept { m_jumpPressed = true; }
         //! 掴まりの手放しの押した瞬間を立てる。ConsumePressed が下ろす
@@ -45,9 +43,12 @@ namespace NS
         [[nodiscard]] Vector3 DesiredDirection() const noexcept { return m_desiredDir; }
         //! 直近のフレームの目標速度スケール。入力の大きさで 0..1
         [[nodiscard]] float DesiredSpeedScale() const noexcept { return m_desiredSpeedScale; }
-        //! 掴まりで使う、camera 回転をかける前のローカル入力
-        [[nodiscard]] float ClimbRight() const noexcept { return m_climbRight; }
-        [[nodiscard]] float ClimbForward() const noexcept { return m_climbForward; }
+        //! カメラで回す前のスティック。長さは 1 以下
+        [[nodiscard]] float StickRight() const noexcept { return m_stickRight; }
+        [[nodiscard]] float StickForward() const noexcept { return m_stickForward; }
+        //! スティックを世界へ回す入力用の行列。行は順にカメラの水平の右・真上・水平の前で、
+        //! (右, 0, 前) を Vector3::TransformNormal で回すと世界の向きになる
+        [[nodiscard]] const Matrix& InputMatrix() const noexcept { return m_inputMatrix; }
         [[nodiscard]] bool JumpPressed() const noexcept { return m_jumpPressed; }
         [[nodiscard]] bool JumpHeld() const noexcept { return m_jumpHeld; }
         [[nodiscard]] bool ReleaseLedgePressed() const noexcept { return m_releaseLedgePressed; }
@@ -65,13 +66,13 @@ namespace NS
         NS_REFLECT_NONE(PlayerInput, Object)
 
     private:
-        Vector3 m_cameraForward{0.0f, 0.0f, 1.0f}; // camera 相対移動用の水平 forward
+        Matrix m_inputMatrix = Matrix::Identity; // 単位行列は、カメラの水平の前が +Z の時の行列
 
         // 直近に稼働したフレームで読み取った値。稼働していない間は書き換わらず、止めの間は中立を書く
         Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 世界座標系の目標移動方向
         float m_desiredSpeedScale = 0.0f;
-        float m_climbRight = 0.0f;
-        float m_climbForward = 0.0f;
+        float m_stickRight = 0.0f;
+        float m_stickForward = 0.0f;
         bool m_jumpPressed = false;
         bool m_jumpHeld = false;
         bool m_releaseLedgePressed = false;

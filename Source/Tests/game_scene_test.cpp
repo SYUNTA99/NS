@@ -249,7 +249,7 @@ TEST(GameScene, ClearLockNeutralizesTheMoveInput)
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
 
-    player->Input().SetDesiredMove(NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Input().SetStick(1.0f, 0.0f);
     for (int i = 0; i < 5; ++i)
     {
         player->Update(false);

@@ -355,7 +355,7 @@ TEST(PlayerStateSequence, TurnedWallIsHeldAtItsVisibleFace)
     EXPECT_NEAR(DistanceToNearFace(player, wall), radius, 0.05f);
 
     const NS::Vector3 hangPos = player->TransformObj().Position();
-    player->Input().SetClimbMove(1.0f, 0.0f);
+    player->Input().SetStick(1.0f, 0.0f);
     for (int frame = 0; frame < 20; ++frame)
     {
         player->Shimmy(1.0f / 60.0f);
@@ -385,7 +385,7 @@ namespace
     float ShimmyRightAndMeasureLongestStep(PlayerActor* player)
     {
         NS_ASSERT(Game, player != nullptr, "ShimmyRightAndMeasureLongestStep: 渡したアクターが無い");
-        player->Input().SetClimbMove(1.0f, 0.0f);
+        player->Input().SetStick(1.0f, 0.0f);
         float longest = 0.0f;
         for (int frame = 0; frame < 90; ++frame)
         {

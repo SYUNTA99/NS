@@ -17,6 +17,7 @@ namespace
     using GL::Level::CanShiftReboundTo;
     using GL::Level::ChooseReboundDirection;
     using GL::Level::DirectionStepRadians;
+    using GL::Level::IsTableDirection;
     using GL::Level::MakeReboundDirections;
     using GL::Level::ReboundChoice;
     using GL::Level::ReboundChoiceLimits;
@@ -517,4 +518,230 @@ TEST(ReboundDirectionsTest, InputTowardTheNinetyDegreeTurnIsMatchedForEveryForty
                                  << choice.direction.z << ") / 結果 " << static_cast<int>(choice.result);
         }
     }
+}
+
+// 反射を基準にした返る向きと、入力の側への連続の曲げ (計画 R08-11-12-02) を縛る
+
+namespace
+{
+    using GL::Level::BendReboundTowardInput;
+    using GL::Level::LiftFromSurface;
+    using GL::Level::ReboundBendLimits;
+    using GL::Level::ReflectedReboundDirection;
+
+    const float k_MinLeave = NS::k_Pi / 12.0f; // 15°
+
+    ReboundBendLimits BendLimits()
+    {
+        return ReboundBendLimits{.strength = 0.7f, .minLeaveRadians = k_MinLeave};
+    }
+
+    // 奥 (+Z) へ進んで当たる、手前 (−Z) を向いた壁
+    const NS::Vector3 k_FrontWallNormal{0.0f, 0.0f, -1.0f};
+} // namespace
+
+TEST(ReboundReflectionTest, NoInputDirectionIsThePhysicalReflection)
+{
+    // 縦の軸のまわりに 30° 回した壁へ、奥へ真っすぐ当てる。表の向きには丸めず、鏡のとおりに 60° ずれて返る
+    const NS::Vector3 normal{0.5f, 0.0f, -std::sqrt(0.75f)};
+    NS::Vector3 direction{};
+    ASSERT_TRUE(ReflectedReboundDirection(NS::Vector3{0.0f, 0.0f, 2.0f}, normal, k_MinLeave, direction));
+    ExpectNear(direction, NS::Vector3{std::sqrt(0.75f), 0.0f, -0.5f});
+}
+
+TEST(ReboundReflectionTest, ShallowReflectionIsLiftedToTheMinimumLeaveAngle)
+{
+    // 面から 10° で当てると反射も面から 10°。下限の 15° まで離し、面に沿う向きの側は変えない
+    const float graze = NS::k_Pi * 10.0f / 180.0f;
+    NS::Vector3 direction{};
+    ASSERT_TRUE(ReflectedReboundDirection(NS::Vector3{std::cos(graze), 0.0f, std::sin(graze)},
+                                          k_FrontWallNormal,
+                                          k_MinLeave,
+                                          direction));
+    EXPECT_NEAR(NS::Dot(direction, k_FrontWallNormal), std::sin(k_MinLeave), k_Tolerance);
+    EXPECT_GT(direction.x, 0.0f);
+    EXPECT_NEAR(direction.Length(), 1.0f, k_Tolerance);
+}
+
+TEST(ReboundReflectionTest, ReflectionWithoutLengthFails)
+{
+    NS::Vector3 direction{1.0f, 2.0f, 3.0f};
+    EXPECT_FALSE(ReflectedReboundDirection(NS::Vector3{}, k_FrontWallNormal, k_MinLeave, direction));
+    ExpectNear(direction, NS::Vector3{1.0f, 2.0f, 3.0f});
+}
+
+TEST(ReboundReflectionTest, LiftFromSurfaceReturnsTheNormalWhenHeadingStraightIntoTheSurface)
+{
+    ExpectNear(LiftFromSurface(NS::Vector3{0.0f, 0.0f, 1.0f}, k_FrontWallNormal, k_MinLeave), k_FrontWallNormal);
+}
+
+TEST(ReboundReflectionTest, FlatInputOnTheFloorStaysAsItIs)
+{
+    // 床では水平の入力に面へ向かう分が無いので、そのまま
+    const NS::Vector3 floorNormal{0.0f, 1.0f, 0.0f};
+    ExpectNear(GL::Level::TurnIntoSurfaceUpward(NS::Vector3{0.0f, 0.0f, 1.0f}, floorNormal), NS::Vector3{0.0f, 0.0f, 1.0f});
+    ExpectNear(GL::Level::TurnIntoSurfaceUpward(NS::Vector3{1.0f, 0.0f, 0.0f}, floorNormal), NS::Vector3{1.0f, 0.0f, 0.0f});
+    ExpectNear(GL::Level::TurnIntoSurfaceUpward(NS::Vector3{}, floorNormal), NS::Vector3{});
+}
+
+TEST(ReboundReflectionTest, FlatInputTowardAWallTurnsUpward)
+{
+    // 壁へ向かう前の入力は、面に沿う上向きになる。横の入力は面に沿うのでそのまま
+    ExpectNear(GL::Level::TurnIntoSurfaceUpward(NS::Vector3{0.0f, 0.0f, 1.0f}, k_FrontWallNormal), NS::Vector3{0.0f, 1.0f, 0.0f});
+    ExpectNear(GL::Level::TurnIntoSurfaceUpward(NS::Vector3{1.0f, 0.0f, 0.0f}, k_FrontWallNormal), NS::Vector3{1.0f, 0.0f, 0.0f});
+}
+
+TEST(ReboundReflectionTest, InputAlongTheBaseKeepsTheBase)
+{
+    const NS::Vector3 base{0.0f, k_Diagonal, -k_Diagonal};
+    ExpectNear(BendReboundTowardInput(base, base * 3.0f, k_FrontWallNormal, BendLimits()), base);
+    ExpectNear(BendReboundTowardInput(base, NS::Vector3{}, k_FrontWallNormal, BendLimits()), base);
+}
+
+TEST(ReboundReflectionTest, OppositeInputKeepsTheBaseWithUnitLength)
+{
+    const NS::Vector3 base{0.0f, 0.0f, -1.0f};
+    const NS::Vector3 bent = BendReboundTowardInput(base, NS::Vector3{0.0f, 0.0f, 1.0f}, k_FrontWallNormal, BendLimits());
+    EXPECT_NEAR(bent.Length(), 1.0f, k_Tolerance);
+    ExpectNear(bent, base);
+}
+
+TEST(ReboundReflectionTest, SideInputBendsTowardTheInput)
+{
+    // 手前へ返る向きに上の入力を足すと Normalize(0, 0.7, −1)。手前から上へ約 35°
+    const NS::Vector3 base{0.0f, 0.0f, -1.0f};
+    const NS::Vector3 bent = BendReboundTowardInput(base, NS::Vector3{0.0f, 1.0f, 0.0f}, k_FrontWallNormal, BendLimits());
+    const float length = std::sqrt(1.0f + 0.7f * 0.7f);
+    ExpectNear(bent, NS::Vector3{0.0f, 0.7f / length, -1.0f / length});
+}
+
+TEST(ReboundReflectionTest, AnyInputStaysWithinTheBendLimitAndAwayFromTheSurface)
+{
+    // 返る向きと入力の向きを 15° 刻みで総当たりする。曲がる角度は 44.5° 以下、面からは 15° 以上、長さは 1
+    const float maxTurn = NS::k_Pi * 44.5f / 180.0f;
+    const float step = NS::k_Pi / 12.0f;
+    for (int basePitch = 1; basePitch <= 6; ++basePitch)
+    {
+        for (int baseYaw = 0; baseYaw < 24; ++baseYaw)
+        {
+            // 面から basePitch × 15° 離れた返る向き
+            const float leave = step * static_cast<float>(basePitch);
+            const float around = step * static_cast<float>(baseYaw);
+            const NS::Vector3 base{std::cos(leave) * std::cos(around),
+                                   std::cos(leave) * std::sin(around),
+                                   -std::sin(leave)};
+            for (int inputPitch = -6; inputPitch <= 6; ++inputPitch)
+            {
+                for (int inputYaw = 0; inputYaw < 24; ++inputYaw)
+                {
+                    const float pitch = step * static_cast<float>(inputPitch);
+                    const float yaw = step * static_cast<float>(inputYaw);
+                    const NS::Vector3 input{std::cos(pitch) * std::sin(yaw), std::sin(pitch), std::cos(pitch) * std::cos(yaw)};
+                    const NS::Vector3 bent = BendReboundTowardInput(base, input, k_FrontWallNormal, BendLimits());
+                    ASSERT_NEAR(bent.Length(), 1.0f, k_Tolerance);
+                    ASSERT_LE(NS::AngleBetweenUnit(base, bent), maxTurn);
+                    ASSERT_GE(NS::Dot(bent, k_FrontWallNormal), std::sin(k_MinLeave) - k_Tolerance);
+                }
+            }
+        }
+    }
+}
+
+namespace
+{
+    using GL::Level::ReboundSnapLimits;
+    using GL::Level::SnappedStick;
+    using GL::Level::SnapStickDirection;
+    using GL::Level::SnapTowardTable;
+
+    // 前の壁から水平に yawDegrees だけ右へ傾いて返る向き
+    NS::Vector3 BackTurnedRight(float yawDegrees)
+    {
+        const float yaw = NS::k_Pi * yawDegrees / 180.0f;
+        return NS::Vector3{std::sin(yaw), 0.0f, -std::cos(yaw)};
+    }
+
+    // 表の向きから 15° 以内はそろえ、30° より外はそのまま
+    ReboundSnapLimits SnapLimits()
+    {
+        return ReboundSnapLimits{.fullRadians = NS::k_Pi * 15.0f / 180.0f,
+                                 .blendRadians = NS::k_Pi * 30.0f / 180.0f,
+                                 .minLeaveRadians = k_MinLeave};
+    }
+} // namespace
+
+// 表の向きから許容角度の中の向きは、表の向きにそろう。当て方が少し斜めでも真後ろへ返る
+TEST(ReboundSnapTest, DirectionWithinTheFullAngleBecomesTheTableDirection)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 snapped = SnapTowardTable(table, BackTurnedRight(12.0f), k_FrontWallNormal, SnapLimits());
+    EXPECT_NEAR(snapped.x, 0.0f, k_Tolerance);
+    EXPECT_NEAR(snapped.z, -1.0f, k_Tolerance);
+}
+
+// そろえる角度と寄せ始める角度の間は、表の向きへ寄るが、表の向きにはならない
+TEST(ReboundSnapTest, DirectionBetweenTheTwoAnglesMovesPartWayToTheTableDirection)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const NS::Vector3 direction = BackTurnedRight(20.0f);
+    const NS::Vector3 snapped = SnapTowardTable(table, direction, k_FrontWallNormal, SnapLimits());
+    const NS::Vector3 back{0.0f, 0.0f, -1.0f};
+    EXPECT_NEAR(snapped.Length(), 1.0f, k_Tolerance);
+    EXPECT_LT(NS::AngleBetweenUnit(snapped, back), NS::AngleBetweenUnit(direction, back) - k_Tolerance);
+    EXPECT_GT(NS::AngleBetweenUnit(snapped, back), k_Tolerance);
+}
+
+// 寄せ始める角度が表の向きの間隔より狭い時、どの表の向きからも遠い向きはそのまま返る
+TEST(ReboundSnapTest, DirectionFarFromEveryTableDirectionIsKept)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    const ReboundSnapLimits narrow{.fullRadians = NS::k_Pi * 5.0f / 180.0f,
+                                   .blendRadians = NS::k_Pi * 10.0f / 180.0f,
+                                   .minLeaveRadians = k_MinLeave};
+    const NS::Vector3 direction = BackTurnedRight(20.0f);
+    const NS::Vector3 snapped = SnapTowardTable(table, direction, k_FrontWallNormal, narrow);
+    EXPECT_NEAR(NS::AngleBetweenUnit(snapped, direction), 0.0f, k_Tolerance);
+}
+
+// そろえる先は、面から離れる角度の下限より浅い表の向きを選ばない
+TEST(ReboundSnapTest, TableDirectionsShallowerThanTheMinimumLeaveAngleAreSkipped)
+{
+    const std::vector<NS::Vector3> table = MakeReboundDirections(8, ReboundTableShape::YawPitch);
+    // 面に沿う真右から 16° だけ離れた向き。一番近い表の向きは真右だが、面から離れていない
+    const NS::Vector3 direction = BackTurnedRight(74.0f);
+    const NS::Vector3 snapped = SnapTowardTable(table, direction, k_FrontWallNormal, SnapLimits());
+    EXPECT_GE(NS::Dot(snapped, k_FrontWallNormal), std::sin(k_MinLeave) - k_Tolerance);
+}
+
+// スティックの向きは、1 周を 16 に分けた一番近い向きにそろう。長さは変わらない
+TEST(ReboundSnapTest, StickSnapsToTheNearestOfSixteenDirections)
+{
+    const float off = NS::k_Pi * 10.0f / 180.0f;
+    const SnappedStick right = SnapStickDirection(0.8f * std::cos(off), 0.8f * std::sin(off), 16);
+    EXPECT_NEAR(right.right, 0.8f, k_Tolerance);
+    EXPECT_NEAR(right.up, 0.0f, k_Tolerance);
+
+    const float tilted = NS::k_Pi * 20.0f / 180.0f;
+    const float step = NS::k_Pi / 8.0f;
+    const SnappedStick upperRight = SnapStickDirection(std::cos(tilted), std::sin(tilted), 16);
+    EXPECT_NEAR(upperRight.right, std::cos(step), k_Tolerance);
+    EXPECT_NEAR(upperRight.up, std::sin(step), k_Tolerance);
+}
+
+// 表にある向きは表の向き。表の向きから 5° 回した向きと、表に無い向きは違う
+TEST(ReboundSnapTest, OnlyDirectionsInTheTableAreTableDirections)
+{
+    const std::vector<NS::Vector3> table{NS::Vector3{0.0f, 0.0f, -1.0f}, NS::Vector3{1.0f, 0.0f, 0.0f}};
+    const float off = NS::k_Pi * 5.0f / 180.0f;
+    EXPECT_TRUE(IsTableDirection(table, NS::Vector3{0.0f, 0.0f, -1.0f}));
+    EXPECT_FALSE(IsTableDirection(table, NS::Vector3{std::sin(off), 0.0f, -std::cos(off)}));
+    EXPECT_FALSE(IsTableDirection(table, NS::Vector3{0.0f, 0.0f, 1.0f}));
+}
+
+// 向きの数が 1 未満なら、スティックはそのまま
+TEST(ReboundSnapTest, StickIsKeptWhenTheDivisionCountIsNotPositive)
+{
+    const SnappedStick kept = SnapStickDirection(0.3f, 0.4f, 0);
+    EXPECT_FLOAT_EQ(kept.right, 0.3f);
+    EXPECT_FLOAT_EQ(kept.up, 0.4f);
 }

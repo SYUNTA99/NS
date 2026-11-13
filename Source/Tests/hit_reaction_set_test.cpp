@@ -1084,11 +1084,17 @@ namespace
     }
 } // namespace
 
-// 自機の束は地形の反動の 3 つ
+// 自機の束は地形の反動の 4 つ
 TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
 {
     const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
-    EXPECT_EQ(player.sets.size(), 3u);
+    EXPECT_EQ(player.sets.size(), 4u);
+
+    // 押す時機が合わなかった反動の束。玉を解いて落ちるので、残像は持たない
+    const NS::HitReactionSet* terrainMissed = FindShippedSet(player, "地形の反動[失敗]");
+    ASSERT_NE(terrainMissed, nullptr);
+    EXPECT_EQ(terrainMissed->stopFrames, 0);
+    EXPECT_EQ(FindOwnerEntry(*terrainMissed, "TackleGhost"), nullptr);
 
     // 地形の反動は当て方で 2 つ。止めの長さは自機の項目が持つので、どちらの束も止めない
     const NS::HitReactionSet* terrainFull = FindShippedSet(player, "地形の反動[全部]");

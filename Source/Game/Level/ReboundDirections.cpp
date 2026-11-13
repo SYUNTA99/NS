@@ -145,24 +145,11 @@ namespace GL
                 return yawSteps <= 1 && (yawSteps != 0 || a.pitch != b.pitch);
             }
 
-            // スティックの入力を、カメラの右と上で世界の向きにする。面へ向かう分は、面に沿って上へ向かう向きに置き換え、
-            // 壁へ押し込むと上へ抜ける。床と天井は面に沿う上が無いので、面へ向かう分を捨てる
+
+            // スティックの入力を、カメラの右と上で世界の向きにする。面へ向かう分は TurnIntoSurfaceUpward で置き換える
             NS::Vector3 InputInWorld(const ReboundHit& hit, const ScreenAxes& screen, const ScreenInput& input) noexcept
             {
-                const NS::Vector3 onScreen{screen.right * input.right + screen.up * input.up};
-                const float into{NS::Dot(onScreen, hit.normal)};
-                if (into >= 0.0f)
-                {
-                    return onScreen;
-                }
-                const NS::Vector3 alongSurface{onScreen - hit.normal * into};
-                NS::Vector3 surfaceUp{NS::RejectUnit(NS::Vector3{0.0f, 1.0f, 0.0f}, hit.normal)};
-                if (NS::IsNearlyZero(surfaceUp))
-                {
-                    return alongSurface;
-                }
-                surfaceUp.Normalize();
-                return alongSurface - surfaceUp * into;
+                return TurnIntoSurfaceUpward(screen.right * input.right + screen.up * input.up, hit.normal);
             }
 
             // 割り当てた向きの隣の候補で、入力を世界の向きにした物との角度が、割り当てた向きより小さい物なら、その角度を返す。
@@ -432,6 +419,144 @@ namespace GL
             }
             side.Normalize();
             return from * std::cos(maxRadians) + side * std::sin(maxRadians);
+        }
+
+        NS::Vector3 LiftFromSurface(const NS::Vector3& direction,
+                                    const NS::Vector3& normal,
+                                    float minLeaveRadians) noexcept
+        {
+            const float minSine{std::sin(minLeaveRadians)};
+            if (NS::Dot(direction, normal) >= minSine)
+            {
+                return direction;
+            }
+            NS::Vector3 along{NS::RejectUnit(direction, normal)};
+            if (NS::IsNearlyZero(along))
+            {
+                return normal;
+            }
+            along.Normalize();
+            return along * std::cos(minLeaveRadians) + normal * minSine;
+        }
+
+        bool ReflectedReboundDirection(const NS::Vector3& incoming,
+                                       const NS::Vector3& normal,
+                                       float minLeaveRadians,
+                                       NS::Vector3& outDirection) noexcept
+        {
+            NS::Vector3 reflected{ReflectAcross(incoming, normal)};
+            if (NS::IsNearlyZero(reflected))
+            {
+                return false;
+            }
+            reflected.Normalize();
+            outDirection = LiftFromSurface(reflected, normal, minLeaveRadians);
+            return true;
+        }
+
+        NS::Vector3 TurnIntoSurfaceUpward(const NS::Vector3& wanted, const NS::Vector3& normal) noexcept
+        {
+            const float into{NS::Dot(wanted, normal)};
+            if (into >= 0.0f)
+            {
+                return wanted;
+            }
+            const NS::Vector3 alongSurface{wanted - normal * into};
+            NS::Vector3 surfaceUp{NS::RejectUnit(NS::Vector3{0.0f, 1.0f, 0.0f}, normal)};
+            if (NS::IsNearlyZero(surfaceUp))
+            {
+                return alongSurface;
+            }
+            surfaceUp.Normalize();
+            return alongSurface - surfaceUp * into;
+        }
+
+        NS::Vector3 BendReboundTowardInput(const NS::Vector3& base,
+                                           const NS::Vector3& input,
+                                           const NS::Vector3& normal,
+                                           const ReboundBendLimits& limits) noexcept
+        {
+            if (NS::IsNearlyZero(input))
+            {
+                return base;
+            }
+            NS::Vector3 toward{input};
+            toward.Normalize();
+            const float strength{std::clamp(limits.strength, 0.0f, 1.0f)};
+            NS::Vector3 bent{base + toward * strength};
+            // 強さが 1 で入力が真逆の時だけ長さが無くなる。回す面が決まらないので曲げない
+            if (NS::IsNearlyZero(bent))
+            {
+                return base;
+            }
+            bent.Normalize();
+            bent = LiftFromSurface(bent, normal, limits.minLeaveRadians);
+            // 面から離した分で、足し算の上限 (強さの逆正弦) を超える事がある。base から上限の角度までに戻す
+            return TurnToward(base, bent, std::asin(strength));
+        }
+
+        NS::Vector3 SnapTowardTable(std::span<const NS::Vector3> table,
+                                    const NS::Vector3& direction,
+                                    const NS::Vector3& normal,
+                                    const ReboundSnapLimits& limits) noexcept
+        {
+            const float minSine{std::sin(limits.minLeaveRadians)};
+            const NS::Vector3* nearest{nullptr};
+            float bestDot{-2.0f};
+            for (const NS::Vector3& candidate : table)
+            {
+                if (NS::Dot(candidate, normal) < minSine)
+                {
+                    continue;
+                }
+                const float dot{NS::Dot(candidate, direction)};
+                if (dot > bestDot)
+                {
+                    bestDot = dot;
+                    nearest = &candidate;
+                }
+            }
+            if (nearest == nullptr)
+            {
+                return direction;
+            }
+            const float angle{NS::AngleBetweenUnit(direction, *nearest)};
+            if (angle <= limits.fullRadians)
+            {
+                return *nearest;
+            }
+            const float span{limits.blendRadians - limits.fullRadians};
+            if (angle >= limits.blendRadians || !NS::IsPositive(span))
+            {
+                return direction;
+            }
+            // そろえる角度の境では表の向きまで、寄せ始める角度の境では 0 だけ回す
+            const float pull{(limits.blendRadians - angle) / span};
+            return TurnToward(direction, *nearest, angle * pull);
+        }
+
+        bool IsTableDirection(std::span<const NS::Vector3> table, const NS::Vector3& direction) noexcept
+        {
+            for (const NS::Vector3& candidate : table)
+            {
+                if (NS::IsNearlyParallel(candidate, direction))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        SnappedStick SnapStickDirection(float stickRight, float stickUp, int divisions) noexcept
+        {
+            const float length{std::sqrt(stickRight * stickRight + stickUp * stickUp)};
+            if (divisions < 1 || NS::IsNearlyZero(length))
+            {
+                return SnappedStick{.right = stickRight, .up = stickUp};
+            }
+            const float step{2.0f * NS::k_Pi / static_cast<float>(divisions)};
+            const float snapped{std::round(std::atan2(stickUp, stickRight) / step) * step};
+            return SnappedStick{.right = std::cos(snapped) * length, .up = std::sin(snapped) * length};
         }
     } // namespace Level
 } // namespace GL

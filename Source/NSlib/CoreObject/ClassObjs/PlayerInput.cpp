@@ -23,25 +23,36 @@ namespace
         }
         return out;
     }
+
+    // 行は順に水平の右・真上・水平の前。右は前を真上の周りに 90 度回した向き
+    [[nodiscard]] NS::Matrix MakeInputMatrix(const NS::Vector3& cameraForwardHorizontal) noexcept
+    {
+        const NS::Vector3 forward = NormalizeHorizontal(cameraForwardHorizontal);
+        const NS::Vector3 right{forward.z, 0.0f, -forward.x};
+        return NS::Matrix{right, NS::Vector3{0.0f, 1.0f, 0.0f}, forward};
+    }
 } // namespace
 
 namespace NS
 {
     void PlayerInput::SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept
     {
-        m_cameraForward = NormalizeHorizontal(cameraForwardHorizontal);
+        m_inputMatrix = MakeInputMatrix(cameraForwardHorizontal);
     }
 
-    void PlayerInput::SetDesiredMove(const Vector3& worldDir, float speedScale01) noexcept
+    void PlayerInput::SetStick(float right, float forward) noexcept
     {
-        m_desiredDir = worldDir;
-        m_desiredSpeedScale = Clamp(speedScale01, 0.0f, 1.0f);
-    }
-
-    void PlayerInput::SetClimbMove(float localRight, float localForward) noexcept
-    {
-        m_climbRight = Clamp(localRight, -1.0f, 1.0f);
-        m_climbForward = Clamp(localForward, -1.0f, 1.0f);
+        float speedScale = std::sqrt(right * right + forward * forward);
+        if (speedScale > 1.0f)
+        {
+            right /= speedScale;
+            forward /= speedScale;
+            speedScale = 1.0f;
+        }
+        m_stickRight = right;
+        m_stickForward = forward;
+        m_desiredDir = Vector3::TransformNormal(Vector3{right, 0.0f, forward}, m_inputMatrix);
+        m_desiredSpeedScale = speedScale;
     }
 
     void PlayerInput::ConsumePressed() noexcept
@@ -56,8 +67,8 @@ namespace NS
     {
         m_desiredDir = Vector3{};
         m_desiredSpeedScale = 0.0f;
-        m_climbRight = 0.0f;
-        m_climbForward = 0.0f;
+        m_stickRight = 0.0f;
+        m_stickForward = 0.0f;
         m_jumpHeld = false;
         ConsumePressed();
         // やり直しと止めへ、読んでいない間 (消えている間・編集の間) の押しを持ち越さない
@@ -85,7 +96,7 @@ namespace NS
         // camera 相対移動の基準 forward は CameraManager から読む。CameraManager 不在 (テスト等) は注入値のまま
         if (camera->GetCameraManager() != nullptr)
         {
-            m_cameraForward = NormalizeHorizontal(CalcCameraForwardHorizontal(camera));
+            m_inputMatrix = MakeInputMatrix(CalcCameraForwardHorizontal(camera));
         }
 
         OS::Input& input = OS::Input::Get();
@@ -128,39 +139,11 @@ namespace NS
 
         const OS::Stick lstick = pad.LeftStick();
 
-        float localX = kbRight + lstick.x;
-        float localZ = kbForward + lstick.y;
-
-        const float localMag = std::sqrt(localX * localX + localZ * localZ);
-        float speedScale = 0.0f;
-        if (localMag > 1.0f)
-        {
-            localX /= localMag;
-            localZ /= localMag;
-            speedScale = 1.0f;
-        }
-        else
-        {
-            speedScale = localMag;
-        }
-
-        const Vector3& fwd = m_cameraForward;
-        const Vector3 right{fwd.z, 0.0f, -fwd.x};
-
-        const Vector3 worldDir{
-            right.x * localX + fwd.x * localZ,
-            0.0f,
-            right.z * localX + fwd.z * localZ,
-        };
-
         const bool jumpPressed =
             (!wantKb && presses.WasPressed(OS::Key::Space)) || presses.WasPressed(OS::GamepadButton::A);
         const bool jumpHeld = (!wantKb && kb.IsHeld(OS::Key::Space)) || pad.IsHeld(OS::GamepadButton::A);
 
-        m_desiredDir = worldDir;
-        m_desiredSpeedScale = speedScale;
-        m_climbRight = localX;
-        m_climbForward = localZ;
+        SetStick(kbRight + lstick.x, kbForward + lstick.y);
         m_jumpPressed = m_jumpPressed || jumpPressed;
         m_jumpHeld = jumpHeld;
         m_respawnPressed =

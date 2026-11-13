@@ -56,6 +56,25 @@ TEST(ReboundPreviewTest, AssignedArrowIsWrittenLastAndThickerThanTheChoices)
     EXPECT_GT(std::abs(lines[4].end.z), 0.0001f);
 }
 
+// 当て方の向きが表の向きにそろう時は、その矢印だけ色を替える。曲げられる先の矢印は替えない
+TEST(ReboundPreviewTest, AssignedArrowOnATableDirectionUsesTheOnTableColor)
+{
+    ReboundPreviewArrows arrows{.origin = NS::Vector3{0.0f, 1.0f, 0.0f},
+                                .assigned = NS::Vector3{1.0f, 0.0f, 0.0f},
+                                .choices = {NS::Vector3{0.0f, 1.0f, 0.0f}}};
+    arrows.assignedOnTable = true;
+    const ReboundPreviewDesc desc{};
+    ASSERT_NE(desc.assignedOnTableColor.z, desc.assignedColor.z);
+    std::vector<NS::WorldLine> lines{};
+    ASSERT_TRUE(BuildReboundArrowLines(arrows, desc, lines));
+    ASSERT_EQ(lines.size(), 6u);
+    EXPECT_FLOAT_EQ(lines[0].color.z, desc.choiceColor.z);
+    for (std::size_t i = 3; i < 6; ++i)
+    {
+        EXPECT_FLOAT_EQ(lines[i].color.z, desc.assignedOnTableColor.z);
+    }
+}
+
 TEST(ReboundPreviewTest, InvalidDescIsRejectedWithoutWriting)
 {
     const ReboundPreviewArrows arrows{.origin = NS::Vector3{0.0f, 1.0f, 0.0f}, .assigned = NS::Vector3{1.0f, 0.0f, 0.0f}};

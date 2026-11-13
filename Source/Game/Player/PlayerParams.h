@@ -31,6 +31,12 @@ namespace GL
             {
                 return NS::ToRadians(NS::Degrees{m_reboundLeaveMaxSlopeDegrees}).value;
             }
+
+            //! 欄「反動が面から離れる角度の下限」をラジアンにした値
+            [[nodiscard]] float ReboundMinLeaveRadians() const noexcept
+            {
+                return NS::ToRadians(NS::Degrees{m_reboundMinLeaveDegrees}).value;
+            }
             //! 入力方向への水平速度成分がこの値未満ならブレーキに入る
             [[nodiscard]] float BrakeThreshold() const noexcept { return m_brakeThreshold; }
             //! 欄「上昇重力」「下降重力」「頂点滞空 Vy」「頂点滞空倍率」の写し。重力の強さを選ぶ ChooseGravity へ渡す
@@ -88,11 +94,20 @@ namespace GL
             NS_FIELD(m_reboundMatchVisibleLength, "合ったとみなす、画面に映る長さの下限", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundMatchedSpeedScale, "向きが合った時の返る速さの倍率", NS::FieldRange::Positive())
             NS_FIELD(m_reboundShiftedEffectScale, "ずらした時の演出の強さの倍率", NS::FieldRange::NonNegative())
+            NS_FIELD(m_reboundUsesReflection, "反動の向きを反射から決める")
+            NS_FIELD(m_reboundInputStrength, "入力で反動を曲げる強さ", NS::FieldRange{0.0f, 1.0f})
+            NS_FIELD(m_reboundMinLeaveDegrees, "反動が面から離れる角度の下限", NS::FieldRange{0.0f, 90.0f})
+            NS_FIELD(m_reboundBendFrames, "反動を入力の向きへ曲げ終えるフレーム数")
+            NS_FIELD(m_reboundSnapFullDegrees, "反動を表の向きへそろえる角度", NS::FieldRange{0.0f, 90.0f})
+            NS_FIELD(m_reboundSnapBlendDegrees, "反動を表の向きへ寄せ始める角度", NS::FieldRange{0.0f, 90.0f})
+            NS_FIELD(m_reboundStickDivisions, "反動の入力を読む向きの数")
             NS_FIELD(m_reboundMinFacing, "反動に数える当て方の下限")
             NS_FIELD(m_reboundFullFacing, "全部返ったに数える当て方の下限")
             NS_FIELD(m_reboundStopMinFrames, "反動の止めの最短のフレーム数")
             NS_FIELD(m_reboundStopMaxFrames, "反動の止めの上限のフレーム数")
             NS_FIELD(m_reboundStopStickChange, "スティックが動いているとみなす変化", NS::FieldRange::NonNegative())
+            NS_FIELD(m_reboundPressLeadFrames, "反動の押しを受ける、当たる前のフレーム数")
+            NS_FIELD(m_reboundMissedSpeedScale, "外した押しで返る速さの倍率", NS::FieldRange{0.0f, 1.0f})
             NS_FIELD(m_reboundLockFrames, "反動の操作なしのフレーム数")
             NS_FIELD(m_reboundSteerEndFrames, "反動の補正が終わるフレーム数")
             NS_FIELD(m_dashReboundGravity, "地形の反動の重力")
@@ -137,25 +152,42 @@ namespace GL
             float m_ledgeShimmySpeed = 2.0f;
             float m_turnSpeed = 970.0f;
             float m_airDashDistance = 4.4f;   // m。当たらなければ、m_airDashFrames の歩でこの距離を進む
-            int m_airDashFrames = 29;         // 当たらなかったダッシュが終わるまでの状態の歩の数
+            int m_airDashFrames = 36;         // 当たらなかったダッシュが終わるまでの状態の歩の数
             float m_airDashExitSpeed = 8.0f;  // 当たらずに終わったフレームに落とす速さ (m/s)
             int m_reboundTableDivisions = 8;  // 8・12・16 のうち一番近い物へ丸める
             bool m_reboundTableWithPitch = true; // 偽なら縦・横・奥の 3 枚の円の表
-            float m_terrainReboundSpeedScale = 1.0f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
+            float m_terrainReboundSpeedScale = 1.49f; // ダッシュで当てた時に返る速さ。返った後に続けて当たる時は掛け直さない
             float m_reboundScreenTieDegrees = 10.0f;   // 画面の角度の差がこれ以内なら、入力が返る向きと合ったとみなす
             float m_reboundDepthSlackDegrees = 10.0f;  // 奥と手前へ飛ぶ量の上限に足す、カメラのずれの余裕
             // 返る向きを画面の右と上へ映した長さがこれより短いと、入力と合ったとみなさずに入力の側へ曲げる
             float m_reboundMatchVisibleLength = 0.5f;
-            float m_reboundMatchedSpeedScale = 1.2f;   // 入力が返る向きと合った時だけ、当てた速さに掛ける
+            float m_reboundMatchedSpeedScale = 1.0f;   // 入力が返る向きと合った時だけ、当てた速さに掛ける。1 なら無入力と同じ速さ
             float m_reboundShiftedEffectScale = 0.7f;  // 入力補正で向きを変えた時に、走っている演出に掛ける
+            // 真なら返る向きを物理の反射にし、入力の向きを足して曲げる。偽なら表へ割り当て、入力で隣の向きへ替える
+            bool m_reboundUsesReflection = true;
+            float m_reboundInputStrength = 0.7f;    // 返る向きに足す入力の向きの長さ。曲がる角度の上限はこの値の逆正弦
+            float m_reboundMinLeaveDegrees = 15.0f; // 反射から決めた返る向きと曲げた向きは、面からこの角度より浅くならない (度)
+            // 反射から決める時に、止めの明けからこのフレーム数で返る向きから曲げた向きへ回す。0 なら明けのフレームに向く
+            int m_reboundBendFrames = 7;
+            float m_reboundSnapFullDegrees = 10.0f;  // 反射から決めた向きが、表の向きからこの角度以内なら表の向きにする (度)
+            // この角度より外は反射のまま。上の角度との間はなだらかに寄せる (度)。表の隣の向きとの間の角度の半分なら、反射のままの範囲は無い
+            float m_reboundSnapBlendDegrees = 22.5f;
+            // 空中の操作のスティックを、カメラで世界へ回してから、世界の軸のこの数の向きへそろえて読む。0 ならそろえない
+            int m_reboundStickDivisions = 16;
             // 当て方は進む向きと面の法線の内積の大きさ。下限より浅い当たりは掃引の滑りに任せる
             float m_reboundMinFacing = 0.2f;
             float m_reboundFullFacing = 0.9f; // これ以上なら強い演出の束を始める
             // 地形に当たったフレームを入れて数える止め。止めが明けたフレームのスティックで反動の向きを選ぶ
             int m_reboundStopMinFrames = 3;
-            int m_reboundStopMaxFrames = 12;      // スティックが動いている間は、ここまで止めを延ばす
+            int m_reboundStopMaxFrames = 0; // スティックが動いている間は、ここまで止めを延ばす。最短以下なら延ばさない
             // 1 フレームの左スティックの位置の差がこれより大きいと、動いているとみなす。止めの延長と、押したフレームのエアダッシュの向きに使う
             float m_reboundStopStickChange = 0.05f;
+            // 反射から決める時に、ダッシュの間の最初の押しが当たるフレームからこのフレーム数以内なら、時機の合った押し。
+            // 止めの間の押しも合った押し。合った時だけ普通の速さで返り、入力で向きを曲げる
+            int m_reboundPressLeadFrames = 6;
+            // 反射から決める時に、時機の合った押しが無い反動 (押さなかった時も入る) の返る速さに掛ける。
+            // 当て方の向きへ小さく跳ね返り、玉を解いて落下の状態へ戻る。エアダッシュは着地まで戻らない
+            float m_reboundMissedSpeedScale = 0.55f;
             int m_reboundLockFrames = 9;      // 反動を始めてから操作が戻るまで
             int m_reboundSteerEndFrames = 36; // 反動を始めてから補正の段が終わるまで
             float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)

@@ -233,11 +233,32 @@ private:
     [[nodiscard]] std::optional<int> AirDashStepsLeft() const noexcept;
     void TryBeginTerrainRebound() noexcept;
     //! @brief 遮った面 normal で反動を始める
-    //! 向きを表へ割り当て、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
+    //! 返る向きを ReboundBaseDirection で決め、当てた速さで返し、欄「反動の止めの最短のフレーム数」だけ止める
     //! @details 入力補正はここでは掛けない。止めが明けたフレームに ChooseReboundAtRelease が掛ける
     //! @param[in] baseSpeed 返る速さ (m/s)
     //! エアダッシュならダッシュの速さに地形の反動の倍率を掛けた値、反動の続きなら今の速さ
     void BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vector3& normal, float baseSpeed) noexcept;
+    //! @brief 入力補正を掛ける前の返る向き。欄「反動の向きを反射から決める」が真なら物理の反射、偽なら表へ割り当てた向き
+    //! @details 物理の反射は SnapReboundToTable で表の向きへそろえる。当て方やカメラの少しのずれを返る向きに出さない
+    //! @param[out] outDirection 返る向き。単位の長さ。失敗した場合は書き換えない
+    //! @return 面から離れる向きを作れない場合 false、それ以外の場合は true
+    [[nodiscard]] bool ReboundBaseDirection(const NS::Vector3& incoming,
+                                            const NS::Vector3& normal,
+                                            NS::Vector3& outDirection) const noexcept;
+    //! @brief 返る向き base を、今のスティックの向きへ欄「入力で反動を曲げる強さ」で曲げた向き。反射から決める時に使う
+    //! @details スティックはカメラの水平の右と前で読み、欄「反動の入力を読む向きの数」の向きへそろえる。
+    //! 世界の向きにした入力は SnapInputToTable で表の向きへそろえる。入力が欄「スティック遊び」より小さければ base のまま
+    [[nodiscard]] NS::Vector3 BendReboundByStick(const NS::Vector3& base, const NS::Vector3& normal) const noexcept;
+    //! 世界の向きにした単位の入力 input を、SnapReboundToTable と同じ 2 つの欄で、表の一番近い向きへそろえる。
+    //! カメラの少しのずれを、曲げる先に出さない
+    [[nodiscard]] NS::Vector3 SnapInputToTable(const NS::Vector3& input) const noexcept;
+    //! 単位の向き direction を、欄「反動を表の向きへそろえる角度」と「反動を表の向きへ寄せ始める角度」で、表の一番近い向きへそろえる
+    [[nodiscard]] NS::Vector3 SnapReboundToTable(const NS::Vector3& direction, const NS::Vector3& normal) const noexcept;
+    //! @brief UpdateDashRebound から、反動のフレーム数を進めた直後に毎フレーム呼ぶ。速さを保ったまま、速度を最後の反動の
+    //! 返る向きから選んだ向きへ回す
+    //! @details 反射から決める時は、欄「反動を入力の向きへ曲げ終えるフレーム数」(操作なしの段のフレーム数まで)
+    //! を掛けて回す。 表から選ぶ時とフレーム数が 0 の時は、止めが明けたフレームに選んだ向きへ向く
+    void TurnReboundTowardChosen() noexcept;
     //! @brief DecideStep から毎フレーム、ExtendReboundStop
     //! より前に呼ぶ。前の歩から左スティックが欄「スティックが動いているとみなす変化」より
     //! 動いたかを控え、止まっている歩ではその水平の向きを控える
@@ -246,17 +267,23 @@ private:
     //! から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1
     //! フレーム延ばす
     void ExtendReboundStop() noexcept;
-    //! @brief 止めが明けたフレームに 1
-    //! 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛け、合った時は弱い束を強い束に替える
+    //! @brief DecideStep から毎フレーム呼ぶ。ダッシュの間の最初の押しからのフレーム数を数える
+    //! @details 反射から決める時に、反動の止めの間に最初の押しが来たら、時機が合った押しにして強い束へ替える。
+    //! 1 回のダッシュで数える押しは最初の 1 回だけ
+    void ObserveReboundPress() noexcept;
+    //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛ける
+    //! @details 表から選ぶ時は、入力が合えば弱い束を強い束に替える。反射から決める時は、ボタンを押す時機が合った時だけ
+    //! 入力を読み、合わなければ当て方のままの向きにする
     void ChooseReboundAtRelease() noexcept;
     //! 体を動かす時の登れる坂の上限。向きを選んだ後の操作なしの段で、当たった面から離れて飛ぶ間は欄の広い上限を返す
     [[nodiscard]] float MoveMaxSlopeRadians() const noexcept;
-    //! 今の入力で、最後の反動の返る向きを表から選ぶ。入力が無ければ割り当てた向きのまま
+    //! 今の入力で、最後の反動の返る向きを選ぶ。表から選ぶか、反射から決める時は BendReboundByStick で曲げる。
+    //! 入力が無ければ割り当てた向きのまま
     [[nodiscard]] GL::Level::ReboundChoice ChooseReboundInput() const noexcept;
     //! 入力補正で選べる幅。欄の角度と表の分割数から作る。向きを選ぶ所と矢印が同じ幅を使う
     [[nodiscard]] GL::Level::ReboundChoiceLimits ReboundLimits() const noexcept;
-    //! @brief 選んだ向きを掛ける。合った時は速さを欄「向きが合った時の返る速さの倍率」で強め、変えた時は飛んでいる
-    //! 速さを保って向きを回し、走っている演出を弱めて振動を重ねる
+    //! @brief 選んだ向きを最後の反動の記録に書く。合った時は速さに欄「向きが合った時の返る速さの倍率」を掛け、
+    //! 変えた時は走っている演出を弱めて振動を重ねる。速度を選んだ向きへ回すのは TurnReboundTowardChosen
     void ApplyReboundChoice(const GL::Level::ReboundChoice& choice) noexcept;
     //! 欄「向きの表の分割数」と「表に傾きの段を入れる」で作った反動の向きの表
     [[nodiscard]] std::vector<NS::Vector3> ReboundTable() const;
@@ -264,9 +291,12 @@ private:
     [[nodiscard]] GL::Level::ScreenAxes ReboundScreenAxes() const noexcept;
     //! 今の入力を、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。入力が無ければゼロ
     [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
-    //! @brief 地形の反動の束を始める。full なら強い束、偽なら弱い束。音は鳴らさない
+    //! @brief 地形の反動の束 name を始める。音は鳴らさない
     //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
-    void StartTerrainReboundReaction(const NS::Vector3& contact, bool full) noexcept;
+    void StartTerrainReboundReaction(const NS::Vector3& contact, std::string_view name) noexcept;
+    //! @brief 反射から決める時の、今の反動の束の名前
+    //! @details 押す時機が合わなければ失敗の束。合った時は、最後の反動の返る向きが表の向きなら強い束、違えば弱い束
+    [[nodiscard]] std::string_view ReflectedReboundReactionName() const;
     //! 入力補正で向きを変えた時の演出。走っている演出と残像を弱め、振動の束を重ねる
     void StartShiftedReboundReaction() noexcept;
     //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
@@ -281,6 +311,9 @@ private:
     //! 左スティックをデッドゾーンより倒していれば、その水平の向き (正規化済み) を outDirection に書いて true
     [[nodiscard]] bool TryStickDirection(NS::Vector3& outDirection) const noexcept;
     [[nodiscard]] bool TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) const noexcept;
+    //! 入力用の行列で世界の水平の向きにしたスティックを、世界の軸の「反動の入力を読む向きの数」の向きへそろえる。
+    //! 長さはスティックの倒した深さのまま
+    [[nodiscard]] NS::Vector3 SnappedStickInWorld() const noexcept;
     // =========================================================================
     // 内部ヘルパー：接地復帰・状態進行・アニメーション選択
     // =========================================================================

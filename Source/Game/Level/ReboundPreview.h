@@ -16,6 +16,7 @@ namespace GL
         {
             NS::Vector3 origin{};              //!< 当たると予測した点。世界座標
             NS::Vector3 assigned{};            //!< 当て方で決まる返る向き
+            bool assignedOnTable = false;      //!< assigned が表の向きにそろっているか。真なら色を替える
             std::vector<NS::Vector3> choices;  //!< スティックで曲げられる先 (CanShiftReboundTo を満たす向き)
         };
 
@@ -57,6 +58,7 @@ namespace GL
             NS_FIELD(m_desc.referenceHeight, "ピクセルの寸法の基準の高さ")
             NS_GROUP("色")
             NS_FIELD(m_desc.assignedColor, "当て方の向きの矢印の色")
+            NS_FIELD(m_desc.assignedOnTableColor, "表の向きへ返る時の矢印の色")
             NS_FIELD(m_desc.choiceColor, "曲げられる先の矢印の色")
             NS_REFLECT_END()
 

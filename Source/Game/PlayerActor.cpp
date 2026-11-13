@@ -217,6 +217,7 @@ void PlayerActor::DecideStep()
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
     ObserveStick();
+    ObserveReboundPress();
     ExtendReboundStop();
     // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る
     if (m_input->RespawnPressed() && !hitAtStepStart)

@@ -122,5 +122,82 @@ namespace GL
         //! 単位の向き from を、単位の向き to へ最大 maxRadians だけ回す
         //! 2 つが真逆で回す面が決まらない時は from のまま
         [[nodiscard]] NS::Vector3 TurnToward(const NS::Vector3& from, const NS::Vector3& to, float maxRadians) noexcept;
+
+        //! 単位の向き direction が面から minLeaveRadians より浅い時、面から minLeaveRadians ちょうど離れた向きに作り直す
+        //! 面へ映した向きと法線から作る。面へ映した向きが無い時 (面へ真っすぐ向かう向き) は法線を返す。
+        //! 浅くなければ direction のまま
+        //! @param[in] normal 面の外向きの単位法線
+        [[nodiscard]] NS::Vector3 LiftFromSurface(const NS::Vector3& direction,
+                                                  const NS::Vector3& normal,
+                                                  float minLeaveRadians) noexcept;
+
+        //! 物理の反射をそのまま返る向きにする。面から minLeaveRadians より浅い反射は LiftFromSurface で離す
+        //! @param[in] incoming 当たる直前の進む向き。長さは問わない
+        //! @param[in] normal 当たった面の外向きの単位法線
+        //! @param[out] outDirection 返る向き。単位の長さ。失敗した場合は書き換えない
+        //! @return 反射に長さが無い場合 false、それ以外の場合は true
+        [[nodiscard]] bool ReflectedReboundDirection(const NS::Vector3& incoming,
+                                                     const NS::Vector3& normal,
+                                                     float minLeaveRadians,
+                                                     NS::Vector3& outDirection) noexcept;
+
+        //! 世界の向きにした入力のうち、面へ向かう分を、面に沿って上へ向かう向きに置き換える。
+        //! 壁へ押し込むと上へ抜ける。床と天井は面に沿う上が無いので、面へ向かう分を捨てる
+        //! @param[in] wanted 世界の向きにした入力。入力が無ければ長さ 0
+        //! @param[in] normal 当たった面の外向きの単位法線
+        [[nodiscard]] NS::Vector3 TurnIntoSurfaceUpward(const NS::Vector3& wanted, const NS::Vector3& normal) noexcept;
+
+        //! 入力で返る向きを曲げる時の幅
+        struct ReboundBendLimits
+        {
+            float strength = 0.0f;        //!< 返る向きに足す入力の向きの長さ。0〜1。曲がる角度の上限はこの値の逆正弦
+            float minLeaveRadians = 0.0f; //!< 曲げた向きが面から離れる角度の下限
+        };
+
+        //! @brief 返る向き base に、長さ 1 にした入力の向きを strength 倍して足し、長さ 1 にする
+        //! @details 入力が base と同じ向きなら base のまま。真逆でも strength が 1 未満なら base のまま。
+        //! 足した向きは LiftFromSurface で面から離し、base からの角度が strength の逆正弦を超えたら、その角度まで戻す。
+        //! base が面から minLeaveRadians 以上離れていれば、返す向きも minLeaveRadians 以上離れる
+        //! @param[in] base 返る向き。単位の長さ
+        //! @param[in] input 世界の向きにした入力。長さは問わない。長さが無ければ base を返す
+        //! @param[in] normal 当たった面の外向きの単位法線
+        [[nodiscard]] NS::Vector3 BendReboundTowardInput(const NS::Vector3& base,
+                                                         const NS::Vector3& input,
+                                                         const NS::Vector3& normal,
+                                                         const ReboundBendLimits& limits) noexcept;
+
+        //! 反射から決めた向きを、表の向きへそろえる時の幅
+        struct ReboundSnapLimits
+        {
+            float fullRadians = 0.0f;     //!< 表の向きからこの角度以内なら、表の向きにする
+            float blendRadians = 0.0f;    //!< 表の向きからこの角度より外なら、そのまま。fullRadians との間はなだらかに寄せる
+            float minLeaveRadians = 0.0f; //!< そろえる先にする表の向きが、面から離れる角度の下限
+        };
+
+        //! @brief 単位の向き direction を、表の一番近い向きへ許容角度の中でそろえる
+        //! @details 当て方やカメラの少しのずれを、返る向きに出さないために使う。
+        //! 一番近い向きからの角度が fullRadians 以内ならその向き、blendRadians 以上なら direction のまま。
+        //! 間は、blendRadians に近いほど direction に近い向きを返すので、境で向きは飛ばない。
+        //! 面から minLeaveRadians より浅い表の向きは、そろえる先にしない
+        //! @param[in] normal 当たった面の外向きの単位法線
+        //! @return そろえる先が無ければ direction
+        [[nodiscard]] NS::Vector3 SnapTowardTable(std::span<const NS::Vector3> table,
+                                                  const NS::Vector3& direction,
+                                                  const NS::Vector3& normal,
+                                                  const ReboundSnapLimits& limits) noexcept;
+
+        //! 単位の向き direction が、table のどれかと同じ向きか。反対の向きは同じに数えない
+        [[nodiscard]] bool IsTableDirection(std::span<const NS::Vector3> table, const NS::Vector3& direction) noexcept;
+
+        //! 向きをそろえたスティックの入力
+        struct SnappedStick
+        {
+            float right = 0.0f; //!< 右への入力。左は負
+            float up = 0.0f;    //!< 前への入力。後ろは負
+        };
+
+        //! スティックの向きを、1 周を divisions 等分した一番近い向きへそろえる。長さは変えない
+        //! スティックの手元の少しのずれを、曲げる先に出さないために使う。divisions が 1 未満ならそのまま返す
+        [[nodiscard]] SnappedStick SnapStickDirection(float stickRight, float stickUp, int divisions) noexcept;
     } // namespace Level
 } // namespace GL

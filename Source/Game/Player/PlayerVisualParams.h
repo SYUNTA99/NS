@@ -22,6 +22,8 @@ namespace GL
             //! 矢じりの線が軸から開く角度 (度)
             float headAngleDegrees = 30.0f;
             NS::Color assignedColor{1.0f, 1.0f, 1.0f, 0.95f};
+            //! 当て方で決まる返る向きが表の向きにそろう時の、その矢印の色
+            NS::Color assignedOnTableColor{1.0f, 0.9f, 0.0f, 0.95f};
             NS::Color choiceColor{1.0f, 1.0f, 1.0f, 0.5f};
         };
     } // namespace Level

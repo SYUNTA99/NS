@@ -62,6 +62,9 @@ namespace GL
                 m_steerStarted = false;
                 m_reboundStopFrames = 0;
                 m_reboundChosen = false;
+                m_pressFrames = -1;
+                m_reboundPressed = false;
+                m_reboundMissed = false;
                 m_stickMoving = false;
                 m_steadyDirection = NS::Vector3{};
             }
@@ -83,6 +86,11 @@ namespace GL
             NS::Vector3 m_steadyDirection{}; // 最後に止まっていた歩の左スティックの水平の向き。デッドゾーンの中なら 0
             int m_reboundStopFrames = 0;   // 今の反動で止めたフレーム数。当たったフレームを入れて数える
             bool m_reboundChosen = false;  // 今の反動の向きを、止めが明けたフレームに選んだか。選ぶのは反動 1 回に 1 度
+            // 今のダッシュの間に最初にボタンを押してから進んだフレーム数。押していなければ負。数えるのはダッシュの間だけ
+            int m_pressFrames = -1;
+            bool m_reboundPressed = false; // 今の反動で、ボタンを押す時機が合ったか。合った時だけ入力で向きを曲げる
+            // 今の反動が、時機の合った押しの無い反動か (押さなかった時も入る)。止めの明けに玉を解いて落下の状態へ移る
+            bool m_reboundMissed = false;
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };

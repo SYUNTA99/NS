@@ -72,9 +72,13 @@ namespace GL
             const ArrowLook choice{.length = desc.choiceLength,
                                    .thickness = desc.choiceThickness / desc.referenceHeight,
                                    .color = desc.choiceColor};
-            const ArrowLook assigned{.length = desc.assignedLength,
-                                     .thickness = desc.assignedThickness / desc.referenceHeight,
-                                     .color = desc.assignedColor};
+            ArrowLook assigned{.length = desc.assignedLength,
+                               .thickness = desc.assignedThickness / desc.referenceHeight,
+                               .color = desc.assignedColor};
+            if (arrows.assignedOnTable)
+            {
+                assigned.color = desc.assignedOnTableColor;
+            }
             outLines.clear();
             for (const NS::Vector3& direction : arrows.choices)
             {

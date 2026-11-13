@@ -1,6 +1,7 @@
 #include "Game/PlayerActor.h"
 
 #include "Game/Level/AirGravity.h"
+#include "Game/Level/ReboundDirections.h"
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerJudges.h"
@@ -133,6 +134,15 @@ bool PlayerActor::TryMoveInput(NS::Vector3& outDirection, float& outTopSpeed) co
     return true;
 }
 
+NS::Vector3 PlayerActor::SnappedStickInWorld() const noexcept
+{
+    // カメラで世界へ回してからそろえる。そろう先を世界の軸に固定し、カメラの角度で反動の表の向きからずれないようにする
+    const NS::Vector3 world = m_input->DesiredDirection();
+    const GL::Level::SnappedStick snapped =
+        GL::Level::SnapStickDirection(world.x, world.z, m_params->m_reboundStickDivisions);
+    return NS::Vector3{snapped.right, 0.0f, snapped.up};
+}
+
 void PlayerActor::AccelerateToInputDirection(float dt) noexcept
 {
     NS::Body& body = *m_body;
@@ -141,6 +151,12 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
     if (!TryMoveInput(direction, topSpeed))
     {
         return;
+    }
+    if (!body.IsGrounded())
+    {
+        // 空中は反動の入力と同じ数の向きへそろえる
+        direction = SnappedStickInWorld();
+        direction.Normalize();
     }
 
     float acceleration = m_params->m_airAcceleration;
@@ -501,12 +517,12 @@ void PlayerActor::DropLedge() noexcept
 
 void PlayerActor::Shimmy(float dt) noexcept
 {
-    if (m_input->ClimbRight() != 0.0f)
+    if (m_input->StickRight() != 0.0f)
     {
         // 面法線に水平直交する縁方向へ進め、移動先で見つけた面から半径だけ外と上面の高さへ置き直す。面が折れていても面に沿う
         const NS::Vector3 pos = TransformObj().Position();
         const NS::Vector3 alongDir{-m_ledgeFaceNormal.z, 0.0f, m_ledgeFaceNormal.x};
-        const NS::Vector3 step = alongDir * (m_input->ClimbRight() * m_params->m_ledgeShimmySpeed * dt);
+        const NS::Vector3 step = alongDir * (m_input->StickRight() * m_params->m_ledgeShimmySpeed * dt);
         const NS::Vector3 shimmied = pos + step;
         // 移動先にも掴める縁が続いている時だけ動く。端なら止めて落とさない
         float top = 0.0f;
