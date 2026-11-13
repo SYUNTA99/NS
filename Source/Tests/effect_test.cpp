@@ -30,7 +30,7 @@ namespace
     };
 
     using NS::EffectObj;
-    using NS::EffectRecord;
+    using NS::PlayingEffect;
 } // namespace
 
 TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
@@ -43,7 +43,7 @@ TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
-    const EffectRecord& record = effect.Records()[0];
+    const PlayingEffect& record = effect.Records()[0];
     EXPECT_EQ(record.id, id);
     EXPECT_EQ(record.asset, &asset);
     EXPECT_FALSE(record.follows);

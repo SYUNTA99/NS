@@ -32,7 +32,7 @@ namespace NS
     //! @return 再生の番号。Effect が無い時と再生できなかった時は 0
     [[nodiscard]] uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc);
 
-    //! エフェクトを 1 つ出し、止めるまで毎フレーム持ち主の根の位置と向きへ置き直す
+    //! エフェクトを 1 つ出し、止めるまで毎フレーム持ち主の Transform の位置と向きへ置き直す
     //! @param[in] asset 再生するエフェクト素材
     //! @param[in] desc 出すフレームの姿勢。大きさは追従の間も保つ
     //! @return 再生の番号。Effect が無い時と再生できなかった時は 0

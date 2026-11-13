@@ -28,10 +28,8 @@ namespace NS
         {
             return 0;
         }
-        SoundRecord record;
-        record.asset = sound;
+        PlayingSound record;
         record.loop = loop;
-        record.volume = volume;
         Audio::SoundScene* sounds = m_user->GetSoundScene();
         if (sounds != nullptr && position != nullptr)
         {
@@ -65,7 +63,7 @@ namespace NS
     {
         if (Audio::SoundScene* sounds = m_user->GetSoundScene())
         {
-            for (const SoundRecord& record : m_records)
+            for (const PlayingSound& record : m_records)
             {
                 if (record.loop)
                 {
@@ -83,7 +81,6 @@ namespace NS
         {
             return;
         }
-        m_records[index].volume = volume;
         if (Audio::SoundScene* sounds = m_user->GetSoundScene())
         {
             sounds->SetVolume(m_records[index].handle, volume);
@@ -96,11 +93,11 @@ namespace NS
         if (sounds == nullptr)
         {
             // 鳴らしていないので、終わったかを問えない。1 回の音は止める呼び出しが来ないので、ここで外す
-            std::erase_if(m_records, [](const SoundRecord& record) { return !record.loop; });
+            std::erase_if(m_records, [](const PlayingSound& record) { return !record.loop; });
             return;
         }
         std::erase_if(m_records,
-                      [sounds](const SoundRecord& record) { return !record.loop && !sounds->Exists(record.handle); });
+                      [sounds](const PlayingSound& record) { return !record.loop && !sounds->Exists(record.handle); });
     }
 
     std::size_t SoundObj::IndexOf(uint32 id) const noexcept

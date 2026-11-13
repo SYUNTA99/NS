@@ -23,7 +23,7 @@ namespace NS
 namespace NS
 {
     //! 個体が出して、まだ止めていないエフェクト 1 つ
-    struct EffectRecord
+    struct PlayingEffect
     {
         uint32 id = 0;                      //!< 再生の番号。1 から振り、同じ部品の中で使い回さない
         const Effect* asset = nullptr;      //!< 出した素材
@@ -80,7 +80,7 @@ namespace NS
         void Update() noexcept;
 
         //! 出した順に並んだ、止めていない再生
-        [[nodiscard]] const std::vector<EffectRecord>& Records() const noexcept { return m_records; }
+        [[nodiscard]] const std::vector<PlayingEffect>& Records() const noexcept { return m_records; }
 
         NS_REFLECT_NONE(EffectObj, Object)
 
@@ -94,7 +94,7 @@ namespace NS
 
         const IGetEffect* m_user = nullptr;     // 再生の置き場を問う先 (非所有)
         const Transform* m_transform = nullptr; // 追従する再生を置く先 (非所有)
-        std::vector<EffectRecord> m_records;
+        std::vector<PlayingEffect> m_records;
         uint32 m_nextId = 1;
     };
 } // namespace NS

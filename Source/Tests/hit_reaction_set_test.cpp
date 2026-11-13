@@ -586,7 +586,7 @@ TEST(HitReactionStart, SoundAndEffectItemsAskTheOwnersParts)
 
     ASSERT_TRUE(probes.Start(probes.self, "Hit", NS::Vector3{}));
     EXPECT_EQ(log.WarningCount(), warnings);
-    const std::vector<NS::EffectRecord>& records = probes.self->GetEffect()->Records();
+    const std::vector<NS::PlayingEffect>& records = probes.self->GetEffect()->Records();
     ASSERT_EQ(records.size(), 1u);
     EXPECT_EQ(records[0].asset, effect.effect);
 }

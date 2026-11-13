@@ -13,13 +13,11 @@ namespace NS
     class IGetAudio;
 
     //! 個体が鳴らして、まだ終わっていない音 1 つ
-    struct SoundRecord
+    struct PlayingSound
     {
-        uint32 id = 0;                //!< 音の番号。1 から振り、同じ部品の中で使い回さない
-        const Sound* asset = nullptr; //!< 鳴らした素材
-        Audio::SoundHandle handle{};  //!< 鳴らした音。音を出さない世界では無効
-        bool loop = false;            //!< 止めるまで繰り返す音なら true
-        float volume = 1.0f;          //!< 今の音量
+        uint32 id = 0;               //!< 音の番号。1 から振り、同じ部品の中で使い回さない
+        Audio::SoundHandle handle{}; //!< 鳴らした音。音を出さない世界では無効
+        bool loop = false;           //!< 止めるまで繰り返す音なら true
     };
 
     //! 個体が鳴らす音の再生・停止・音量を受け持つ部品
@@ -58,7 +56,7 @@ namespace NS
         void Update() noexcept;
 
         //! 鳴らした順に並んだ、終わっていない音
-        [[nodiscard]] const std::vector<SoundRecord>& Records() const noexcept { return m_records; }
+        [[nodiscard]] const std::vector<PlayingSound>& Records() const noexcept { return m_records; }
 
         NS_REFLECT_NONE(SoundObj, Object)
 
@@ -70,7 +68,7 @@ namespace NS
         [[nodiscard]] std::size_t IndexOf(uint32 id) const noexcept;
 
         const IGetAudio* m_user = nullptr; // 鳴らす先を問う先 (非所有)
-        std::vector<SoundRecord> m_records;
+        std::vector<PlayingSound> m_records;
         uint32 m_nextId = 1;
     };
 } // namespace NS
