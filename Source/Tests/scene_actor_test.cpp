@@ -685,12 +685,12 @@ TEST(SceneActor, SnapshotReloadsEffectAsset)
     EffectFieldActor* actor = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(actor, nullptr);
     ASSERT_NE(actor->part->asset, nullptr);
-    ASSERT_FALSE(effects->Play(actor->part->asset->D3D(), {}).IsValid());
+    ASSERT_FALSE(effects->Play(actor->part->asset->D3D(), "test", {}).IsValid());
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "SparkRock");
     ASSERT_NE(ApplySnapshot(scene, snapshot), nullptr);
-    EXPECT_TRUE(effects->Play(actor->part->asset->D3D(), {}).IsValid());
+    EXPECT_TRUE(effects->Play(actor->part->asset->D3D(), "test", {}).IsValid());
 }
 
 TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
@@ -878,7 +878,7 @@ TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
     const NS::Effect* core = assets.LoadEffect("Assets/Effects/impact.core.efkefc");
     EffectFieldActor* rock = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(rock, nullptr);
-    ASSERT_FALSE(effects->Play(rock->part->asset->D3D(), {}).IsValid());
+    ASSERT_FALSE(effects->Play(rock->part->asset->D3D(), "test", {}).IsValid());
     const NS::FieldDesc* field = NS::FindField(rock->part->GetReflection(), "資産");
     ASSERT_NE(field, nullptr);
     const NS::ClassObjInfo* row = nullptr;
@@ -899,7 +899,7 @@ TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
     controller.NoteFieldEdit(rock, *row, field->name);
     controller.CommitClassObjEdit();
     EXPECT_EQ(controller.Editor().Undo().UndoSize(), undoBefore + 1);
-    EXPECT_TRUE(effects->Play(rock->part->asset->D3D(), {}).IsValid());
+    EXPECT_TRUE(effects->Play(rock->part->asset->D3D(), "test", {}).IsValid());
     for (const NS::uint32 id : {1u, 2u})
     {
         const EffectFieldActor* instance = NS::Cast<EffectFieldActor>(scene.Actors().FindByActorId(id));

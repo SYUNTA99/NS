@@ -38,7 +38,8 @@ namespace NS
             [[nodiscard]] bool IsValid() const noexcept;
 
             //! エフェクトを再生し、操作用のハンドルを返す
-            [[nodiscard]] EffectHandle Play(const D3DEffect* effect, const EffectPlayDesc& desc) noexcept;
+            //! @param[in] key 素材を見分ける名前。同じ名前の再生の回数から乱数の種を決める。素材を読み直しても同じ名前を渡す
+            [[nodiscard]] EffectHandle Play(const D3DEffect* effect, std::string_view key, const EffectPlayDesc& desc) noexcept;
 
             //! ワールド座標の姿勢を設定する (次の Update で反映)
             void SetTransform(EffectHandle handle,
@@ -88,7 +89,7 @@ namespace NS
 
             Effekseer::ManagerRef m_manager;
             EffekseerRenderer::RendererRef m_renderer;
-            std::unordered_map<std::string, uint32> m_playCounts; // D3DEffect::Path() ごとの、StopAll からの再生の回数
+            std::unordered_map<std::string, uint32> m_playCounts; // Play に渡された名前ごとの、StopAll からの再生の回数
 
             SceneDepthCopy m_depth;
             std::array<DepthTextureRef, 2> m_depthTextures{};

@@ -658,20 +658,13 @@ namespace NS
                 NS_LOG_ERROR(Scene, "エフェクト {} は ContentRoot の外を指すので読まない", key);
                 return std::make_unique<Effect>(key, nullptr);
             }
-            // 依存のテクスチャとマテリアルを使い回すので、読む物は 1 つを持つ。D3DDevice の無い場では nullptr のまま。
-            // D3DDevice を作り直した後は、古い装置の上に依存を作らないよう作り直す
-            if (!m_effectLoader || !m_effectLoader->IsForCurrentDevice())
-            {
-                m_effectLoader = Gfx::D3DEffectLoader::Create();
-            }
-            return std::make_unique<Effect>(key, Gfx::D3DEffect::LoadFromFile(*file, std::nullopt, m_effectLoader.get()));
+            return std::make_unique<Effect>(key, Gfx::D3DEffect::LoadFromFile(*file));
         });
     }
 
     void AssetManager::Clear() noexcept
     {
         m_effects.clear();
-        m_effectLoader.reset();
         // 音は装置の声を持つので、装置を壊す Application より先にここで捨てる
         m_soundClips.clear();
         // material は shader / texture を参照するので先に解放する

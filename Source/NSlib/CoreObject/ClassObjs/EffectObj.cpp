@@ -40,7 +40,7 @@ namespace NS
         record.follows = follows;
         if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
-            record.handle = effects->Play(asset->D3D(), desc);
+            record.handle = effects->Play(asset->D3D(), asset->Path(), desc);
             // 読めない素材は再生されない。Effekseer に問えない物を一覧に残すと、外す時が来ない
             if (!record.handle.IsValid())
             {

@@ -179,7 +179,7 @@ TEST(EffectPlayback, NonFiniteInitialInputsDoNotCreateAPlayback)
         {
             NS::Gfx::EffectPlayDesc desc;
             desc.dynamicInputs[index] = invalid;
-            EXPECT_FALSE(effects.Play(resource.get(), desc).IsValid()) << index;
+            EXPECT_FALSE(effects.Play(resource.get(), "test", desc).IsValid()) << index;
         }
     }
 }
@@ -224,8 +224,8 @@ TEST(EffectAssetsRender, CoreMaterialKeepsTheHeldLightAndItsRelease)
         NS::Gfx::EffectPlayDesc newDesc = oldDesc;
         newDesc.scale = NS::Vector3::One;
         newDesc.dynamicInputs[3] = light.power;
-        const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), oldDesc);
-        const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), newDesc);
+        const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), "test", oldDesc);
+        const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), "test", newDesc);
         ASSERT_TRUE(oldHandle.IsValid());
         ASSERT_TRUE(newHandle.IsValid());
         for (int frame = 0; frame < 16; ++frame)
@@ -313,8 +313,8 @@ TEST(EffectAssetsRender, HitLayerMaterialsKeepTheirCurvesAcrossDifferentHoldLeng
                 {
                     newDesc.dynamicInputs[0] = power;
                 }
-                const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), oldDesc);
-                const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), newDesc);
+                const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), "test", oldDesc);
+                const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), "test", newDesc);
                 ASSERT_TRUE(oldHandle.IsValid());
                 ASSERT_TRUE(newHandle.IsValid());
                 for (int age = 0; age < hold + 9; ++age)
@@ -399,8 +399,8 @@ TEST(EffectPlayback, NonFiniteChangesKeepTheCurrentInput)
     const std::unique_ptr<NS::Gfx::D3DEffect> resource =
         NS::Gfx::D3DEffect::LoadFromFile(NS::OS::FileSystem::Combine(root, "Assets/Effects/impact.core.efkefc"), 123u);
     ASSERT_NE(resource, nullptr);
-    const NS::Gfx::EffectHandle expectedHandle = expected.Play(resource.get(), {});
-    const NS::Gfx::EffectHandle actualHandle = actual.Play(resource.get(), {});
+    const NS::Gfx::EffectHandle expectedHandle = expected.Play(resource.get(), "test", {});
+    const NS::Gfx::EffectHandle actualHandle = actual.Play(resource.get(), "test", {});
     ASSERT_TRUE(expectedHandle.IsValid());
     ASSERT_TRUE(actualHandle.IsValid());
     actual.SetDynamicInput(actualHandle, 0, std::numeric_limits<float>::quiet_NaN());
@@ -433,7 +433,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
     ASSERT_NE(id, 0u);
     ASSERT_EQ(player->GetEffect()->Records().size(), 1u);
     ASSERT_TRUE(player->GetEffect()->Records()[0].handle.IsValid());
-    ASSERT_TRUE(expected.Play(asset->D3D(), {}).IsValid());
+    ASSERT_TRUE(expected.Play(asset->D3D(), "test", {}).IsValid());
     player->RequestHitStop(10);
     const NS::Vector3 position = player->TransformObj().Position();
     for (int frame = 0; frame < 30; ++frame)
@@ -514,8 +514,8 @@ TEST(EffectAssetsRender, ParticleMaterialsDeriveTheirCountsAndMotionFromGameInpu
                         newDesc.dynamicInputs[0] = motion;
                         newDesc.dynamicInputs[1].reset();
                     }
-                    const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), oldDesc);
-                    const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), newDesc);
+                    const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), "test", oldDesc);
+                    const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), "test", newDesc);
                     ASSERT_TRUE(oldHandle.IsValid());
                     ASSERT_TRUE(newHandle.IsValid());
                     bool visible = false;
@@ -584,8 +584,8 @@ TEST(EffectAssetsRender, DustMaterialsMapGameInputsToTheOriginalSizeAndLifetime)
                     newDesc.rotation = oldDesc.rotation;
                 }
                 oldDesc.scale = NS::Vector3::One * size;
-                const NS::Gfx::EffectHandle a = reference.Play(before.get(), oldDesc);
-                const NS::Gfx::EffectHandle b = material.Play(after.get(), newDesc);
+                const NS::Gfx::EffectHandle a = reference.Play(before.get(), "test", oldDesc);
+                const NS::Gfx::EffectHandle b = material.Play(after.get(), "test", newDesc);
                 ASSERT_TRUE(a.IsValid());
                 ASSERT_TRUE(b.IsValid());
                 bool visible = false;
@@ -634,8 +634,8 @@ TEST(EffectAssetsRender, LaunchTrailMapsLaunchStrengthToPointLifetime)
             oldDesc.dynamicInputs[2] = static_cast<float>(std::lround(8.0f + 4.0f * strength));
             NS::Gfx::EffectPlayDesc newDesc = oldDesc;
             newDesc.dynamicInputs[2] = strength;
-            const NS::Gfx::EffectHandle a = reference.Play(before.get(), oldDesc);
-            const NS::Gfx::EffectHandle b = material.Play(after.get(), newDesc);
+            const NS::Gfx::EffectHandle a = reference.Play(before.get(), "test", oldDesc);
+            const NS::Gfx::EffectHandle b = material.Play(after.get(), "test", newDesc);
             ASSERT_TRUE(a.IsValid());
             ASSERT_TRUE(b.IsValid());
             for (int frame = 0; frame < 40; ++frame)
@@ -683,8 +683,8 @@ TEST(EffectAssetsRender, ReleaseBurstOwnsItsStrengthToSizeMapping)
         oldDesc.dynamicInputs[1] = 0.75f + 0.25f * strength;
         NS::Gfx::EffectPlayDesc newDesc = oldDesc;
         newDesc.dynamicInputs[1].reset();
-        const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), oldDesc);
-        const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), newDesc);
+        const NS::Gfx::EffectHandle oldHandle = legacy.Play(before.get(), "test", oldDesc);
+        const NS::Gfx::EffectHandle newHandle = material.Play(after.get(), "test", newDesc);
         ASSERT_TRUE(oldHandle.IsValid());
         ASSERT_TRUE(newHandle.IsValid());
         for (int frame = 0; frame < 24; ++frame)
@@ -730,8 +730,8 @@ TEST(EffectAssetsRender, ShippedEffectsRenderVisibleFramesDeterministically)
             desc.dynamicInputs[0] = 50.0f;
             desc.dynamicInputs[1] = 0.05f;
         }
-        const NS::Gfx::EffectHandle firstHandle = first.Play(asset->D3D(), desc);
-        const NS::Gfx::EffectHandle secondHandle = second.Play(asset->D3D(), desc);
+        const NS::Gfx::EffectHandle firstHandle = first.Play(asset->D3D(), "test", desc);
+        const NS::Gfx::EffectHandle secondHandle = second.Play(asset->D3D(), "test", desc);
         ASSERT_TRUE(firstHandle.IsValid());
         ASSERT_TRUE(secondHandle.IsValid());
         bool visible = false;
@@ -786,53 +786,6 @@ TEST(EffectAssetsRender, LoadEffectResolvesUnderTheContentRoot)
     EXPECT_TRUE(assets.LoadEffect("Assets/Effects/impact.core.efkefc")->IsValid());
 }
 
-// 同じ D3DEffectLoader で読んだエフェクトは依存のテクスチャを使い回し、別の物で読むと別に読む
-TEST(EffectAssetsRender, EffectsReadWithOneLoaderShareTheirTextures)
-{
-    NS::OS::Window window(NS::OS::WindowDesc{.title = "エフェクトの依存の使い回し", .size = {32, 32}, .visible = false});
-    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
-    ASSERT_TRUE(device.IsValid());
-    const std::string path =
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Effects/impact.core.efkefc");
-    const std::unique_ptr<NS::Gfx::D3DEffectLoader> loader = NS::Gfx::D3DEffectLoader::Create();
-    ASSERT_NE(loader, nullptr);
-
-    const std::unique_ptr<NS::Gfx::D3DEffect> first = NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get());
-    const std::unique_ptr<NS::Gfx::D3DEffect> second = NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get());
-    const std::unique_ptr<NS::Gfx::D3DEffect> alone = NS::Gfx::D3DEffect::LoadFromFile(path, 1u);
-    ASSERT_NE(first, nullptr);
-    ASSERT_NE(second, nullptr);
-    ASSERT_NE(alone, nullptr);
-    ASSERT_GT(first->Native()->GetColorImageCount(), 0);
-
-    EXPECT_EQ(first->Native()->GetColorImage(0), second->Native()->GetColorImage(0));
-    EXPECT_NE(first->Native()->GetColorImage(0), alone->Native()->GetColorImage(0));
-}
-
-// D3DDevice を作り直した後は、前の装置で作った D3DEffectLoader を使わせない
-TEST(EffectAssetsRender, LoaderOfAnOldDeviceIsNotUsed)
-{
-    NS::OS::Window window(NS::OS::WindowDesc{.title = "装置を作り直した後の読み込み", .size = {32, 32}, .visible = false});
-    const std::string path =
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Effects/impact.core.efkefc");
-    std::unique_ptr<NS::Gfx::D3DEffectLoader> loader;
-    {
-        NS::Gfx::D3DDevice oldDevice(NS::Gfx::D3DDeviceDesc{}, window);
-        ASSERT_TRUE(oldDevice.IsValid());
-        loader = NS::Gfx::D3DEffectLoader::Create();
-        ASSERT_NE(loader, nullptr);
-        EXPECT_TRUE(loader->IsForCurrentDevice());
-    }
-    EXPECT_FALSE(loader->IsForCurrentDevice());
-
-    NS::Gfx::D3DDevice newDevice(NS::Gfx::D3DDeviceDesc{}, window);
-    ASSERT_TRUE(newDevice.IsValid());
-    EXPECT_FALSE(loader->IsForCurrentDevice());
-    const TestLogCapture log;
-    EXPECT_EQ(NS::Gfx::D3DEffect::LoadFromFile(path, 1u, loader.get()), nullptr);
-    EXPECT_EQ(log.ErrorCount(), 1);
-}
-
 // 追従する再生は、アクターが動いた先へ基底が毎フレーム置き直す
 TEST(EffectPlayback, FollowingEffectIsPlacedAtTheActorsRootEveryStep)
 {
@@ -852,7 +805,7 @@ TEST(EffectPlayback, FollowingEffectIsPlacedAtTheActorsRootEveryStep)
     ASSERT_NE(NS::PlayFollowingEffect(actor, asset), 0u);
     actor->TransformObj().SetPosition(NS::Vector3::Zero);
     NS::Gfx::EffectScene expected;
-    ASSERT_TRUE(expected.Play(asset->D3D(), {}).IsValid());
+    ASSERT_TRUE(expected.Play(asset->D3D(), "test", {}).IsValid());
 
     scene.OnUpdate();
     expected.Update(1.0f / 60.0f);
@@ -875,8 +828,8 @@ TEST(EffectAssetsRender, ExplicitSeedProducesDeterministicFrames)
     NS::Gfx::EffectPlayDesc desc;
     desc.dynamicInputs[0] = 40.0f;
     desc.dynamicInputs[2] = 0.1f;
-    ASSERT_TRUE(cached.Play(effect.get(), desc).IsValid());
-    ASSERT_TRUE(fresh.Play(effect.get(), desc).IsValid());
+    ASSERT_TRUE(cached.Play(effect.get(), "test", desc).IsValid());
+    ASSERT_TRUE(fresh.Play(effect.get(), "test", desc).IsValid());
     for (int frame = 0; frame < 12; ++frame)
     {
         cached.Update(1.0f / 60.0f);
@@ -904,8 +857,8 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     ASSERT_NE(coreResource, nullptr);
     ASSERT_NE(trailResource, nullptr);
     const nlohmann::json baseline = scene.ToJson();
-    const NS::Gfx::EffectHandle core = effects->Play(coreResource.get(), {});
-    const NS::Gfx::EffectHandle trail = effects->Play(trailResource.get(), {});
+    const NS::Gfx::EffectHandle core = effects->Play(coreResource.get(), "impact.core", {});
+    const NS::Gfx::EffectHandle trail = effects->Play(trailResource.get(), "rebound.trail", {});
     effects->Update(1.0f / 60.0f);
     const int pixels = CountEffectPixels(*effects);
     ASSERT_GT(pixels, 0);
@@ -923,7 +876,7 @@ TEST(EffectLifecycle, RebuildingThePausedSceneClearsPixelsBeforeAnotherStep)
     EXPECT_EQ(CountEffectPixels(*effects), 0);
 
     scene.SetSimulationEnabled(true);
-    const NS::Gfx::EffectHandle fresh = effects->Play(coreResource.get(), {});
+    const NS::Gfx::EffectHandle fresh = effects->Play(coreResource.get(), "impact.core", {});
     effects->Update(1.0f / 60.0f);
     EXPECT_TRUE(effects->Exists(fresh));
     EXPECT_GT(CountEffectPixels(*effects), 0);
