@@ -124,7 +124,10 @@ float4 PSMain(WaterInterp input) : SV_TARGET
 
     // 波頭の列。歪ませた座標で測り、直線の縞に見せない
     float2 ridgeSlope = float2(0, 0);
-    float2 ridgePos = p + warp * warpStrength * 0.6;
+    // 細かい歪みだけだと、波長より小さくて山と谷の形がそろう。広い範囲のパーリンノイズで波長と同じくらいずらし、
+    // 山と谷の形を不ぞろいにする。ずらす量は水面に固定なので、波が通るたびに形が変わる
+    float2 ridgeWarp = float2(Fbm(p * 0.012 + float2(17.0, 3.0)), Fbm(p * 0.012 + float2(41.0, 9.0))) * 70.0;
+    float2 ridgePos = p + warp * warpStrength * 0.6 + ridgeWarp;
     float ridges = WaveRidge(ridgePos, time, 0.0, waveLength, ridgeSlope) * 0.5
                  + WaveRidge(ridgePos, time, 0.5, waveLength * 0.62, ridgeSlope) * 0.3
                  + WaveRidge(ridgePos, time, -0.4, waveLength * 0.41, ridgeSlope) * 0.2;
