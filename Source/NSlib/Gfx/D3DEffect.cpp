@@ -124,53 +124,13 @@ namespace NS
             return hash;
         }
 
-        std::unique_ptr<D3DEffectLoader> D3DEffectLoader::Create() noexcept
+        std::unique_ptr<D3DEffect> D3DEffect::LoadFromFile(std::string_view path, std::optional<uint32> seed) noexcept
         {
-            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに作らない
+            // D3DDevice の無い場 (GPU の無い試し) では、ERROR を出さずに読まない
             // ゲームでは D3DDevice を先に作るので、ここで返らない
             const D3DDevice* gpu = D3DDevice::Current();
             if (gpu == nullptr || gpu->Native() == nullptr || gpu->NativeContext() == nullptr)
             {
-                return nullptr;
-            }
-            Effekseer::SettingRef setting = CreateLoaderSetting(gpu);
-            if (setting == nullptr)
-            {
-                return nullptr;
-            }
-            return std::unique_ptr<D3DEffectLoader>(new D3DEffectLoader(std::move(setting), gpu->Native()));
-        }
-
-        D3DEffectLoader::D3DEffectLoader(Effekseer::SettingRef setting, const void* nativeDevice) noexcept
-            : m_setting(std::move(setting)), m_nativeDevice(nativeDevice)
-        {
-        }
-
-        D3DEffectLoader::~D3DEffectLoader() = default;
-
-        bool D3DEffectLoader::IsForCurrentDevice() const noexcept
-        {
-            const D3DDevice* gpu = D3DDevice::Current();
-            return gpu != nullptr && gpu->Native() == m_nativeDevice;
-        }
-
-        std::unique_ptr<D3DEffect> D3DEffect::LoadFromFile(std::string_view path,
-                                                           std::optional<uint32> seed,
-                                                           const D3DEffectLoader* loader) noexcept
-        {
-            std::unique_ptr<D3DEffectLoader> ownLoader;
-            if (loader == nullptr)
-            {
-                ownLoader = D3DEffectLoader::Create();
-                loader = ownLoader.get();
-            }
-            if (loader == nullptr)
-            {
-                return nullptr;
-            }
-            if (!loader->IsForCurrentDevice())
-            {
-                NS_LOG_ERROR(Graphics, "D3DEffect::LoadFromFile: 今の D3DDevice で作っていない D3DEffectLoader が渡された");
                 return nullptr;
             }
             if (path.empty())
@@ -178,7 +138,11 @@ namespace NS
                 NS_LOG_ERROR(Graphics, "D3DEffect::LoadFromFile: 空のパスが渡された");
                 return nullptr;
             }
-            const Effekseer::SettingRef& setting = loader->Native();
+            const Effekseer::SettingRef setting = CreateLoaderSetting(gpu);
+            if (setting == nullptr)
+            {
+                return nullptr;
+            }
 
             const std::wstring pathWide = OS::StringUtils::WideFromUtf8(path);
             const std::u16string pathU16(pathWide.begin(), pathWide.end());
@@ -201,11 +165,11 @@ namespace NS
             {
                 chosenSeed = 1u;
             }
-            return std::unique_ptr<D3DEffect>(new D3DEffect(std::move(effect), chosenSeed, std::string{path}));
+            return std::unique_ptr<D3DEffect>(new D3DEffect(std::move(effect), chosenSeed));
         }
 
-        D3DEffect::D3DEffect(Effekseer::EffectRef effect, uint32 seed, std::string path) noexcept
-            : m_effect(std::move(effect)), m_seed(seed), m_path(std::move(path))
+        D3DEffect::D3DEffect(Effekseer::EffectRef effect, uint32 seed) noexcept
+            : m_effect(std::move(effect)), m_seed(seed)
         {
         }
 

@@ -107,7 +107,7 @@ namespace
                 1u);
             ASSERT_NE(m_streamEffect, nullptr);
             NS::Gfx::EffectScene* effects = m_scene.GetEffectScene();
-            m_effect = effects->Play(m_streamEffect.get(), NS::Gfx::EffectPlayDesc{});
+            m_effect = effects->Play(m_streamEffect.get(), "test", NS::Gfx::EffectPlayDesc{});
             ASSERT_TRUE(m_effect.IsValid());
 
             m_scene.ScreenFlash().Start(holder, 1000, 1.0f);

@@ -125,7 +125,7 @@ namespace NS
             return m_manager != nullptr && m_renderer != nullptr;
         }
 
-        EffectHandle EffectScene::Play(const D3DEffect* effect, const EffectPlayDesc& desc) noexcept
+        EffectHandle EffectScene::Play(const D3DEffect* effect, std::string_view key, const EffectPlayDesc& desc) noexcept
         {
             if (!IsValid() || effect == nullptr)
             {
@@ -144,9 +144,9 @@ namespace NS
             const Effekseer::Handle handle =
                 m_manager->Play(effect->Native(), desc.position.x, desc.position.y, desc.position.z);
             // Play が std::rand から引いた種を上書きする。節が生まれる最初の Update より前なので、この種で生まれる
-            // 鍵は素材の番地でなくファイルの道筋にする。番地は素材を作り直すと別の素材に使い回される。
-            // 同じファイルを読み直した素材は、StopAll まで前の回数の続きから数える
-            uint32& playCount = m_playCounts[effect->Path()];
+            // 鍵は素材の番地でなく呼ぶ側の名前にする。番地は素材を作り直すと別の素材に使い回される。
+            // 同じ名前で読み直した素材は、StopAll まで前の回数の続きから数える
+            uint32& playCount = m_playCounts[std::string{key}];
             m_manager->SetRandomSeed(handle,
                                      static_cast<int32>((effect->Seed() ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
             ++playCount;
