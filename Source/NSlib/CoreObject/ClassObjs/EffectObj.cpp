@@ -33,7 +33,7 @@ namespace NS
         {
             return 0;
         }
-        EffectRecord record;
+        PlayingEffect record;
         record.asset = asset;
         record.follows = follows;
         record.scale = desc.scale;
@@ -74,7 +74,7 @@ namespace NS
     {
         if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
-            for (const EffectRecord& record : m_records)
+            for (const PlayingEffect& record : m_records)
             {
                 effects->StopRoot(record.handle);
             }
@@ -114,11 +114,11 @@ namespace NS
         if (effects == nullptr)
         {
             // 再生していないので、終わったかを問えない。出すだけの再生は止める呼び出しが来ないので、ここで外す
-            std::erase_if(m_records, [](const EffectRecord& record) { return !record.follows; });
+            std::erase_if(m_records, [](const PlayingEffect& record) { return !record.follows; });
             return;
         }
-        std::erase_if(m_records, [effects](const EffectRecord& record) { return !effects->Exists(record.handle); });
-        for (const EffectRecord& record : m_records)
+        std::erase_if(m_records, [effects](const PlayingEffect& record) { return !effects->Exists(record.handle); });
+        for (const PlayingEffect& record : m_records)
         {
             if (record.follows)
             {

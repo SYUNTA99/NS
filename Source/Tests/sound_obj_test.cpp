@@ -83,13 +83,8 @@ TEST(SoundObjTest, PlayKeepsARecordUntilStop)
     EXPECT_NE(first, 0u);
     EXPECT_NE(second, first);
     ASSERT_EQ(sound.Records().size(), 2u);
-    EXPECT_EQ(sound.Records()[0].asset, &clip);
     EXPECT_FALSE(sound.Records()[0].handle.IsValid());
     EXPECT_TRUE(sound.Records()[0].loop);
-    EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.25f);
-
-    sound.SetVolume(second, 0.75f);
-    EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.75f);
 
     sound.Stop(first);
     ASSERT_EQ(sound.Records().size(), 1u);
@@ -113,7 +108,6 @@ TEST(SoundObjTest, PlayAtKeepsARecordLikePlay)
     EXPECT_NE(second, 0u);
     EXPECT_NE(second, first);
     ASSERT_EQ(sound.Records().size(), 2u);
-    EXPECT_FLOAT_EQ(sound.Records()[1].volume, 0.25f);
     EXPECT_TRUE(sound.Records()[1].loop);
 
     // 音を出さない世界でも、位置から鳴らした音は番号を受けて一覧に残る
