@@ -1,7 +1,15 @@
 {
   "class": "DeathZoneActor",
   "classObjs": {
+    "Effect": {},
     "HitSensors": {},
+    "Params": {
+      "やり直すまでのフレーム数": 0,
+      "入った時のエフェクト": "",
+      "入った時の音": "Assets/Sounds/fall.wav",
+      "入った時の音の音量": 0.800000011920929
+    },
+    "Sound": {},
     "Transform": {
       "スケール": [
         1.0,

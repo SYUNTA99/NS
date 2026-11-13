@@ -11,7 +11,6 @@ namespace GL
         {
             NS::LoadAssetField(m_landSound, "Assets/Sounds/land.wav");
             NS::LoadAssetField(m_goalSound, "Assets/Sounds/goal.wav");
-            NS::LoadAssetField(m_fallSound, "Assets/Sounds/fall.wav");
             NS::LoadAssetField(m_reboundSound, "Assets/Sounds/rebound.wav");
         }
 
@@ -45,12 +44,6 @@ namespace GL
         {
             NS_ASSERT(Game, audio != nullptr, "PlayerSounds::PlayGoal: 音を鳴らすアクターが空");
             NS::PlaySound(audio, m_goalSound, m_goalVolume);
-        }
-
-        void PlayerSounds::PlayFall(const NS::IGetAudio* audio) const
-        {
-            NS_ASSERT(Game, audio != nullptr, "PlayerSounds::PlayFall: 音を鳴らすアクターが空");
-            NS::PlaySound(audio, m_fallSound, m_fallVolume);
         }
 
         void PlayerSounds::PlayRebound(const NS::IGetAudio* audio) const

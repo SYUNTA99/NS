@@ -1,6 +1,6 @@
 # 音の素材
 
-効果音 6 本と曲 1 本。どれも 2026-10-26 に ComfyUI で作った。音は `ContentRoot` からの相対パス (`"Assets/Sounds/<名前>.wav"`) で `Sound*` として参照する。
+効果音 7 本と曲 1 本。水に落ちた音は 2026-11-14 に、ほかは 2026-10-26 に ComfyUI で作った。音は `ContentRoot` からの相対パス (`"Assets/Sounds/<名前>.wav"`) で `Sound*` として参照する。
 
 | 名前 | 何の音 | 元の候補 | 形 | 長さ |
 |---|---|---|---|---|
@@ -10,6 +10,7 @@
 | `goal` | ゴール | `sfx_goal_00003` | 同上 | 4.06 秒 |
 | `fall` | 落下 | `sfx_fall_00001` | 同上 | 1.14 秒 |
 | `rebound` | 反動 | `sfx_rebound_00001` | 同上 | 0.58 秒 |
+| `water_splash` | 水に落ちた | `sfx_water_splash_00002` | 同上 | 0.20 秒 |
 | `bgm_course` | コースの曲 | `bgm_course_s20261027_m6db_00001` | PCM 16 bit・48 kHz・ステレオ | 86.0 秒 |
 
 ## 選び方と直し方
@@ -17,6 +18,7 @@
 - 効果音は 1 本につき 4 本の候補から選んだ。音割れ (振幅 0.999 以上の標本) はどの候補にも無い。立ち上がりの短い物を選び、立ち上がりが揃う物は最大の音量の大きい物を選んだ。耳では聞いていない
 - 効果音は、前と後ろの -60 dB 以下の無音を ffmpeg の `silenceremove` で切った。反動の候補は 4 本とも先頭に 0.53 秒の無音があったので、それを切った
 - 跳ぶ音は、跳んだ後に遅れて聞こえたので (2026-10-28)、先頭の 20 ミリ秒 (最大の 11% 以下) を切り、切り口を 2 ミリ秒で大きくした。最大の 76% に届くのが 35 ミリ秒から 15 ミリ秒になった
+- 水に落ちた音は、4 本の候補の立ち上がりがどれも 0.05 秒前後で揃ったので、最大の音量の一番大きい 2 本目 (−10.3 dBFS) を選んだ。前後の −60 dB 以下を切ると、1.49 秒が 0.20 秒になった。鳴らすのは落下死の範囲 `DeathZoneActor` で、海の範囲だけがこの音を持つ。耳では聞いていない
 - 曲は 3 本の候補から、後ろの無音が一番遅く始まる物 (87.39 秒) を選んだ。120 BPM・4 拍子の小節の切れ目の 86.0 秒で切った。ループのつなぎ目が滑らかかは聞いて確かめていない
 - 曲の MS-ADPCM は、fmt の `cbSize` が 32・係数が標準の 7 つ・`wSamplesPerBlock` (500) が `nBlockAlign` (512) から出る値と同じ・データの長さが `nBlockAlign` の倍数 (8256 ブロック) である事を、ファイルを読んで確かめた
 - 曲は初め 1 ブロック 1012 標本 (1024 バイト) で作っていた。XAudio2 の MS-ADPCM が受け付けるのは 1 ブロック 32〜512 標本なので、鳴らす時にソースボイスを作れず止まった (2026-10-28)。元の FLAC から ffmpeg の `adpcm_ms` で `-block_size 512` (500 標本) に作り直した。ffmpeg はブロックのバイト数を 2 の累乗しか受けないので 512 標本にはできない。86.0 秒の 4,128,000 標本は 500 で割り切れ、XAudio2 の「ループの長さは 1 ブロックの標本の数の倍数」も満たす。ffmpeg が `nAvgBytesPerSec` に 16000 を書いたので、48000 ÷ 500 × 512 = 49152 に書き直した
@@ -39,6 +41,7 @@
 | `goal` | 4.0 | `short bright victory jingle for reaching the goal, cheerful chimes and sparkling fanfare, one-shot game sound effect` |
 | `fall` | 3.0 | `cartoon falling sound effect, descending whistle dropping away into the distance, one-shot game sound effect` |
 | `rebound` | 2.0 | `springy rebound boing, bouncing off a wall with an elastic snap and a quick whoosh, one-shot game sound effect, dry, close` |
+| `water_splash` | 1.5 | `small water splash, a light object plopping into calm water, single short plop with a few droplets, one-shot game sound effect, dry, close` |
 
 ### 曲: ACE-Step 1.5 turbo
 

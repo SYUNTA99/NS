@@ -100,6 +100,10 @@ namespace NS
         //! 所有している EffectScene。装置未設定の間は nullptr
         [[nodiscard]] Gfx::EffectScene* Effects() const noexcept { return m_effects.get(); }
 
+        //! 固定更新の経過秒。シェーダーの g_sceneTimeSeconds と同じ値で、ゲームを止めている間は進まない。
+        //! シェーダーが時間で動かす形 (水面のうねりなど) を、コードが同じ式で計算する時に読む
+        [[nodiscard]] float SceneTimeSeconds() const noexcept { return m_sceneTimeSeconds; }
+
         //! 重ね描きと UI が全画面の色と画面の矩形を描く先。装置未設定の間は nullptr
         [[nodiscard]] Gfx::ScreenOverlay* Overlay() const noexcept { return m_overlay.get(); }
 

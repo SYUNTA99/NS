@@ -1,11 +1,20 @@
 {
   "class": "WaterActor",
   "classObjs": {
+    "Effect": {},
+    "HitSensors": {},
     "Model": {
       "マテリアル": "Assets/Materials/water.mat",
       "メッシュ": "Assets/Models/water_surface.glb",
       "基本色": null
     },
+    "Params": {
+      "やり直すまでのフレーム数": 40,
+      "入った時のエフェクト": "Assets/Effects/water.splash.efkefc",
+      "入った時の音": "Assets/Sounds/water_splash.wav",
+      "入った時の音の音量": 0.800000011920929
+    },
+    "Sound": {},
     "Transform": {
       "スケール": [
         1.0,
@@ -22,6 +31,22 @@
         0.0,
         0.0,
         1.0
+      ]
+    }
+  },
+  "hitSensors": {
+    "Body": {
+      "中心オフセット": [
+        0.0,
+        -10.0,
+        0.0
+      ],
+      "半分の高さ": 0.5,
+      "半径": 0.5,
+      "箱の半径": [
+        0.625,
+        15.0,
+        0.625
       ]
     }
   }

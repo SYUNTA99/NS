@@ -26,8 +26,12 @@
     "sunSize": 4000.0,
     "sunStrength": 0.2,
     "swellDirection": [0.8, 0.6],
+    "swellGravity": 9.8,
     "swellHeight": 2.4,
     "swellSpeed": 0.65,
+    "swellWaveA": [0.0, 113.0, 0.55],
+    "swellWaveB": [0.45, 73.0, 0.3],
+    "swellWaveC": [-0.6, 52.0, 0.15],
     "warpStrength": 12.0,
     "waveContrast": 1.0,
     "waveLength": 38.0

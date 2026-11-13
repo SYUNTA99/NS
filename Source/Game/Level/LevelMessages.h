@@ -34,11 +34,20 @@ namespace GL
     namespace Level
     {
         //! 受け手を即死させる知らせ。落下死の範囲がプレイヤーの体へ送る
+        //! 死んでからやり直すまでのフレーム数を運ぶ。ゴールの知らせが暗転の秒を運ぶのと同じく、長さは送る範囲が持つ
         class MsgInstantDeath final : public NS::Message
         {
             NS_MESSAGE(MsgInstantDeath)
+
+        public:
+            explicit MsgInstantDeath(int restartDelayFrames) noexcept : m_restartDelayFrames(restartDelayFrames) {}
+            //! 死んだ所を見せておくフレーム数。0 なら死んだフレームにやり直す
+            [[nodiscard]] int RestartDelayFrames() const noexcept { return m_restartDelayFrames; }
+
+        private:
+            int m_restartDelayFrames;
         };
-        bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender);
+        bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender, int restartDelayFrames);
         //! ゴールに着いた知らせ。ゴールの範囲がプレイヤーの体へ送る
         class MsgGoal final : public NS::Message
         {

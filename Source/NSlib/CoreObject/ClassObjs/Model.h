@@ -73,6 +73,8 @@ namespace NS
         //! 名前のメッシュをその場で AssetManager::Get() から引き、欄に入れる
         void SetMeshRef(std::string_view ref);
 
+        //! マテリアルの欄の Material。nullptr にならない。読めなかった名前は中身の空の Material
+        [[nodiscard]] const Material* MaterialField() const noexcept { return m_material; }
         //! 欄のマテリアルの名前。.mat のパス。読めない時はピンクで描き、空の時は灰色の既定で描く
         [[nodiscard]] const std::string& MaterialRef() const noexcept { return AssetFieldName(m_material); }
         //! 名前のマテリアルをその場で AssetManager::Get() から引き、欄に入れる

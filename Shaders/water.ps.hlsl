@@ -93,7 +93,7 @@ float WaveRidge(float2 p, float time, float angle, float wavelength, inout float
 {
     float2 direction = SwellDirection(angle);
     float k = k_WaterTwoPi / wavelength;
-    float phase = dot(p, direction) * k - time * sqrt(k_WaterGravity * k) * swellSpeed;
+    float phase = dot(p, direction) * k - time * sqrt(swellGravity * k) * swellSpeed;
     slope += direction * cos(phase) * 0.12;
     float wave = 0.5 + 0.5 * sin(phase);
     return wave * wave * wave;

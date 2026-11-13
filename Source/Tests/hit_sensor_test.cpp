@@ -2,8 +2,12 @@
 #include "Game/Level/GoalActor.h"
 #include "Game/Level/LevelMessages.h"
 #include "Game/Level/SensorKinds.h"
+#include "Game/Level/WaterActor.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/OBB.h"
+#include "NSlib/CoreObject/Asset/Effect.h"
+#include "NSlib/CoreObject/Asset/Sound.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitSensor.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/IGet/IGetHitSensor.h"
@@ -502,6 +506,83 @@ TEST(DeathZoneActor, IgnoresASensorThatIsNotThePlayerBody)
     EXPECT_TRUE(other->received.empty());
     ASSERT_EQ(body->received.size(), 1u);
     EXPECT_EQ(body->received[0], GL::Level::MsgInstantDeath::StaticKind());
+}
+
+// 落下死の範囲は、自機の体が入った時にだけ、自分の欄のエフェクトを 1 つ出す。
+// 海の範囲は、シーンの上書きで水の音としぶきに替える
+TEST(DeathZoneActor, PlaysItsEnterEffectOnlyWhenThePlayerBodyEnters)
+{
+    NS::Scene scene;
+    const nlohmann::json classObjs{{"Params",
+                                    {{"入った時のエフェクト", "Assets/Effects/water.splash.efkefc"},
+                                     {"入った時の音", "Assets/Sounds/water_splash.wav"}}}};
+    GL::Level::DeathZoneActor* zone =
+        SpawnFromActorFile<GL::Level::DeathZoneActor>(scene, "DeathZoneActor", {}, classObjs);
+    ASSERT_NE(zone, nullptr);
+    ASSERT_NE(zone->Params().EnterSound(), nullptr);
+    EXPECT_EQ(zone->Params().EnterSound()->Path(), "Assets/Sounds/water_splash.wav");
+    ASSERT_NE(zone->GetEffect(), nullptr);
+    (void)SpawnProbe(scene, SensorKind::Unset, 0.5f);
+
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+    EXPECT_TRUE(zone->GetEffect()->Records().empty());
+
+    (void)SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+
+    ASSERT_EQ(zone->GetEffect()->Records().size(), 1u);
+    EXPECT_EQ(zone->GetEffect()->Records()[0].asset->Path(), "Assets/Effects/water.splash.efkefc");
+}
+
+// 出荷の落下死の範囲は落下の音を持ち、エフェクトは出さない
+TEST(DeathZoneActor, ShippedZoneHasTheFallSoundAndNoEffect)
+{
+    NS::Scene scene;
+    GL::Level::DeathZoneActor* zone = SpawnFromActorFile<GL::Level::DeathZoneActor>(scene, "DeathZoneActor");
+    ASSERT_NE(zone, nullptr);
+    ASSERT_NE(zone->Params().EnterSound(), nullptr);
+    EXPECT_EQ(zone->Params().EnterSound()->Path(), "Assets/Sounds/fall.wav");
+    ASSERT_NE(zone->GetSound(), nullptr);
+    (void)SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
+
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+
+    ASSERT_NE(zone->GetEffect(), nullptr);
+    EXPECT_TRUE(zone->GetEffect()->Records().empty());
+}
+
+// 水面は、自機の体の下の端が水面より下へ入った時にだけ即死を知らせ、しぶきを出す。
+// 描画の無い世界は時間が 0 で、原点のうねりの高さは 0 なので、水面は水面のアクターの高さ
+TEST(WaterActor, KillsThePlayerBodyOnlyBelowTheSurfaceAndSplashes)
+{
+    NS::Scene scene;
+    GL::Level::WaterActor* water = SpawnFromActorFile<GL::Level::WaterActor>(scene, "WaterActor");
+    ASSERT_NE(water, nullptr);
+    ASSERT_NE(water->GetEffect(), nullptr);
+    SensorProbeActor* body = SpawnProbe(scene, SensorKind::PlayerBody, 0.5f);
+    // 箱の中で、下の端 (0.5) が水面 (0) より上
+    body->TransformObj().SetPosition(Vector3{0.0f, 1.0f, 0.0f});
+
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+    scene.HitSensors().OnTick();
+    EXPECT_TRUE(body->received.empty());
+    EXPECT_TRUE(water->GetEffect()->Records().empty());
+
+    // 下の端 (-0.2) が水面より下
+    body->TransformObj().SetPosition(Vector3{0.0f, 0.3f, 0.0f});
+    scene.HitSensors().OnTick();
+
+    ASSERT_FALSE(body->received.empty());
+    EXPECT_EQ(body->received[0], GL::Level::MsgInstantDeath::StaticKind());
+    ASSERT_FALSE(water->GetEffect()->Records().empty());
+    EXPECT_EQ(water->GetEffect()->Records()[0].asset->Path(), "Assets/Effects/water.splash.efkefc");
+    ASSERT_NE(water->Params().EnterSound(), nullptr);
+    EXPECT_EQ(water->Params().EnterSound()->Path(), "Assets/Sounds/water_splash.wav");
+    EXPECT_EQ(water->Params().RestartDelayFrames(), 40);
 }
 
 // 先読みの問いは仕組みの条件だけで絞る。種類は問う側が見る

@@ -17,10 +17,10 @@ namespace GL
 {
     namespace Level
     {
-        bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender)
+        bool SendMsgInstantDeath(NS::HitSensor* receiver, NS::HitSensor* sender, int restartDelayFrames)
         {
             NS_ASSERT(Game, receiver != nullptr && sender != nullptr, "知らせの受け手か送り手のセンサーが無い");
-            return NS::SendMsg(MsgInstantDeath{}, receiver, sender);
+            return NS::SendMsg(MsgInstantDeath{restartDelayFrames}, receiver, sender);
         }
 
         bool SendMsgGoal(NS::HitSensor* receiver, NS::HitSensor* sender, float fadeOutSeconds, float fadeInSeconds)

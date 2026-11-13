@@ -488,6 +488,36 @@ TEST(GameScene, DeathInAStepRestartsTheCourseBeforeTheNextStep)
     EXPECT_FALSE(scene.IsClearing());
 }
 
+// やり直すまでのフレーム数を持つ範囲で死ぬと、その間は消えたままその場に残り、過ぎた歩でやり直す
+TEST(GameScene, DeathZoneWithARestartDelayRestartsAfterThoseFrames)
+{
+    nlohmann::json doc = CourseWithPlayer();
+    for (nlohmann::json& actor : NS::SceneJsonActors(doc))
+    {
+        if (NS::ActorJsonFile(actor) == "DeathZoneActor")
+        {
+            NS::ActorJsonClassObjs(actor)["Params"]["やり直すまでのフレーム数"] = 2;
+        }
+    }
+    GL::Level::GameScene scene;
+    scene.ResetFromJson(doc);
+    scene.StartPlay();
+    PlayerActor* player = FindPlayer(scene.Actors());
+    ASSERT_NE(player, nullptr);
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, -52.0f, 0.0f});
+
+    scene.OnUpdate();
+    EXPECT_TRUE(player->IsDead());
+    // 出現位置へ戻らず、範囲 (上面 y=-50) の中に残る
+    EXPECT_LT(player->TransformObj().Position().y, -50.0f);
+    scene.OnUpdate();
+    EXPECT_TRUE(player->IsDead());
+
+    scene.OnUpdate();
+    EXPECT_FALSE(player->IsDead());
+    EXPECT_FLOAT_EQ(player->TransformObj().Position().y, SpawnOf(doc).y);
+}
+
 TEST(GameScene, RespawnButtonInAStepReturnsOtherActorsBeforeTheNextStep)
 {
     const nlohmann::json doc = CourseWithPlayer();
@@ -556,7 +586,7 @@ TEST(GameScene, RebuildingTheWorldDropsNoticesOfThePlay)
     scene.ResetFromJson(doc);
     scene.StartPlay();
     const float duration = NS::OS::FrameTimer::FixedDelta() * 2.0f;
-    scene.NotifyPlayerDead();
+    scene.NotifyPlayerDead(0);
     scene.RequestRespawnActors();
     ASSERT_TRUE(scene.NotifyGoal(duration, duration));
 

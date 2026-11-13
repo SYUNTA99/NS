@@ -38,8 +38,10 @@ namespace GL
             }
             [[nodiscard]] const void* Kind() const noexcept override { return StaticKind(); }
 
-            //! 次の StepGame でコースをやり直す
-            void NotifyPlayerDead() noexcept { m_playerDead = true; }
+            //! 自機が死んだ知らせ。restartDelayFrames フレームの間は死んだ所を映したままにして、その後の StepGame で
+            //! コースをやり直す。0 なら次の StepGame でやり直す。待っている間に届いた 2 回目は捨てる
+            //! @param[in] restartDelayFrames やり直すまでのフレーム数。負の値は 0 として読む
+            void NotifyPlayerDead(int restartDelayFrames) noexcept;
 
             //! 次の StepGame で、自機以外のアクターを開始時の姿へ戻す
             void RequestRespawnActors() noexcept { m_respawnPending = true; }
@@ -97,7 +99,8 @@ namespace GL
             float m_fadeInSeconds = 0.0f;
 
             NS::CoroutineRunner m_sequences; // クリアの流れ
-            bool m_playerDead = false;       // 次の StepGame でやり直すか
+            bool m_playerDead = false;       // 自機が死んで、やり直しを待っているか
+            int m_restartDelayFrames = 0;    // やり直すまでに残っているフレーム数
             bool m_respawnPending = false;
             bool m_goalReached = false; // 次の StepGame でクリアの流れを始めるか
             HitScreenDirector m_hitScreen{*GetSceneRenderer()};

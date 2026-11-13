@@ -11,6 +11,7 @@
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Core/Windows/Clock.h"
 
+#include <algorithm>
 #include <optional>
 #include <vector>
 
@@ -51,9 +52,20 @@ namespace GL
             // 暗転とアクターの入力の止めは、続く組み直し (Scene::ClearWorld) が暗転を取り消し、アクターごと捨てる
             m_sequences.CancelAll();
             m_playerDead = false;
+            m_restartDelayFrames = 0;
             m_respawnPending = false;
             m_goalReached = false;
             Music().Stop(GetSoundScene());
+        }
+
+        void GameScene::NotifyPlayerDead(int restartDelayFrames) noexcept
+        {
+            if (m_playerDead)
+            {
+                return;
+            }
+            m_playerDead = true;
+            m_restartDelayFrames = std::max(restartDelayFrames, 0);
         }
 
         bool GameScene::NotifyGoal(float fadeOutSeconds, float fadeInSeconds) noexcept
@@ -83,9 +95,17 @@ namespace GL
 
             if (m_playerDead)
             {
-                m_playerDead = false;
-                m_respawnPending = false;
-                RestartCourse();
+                if (m_restartDelayFrames > 0)
+                {
+                    // 死んだ所を映したまま待つ。自機は消えていて、カメラはその位置に残る
+                    --m_restartDelayFrames;
+                }
+                else
+                {
+                    m_playerDead = false;
+                    m_respawnPending = false;
+                    RestartCourse();
+                }
             }
             if (m_respawnPending)
             {

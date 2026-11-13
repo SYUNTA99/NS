@@ -30,6 +30,12 @@ cbuffer MaterialParams : register(b2)
     float sunStrength = 0.2;
     float waveLength = 38.0;
     float waveContrast = 1.0;
+    // うねりの 3 本の波。x は swellDirection から回す角度 (ラジアン)、y は波長 (m)、z は swellHeight に掛ける割合。
+    // 水面の高さはゲームのコード (Game/Level/WaterSwell) も同じ式で計算するので、数は .mat に置いて両方が読む
+    float3 swellWaveA = float3(0.0, 113.0, 0.55);
+    float swellGravity = 9.8;
+    float3 swellWaveB = float3(0.45, 73.0, 0.30);
+    float3 swellWaveC = float3(-0.6, 52.0, 0.15);
 };
 
 struct WaterInterp
@@ -40,7 +46,6 @@ struct WaterInterp
 };
 
 static const float k_WaterTwoPi = 6.2831853;
-static const float k_WaterGravity = 9.8;
 
 // swellDirection を angle だけ回した単位の向き。swellDirection が 0 の時は 0 を返し、非数にしない
 float2 SwellDirection(float angle)
@@ -58,7 +63,7 @@ void AddSwell(float2 p, float time, float angle, float wavelength, float amplitu
 {
     float2 direction = SwellDirection(angle);
     float k = k_WaterTwoPi / wavelength;
-    float omega = sqrt(k_WaterGravity * k) * swellSpeed;
+    float omega = sqrt(swellGravity * k) * swellSpeed;
     float phase = dot(p, direction) * k - time * omega;
     // ゲルストナー波。頂点を波頭へ寄せて、谷を広く山を尖らせる
     float steepness = 0.6 / max(k * amplitude * 3.0, 1.0);
@@ -72,9 +77,9 @@ void WaterSwell(float2 p, float time, out float2 offset, out float height, out f
     offset = float2(0, 0);
     height = 0.0;
     slope = float2(0, 0);
-    AddSwell(p, time, 0.0, 113.0, swellHeight * 0.55, offset, height, slope);
-    AddSwell(p, time, 0.45, 73.0, swellHeight * 0.30, offset, height, slope);
-    AddSwell(p, time, -0.6, 52.0, swellHeight * 0.15, offset, height, slope);
+    AddSwell(p, time, swellWaveA.x, swellWaveA.y, swellHeight * swellWaveA.z, offset, height, slope);
+    AddSwell(p, time, swellWaveB.x, swellWaveB.y, swellHeight * swellWaveB.z, offset, height, slope);
+    AddSwell(p, time, swellWaveC.x, swellWaveC.y, swellHeight * swellWaveC.z, offset, height, slope);
 }
 
 #endif

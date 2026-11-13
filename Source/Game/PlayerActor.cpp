@@ -401,17 +401,13 @@ bool PlayerActor::ReceiveMsg(const NS::Message& msg, NS::HitSensor* sender, NS::
 {
     (void)sender;
     (void)receiver;
-    if (NS::IsMsg<GL::Level::MsgInstantDeath>(msg))
+    if (const GL::Level::MsgInstantDeath* death = NS::MsgCast<GL::Level::MsgInstantDeath>(msg))
     {
-        // 消えた後は VisualStep が呼ばれないので、その場で鳴らす。重なった範囲から同じフレームに何度も届いても 1 回だけ
-        if (!IsDead())
-        {
-            m_playerSounds->PlayFall(this);
-        }
+        // 死ぬ時の音とエフェクトは、送った落下死の範囲が出す
         Die();
         if (GL::Level::GameScene* game = NS::SceneCast<GL::Level::GameScene>(OwningScene()))
         {
-            game->NotifyPlayerDead();
+            game->NotifyPlayerDead(death->RestartDelayFrames());
         }
         return true;
     }
