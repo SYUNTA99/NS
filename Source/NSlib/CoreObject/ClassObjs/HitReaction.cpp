@@ -272,10 +272,7 @@ namespace NS
 
     void HitEffectInfo::Start(const HitReactionStart& start) const
     {
-        Gfx::EffectPlayDesc desc;
-        desc.position = start.position;
-        // 出すだけで後から止めないので、番号は使わない
-        (void)PlayEffect(start.owner.actor, effect, desc);
+        PlayEffect(start.owner.actor, effect, start.position);
     }
     HitReactionItem::HitReactionItem(const HitReactionItem& other)
     {

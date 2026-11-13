@@ -500,10 +500,7 @@ namespace NS
 
             void operator()(const ActionEffectInfo& effect) const
             {
-                Gfx::EffectPlayDesc desc;
-                desc.position = actor.TransformObj().Position();
-                // 出すだけで後から止めないので、番号は使わない
-                (void)PlayEffect(&actor, effect.effect, desc);
+                PlayEffect(&actor, effect.effect, actor.TransformObj().Position());
             }
 
             void operator()(const ActionPadInfo& pad) const

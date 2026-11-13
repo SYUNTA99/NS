@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Vector3& position)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         EffectObj* effect = user->GetEffect();
@@ -14,10 +14,10 @@ namespace NS
         {
             return 0;
         }
-        return effect->Play(asset, desc);
+        return effect->Play(asset, position);
     }
 
-    uint32 PlayFollowingEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    uint32 PlayFollowingEffect(const IGetEffect* user, const Effect* asset)
     {
         NS_ASSERT(Scene, user != nullptr, "窓口の関数に null の user を渡している");
         EffectObj* effect = user->GetEffect();
@@ -25,7 +25,7 @@ namespace NS
         {
             return 0;
         }
-        return effect->PlayFollowing(asset, desc);
+        return effect->PlayFollowing(asset);
     }
 
     void StopEffect(const IGetEffect* user, uint32 id) noexcept
