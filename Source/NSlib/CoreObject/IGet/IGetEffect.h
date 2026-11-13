@@ -29,16 +29,14 @@ namespace NS
 
     //! エフェクトを 1 つ出す
     //! @param[in] asset 再生するエフェクト素材
-    //! @return 再生の番号。Effect が無い時と再生できなかった時は 0
-    [[nodiscard]] uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Gfx::EffectPlayDesc& desc);
+    //! @param[in] position 出すワールド座標の位置。向きは回さず、大きさは 1
+    //! @return 再生の番号。捨ててよい。Effect が無い時と再生できなかった時は 0
+    uint32 PlayEffect(const IGetEffect* user, const Effect* asset, const Vector3& position);
 
-    //! エフェクトを 1 つ出し、止めるまで毎フレーム持ち主の Transform の位置と向きへ置き直す
+    //! エフェクトを持ち主の Transform の位置と向きに 1 つ出し、止めるまで毎フレームそこへ置き直す。大きさは 1
     //! @param[in] asset 再生するエフェクト素材
-    //! @param[in] desc 出すフレームの姿勢。大きさは追従の間も保つ
-    //! @return 再生の番号。Effect が無い時と再生できなかった時は 0
-    [[nodiscard]] uint32 PlayFollowingEffect(const IGetEffect* user,
-                                             const Effect* asset,
-                                             const Gfx::EffectPlayDesc& desc);
+    //! @return 再生の番号。捨ててよい。Effect が無い時と再生できなかった時は 0
+    uint32 PlayFollowingEffect(const IGetEffect* user, const Effect* asset);
 
     //! 子も含めて消す。無い番号と Effect が無い時は何もしない
     void StopEffect(const IGetEffect* user, uint32 id) noexcept;

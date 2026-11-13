@@ -17,14 +17,16 @@ namespace NS
         NS_ASSERT(Scene, transform != nullptr, "EffectObj に null の Transform を渡している");
     }
 
-    uint32 EffectObj::Play(const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    uint32 EffectObj::Play(const Effect* asset, const Vector3& position)
     {
-        return Start(asset, desc, false);
+        return Start(asset, Gfx::EffectPlayDesc{.position = position}, false);
     }
 
-    uint32 EffectObj::PlayFollowing(const Effect* asset, const Gfx::EffectPlayDesc& desc)
+    uint32 EffectObj::PlayFollowing(const Effect* asset)
     {
-        return Start(asset, desc, true);
+        return Start(asset,
+                     Gfx::EffectPlayDesc{.position = m_transform->Position(), .rotation = m_transform->Rotation()},
+                     true);
     }
 
     uint32 EffectObj::Start(const Effect* asset, const Gfx::EffectPlayDesc& desc, bool follows)
@@ -36,7 +38,6 @@ namespace NS
         PlayingEffect record;
         record.asset = asset;
         record.follows = follows;
-        record.scale = desc.scale;
         if (Gfx::EffectScene* effects = m_user->GetEffectScene())
         {
             record.handle = effects->Play(asset->D3D(), desc);
@@ -93,7 +94,6 @@ namespace NS
         {
             return;
         }
-        m_records[index].scale = scale;
         effects->SetTransform(m_records[index].handle, position, rotation, scale);
     }
 
@@ -122,7 +122,7 @@ namespace NS
         {
             if (record.follows)
             {
-                effects->SetTransform(record.handle, m_transform->Position(), m_transform->Rotation(), record.scale);
+                effects->SetTransform(record.handle, m_transform->Position(), m_transform->Rotation(), Vector3::One);
             }
         }
     }

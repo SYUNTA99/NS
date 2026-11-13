@@ -429,7 +429,7 @@ TEST(EffectPlayback, SceneAdvancesTheMaterialOncePerStepDuringActorHitStop)
     ASSERT_TRUE(asset->IsValid());
     NS::Gfx::EffectScene expected;
     expected.Update(1.0f / 60.0f);
-    const NS::uint32 id = NS::PlayEffect(player, asset, {});
+    const NS::uint32 id = NS::PlayEffect(player, asset, NS::Vector3::Zero);
     ASSERT_NE(id, 0u);
     ASSERT_EQ(player->GetEffect()->Records().size(), 1u);
     ASSERT_TRUE(player->GetEffect()->Records()[0].handle.IsValid());
@@ -847,10 +847,10 @@ TEST(EffectPlayback, FollowingEffectIsPlacedAtTheActorsRootEveryStep)
     ASSERT_NE(actor, nullptr);
     const NS::Effect* asset = assets.LoadEffect("Assets/Effects/impact.core.efkefc");
     ASSERT_TRUE(asset->IsValid());
-    // 出すのはカメラに映らない遠くで、アクターは原点に居る。追従しなければ何も映らない
-    NS::Gfx::EffectPlayDesc farAway;
-    farAway.position = NS::Vector3{1000.0f, 0.0f, 0.0f};
-    ASSERT_NE(NS::PlayFollowingEffect(actor, asset, farAway), 0u);
+    // 出すのはカメラに映らない遠くで、その後アクターを原点へ動かす。追従しなければ何も映らない
+    actor->TransformObj().SetPosition(NS::Vector3{1000.0f, 0.0f, 0.0f});
+    ASSERT_NE(NS::PlayFollowingEffect(actor, asset), 0u);
+    actor->TransformObj().SetPosition(NS::Vector3::Zero);
     NS::Gfx::EffectScene expected;
     ASSERT_TRUE(expected.Play(asset->D3D(), {}).IsValid());
 

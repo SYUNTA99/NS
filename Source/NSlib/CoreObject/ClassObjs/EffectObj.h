@@ -25,11 +25,10 @@ namespace NS
     //! 個体が出して、まだ止めていないエフェクト 1 つ
     struct PlayingEffect
     {
-        uint32 id = 0;                      //!< 再生の番号。1 から振り、同じ部品の中で使い回さない
-        const Effect* asset = nullptr;      //!< 出した素材
-        Gfx::EffectHandle handle{};         //!< 再生したエフェクト。描画の無い世界では無効
-        bool follows = false;               //!< 持ち主の Transform に付いて動く場合 true
-        Vector3 scale{1.0f, 1.0f, 1.0f};    //!< 出した時の大きさ。追従で置き直す時に使う
+        uint32 id = 0;                 //!< 再生の番号。1 から振り、同じ部品の中で使い回さない
+        const Effect* asset = nullptr; //!< 出した素材
+        Gfx::EffectHandle handle{};    //!< 再生したエフェクト。描画の無い世界では無効
+        bool follows = false;          //!< 持ち主の Transform に付いて動く場合 true
     };
 
     //! 個体のエフェクトの再生・停止・置き直し・追従を受け持つ部品
@@ -46,13 +45,13 @@ namespace NS
         //! エフェクトを 1 つ出し、止めるまで一覧に残す
         //! 描画の無い世界では再生せず、無効なハンドルで一覧に残す
         //! @param[in] asset 参照する素材
+        //! @param[in] position 出すワールド座標の位置。向きは回さず、大きさは 1
         //! @return 再生の番号。nullptr と空の道筋は 0 で、一覧に残さない。
         //!         描画のある世界では、再生できなかった素材も 0 で一覧に残さない
-        [[nodiscard]] uint32 Play(const Effect* asset, const Gfx::EffectPlayDesc& desc);
+        [[nodiscard]] uint32 Play(const Effect* asset, const Vector3& position);
 
-        //! Play と同じに出し、Update のたびに持ち主の Transform の位置と向きへ置き直す
-        //! @param[in] desc 出すフレームの姿勢。大きさは追従の間も保つ
-        [[nodiscard]] uint32 PlayFollowing(const Effect* asset, const Gfx::EffectPlayDesc& desc);
+        //! 持ち主の Transform の位置と向きに出し、Update のたびにそこへ置き直す。大きさは 1。ほかは Play と同じ
+        [[nodiscard]] uint32 PlayFollowing(const Effect* asset);
 
         //! 親を止めて一覧から外す。出ていた子は寿命まで残る。無い番号なら何もしない
         void StopRoot(uint32 id) noexcept;
@@ -64,6 +63,7 @@ namespace NS
         void StopRootAll() noexcept;
 
         //! 位置・向き・大きさを置き直す。無い番号と再生していない物では何もしない
+        //! 追従する再生は、次の Update で持ち主の Transform の位置と向き、大きさ 1 へ戻る
         //! @param[in] position ワールド座標の位置
         void SetTransform(uint32 id,
                           const Vector3& position,
@@ -85,8 +85,7 @@ namespace NS
         NS_REFLECT_NONE(EffectObj, Object)
 
     private:
-        [[nodiscard]] uint32 Start(const Effect* asset, const Gfx::EffectPlayDesc& desc, bool follows);
-        //! 番号の再生を一覧から外す
+        [[nodiscard]] uint32 Start(const Effect* asset, const Gfx::EffectPlayDesc& desc, bool follows);        //! 番号の再生を一覧から外す
         //! @return 外した再生のハンドル。無い番号なら無効なハンドル
         Gfx::EffectHandle TakeOut(uint32 id) noexcept;
         //! 番号の再生の、一覧の中の位置。無ければ一覧の長さ

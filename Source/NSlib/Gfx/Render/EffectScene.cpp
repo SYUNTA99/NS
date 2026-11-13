@@ -59,19 +59,6 @@ namespace NS
                 }
                 return result;
             }
-
-            uint8 ToColorByte(float value) noexcept
-            {
-                if (!IsPositive(value))
-                {
-                    return 0;
-                }
-                if (value >= 1.0f)
-                {
-                    return 255;
-                }
-                return static_cast<uint8>(std::lround(value * 255.0f));
-            }
         } // namespace
 
         EffectScene::EffectScene() noexcept
@@ -163,13 +150,8 @@ namespace NS
             m_manager->SetRandomSeed(handle,
                                      static_cast<int32>((effect->Seed() ^ (playCount * 2654435761u)) & 0x7FFFFFFFu));
             ++playCount;
-            // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・色・入力は生まれる時に読まれる
+            // Play は節を作らず、最初の Update で作る。ここで渡した姿勢・入力は生まれる時に読まれる
             m_manager->SetMatrix(handle, ToEffekseerTransform(desc.position, desc.rotation, desc.scale));
-            m_manager->SetAllColor(handle,
-                                   Effekseer::Color(ToColorByte(desc.color.R()),
-                                                    ToColorByte(desc.color.G()),
-                                                    ToColorByte(desc.color.B()),
-                                                    ToColorByte(desc.color.A())));
             for (std::size_t i = 0; i < desc.dynamicInputs.size(); ++i)
             {
                 if (desc.dynamicInputs[i].has_value())

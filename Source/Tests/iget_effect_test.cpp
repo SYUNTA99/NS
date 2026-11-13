@@ -26,7 +26,7 @@ TEST(IGetEffectTest, PlayEffectKeepsOneRecordInTheActorsPart)
     TestEffectActor& actor = *spawned;
     ASSERT_NE(actor.GetEffect(), nullptr);
 
-    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = NS::PlayEffect(&actor, &asset, NS::Vector3::Zero);
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(actor.GetEffect()->Records().size(), 1u);
@@ -41,8 +41,8 @@ TEST(IGetEffectTest, StopEffectAndStopEffectRootForgetTheRecord)
     TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    const NS::uint32 stopped = NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 rootStopped = NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 stopped = NS::PlayEffect(&actor, &asset, NS::Vector3::Zero);
+    const NS::uint32 rootStopped = NS::PlayFollowingEffect(&actor, &asset);
     ASSERT_EQ(actor.GetEffect()->Records().size(), 2u);
 
     NS::StopEffect(&actor, stopped);
@@ -59,8 +59,8 @@ TEST(IGetEffectTest, ActorWithoutThePartDoesNothing)
     NS::SceneActor actor;
     ASSERT_EQ(actor.GetEffect(), nullptr);
 
-    EXPECT_EQ(NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
-    EXPECT_EQ(NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(NS::PlayEffect(&actor, &asset, NS::Vector3::Zero), 0u);
+    EXPECT_EQ(NS::PlayFollowingEffect(&actor, &asset), 0u);
     NS::StopEffect(&actor, 1);
     NS::StopEffectRoot(&actor, 1);
     NS::SetEffectTransform(&actor, 1, NS::Vector3{}, NS::Quaternion::Identity, NS::Vector3{1.0f, 1.0f, 1.0f});

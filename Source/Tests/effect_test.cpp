@@ -39,7 +39,7 @@ TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
     const TestEffectUser user;
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
-    const NS::uint32 id = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 id = effect.Play(&asset, NS::Vector3::Zero);
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
@@ -50,20 +50,17 @@ TEST(EffectTest, PlayWithoutAnEffectSceneKeepsOneRecord)
     EXPECT_FALSE(record.handle.IsValid());
 }
 
-TEST(EffectTest, PlayFollowingMarksTheRecordAndKeepsTheScale)
+TEST(EffectTest, PlayFollowingMarksTheRecord)
 {
     NS::Effect asset{"Assets/Effects/test.spark.efkefc", nullptr};
     const TestEffectUser user;
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
-    NS::Gfx::EffectPlayDesc desc;
-    desc.scale = NS::Vector3{2.0f, 3.0f, 4.0f};
-    const NS::uint32 id = effect.PlayFollowing(&asset, desc);
+    const NS::uint32 id = effect.PlayFollowing(&asset);
 
     EXPECT_NE(id, 0u);
     ASSERT_EQ(effect.Records().size(), 1u);
     EXPECT_TRUE(effect.Records()[0].follows);
-    EXPECT_EQ(effect.Records()[0].scale, desc.scale);
 }
 
 TEST(EffectTest, EmptyAssetIsNotPlayed)
@@ -73,8 +70,8 @@ TEST(EffectTest, EmptyAssetIsNotPlayed)
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
 
-    EXPECT_EQ(effect.Play(nullptr, NS::Gfx::EffectPlayDesc{}), 0u);
-    EXPECT_EQ(effect.Play(&empty, NS::Gfx::EffectPlayDesc{}), 0u);
+    EXPECT_EQ(effect.Play(nullptr, NS::Vector3::Zero), 0u);
+    EXPECT_EQ(effect.Play(&empty, NS::Vector3::Zero), 0u);
     EXPECT_TRUE(effect.Records().empty());
 }
 
@@ -84,9 +81,9 @@ TEST(EffectTest, StopAndStopRootForgetOnlyTheirRecord)
     const TestEffectUser user;
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
-    const NS::uint32 first = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 second = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 third = effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
+    const NS::uint32 first = effect.Play(&asset, NS::Vector3::Zero);
+    const NS::uint32 second = effect.Play(&asset, NS::Vector3::Zero);
+    const NS::uint32 third = effect.Play(&asset, NS::Vector3::Zero);
     ASSERT_NE(first, second);
 
     effect.StopRoot(first);
@@ -104,8 +101,8 @@ TEST(EffectTest, StopRootAllForgetsEveryRecord)
     const TestEffectUser user;
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
-    (void)effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
-    (void)effect.PlayFollowing(&asset, NS::Gfx::EffectPlayDesc{});
+    (void)effect.Play(&asset, NS::Vector3::Zero);
+    (void)effect.PlayFollowing(&asset);
 
     effect.StopRootAll();
 
@@ -119,8 +116,8 @@ TEST(EffectTest, UpdateWithoutRenderingForgetsOnlyTheRecordsThatDoNotFollow)
     const TestEffectUser user;
     const NS::Transform transform;
     EffectObj effect{&user, &transform};
-    (void)effect.Play(&asset, NS::Gfx::EffectPlayDesc{});
-    const NS::uint32 following = effect.PlayFollowing(&asset, NS::Gfx::EffectPlayDesc{});
+    (void)effect.Play(&asset, NS::Vector3::Zero);
+    const NS::uint32 following = effect.PlayFollowing(&asset);
 
     effect.Update();
 
@@ -136,8 +133,8 @@ TEST(EffectTest, DisappearingActorStopsEveryEffectItPlayed)
     TestEffectActor* spawned = SpawnFromActorFile<TestEffectActor>(scene, "TestEffectActor");
     ASSERT_NE(spawned, nullptr);
     TestEffectActor& actor = *spawned;
-    ASSERT_NE(NS::PlayEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
-    ASSERT_NE(NS::PlayFollowingEffect(&actor, &asset, NS::Gfx::EffectPlayDesc{}), 0u);
+    ASSERT_NE(NS::PlayEffect(&actor, &asset, NS::Vector3::Zero), 0u);
+    ASSERT_NE(NS::PlayFollowingEffect(&actor, &asset), 0u);
     ASSERT_EQ(actor.GetEffect()->Records().size(), 2u);
 
     actor.Disappear();
