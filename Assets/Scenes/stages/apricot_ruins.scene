@@ -1569,31 +1569,6 @@
       "classObjs": {
         "Collision": {},
         "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -5.880000114440918,
-            2.5,
-            -9.0
-          ]
-        }
-      },
-      "id": 58,
-      "name": "StartGate_Pillar-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/sandstone.mat",
           "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
           "基本色": null
@@ -1613,31 +1588,6 @@
       },
       "id": 59,
       "name": "StartGate_PillarBase-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            5.880000114440918,
-            2.5,
-            -9.0
-          ]
-        }
-      },
-      "id": 60,
-      "name": "StartGate_Pillar1"
     },
     {
       "actor": "MapPartsActor",
@@ -1670,14 +1620,14 @@
         "Collision": {},
         "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/arch.glb",
+          "メッシュ": "Assets/Models/apricot_ruins/gates/StartGate.glb",
           "基本色": null
         },
         "Transform": {
           "スケール": [
-            7.0,
-            7.0,
-            2.200000047683716
+            1.0,
+            1.0,
+            1.0
           ],
           "位置": [
             0.0,
@@ -1693,32 +1643,7 @@
         }
       },
       "id": 62,
-      "name": "StartGate_Arch"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -5.208000183105469,
-            9.5,
-            31.0
-          ]
-        }
-      },
-      "id": 63,
-      "name": "TerraceGate01_Pillar-1"
+      "name": "StartGate"
     },
     {
       "actor": "MapPartsActor",
@@ -1744,31 +1669,6 @@
       },
       "id": 64,
       "name": "TerraceGate01_PillarBase-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            5.208000183105469,
-            9.5,
-            31.0
-          ]
-        }
-      },
-      "id": 65,
-      "name": "TerraceGate01_Pillar1"
     },
     {
       "actor": "MapPartsActor",
@@ -1801,14 +1701,14 @@
         "Collision": {},
         "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/arch.glb",
+          "メッシュ": "Assets/Models/apricot_ruins/gates/TerraceGate01.glb",
           "基本色": null
         },
         "Transform": {
           "スケール": [
-            6.199999809265137,
-            6.199999809265137,
-            2.200000047683716
+            1.0,
+            1.0,
+            1.0
           ],
           "位置": [
             0.0,
@@ -1824,32 +1724,7 @@
         }
       },
       "id": 67,
-      "name": "TerraceGate01_Arch"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -2.619999885559082,
-            16.5,
-            57.0
-          ]
-        }
-      },
-      "id": 68,
-      "name": "TerraceGate02_Pillar-1"
+      "name": "TerraceGate01"
     },
     {
       "actor": "MapPartsActor",
@@ -1875,31 +1750,6 @@
       },
       "id": 69,
       "name": "TerraceGate02_PillarBase-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            6.619999885559082,
-            16.5,
-            57.0
-          ]
-        }
-      },
-      "id": 70,
-      "name": "TerraceGate02_Pillar1"
     },
     {
       "actor": "MapPartsActor",
@@ -1932,14 +1782,14 @@
         "Collision": {},
         "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/arch.glb",
+          "メッシュ": "Assets/Models/apricot_ruins/gates/TerraceGate02.glb",
           "基本色": null
         },
         "Transform": {
           "スケール": [
-            5.5,
-            5.5,
-            2.200000047683716
+            1.0,
+            1.0,
+            1.0
           ],
           "位置": [
             2.0,
@@ -1955,32 +1805,7 @@
         }
       },
       "id": 72,
-      "name": "TerraceGate02_Arch"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -60.0,
-            19.5,
-            74.20800018310547
-          ]
-        }
-      },
-      "id": 73,
-      "name": "SummitGate_Pillar-1"
+      "name": "TerraceGate02"
     },
     {
       "actor": "MapPartsActor",
@@ -2006,31 +1831,6 @@
       },
       "id": 74,
       "name": "SummitGate_PillarBase-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -60.0,
-            19.5,
-            63.79199981689453
-          ]
-        }
-      },
-      "id": 75,
-      "name": "SummitGate_Pillar1"
     },
     {
       "actor": "MapPartsActor",
@@ -2063,14 +1863,14 @@
         "Collision": {},
         "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/arch.glb",
+          "メッシュ": "Assets/Models/apricot_ruins/gates/SummitGate.glb",
           "基本色": null
         },
         "Transform": {
           "スケール": [
-            6.199999809265137,
-            6.199999809265137,
-            2.200000047683716
+            1.0,
+            1.0,
+            1.0
           ],
           "位置": [
             -60.0,
@@ -2086,32 +1886,7 @@
         }
       },
       "id": 77,
-      "name": "SummitGate_Arch"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -108.53600311279297,
-            22.5,
-            127.0
-          ]
-        }
-      },
-      "id": 78,
-      "name": "GoalGate_Pillar-1"
+      "name": "SummitGate"
     },
     {
       "actor": "MapPartsActor",
@@ -2137,31 +1912,6 @@
       },
       "id": 79,
       "name": "GoalGate_PillarBase-1"
-    },
-    {
-      "actor": "MapPartsActor",
-      "classObjs": {
-        "Collision": {},
-        "Model": {
-          "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/soft_block.glb",
-          "基本色": null
-        },
-        "Transform": {
-          "スケール": [
-            1.399999976158142,
-            5.0,
-            1.399999976158142
-          ],
-          "位置": [
-            -99.46399688720703,
-            22.5,
-            127.0
-          ]
-        }
-      },
-      "id": 80,
-      "name": "GoalGate_Pillar1"
     },
     {
       "actor": "MapPartsActor",
@@ -2194,14 +1944,14 @@
         "Collision": {},
         "Model": {
           "マテリアル": "Assets/Materials/apricot_ruins/crafted/stone.mat",
-          "メッシュ": "Assets/Models/apricot_ruins/arch.glb",
+          "メッシュ": "Assets/Models/apricot_ruins/gates/GoalGate.glb",
           "基本色": null
         },
         "Transform": {
           "スケール": [
-            5.400000095367432,
-            5.400000095367432,
-            2.200000047683716
+            1.0,
+            1.0,
+            1.0
           ],
           "位置": [
             -104.0,
@@ -2217,7 +1967,7 @@
         }
       },
       "id": 82,
-      "name": "GoalGate_Arch"
+      "name": "GoalGate"
     },
     {
       "actor": "MapPartsActor",
