@@ -4,7 +4,6 @@
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
 #include "Editor/AssetPicker.h"
-#include "Editor/Undo/ActorSnapshotCommand.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
 #include "NSlib/Core/Windows/Filesystem.h"
@@ -26,7 +25,6 @@
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Gfx/D3DTexture.h"
 
-#include <charconv>
 #include <optional>
 #include <span>
 #include <string>
@@ -54,7 +52,7 @@ namespace NS
 
             // name の .actor を document に差し替えてファイルへ書き、name を指すアクターと name
             // の派生を指すアクターの全部へ、 全部の値を写し直す。シーンで上書きした項目はアクターの値が残る
-            // 直し終えた時・取り消し・やり直しの全部がこの 1 本を通る
+            // 直し終えた時はこの 1 本を通る
             void WriteActorFile(Scene& scene,
                                 std::set<std::string>& unsaved,
                                 const std::string& name,
@@ -149,97 +147,6 @@ namespace NS
                 }
                 return true;
             }
-
-            // nlohmann::json::diff が作る 1 つの操作 (add・remove・replace) を document に当てられるか
-            // add は親が要り、配列の親なら位置が末尾以下。remove と replace は当てる所が要る
-            bool CanApplyPatchOperation(const nlohmann::json& document, const nlohmann::json& operation)
-            {
-                const nlohmann::json::json_pointer path{operation.at("path").get<std::string>()};
-                if (operation.at("op") != "add")
-                {
-                    return document.contains(path);
-                }
-                if (path.empty())
-                {
-                    return true;
-                }
-                const nlohmann::json::json_pointer parentPath = path.parent_pointer();
-                if (!document.contains(parentPath))
-                {
-                    return false;
-                }
-                const nlohmann::json& parent = document[parentPath];
-                if (parent.is_object())
-                {
-                    return true;
-                }
-                if (!parent.is_array())
-                {
-                    return false;
-                }
-                const std::string& last = path.back();
-                if (last == "-")
-                {
-                    return true;
-                }
-                std::size_t index = 0;
-                const std::from_chars_result parsed = std::from_chars(last.data(), last.data() + last.size(), index);
-                return parsed.ec == std::errc{} && parsed.ptr == last.data() + last.size() && index <= parent.size();
-            }
-
-            // .actor の 1 欄の書き換え。シーンと前後の差分を持つ
-            // 戻す・やり直す時は、その時の文書に差分だけを当てる。動作の窓は取り消しの履歴を通さずに文書を書くので、
-            // 文書の全部を戻すと窓の直しが消える
-            class ActorFileCommand final : public ICommand
-            {
-            public:
-                ActorFileCommand(Scene& scene,
-                                 std::set<std::string>& unsaved,
-                                 std::string name,
-                                 const nlohmann::json& before,
-                                 const nlohmann::json& after)
-                    : m_scene(scene), m_unsaved(unsaved), m_name(std::move(name)),
-                      m_redo(nlohmann::json::diff(before, after)), m_undo(nlohmann::json::diff(after, before))
-                {
-                    m_bytes = sizeof(*this) + m_name.size() + m_redo.dump().size() + m_undo.dump().size();
-                }
-
-                void Do() noexcept override { Apply(m_redo); }
-                void Undo() noexcept override { Apply(m_undo); }
-                [[nodiscard]] std::size_t EstimatedBytes() const noexcept override { return m_bytes; }
-
-            private:
-                void Apply(const nlohmann::json& patch) noexcept
-                {
-                    const nlohmann::json* current = ActorFileLibrary::Get().Find(m_name);
-                    if (current == nullptr)
-                    {
-                        NS_LOG_WARN(App, ".actor {} が読まれていないので、取り消しかやり直しを当てない", m_name);
-                        return;
-                    }
-                    nlohmann::json document = *current;
-                    // 例外を切ってあるので、当てられない差分を patch に渡すと止まる。1 つずつ確かめて当てる
-                    for (const nlohmann::json& operation : patch)
-                    {
-                        if (!CanApplyPatchOperation(document, operation))
-                        {
-                            // 間に別の書き換えが同じ所を消した。書かずに今の文書を残す
-                            NS_LOG_WARN(
-                                App, ".actor {} の取り消しかやり直しを当てられなかった: {}", m_name, operation.dump());
-                            return;
-                        }
-                        document = document.patch(nlohmann::json::array({operation}));
-                    }
-                    WriteActorFile(m_scene, m_unsaved, m_name, document);
-                }
-
-                Scene& m_scene;
-                std::set<std::string>& m_unsaved;
-                std::string m_name;
-                nlohmann::json m_redo;
-                nlohmann::json m_undo;
-                std::size_t m_bytes = 0;
-            };
 
             [[nodiscard]] Object* LoadSelectableAsset(std::string_view path)
             {
@@ -438,17 +345,15 @@ namespace NS
                     NS_LOG_WARN(App, ".actor {} が読まれていないので、欄 {} を書かない", name, edit.fieldName);
                     continue;
                 }
-                const nlohmann::json before = *current;
-                nlohmann::json after = before;
+                nlohmann::json after = *current;
                 ActorJsonClassObjs(after)[std::string{edit.row->key}][edit.fieldName] =
                     FieldJson(*part, edit.fieldName);
-                if (after == before)
+                if (after == *current)
                 {
                     continue;
                 }
-                // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-                m_editor.Undo().Push(
-                    std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after));
+                // .actor は配置の姿でないので、プレイ中に直した物も書く。シーンでないので未保存にはしない
+                WriteActorFile(m_scene, m_unsavedActorFiles, name, after);
             }
         }
 
@@ -477,15 +382,14 @@ namespace NS
                 NS_LOG_WARN(App, ".actor {} が読まれていないので、{}を書かない", name, what);
                 return;
             }
-            nlohmann::json before = *current;
-            nlohmann::json after = before;
+            nlohmann::json after = *current;
             change(after);
-            if (after == before)
+            if (after == *current)
             {
                 return;
             }
-            // .actor は配置の姿でないので、プレイ中に直した物も積む。編集へ戻った後に戻せる
-            m_editor.Undo().Push(std::make_unique<ActorFileCommand>(m_scene, m_unsavedActorFiles, name, before, after));
+            // .actor は配置の姿でないので、プレイ中に直した物も書く。シーンでないので未保存にはしない
+            WriteActorFile(m_scene, m_unsavedActorFiles, name, after);
         }
 
         bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
@@ -542,8 +446,8 @@ namespace NS
                 return false;
             }
             SetActorJsonFile(after, name);
-            m_editor.Undo().Push(
-                std::make_unique<ActorSnapshotCommand>(m_scene, actorId, std::move(before), std::move(after)));
+            ApplyActorSnapshot(m_scene, actorId, std::move(after));
+            m_editor.MarkEdited();
             ResolveSelectionFromId();
             return true;
         }
@@ -609,17 +513,14 @@ namespace NS
                 return false;
             }
 
-            // 差替前を忠実に写す。matRef を実体へ書き込み、差替後との差分を 取り消し 履歴へ積む
-            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), m_selectedActorId);
-
+            // matRef を実体へ書き込み、読み直した後の姿が前と違う時だけ未保存にする
+            const std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), m_selectedActorId);
             mesh->SetMaterialRef(*stored);
             FinishFieldWrite(go, FieldType::Asset);
-
-            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_selectedActorId);
-            if (before && after && *before != *after)
+            const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_selectedActorId);
+            if (before != after)
             {
-                m_editor.Undo().Record(std::make_unique<ActorSnapshotCommand>(
-                    m_scene, m_selectedActorId, std::move(before), std::move(after)));
+                m_editor.MarkEdited();
             }
             return true;
         }
@@ -720,7 +621,7 @@ namespace NS
             if (IsActorFileAssetPath(m_selectedAssetPath))
             {
                 CommitActorFileEdits();
-                // 直した 1 体は書いた文書と同じ値だが、作った時の文書と比べると取り消しで元の文書へ戻った事を見落とす。
+                // 直した 1 体は書いた文書と同じ値だが、作った時の文書を控えたままだと、控えと今の文書の比べが食い違う。
                 // 次に引いた時に今の文書から作り直させる
                 m_actorFileDraftSource = nlohmann::json{};
                 return;

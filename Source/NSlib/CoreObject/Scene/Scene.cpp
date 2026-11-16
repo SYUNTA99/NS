@@ -328,23 +328,6 @@ namespace NS
         });
     }
 
-    DetachedActor Scene::DetachActor(uint32 objectId)
-    {
-        DetachedActor detached = m_actors.DetachByActorId(objectId);
-        std::erase_if(m_unresolvedActors, [objectId](const nlohmann::json& unresolved) {
-            return ActorJsonId(unresolved) == objectId;
-        });
-        return detached;
-    }
-
-    SceneActor* Scene::ReattachActor(DetachedActor detached)
-    {
-        NS_ASSERT(Scene,
-                  !detached.actor || detached.actor->OwningScene() == this,
-                  "別のシーンから外したアクターを戻そうとしている");
-        return m_actors.Reattach(std::move(detached));
-    }
-
     void Scene::ClearEffects() noexcept
     {
         Gfx::EffectScene* effects = m_sceneRenderer.Effects();

@@ -13,6 +13,7 @@
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include <algorithm>
@@ -49,8 +50,25 @@ namespace NS
             {
                 return std::nullopt;
             }
-            // undo は編集値ごと戻すため、アクターが自分を全部品の値まで忠実に書き出す
+            // 写しから同じ姿を作り直せるように、アクターが自分を全部品の値まで書き出す
             return ActorToJson(actor);
+        }
+
+        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired)
+        {
+            if (!desired)
+            {
+                scene.RemoveActor(id);
+                return;
+            }
+            SetActorJsonId(*desired, id);
+            std::unique_ptr<SceneActor> replaced;
+            // 当てられなかった時は ApplyFromJson がログに理由を出す。呼び手は姿を確かめないので戻り値は捨てる
+            (void)scene.ApplyFromJson(*desired, &replaced);
+            if (replaced)
+            {
+                replaced->OnEndPlay();
+            }
         }
 
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)

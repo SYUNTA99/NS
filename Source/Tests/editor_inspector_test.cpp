@@ -46,7 +46,7 @@
 using NS::Editor::LevelEditorController;
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
-// 始まりが値の後だと、控えが変わった後の値になり undo に積まれない
+// 始まりが値の後だと、控えが変わった後の値になり、確定で変化を見落としてシーンが未保存にならない
 TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
 {
     ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f}, HeadlessImGuiInput::Instant);
@@ -735,8 +735,8 @@ TEST(EditorInspector, MaterialApplyReachesTheModelDraw)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// シーン設定で空を外すと環境の履歴が 1 つ積まれ、Undo 1 回で空が戻る
-TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
+// シーン設定で空を外すと、シーンが未保存になる
+TEST(EditorInspector, SkyboxEditMarksTheSceneUnsaved)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
@@ -744,7 +744,6 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
     scene.ResetFromJson(doc);
     LevelEditorController editor(scene);
-    const nlohmann::json before = scene.ToJson();
 
     InspectorFrames frames(editor);
     frames.Frame();
@@ -756,21 +755,15 @@ TEST(EditorInspector, SkyboxEditUndoesThroughTheEnvironmentHistory)
     frames.Frame();
 
     EXPECT_TRUE(scene.SkyboxPath().empty());
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
     EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_EQ(scene.ToJson(), before);
-    EXPECT_EQ(NS::ReadSceneEnvironment(scene.ToJson()).skybox, "Assets/Skybox/kurt");
 }
 
-// シーン設定で打った曲の音量はフレームをまたいで残り、適用で環境の履歴が 1 つ積まれる。
-// Undo の後は入力が元の値へ戻るので、もう一度適用を押しても積まれない
-TEST(EditorInspector, MusicVolumeEditUndoesThroughTheEnvironmentHistory)
+// シーン設定で打った曲の音量はフレームをまたいで残り、適用を押した時にだけシーンへ入る
+TEST(EditorInspector, MusicVolumeEditAppliesOnlyWhenApplyIsPressed)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    const nlohmann::json before = scene.ToJson();
     const float volumeBefore = scene.Environment().musicVolume;
     ASSERT_NE(volumeBefore, 0.25f);
 
@@ -809,25 +802,14 @@ TEST(EditorInspector, MusicVolumeEditUndoesThroughTheEnvironmentHistory)
     frames.Frame();
     frames.Frame();
     EXPECT_FLOAT_EQ(scene.Environment().musicVolume, 0.25f);
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
-
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_EQ(scene.ToJson(), before);
-    frames.Frame();
-    ImGui::ActivateItemByID(ImHashStr("曲を適用", 0, window->ID));
-    frames.Frame();
-    frames.Frame();
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 0u);
-    EXPECT_EQ(scene.ToJson(), before);
 }
 
-// 曲を変えると環境の履歴が 1 つだけ積まれる。同じ値と非数の音量では積まない
-TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
+// 曲と音量と音の届く距離を変える。非数の音量と、0 以下と非数の距離は受けない
+TEST(EditorInspector, SetSceneMusicRejectsInvalidValues)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    const nlohmann::json before = scene.ToJson();
 
     const float distance = editor.SceneSoundFullVolumeDistance();
 
@@ -837,20 +819,14 @@ TEST(EditorInspector, SetSceneMusicPushesOneEnvironmentCommand)
     EXPECT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance));
     EXPECT_FALSE(
         editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", std::numeric_limits<float>::quiet_NaN(), distance));
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
+    EXPECT_FLOAT_EQ(editor.SceneMusicVolume(), 0.4f);
 
-    // 音の届く距離も同じ履歴に積む。0 以下と非数は受けない
     EXPECT_FALSE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, 0.0f));
     EXPECT_FALSE(
         editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, std::numeric_limits<float>::quiet_NaN()));
+    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance);
     ASSERT_TRUE(editor.SetSceneMusic("Assets/Sounds/bgm_course.wav", 0.4f, distance + 5.0f));
     EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance + 5.0f);
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 2u);
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_FLOAT_EQ(editor.SceneSoundFullVolumeDistance(), distance);
-
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_EQ(scene.ToJson(), before);
 }
 
 
@@ -898,15 +874,4 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_NE(savedSet, nullptr);
     EXPECT_EQ(savedSet->stopFrames, 20);
     EXPECT_EQ(saved.size(), before.size());
-
-    // 戻すとファイルとアクターの束が前の長さへ戻る
-    ASSERT_TRUE(editor.Editor().Undo().Undo());
-    const std::vector<NS::HitReactionSet> undoneSets = SavedSets(scope.Path(), "PlayerActor");
-    const NS::HitReactionSet* undone = FindSetIn(undoneSets, first.name);
-    ASSERT_NE(undone, nullptr);
-    EXPECT_EQ(undone->stopFrames, first.stopFrames);
-    const NS::HitReactionSet* live =
-        scene.Actors().FindByActorId(selected)->HitReactionClassObj()->FindSet(first.name);
-    ASSERT_NE(live, nullptr);
-    EXPECT_EQ(live->stopFrames, first.stopFrames);
 }

@@ -8,8 +8,6 @@
 #include "Editor/EditorActors.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
-#include "Editor/Undo/ActorSnapshotCommand.h"
-#include "Editor/Undo/CompositeCommand.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
@@ -74,32 +72,6 @@ namespace NS
             // 秒と揃え、モード切替の繋ぎを同じ感触にする
             constexpr float k_EditBlendSeconds = 0.35f;
 
-            // プレイ開始の凍結と編集へ戻る時の凍結を 1 体ずつ比べ、違う物を戻せる記録にする
-            // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない
-            std::vector<std::unique_ptr<ICommand>> MakePlayEditCommands(Scene& scene,
-                                                                        const nlohmann::json& playStart,
-                                                                        const nlohmann::json& playEnd)
-            {
-                std::vector<std::unique_ptr<ICommand>> commands;
-                const nlohmann::json& startObjects = SceneJsonActors(playStart);
-                for (const nlohmann::json& after : SceneJsonActors(playEnd))
-                {
-                    const uint32 id = ActorJsonId(after);
-                    const std::size_t index = FindActorIndexById(playStart, id);
-                    if (index == k_NoActorIndex)
-                    {
-                        continue;
-                    }
-                    const nlohmann::json& before = startObjects[index];
-                    if (before == after)
-                    {
-                        continue;
-                    }
-                    commands.push_back(std::make_unique<ActorSnapshotCommand>(
-                        scene, id, std::optional<nlohmann::json>{before}, std::optional<nlohmann::json>{after}));
-                }
-                return commands;
-            }
         } // namespace
 
         LevelEditorController::LevelEditorController(Scene& scene) noexcept : m_scene(scene)
@@ -114,7 +86,6 @@ namespace NS
                 CommitTransformEdit();
                 CommitClassObjEdit();
                 ClearAssetSelection();
-                m_editor.Undo().Clear();
                 SelectActorById(k_NoActorId);
                 m_dragFollowers.clear();
                 m_gizmoWasDragging = false;
@@ -131,27 +102,6 @@ namespace NS
 
         namespace
         {
-            class EnvironmentCommand final : public ICommand
-            {
-            public:
-                EnvironmentCommand(Scene& scene, SceneEnvironment before, SceneEnvironment after)
-                    : m_scene(scene), m_before(std::move(before)), m_after(std::move(after))
-                {}
-
-                void Do() noexcept override { m_scene.SetEnvironment(m_after); }
-                void Undo() noexcept override { m_scene.SetEnvironment(m_before); }
-                [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
-                {
-                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() +
-                           AssetFieldName(m_before.music).size() + AssetFieldName(m_after.music).size();
-                }
-
-            private:
-                Scene& m_scene;
-                SceneEnvironment m_before;
-                SceneEnvironment m_after;
-            };
-
             // actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
             nlohmann::json AllFieldValues(const SceneActor& actor)
             {
@@ -227,8 +177,8 @@ namespace NS
             {
                 SceneEnvironment after = m_scene.Environment();
                 after.skybox = std::move(normalized);
-                m_editor.Undo().Push(
-                    std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
+                m_scene.SetEnvironment(after);
+                m_editor.MarkEdited();
             }
             return true;
         }
@@ -264,8 +214,8 @@ namespace NS
                 after.musicVolume != m_scene.Environment().musicVolume ||
                 after.soundFullVolumeDistance != m_scene.Environment().soundFullVolumeDistance)
             {
-                m_editor.Undo().Push(
-                    std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
+                m_scene.SetEnvironment(after);
+                m_editor.MarkEdited();
             }
             return true;
         }
@@ -505,23 +455,23 @@ namespace NS
             else
             {
                 // 戻す姿が無くても、プレイを終えるのは組み直しだけなので、今の姿で組み直す。
-                // プレイで動いた分を編集の変更として履歴に積まない
+                // プレイで動いた分を編集の変更にしない
                 baseline = m_scene.ToJson();
                 m_playStartBaseline.reset();
             }
-            std::vector<std::unique_ptr<ICommand>> playEdits;
+            // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない。
+            // 比べ方は終了の確認の HasUnsavedSceneChanges と同じく文書全体で比べる
+            bool playEdited = false;
             if (m_playStartBaseline)
             {
-                playEdits = MakePlayEditCommands(m_scene, *m_playStartBaseline, baseline);
+                playEdited = *m_playStartBaseline != baseline;
                 m_playStartBaseline.reset();
             }
-            // 履歴は残す。持っているアクターは組み直しが捨てる管理クラスを指すので、先に解放して JSON から戻す形にする
-            m_editor.Undo().ReleaseHeldActors();
             m_scene.ResetFromJson(std::move(baseline));
-            // プレイ中の変更は 1 つずつ積まず、戻る時に 1 まとまりで積む。実体は組み直しで既に変えた後の姿
-            if (!playEdits.empty())
+            // プレイ中にインスペクタで変えた値は、組み直しの姿に入っている。違う物があればシーンを未保存にする
+            if (playEdited)
             {
-                m_editor.Undo().Record(MakeUndoUnit(std::move(playEdits)));
+                m_editor.MarkEdited();
             }
 
             if (Application* app = Application::Get())
@@ -729,8 +679,8 @@ namespace NS
                 // へ書き戻す。位置の書き戻しはこちら
                 ApplyFollowCameraGizmoDrag();
 
-                // ドラッグ開始で baseline を控え、終了で変わった分のスナップショットを履歴へ積む。grid undo と同じ経路
-                // 追従カメラの引きは初期姿勢の欄を変える。控えは部品の値まで写すので同じ道で積める
+                // ドラッグ開始で baseline を控え、終了で変わっていればシーンを未保存にする
+                // 追従カメラの引きは初期姿勢の欄を変える。控えは部品の値まで写すので同じ道で変化を見つけられる
                 const bool nowDragging = m_gizmo.IsDragging();
                 if (!wasDragging && nowDragging)
                 {
@@ -757,12 +707,10 @@ namespace NS
                 m_gizmoWasDragging = false;
             }
 
-            // 掴んでいる間は選択の貼り直しを飛ばすので、undo が旧 Transform を指す
-            m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
             m_editor.Tick(m_editShortcutsBlocked, presses);
             if (m_editor.IsLevelDirty())
             {
-                // grid 編集・undo・読込はコマンド / reload がアクターを組み直し済。gizmo を今の実体へ貼り直す
+                // grid 編集と読込はアクターを組み直し済。gizmo を今の実体へ貼り直す
                 // 消えた選択や読込での id 振り直しは解決が自然に外す
                 ResolveSelectionFromId();
                 m_editor.ClearLevelDirty();
@@ -1145,8 +1093,7 @@ namespace NS
                 return;
             }
             SceneActor* object = m_scene.Actors().FindByActorId(id);
-            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), id);
-            if (object == nullptr || !before)
+            if (object == nullptr)
             {
                 return;
             }
@@ -1156,13 +1103,9 @@ namespace NS
             m_scene.Actors().RenameActor(object, name);
             if (object->Name() == previous)
             {
-                return; // 同じ名前で履歴を汚さない
+                return; // 同じ名前なら未保存にしない
             }
-
-            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), id);
-            // 実体は既に after なので Do を呼ばず履歴だけ積む
-            m_editor.Undo().Record(
-                std::make_unique<ActorSnapshotCommand>(m_scene, id, std::move(before), std::move(after)));
+            m_editor.MarkEdited();
 
             ResolveSelectionFromId();
         }
@@ -1220,24 +1163,21 @@ namespace NS
                 return;
             }
 
-            std::vector<std::unique_ptr<ICommand>> commands;
-            commands.reserve(m_selectionIds.size());
+            bool deleted = false;
             for (const uint32 victim : m_selectionIds)
             {
-                std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), victim);
-                if (!before)
+                if (m_scene.Actors().FindByActorId(victim) == nullptr)
                 {
                     continue;
                 }
-                commands.push_back(
-                    std::make_unique<ActorSnapshotCommand>(m_scene, victim, std::move(before), std::nullopt));
+                ApplyActorSnapshot(m_scene, victim, std::nullopt);
+                deleted = true;
             }
-            if (commands.empty())
+            if (!deleted)
             {
                 return;
             }
-
-            m_editor.Undo().Push(MakeUndoUnit(std::move(commands)));
+            m_editor.MarkEdited();
 
             SelectActorById(k_NoActorId);
             ResolveSelectionFromId();
@@ -1417,21 +1357,19 @@ namespace NS
             }
             m_transformEditing = false;
 
-            std::vector<std::unique_ptr<ICommand>> commands = TakeEditBaselineCommands();
-            // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
-            if (!IsSceneEditable() || commands.empty())
+            const bool changed = FinishEditBaselines();
+            // プレイ中に動いた姿勢は、編集へ戻る組み直しで消えるので未保存にしない
+            if (!IsSceneEditable() || !changed)
             {
                 return;
             }
-
-            // 実体は既に after なので Do を呼ばず履歴だけ積む。取り消し で baseline へ、やり直し で after へ戻す
-            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
+            m_editor.MarkEdited();
         }
 
-        std::vector<std::unique_ptr<ICommand>> LevelEditorController::TakeEditBaselineCommands()
+        bool LevelEditorController::FinishEditBaselines()
         {
-            // 実体の Transform は既に動いている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
-            std::vector<std::unique_ptr<ICommand>> commands;
+            // 実体の Transform は既に動いている。今の姿が控えと同じなら変わっていない
+            bool changed = false;
             for (TransformEditBaseline& entry : m_editBaselines)
             {
                 const uint32 id = entry.id;
@@ -1441,15 +1379,14 @@ namespace NS
                 {
                     AddChangedSceneOverrides(*actor, entry.fields);
                 }
-                std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), id);
-                if (!after || *after == baseline)
+                const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), id);
+                if (after && *after != baseline)
                 {
-                    continue;
+                    changed = true;
                 }
-                commands.push_back(std::make_unique<ActorSnapshotCommand>(m_scene, id, baseline, std::move(*after)));
             }
             m_editBaselines.clear();
-            return commands;
+            return changed;
         }
 
         void LevelEditorController::BeginClassObjEdit() noexcept
@@ -1489,32 +1426,25 @@ namespace NS
             }
             m_classObjEditing = false;
 
-            std::vector<std::unique_ptr<ICommand>> commands;
-            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
-            if (after && *after != m_classObjEditBaseline)
-            {
-                commands.push_back(std::make_unique<ActorSnapshotCommand>(
-                    m_scene, m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
-            }
+            // リフレクション編集は実体の部品へ直接入っている。今の姿が控えと違えば変わった
+            const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
+            bool changed = after && *after != m_classObjEditBaseline;
             if (m_classObjFollowing)
             {
                 m_classObjFollowing = false;
                 m_dragFollowers.clear();
-                std::vector<std::unique_ptr<ICommand>> moved = TakeEditBaselineCommands();
-                for (std::unique_ptr<ICommand>& command : moved)
+                if (FinishEditBaselines())
                 {
-                    commands.push_back(std::move(command));
+                    changed = true;
                 }
             }
 
-            // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
-            // プレイ中の控えはプレイの姿なので積まない
-            if (!IsSceneEditable() || commands.empty())
+            // プレイ中の値は、編集へ戻る時に LeavePlayForEdit が比べて未保存にする
+            if (!IsSceneEditable() || !changed)
             {
                 return;
             }
-            // 実体は既に after なので Do を呼ばず履歴だけ積む
-            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
+            m_editor.MarkEdited();
         }
 
         bool LevelEditorController::ReparentActor(uint32 child, uint32 parent)
@@ -1532,20 +1462,10 @@ namespace NS
             {
                 return false;
             }
-            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), child);
-            if (!before)
-            {
-                return false;
-            }
             // 位置は世界座標のままなので、親を替えても子は動かない
             actor->TransformObj().SetParent(ActorRef{parent});
             FinishFieldWrite(actor, FieldType::ActorRef);
-            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), child);
-            if (!after)
-            {
-                return false;
-            }
-            m_editor.Undo().Record(std::make_unique<ActorSnapshotCommand>(m_scene, child, std::move(*before), std::move(*after)));
+            m_editor.MarkEdited();
             return true;
         }
     } // namespace Editor

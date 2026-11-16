@@ -219,7 +219,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterTheInspectorRewritesIt)
     EXPECT_NEAR(world.LookAfterUpdate().x, 10.0f, 1.0e-4f);
 }
 
-// 取り消しとやり直しが控えを当てた後も、控えの相手を追う
+// 写しを ApplyFromJson で反映した後も、写しの相手を追う
 TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
 {
     FollowScene world;

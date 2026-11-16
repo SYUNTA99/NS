@@ -139,13 +139,13 @@ namespace NS
 
             [[nodiscard]] EditorMode& Editor() noexcept { return m_editor; }
             [[nodiscard]] const EditorMode& Editor() const noexcept { return m_editor; }
-            //! 履歴に積む前のプレイ中の手編集も含め、シーンに未保存の変更があるか
+            //! 編集へ戻る前のプレイ中の手編集も含め、シーンに未保存の変更があるか
             [[nodiscard]] bool HasUnsavedSceneChanges() const noexcept;
 
             //! 素材の編集中の値を確定し、アクターと素材の選択を外してシーン設定を表示する。
             void SelectSceneSettings();
             [[nodiscard]] const std::string& SkyboxPath() const noexcept;
-            //! プロジェクトからの相対パスを適用し、取り消しの履歴へ積む。空なら非表示。
+            //! プロジェクトからの相対パスを適用し、変わればシーンを未保存にする。空なら非表示。
             //! 参照先の形式が対応外、シーン未設定、プレイ中の場合は変更せず false。
             bool SetSkyboxPath(std::string_view path);
             //! シーンの曲の道。シーンが無いか未設定なら空
@@ -154,7 +154,7 @@ namespace NS
             [[nodiscard]] float SceneMusicVolume() const noexcept;
             //! 位置から鳴らす音がそのままの大きさで届く距離 (m)。シーンが無ければ SceneEnvironment の既定
             [[nodiscard]] float SceneSoundFullVolumeDistance() const noexcept;
-            //! 曲・音量・位置から鳴らす音の届く距離を適用し、変わった時だけ取り消しの履歴へ 1 つ積む。音量は 0〜1 に収める。
+            //! 曲・音量・位置から鳴らす音の届く距離を適用し、変わった時だけシーンを未保存にする。音量は 0〜1 に収める。
             //! シーン未設定、プレイ中、音量が非数、距離が非数か 0 以下の場合は変更せず false。
             bool SetSceneMusic(std::string_view music, float volume, float soundFullVolumeDistance);
 
@@ -205,17 +205,17 @@ namespace NS
             void CommitTransformEdit() noexcept;
 
             //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
-            //! 主対象の姿勢を書くと、子孫がギズモと同じ差分で付いて動き、確定で主対象と 1 回の取り消しにまとまる
+            //! 主対象の姿勢を書くと、子孫がギズモと同じ差分で付いて動き、確定で主対象と子孫をまとめて 1 回だけ未保存にする
             void BeginClassObjEdit() noexcept;
             void CommitClassObjEdit() noexcept;
 
             //! child の親を parent にする。parent が k_NoActorId なら親を外す。位置は世界座標のままで動かない
             //! 編集できない時・自分か自分の子孫を親にする時・相手が居ない時・親が同じ時は何もせず false
-            //! 付け替えたら 1 回の取り消しに積んで true
+            //! 付け替えたらシーンを未保存にして true
             bool ReparentActor(uint32 child, uint32 parent);
 
             //! プレイ中の手編集を、プレイを始めた時のシーンの JSON へも写す。編集復帰の組み直しを跨いで調整値が残る
-            //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の写しと比べて 1 まとまりで積む
+            //! 写した欄は、編集へ戻る時にプレイ開始の写しと比べ、違えばシーンを未保存にする
             //! 編集モードでは実体が唯一の出所なので何もしない。Inspector の編集箇所が呼ぶ
             //! row は actor のクラスの表の行。JSON に無いアクター、作られていない行、存在しない欄、.actor
             //! へ書く欄は写さない
@@ -236,13 +236,13 @@ namespace NS
             //! は書いた欄の型
             void FinishFieldWrite(SceneActor* actor, FieldType writtenType);
 
-            //! 編集視点の中心付近へ配置し、選択と Undo 履歴へ追加する
+            //! 編集視点の中心付近へ配置して選び、シーンを未保存にする
             void PlaceItem(const PlacementItem& item);
             [[nodiscard]] StageBuildTool& StageBuilder() noexcept { return m_stageBuilder; }
-            // 作成道具を保って1回の履歴で置く。プレイ中や配置失敗では k_NoActorId。
+            // 作成道具を保って置く。プレイ中や配置失敗では k_NoActorId。
             [[nodiscard]] uint32 PlaceStagePart(const Ray& ray);
 
-            //! メッシュ資産を地形の部品として編集視点の中心あたりへ置く。Undo 対応
+            //! メッシュ資産を地形の部品として編集視点の中心あたりへ置く
             //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
             void AddMeshParts(std::string_view meshPath);
 
@@ -251,13 +251,13 @@ namespace NS
             //! 選択中のアクターがプレイヤー実体か
             [[nodiscard]] bool SelectedIsPlayerActor() const noexcept;
 
-            //! 改名して Undo 履歴へ追加する。不在なら何もしない。重複には番号を付け、空名は Object にする
+            //! 改名してシーンを未保存にする。不在なら何もしない。重複には番号を付け、空名は Object にする
             void RenameActor(uint32 id, std::string_view name);
 
-            //! 選択中のアクターを新しい永続 id で複製して undo へ積む。プレイヤーは複製の対象から外す
+            //! 選択中のアクターを新しい永続 id で複製してシーンを未保存にする。プレイヤーは複製の対象から外す
             void DuplicateSelectedActor();
 
-            //! 選択中のアクターを削除して取り消しの履歴へ 1 単位で積む
+            //! 選択中のアクターを消してシーンを未保存にする。消したアクターはその場で OnEndPlay を呼んで解放する
             //! プレイヤーを含む選択の場合は何もしない
             void DeleteSelectedActor();
 
@@ -269,7 +269,7 @@ namespace NS
             {
                 return GizmoToolActive() && m_gizmo.Selected() != nullptr;
             }
-            //! 選択中のアクターの Model に材質を割り当てて undo へ積む。対象外なら false
+            //! 選択中のアクターの Model に材質を割り当て、変わった時だけシーンを未保存にする。対象外なら false
             bool ApplyMaterialToSelected(std::string_view matPath);
 
             //! 素材の窓で押したマテリアル・メッシュ・画像・.actor を選ぶ。アクターの選択は外れる
@@ -283,11 +283,11 @@ namespace NS
             [[nodiscard]] bool IsAssetSelected(std::string_view assetPath) const;
             //! 選んだ素材 (Material・Mesh・Texture、.actor ならそれを敷いた SceneActor)。選んでいなければ nullptr
             //! .actor の 1 体はインスペクタで直すための物で、シーンへ入らない。
-            //! .actor の文書が変わると (確定・取り消し) 次に引いた時に作り直すので、引いたフレームの間だけ使う
+            //! .actor の文書が変わると (確定) 次に引いた時に作り直すので、引いたフレームの間だけ使う
             [[nodiscard]] Object* SelectedAsset();
             //! Inspector で選んだ素材の値が変わったフレームに呼ぶ
             void MarkAssetEdited() noexcept;
-            //! 書き込みに失敗した.actorか.matが残っているか。シーンの履歴とは別に判定する
+            //! 書き込みに失敗した.actorか.matが残っているか。シーンの未保存とは別に判定する
             [[nodiscard]] bool HasUnsavedAssetWrites() const noexcept
             {
                 return !m_unsavedActorFiles.empty() || !m_unsavedMaterialFiles.empty();
@@ -299,16 +299,16 @@ namespace NS
             void NoteActorFileFieldEdit(const ClassObjInfo& row, std::string_view fieldName);
             //! 値が変わった後の確定で、選んだ素材のファイルへ書く
             //! .mat はマテリアルを作り直して書き、作り直せなくても値は書いて前の絵で描き続ける。
-            //! .actor は直した欄を書き、シーンの同じ .actor のアクターの全部へ写して、取り消しの履歴へ積む。
+            //! .actor は直した欄を書き、シーンの同じ .actor のアクターの全部へ写して、すぐファイルへ書く (シーンは未保存にしない)。
             //! 値が変わっていなければ何もしない
             void CommitAssetEdit();
 
-            //! actorFileName の .actor の名前の束を sets に替えてファイルへ書き、取り消しの履歴へ積む
+            //! actorFileName の .actor の名前の束を sets に替えてファイルへ書く
             //! シーンの同じ .actor のアクターの全部が束を読み直すので、次の当たりから効く。プレイ中も同じ。
             //! .actor が読まれていない時は WARN を出して書かない。束が変わっていなければ何もしない
             void WriteActorFileHitReactions(std::string_view actorFileName, const std::vector<HitReactionSet>& sets);
 
-            //! actorFileName の .actor の hitSensors を sensors の今の値に替えてファイルへ書き、取り消しの履歴へ積む
+            //! actorFileName の .actor の hitSensors を sensors の今の値に替えてファイルへ書く
             //! シーンの同じ .actor のアクターの全部がセンサーの値を読み直す。プレイ中も同じ。
             //! .actor が読まれていない時は WARN を出して書かない。値が変わっていなければ何もしない
             void WriteActorFileHitSensors(std::string_view actorFileName, const HitSensorsObj& sensors);
@@ -316,7 +316,7 @@ namespace NS
             //! baseName の .actor から、name の派生の .actor を作ってファイルへ書く
             //! 何も書いていない派生で、baseName が元ならそれを、派生ならその元を指す。派生が書いた項目は写さない。
             //! name が空・ファイルの名前に使えない字を含む・既にある時と、baseName が読まれていない時は WARN
-            //! を出して作らない。 ファイルを作る事は取り消しの履歴へ積まない
+            //! を出して作らない。 ファイルを作ってもシーンは未保存にしない
             //! @return 作れた場合 true、それ以外の場合は false
             bool CreateDerivedActorFile(std::string_view baseName, std::string_view name);
 
@@ -324,13 +324,13 @@ namespace NS
             //! へ移し、アクターをその派生に切り替える 派生は CreateDerivedActorFile
             //! と同じ形で作るので、移るのはシーンの上書きだけ。
             //! アクターが派生を指していれば、その派生が書いた値は元の値に戻る。位置は変わらない。
-            //! アクターの切り替えは取り消しの履歴へ積み、ファイルは取り消しても残す。編集モードでない時と、作れない時は
+            //! アクターの切り替えはシーンを未保存にする。編集モードでない時と、作れない時は
             //! WARN を出して何もしない
             //! @return 切り替えた場合 true、それ以外の場合は false
             bool DeriveActorFileFromActor(uint32 actorId, std::string_view name);
 
         private:
-            //! actorFileName の .actor の文書に change を当て、変わっていればファイルへ書いて取り消しの履歴へ積む
+            //! actorFileName の .actor の文書に change を当て、変わっていればファイルへ書く
             //! .actor が読まれていない時は WARN を出して書かない。what は WARN に出す書く物の名前
             void PushActorFileChange(std::string_view actorFileName,
                                      const std::function<void(nlohmann::json&)>& change,
@@ -374,8 +374,8 @@ namespace NS
             void CaptureDragFollowers(const std::vector<uint32>& roots) noexcept;
             //! ids のアクターの今の姿を、変形の確定で比べる控えにする
             void CaptureEditBaselines(const std::vector<uint32>& ids);
-            //! 控えから変わったアクターの取り消しのコマンドを作り、控えを空にする
-            [[nodiscard]] std::vector<std::unique_ptr<ICommand>> TakeEditBaselineCommands();
+            //! 控えた姿勢の項目を上書きの一覧に足し、控えから変わったアクターがあれば true を返して控えを空にする
+            [[nodiscard]] bool FinishEditBaselines();
             //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
             void ApplyDragToFollowers() noexcept;
 
@@ -437,7 +437,7 @@ namespace NS
             struct TransformEditBaseline
             {
                 uint32 id = k_NoActorId;
-                nlohmann::json snapshot; // 履歴に積む前の姿。保存と同じ形で、上書きの一覧の項目だけを持つ
+                nlohmann::json snapshot; // 編集を始めた時の姿。保存と同じ形で、上書きの一覧の項目だけを持つ
                 nlohmann::json fields;   // 全部の部品の全部の欄の値。確定の時に比べ、変わった項目を上書きの一覧に足す
             };
             // 選択している分だけ並ぶ
@@ -452,7 +452,7 @@ namespace NS
             // プレイに入っていない間は空
             std::optional<nlohmann::json> m_playBaseline;
             // m_playBaseline
-            // の、手編集を写す前の写し。編集へ戻る時に、プレイ中に写した欄を見つけて履歴へ積むために比べる
+            // の、手編集を写す前の写し。編集へ戻る時に、プレイ中に写した欄を見つけて未保存にするために比べる
             // プレイに入っていない間は空
             std::optional<nlohmann::json> m_playStartBaseline;
 
@@ -467,7 +467,7 @@ namespace NS
             std::set<std::string> m_unsavedActorFiles;
             std::set<std::string> m_unsavedMaterialFiles;
 
-            //! m_actorFileEdits を .actor へ書き、1 欄ずつ取り消しの履歴へ積む
+            //! m_actorFileEdits を .actor へ書く
             void CommitActorFileEdits();
 
             // 素材の窓で選んだ素材の ContentRoot からの道。アクターの選択と排他。

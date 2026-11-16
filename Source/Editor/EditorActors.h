@@ -18,6 +18,7 @@
 namespace NS
 {
     class ActorList;
+    class Scene;
 } // namespace NS
 
 namespace NS
@@ -61,6 +62,11 @@ namespace NS
 
         //! id のアクターの今の姿を JSON へ書き出す。居なければ nullopt
         [[nodiscard]] std::optional<nlohmann::json> CaptureActor(ActorList& actors, uint32 id);
+
+        //! id のアクターを desired の姿にする。nullopt は消す。居なければ desired から作る
+        //! 消したアクターと、作り直しで置き換えた古いアクターは、その場で OnEndPlay を呼んで解放する
+        //! desired は id を書き込むので値で受ける。最後に使う呼び手は std::move で渡せる
+        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired);
 
         //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。

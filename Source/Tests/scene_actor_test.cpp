@@ -382,7 +382,7 @@ TEST(SceneActor, ApplyFromJsonNumbersANameThatIsAlreadyUsed)
     EXPECT_EQ(applied->Name(), "Ball_1");
 }
 
-// Undo の JSON で隠れていたアクターを出す時は、JSON の位置を当ててから出す。補間の前の値が古い位置から始まらない
+// ApplyFromJson で隠れていたアクターを出す時は、JSON の位置を当ててから出す。補間の前の値が古い位置から始まらない
 TEST(SceneActor, ApplyFromJsonShowsAHiddenActorAtTheSnapshotPosition)
 {
     nlohmann::json doc = NS::MakeSceneJson();
@@ -857,7 +857,7 @@ TEST(SceneLoad, EveryFieldKeySurvivesWritingBack)
     EXPECT_GT(checked, 0);
 }
 
-TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
+TEST(SceneActor, DirectEffectEditUpdatesAllActorsOfTheFile)
 {
     const ScopedActorFileDirectory directory("DirectEffectEdit");
     NS::OS::Window window(NS::OS::WindowDesc{.title = "素材の参照の編集", .size = {32, 32}, .visible = false});
@@ -892,13 +892,12 @@ TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("EffectEditorRock");
     LevelEditorController controller{scene};
     controller.SelectActorById(1);
-    const std::size_t undoBefore = controller.Editor().Undo().UndoSize();
     controller.BeginClassObjEdit();
     ASSERT_EQ(NS::ApplyJsonFields(rock->part.get(), {{"資産", core->Path()}}), 0u);
     controller.FinishFieldWrite(rock, field->type);
     controller.NoteFieldEdit(rock, *row, field->name);
     controller.CommitClassObjEdit();
-    EXPECT_EQ(controller.Editor().Undo().UndoSize(), undoBefore + 1);
+    EXPECT_NE(*NS::ActorFileLibrary::Get().Find("EffectEditorRock"), before);
     EXPECT_TRUE(effects->Play(rock->part->asset->D3D(), "test", {}).IsValid());
     for (const NS::uint32 id : {1u, 2u})
     {
@@ -906,11 +905,6 @@ TEST(SceneActor, DirectEffectEditUpdatesAndUndoesOnceForAllActorsOfTheFile)
         ASSERT_NE(instance, nullptr);
         EXPECT_EQ(NS::SerializeClassObjFields(instance->part.get())["資産"], core->Path());
     }
-    ASSERT_TRUE(controller.Editor().PerformUndo());
-    EXPECT_EQ(*NS::ActorFileLibrary::Get().Find("EffectEditorRock"), before);
-    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], "");
-    ASSERT_TRUE(controller.Editor().PerformRedo());
-    EXPECT_EQ(NS::SerializeClassObjFields(rock->part.get())["資産"], core->Path());
     const std::optional<nlohmann::json> written =
         NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "EffectEditorRock.actor"));
     ASSERT_TRUE(written.has_value());
@@ -949,7 +943,6 @@ TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);
     editor.NoteFieldEdit(goal, *row, "クリアの暗転秒");
     editor.CommitClassObjEdit();
-    editor.Editor().Undo().Clear();
 
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
     NS::Editor::ActionTimelinePanel timeline;
@@ -959,7 +952,7 @@ TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
 }
 
-TEST(SceneActor, FailedDirectFieldSaveStaysPendingAfterTheSceneHistoryIsCleared)
+TEST(SceneActor, FailedDirectFieldSaveStaysPendingWhileTheSceneIsSaved)
 {
     const ScopedActorFileDirectory directory("FailedDirectFieldSave");
     const ScopedActorFile actorDefinition{"FailedGoal", CodeValuesActorFile("GoalActor")};
@@ -986,7 +979,6 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingAfterTheSceneHistoryIsCleared)
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);
     editor.NoteFieldEdit(goal, *row, "クリアの暗転秒");
     editor.CommitClassObjEdit();
-    editor.Editor().Undo().Clear();
     ASSERT_FALSE(editor.HasUnsavedSceneChanges());
     NS::Editor::ActionTimelinePanel timeline;
     EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));

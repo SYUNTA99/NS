@@ -6,7 +6,6 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
-#include "Editor/Undo/CompositeCommand.h"
 #include "Game/Game.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
@@ -109,8 +108,7 @@ TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingE
         editor.SetLoadLevelFn([](nlohmann::json&&) {});
         ASSERT_TRUE(editor.OpenLevel(first));
         ASSERT_TRUE(editor.OpenLevel(last));
-        editor.Undo().Record(
-            std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+        editor.MarkEdited();
         ASSERT_TRUE(editor.HasUnsavedChanges());
     }
     NS::Editor::EditorMode restarted;
@@ -168,8 +166,7 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
     LevelEditorController editor(scene);
     editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
-    editor.Editor().Undo().Record(
-        std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+    editor.Editor().MarkEdited();
     NS::Editor::ActionTimelinePanel timeline;
     NS::Editor::QuitModal quit;
     ASSERT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
@@ -240,17 +237,16 @@ TEST(EditorLevelOpen, LevelNameOfScenePathRejectsPathsOutsideAssetsOrNotScenes)
     EXPECT_EQ(NS::LevelNameOfScenePath("Assets/../a.scene"), "");
 }
 
-// 自機の居ないレベルを開くと、自機と落下死の範囲を 1 体ずつ補い、名前を控え、前の履歴を捨てて未保存でない
-TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsCleanHistory)
+// 自機の居ないレベルを開くと、何も補わずに書いたまま読み、名前を控え、開く前に編集していても未保存でない状態で始まる
+TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsSaved)
 {
     const std::string name = WriteLevel("empty", NS::MakeSceneJson().dump());
 
     NS::Editor::EditorMode editor;
     nlohmann::json loaded;
     editor.SetLoadLevelFn([&loaded](nlohmann::json&& fresh) { loaded = std::move(fresh); });
-    // 開く前の編集が履歴に残っている状態にする
-    editor.Undo().Record(
-        std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+    // 開く前に編集して、未保存の状態にする
+    editor.MarkEdited();
     ASSERT_TRUE(editor.HasUnsavedChanges());
 
     ASSERT_TRUE(editor.OpenLevel(name));
@@ -259,7 +255,6 @@ TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsCleanHistory)
     EXPECT_EQ(CountActorsOfClass(loaded, "PlayerActor"), 0);
     EXPECT_EQ(CountActorsOfClass(loaded, "DeathZoneActor"), 0);
     EXPECT_EQ(editor.CurrentLevelName(), name);
-    EXPECT_EQ(editor.Undo().UndoSize(), 0u);
     EXPECT_FALSE(editor.HasUnsavedChanges());
 }
 
@@ -285,8 +280,7 @@ TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdit
     NS::Editor::EditorMode editor;
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(editor.OpenLevel(current));
-    editor.Undo().Record(
-        std::make_unique<NS::Editor::CompositeCommand>(std::vector<std::unique_ptr<NS::Editor::ICommand>>{}));
+    editor.MarkEdited();
     const std::string created = m_folder + "/nested/New Scene";
 
     ASSERT_EQ(editor.CreateLevel(created), NS::Editor::CreateLevelResult::Created);

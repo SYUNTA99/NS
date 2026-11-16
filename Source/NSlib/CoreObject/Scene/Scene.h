@@ -177,7 +177,7 @@ namespace NS
 
         //! アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
-        //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
+        //! ApplyFromJson で同じ id が居ない時に通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
 
         //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
@@ -191,14 +191,6 @@ namespace NS
         //! アクターを 1 体消す。居なければ何もしない
         //! 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void RemoveActor(uint32 objectId);
-
-        //! アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
-        //! Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
-        //! OnEndPlay を呼ぶ。居なければ空を返す。1 歩の更新の最中は断る
-        [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
-
-        //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
-        SceneActor* ReattachActor(DetachedActor detached);
 
         //! 1 固定ステップを進める。始めに前の歩で頼まれた止めを効かせ、シーンが止まっている歩と普段の歩で
         //! StepStopped・StepWorld を呼び分ける。止まっているかはこの歩の間変えない。

@@ -224,7 +224,7 @@ TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
 }
 
 // hitSensors に無い値を持つセンサーは、宣言した時の値へ戻して WARN を出す。前に読んだ値を残さない
-// 取り消しで hitSensors が消えた時に、ファイルに無い大きさで当たり続けないため
+// 書き直した .actor や写しから hitSensors が消えた時に、ファイルに無い大きさで当たり続けないため
 TEST(HitSensorsObj, ReloadValuesResetsASensorMissingFromTheFile)
 {
     const ScopedActorFileDirectory scope("HitSensorsReset");

@@ -156,7 +156,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// プレイ中はシーンに置いたアクターを消さず、履歴も積まない。編集へ戻る組み直しで消え、履歴だけがプレイの姿を指して残る
+// プレイ中はシーンに置いたアクターを消さず、ギズモの姿勢の確定でもシーンを未保存にしない。プレイの姿は編集へ戻る組み直しで消える
 TEST(EditorSelection, PlayDoesNotEditTheLevel)
 {
     NS::Application app(HiddenAppDesc("プレイ中の編集の試し", {160, 90}));
@@ -168,7 +168,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
+        const NS::uint64 versionBefore = editor.Editor().EditVersion();
 
         editor.EnterPlay();
         editor.DeleteSelectedActor();
@@ -176,7 +176,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
         editor.BeginTransformEdit();
         WritePoseField(editor, scene.Actors().FindByActorId(id), NS::k_PositionFieldName, NS::Vector3{5.0f, 0.0f, 0.0f});
         editor.CommitTransformEdit();
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
+        EXPECT_EQ(editor.Editor().EditVersion(), versionBefore);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -244,7 +244,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// ギズモで変えた姿勢の項目だけが上書きの一覧に載り、保存したシーンに書かれる。取り消すと一覧からも外れる
+// ギズモで変えた姿勢の項目だけが上書きの一覧に載り、保存したシーンに書かれる
 TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
 {
     nlohmann::json doc = NS::MakeSceneJson();
@@ -269,28 +269,23 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     ASSERT_NE(transform, nullptr);
     EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(entry).x, 2.0f);
     EXPECT_FALSE(NS::HasField(*transform, NS::k_RotationFieldName));
-
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    prop = scene.Actors().FindByActorId(1);
-    ASSERT_NE(prop, nullptr);
-    EXPECT_EQ(prop->TransformObj().Scale(), NS::Vector3::One);
-    EXPECT_FALSE(prop->IsSceneOverride("Transform", NS::k_ScaleFieldName));
 }
 
-// プレイ中にインスペクタで変えた欄は、編集へ戻る時に 1 まとまりの履歴になり、未保存のフラグが立つ
-// プレイで動いただけの位置は履歴にも未保存のフラグにも入らない
-TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
+// プレイ中にインスペクタで変えた欄は、編集へ戻る時に残り、未保存のフラグが立つ
+// プレイで動いただけの位置は未保存のフラグに入らない
+TEST(EditorSelection, PlayFieldEditIsKeptWhenReturningToEdit)
 {
     NS::Application app(HiddenAppDesc("プレイ中の欄の記録の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        // 置く操作は未保存にするので、読み込んだだけの未保存でないシーンから始める
+        nlohmann::json doc = NS::MakeSceneJson();
+        AddActorJson(doc, "GoalActor", 1);
         GL::Level::GameScene scene;
+        scene.ResetFromJson(doc);
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
-        ASSERT_TRUE(item.has_value());
-        editor.PlaceItem(*item);
-        const NS::uint32 id = editor.SelectedActorId();
-        editor.Editor().Undo().Clear();
+        const NS::uint32 id = 1;
+        ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
         const auto colorOf = [&scene, id]() {
@@ -337,9 +332,6 @@ TEST(EditorSelection, PlayFieldEditIsRecordedWhenReturningToEdit)
 
         EXPECT_EQ(colorOf(), colorEdited);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), 1u);
-        EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(colorOf(), colorBefore);
     }));
     EXPECT_EQ(app.Run(), 0);
 }
@@ -376,8 +368,8 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 追従カメラをギズモで引いた分も undo に積む。動かすのは初期姿勢の欄だが、控えは部品の値まで写す
-TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
+// 追従カメラもギズモで引いて動かせる
+TEST(EditorSelection, DraggingTheFollowCameraMovesIt)
 {
     NS::Application app(HiddenAppDesc("追従カメラの引きの試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
@@ -405,11 +397,11 @@ TEST(EditorSelection, DraggingTheFollowCameraIsUndoable)
             FindMoveHandle(camera, scene.GetCameraManager()->ViewProjection(), view);
         ASSERT_TRUE(handle.has_value());
 
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
         const NS::Vector3 before = camera->TransformObj().Position();
+        const NS::uint64 versionBefore = editor.Editor().EditVersion();
         DragHandle(editor, mouse, *handle);
         EXPECT_NE(editor.SelectedActor()->TransformObj().Position(), before);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
+        EXPECT_GT(editor.Editor().EditVersion(), versionBefore);
 
         // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
         mouse.OnMove(startX, startY);
@@ -702,8 +694,8 @@ namespace
     }
 } // namespace
 
-// 一覧の道で改名しても、Undo で名前が戻っても、インスペクタの名前の欄は実体の今の名前を出す
-TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
+// 一覧の道で改名すると、インスペクタの名前の欄は実体の今の名前を出す
+TEST(EditorSelection, InspectorNameFieldFollowsRename)
 {
     ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f});
 
@@ -722,10 +714,6 @@ TEST(EditorSelection, InspectorNameFieldFollowsRenameAndUndo)
     editor.RenameActor(id, "Renamed");
     RenderInspectorFrame(inspector, editor);
     EXPECT_EQ(ReadInspectorNameField(inspector, editor), "Renamed");
-
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    RenderInspectorFrame(inspector, editor);
-    EXPECT_EQ(ReadInspectorNameField(inspector, editor), before);
     ImGui::DestroyContext(gui);
 }
 
@@ -748,7 +736,7 @@ TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
     }
 }
 
-TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
+TEST(EditorSelection, InspectorAxisInputsWriteOnlyThatAxis)
 {
     ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 700.0f}, HeadlessImGuiInput::Instant);
     ImGuiIO& io = ImGui::GetIO();
@@ -759,8 +747,6 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     const NS::uint32 id = editor.SelectedActorId();
     const NS::Vector3 beforePosition = editor.SelectedActor()->TransformObj().Position();
     const NS::Vector3 beforeScale = editor.SelectedActor()->TransformObj().Scale();
-    const NS::Quaternion beforeRotation = editor.SelectedActor()->TransformObj().Rotation();
-    const std::size_t beforeUndo = editor.Editor().Undo().UndoSize();
     NS::Editor::InspectorPanel inspector;
     const auto frame = [&] {
         ImGui::NewFrame();
@@ -771,6 +757,7 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     };
     frame();
     frame();
+    const NS::uint64 versionBefore = editor.Editor().EditVersion();
     // 姿勢は部品の一覧の Transform の行で描く。部品は鍵で、欄の表は名前で、欄は並びの番号で ID を積む
     const char* rows[] = {NS::k_PositionFieldName, NS::k_RotationFieldName, NS::k_ScaleFieldName};
     const char* values[] = {"12.5", "30", "2.5"};
@@ -801,9 +788,9 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
         frame();
         io.AddKeyEvent(ImGuiKey_Enter, false);
         frame();
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), beforeUndo + row + 1);
     }
     const NS::Transform& edited = scene.Actors().FindByActorId(id)->TransformObj();
+    EXPECT_GT(editor.Editor().EditVersion(), versionBefore);
     EXPECT_FLOAT_EQ(edited.Position().x, beforePosition.x);
     EXPECT_FLOAT_EQ(edited.Position().y, 12.5f);
     EXPECT_FLOAT_EQ(edited.Position().z, beforePosition.z);
@@ -811,14 +798,6 @@ TEST(EditorSelection, InspectorAxisInputsCommitSeparateUndoableEdits)
     EXPECT_FLOAT_EQ(edited.Scale().x, beforeScale.x);
     EXPECT_FLOAT_EQ(edited.Scale().y, 2.5f);
     EXPECT_FLOAT_EQ(edited.Scale().z, beforeScale.z);
-    for (int i = 0; i < 3; ++i)
-    {
-        EXPECT_TRUE(editor.Editor().PerformUndo());
-    }
-    const NS::Transform& restored = scene.Actors().FindByActorId(id)->TransformObj();
-    EXPECT_EQ(restored.Position(), beforePosition);
-    EXPECT_EQ(restored.Rotation(), beforeRotation);
-    EXPECT_EQ(restored.Scale(), beforeScale);
     ImGui::DestroyContext(gui);
 }
 
@@ -941,9 +920,9 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 置く・筆で空いた升に置く・複製 は、どれも 1 回の履歴で作って未保存にし、Undo 1 回で消える
+// 置く・筆で空いた升に置く・複製 は、どれも作って未保存にする
 // 複製の参照は一緒に写した物を指す。作った物を選ぶかは道ごとに決まり、筆は選ばない。プレイ中はどの道も作らない
-TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
+TEST(EditorCreate, EveryCreatePathMarksTheSceneUnsavedAndPlayCreatesNothing)
 {
     NS::Application app(HiddenAppDesc("作る道の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
@@ -955,36 +934,24 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         const std::optional<NS::Editor::PlacementItem> camera = NS::Editor::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(prop.has_value());
         ASSERT_TRUE(camera.has_value());
-        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
 
         // 置く: 作った物を選ぶ
         std::size_t objectsBefore = scene.Actors().ActorCount();
-        std::size_t undoBefore = undo.UndoSize();
         editor.PlaceItem(*prop);
         const NS::uint32 placed = editor.SelectedActorId();
         EXPECT_NE(scene.Actors().FindByActorId(placed), nullptr);
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
-        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-        EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(scene.Actors().FindByActorId(placed), nullptr);
-        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
         // 筆で空いた升に置く: 今の選択を変えない
-        editor.PlaceItem(*prop);
-        const NS::uint32 kept = editor.SelectedActorId();
+        const NS::uint32 kept = placed;
         editor.Editor().Palette().SetActiveSlot(0);
         objectsBefore = scene.Actors().ActorCount();
-        undoBefore = undo.UndoSize();
         editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
         EXPECT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
-        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
         EXPECT_EQ(editor.SelectedActorId(), kept);
-        EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
-        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
         // 複製: 写した物どうしの参照は写した先を指し、写した物を選ぶ
         editor.PlaceItem(*camera);
@@ -994,10 +961,8 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         ASSERT_EQ(NS::ApplyJsonFields(&followActor->Vcam(), nlohmann::json{{"追従対象", {{"ref", kept}}}}), 0u);
         editor.SelectActors({kept, follower}, follower);
         objectsBefore = scene.Actors().ActorCount();
-        undoBefore = undo.UndoSize();
         editor.DuplicateSelectedActor();
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 2);
-        EXPECT_EQ(undo.UndoSize(), undoBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
         const std::vector<NS::uint32> copies = editor.SelectedActorIds();
         ASSERT_EQ(copies.size(), 2u);
@@ -1006,27 +971,21 @@ TEST(EditorCreate, EveryCreatePathIsOneUndoableEditAndPlayCreatesNothing)
         const GL::Level::FollowCameraActor* followCopy = AsFollowCamera(scene.Actors().FindByActorId(copies[1]));
         ASSERT_NE(followCopy, nullptr);
         EXPECT_EQ(followCopy->Vcam().TargetRef().id, copies[0]);
-        EXPECT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(scene.Actors().FindByActorId(copies[0]), nullptr);
-        EXPECT_EQ(scene.Actors().FindByActorId(copies[1]), nullptr);
-        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
 
-        // プレイ中: どの道も作らず、履歴も積まない
+        // プレイ中: どの道も作らない
         editor.SelectActors({kept}, kept);
         editor.EnterPlay();
         objectsBefore = scene.Actors().ActorCount();
-        undoBefore = undo.UndoSize();
         editor.PlaceItem(*prop);
         editor.DuplicateSelectedActor();
         editor.Editor().PlaceUnderCursorProgrammatic(12, 0, 12);
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
-        EXPECT_EQ(undo.UndoSize(), undoBefore);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
 }
 
-// プレイ中は、シーンを変える道をどれも断る。シーンも履歴も .actor のファイルも変わらない
+// プレイ中は、シーンを変える道をどれも断る。シーンも .actor のファイルも変わらない
 // インスペクタで欄を触る道は断らない。シーンのアクターへ書く欄はプレイ開始の写しへ写し、シーンで上書きできない欄は .actor へ書く
 // (.actor へ書く道は ActorFile.PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningToEdit が見張る)
 TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
@@ -1073,10 +1032,6 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
         editor.Editor().Palette().SetActiveSlot(0);
         editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
         ASSERT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
-        // やり直しの履歴も 1 つ持たせる
-        editor.PlaceItem(*cube);
-        ASSERT_TRUE(editor.Editor().PerformUndo());
-        ASSERT_TRUE(editor.Editor().CanRedo());
         editor.SelectActorById(sourceId);
 
         editor.EnterPlay();
@@ -1100,24 +1055,17 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             {"筆で置き換える", [&editor] { editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10); }},
             {"筆で回す", [&editor] { editor.Editor().RotateAtProgrammatic(10, 0, 10); }},
             {"筆で消す", [&editor] { editor.Editor().DeleteAtProgrammatic(10, 0, 10); }},
-            {"元に戻す", [&editor] { EXPECT_FALSE(editor.Editor().PerformUndo()); }},
-            {"やり直す", [&editor] { EXPECT_FALSE(editor.Editor().PerformRedo()); }},
             {"レベルを開く",
              [&editor, &folder] { EXPECT_FALSE(editor.Editor().OpenLevel(folder + "/other")); }},
         };
-        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
         for (const EditPath& path : paths)
         {
             const nlohmann::json sceneBefore = scene.ToJson();
-            const std::size_t undoBefore = undo.UndoSize();
-            const std::size_t redoBefore = undo.RedoSize();
             const std::vector<std::string> actorFilesBefore = actorFileTexts();
 
             path.edit();
 
             EXPECT_EQ(scene.ToJson(), sceneBefore) << path.name;
-            EXPECT_EQ(undo.UndoSize(), undoBefore) << path.name;
-            EXPECT_EQ(undo.RedoSize(), redoBefore) << path.name;
             EXPECT_EQ(actorFileTexts(), actorFilesBefore) << path.name;
         }
         editor.EnterEdit();
@@ -1129,7 +1077,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
 }
 
 // 編集のショートカットは、渡された止めるかの答えだけで止まる。
-// 偽なら Ctrl+Z・R・番号・ギズモの道具のキーが効き、真ならどれも効かない
+// 偽なら R・番号・ギズモの道具のキーが効き、真ならどれも効かない
 TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 {
     NS::Application app(HiddenAppDesc("ショートカットを止める試し", {320, 200}));
@@ -1168,7 +1116,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
             keyboard.OnKeyUp(key);
             keyboard.OnKeyUp(NS::OS::Key::Ctrl);
         };
-        const NS::Editor::UndoStack& undo = editor.Editor().Undo();
+        const auto rotationOfPlaced = [&scene] { return scene.Actors().ActorAt(0)->TransformObj().Rotation(); };
 
         // ギズモの道具のキーは、答えを Tick で受けるギズモを直に回して見る
         NS::ActorList actors;
@@ -1181,23 +1129,9 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
         {
             editor.SetEditShortcutsBlocked(blocked);
 
-            const std::size_t beforeRotate = undo.UndoSize();
+            const NS::Quaternion beforeRotate = rotationOfPlaced();
             press(NS::OS::Key::R, false);
-            std::size_t expected = beforeRotate + 1;
-            if (blocked)
-            {
-                expected = beforeRotate;
-            }
-            EXPECT_EQ(undo.UndoSize(), expected) << "R 止める=" << blocked;
-
-            const std::size_t beforeUndo = undo.UndoSize();
-            press(NS::OS::Key::Z, true);
-            expected = beforeUndo - 1;
-            if (blocked)
-            {
-                expected = beforeUndo;
-            }
-            EXPECT_EQ(undo.UndoSize(), expected) << "Ctrl+Z 止める=" << blocked;
+            EXPECT_EQ(rotationOfPlaced() == beforeRotate, blocked) << "R 止める=" << blocked;
 
             editor.Editor().Palette().SetActiveSlot(0);
             press(NS::OS::Key::Num2, false);
@@ -1388,7 +1322,7 @@ namespace
     }
 } // namespace
 
-// 親を 1 体だけ選んでギズモで動かすと、子と孫が同じだけ動き、1 回の取り消しで全部戻る
+// 親を 1 体だけ選んでギズモで動かすと、子と孫が同じだけ動く
 TEST(EditorParent, GizmoMovesDescendantsWithTheParent)
 {
     NS::Application app(HiddenAppDesc("親のギズモの試し", {320, 200}));
@@ -1403,19 +1337,12 @@ TEST(EditorParent, GizmoMovesDescendantsWithTheParent)
         const NS::Vector3 parentBefore = WorldPosition(scene, ids[0]);
         const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
         const NS::Vector3 grandchildBefore = WorldPosition(scene, ids[2]);
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
 
         DragPrimary(app, scene, editor, {ids[0]}, ids[0]);
         const NS::Vector3 moved = WorldPosition(scene, ids[0]) - parentBefore;
         EXPECT_GT(moved.Length(), 0.001f);
         EXPECT_LT(((WorldPosition(scene, ids[1]) - childBefore) - moved).Length(), 0.001f);
         EXPECT_LT(((WorldPosition(scene, ids[2]) - grandchildBefore) - moved).Length(), 0.001f);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
-
-        ASSERT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_LT((WorldPosition(scene, ids[0]) - parentBefore).Length(), 0.001f);
-        EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
-        EXPECT_LT((WorldPosition(scene, ids[2]) - grandchildBefore).Length(), 0.001f);
     }));
     EXPECT_EQ(app.Run(), 0);
 }
@@ -1442,8 +1369,8 @@ TEST(EditorParent, SelectingParentAndChildMovesTheChildOnce)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 付け替えは世界座標を変えず、1 回の取り消しで戻り、保存して読み直しても残る。プレイ中は断る
-TEST(EditorParent, ReparentKeepsWorldAndIsUndoable)
+// 付け替えは世界座標を変えず、保存して読み直しても残る。自分の子孫を親にする付け替えと、プレイ中の付け替えは断る
+TEST(EditorParent, ReparentKeepsWorldAndSurvivesSaving)
 {
     NS::Application app(HiddenAppDesc("付け替えの試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
@@ -1452,21 +1379,14 @@ TEST(EditorParent, ReparentKeepsWorldAndIsUndoable)
         LevelEditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
         const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
 
         EXPECT_TRUE(editor.ReparentActor(ids[1], ids[0]));
         EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, ids[0]);
         EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
 
-        // 自分の子孫を親にする付け替えは断り、履歴も変えない
+        // 自分の子孫を親にする付け替えは断り、親を変えない
         EXPECT_FALSE(editor.ReparentActor(ids[0], ids[1]));
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
-
-        ASSERT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, NS::k_NoActorId);
-        ASSERT_TRUE(editor.Editor().PerformRedo());
-        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, ids[0]);
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[0])->TransformObj().Parent().id, NS::k_NoActorId);
 
         nlohmann::json loaded;
         ASSERT_TRUE(NS::DeserializeSceneFromJson(loaded, NS::SerializeSceneToJson(scene.ToJson())));
@@ -1477,16 +1397,14 @@ TEST(EditorParent, ReparentKeepsWorldAndIsUndoable)
         EXPECT_EQ(NS::FieldActorRef(*transform, NS::k_ParentFieldName).id, ids[0]);
 
         editor.EnterPlay();
-        const std::size_t undoInPlay = editor.Editor().Undo().UndoSize();
         EXPECT_FALSE(editor.ReparentActor(ids[2], ids[0]));
         EXPECT_EQ(scene.Actors().FindByActorId(ids[2])->TransformObj().Parent().id, NS::k_NoActorId);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoInPlay);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
 }
 
-// インスペクターで親の位置を書くと、子が同じだけ動き、1 回の取り消しで全部戻る。ほかに選んだ物は動かない
+// インスペクターで親の位置を書くと、子が同じだけ動く。ほかに選んだ物は動かない
 TEST(EditorParent, InspectorPoseEditMovesDescendants)
 {
     NS::Application app(HiddenAppDesc("インスペクターの親の試し", {160, 90}));
@@ -1500,7 +1418,6 @@ TEST(EditorParent, InspectorPoseEditMovesDescendants)
         const NS::Vector3 parentBefore = WorldPosition(scene, ids[0]);
         const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
         const NS::Vector3 otherBefore = WorldPosition(scene, ids[2]);
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
         const NS::Vector3 offset{0.0f, 2.0f, 0.0f};
 
         editor.BeginClassObjEdit();
@@ -1511,16 +1428,11 @@ TEST(EditorParent, InspectorPoseEditMovesDescendants)
 
         EXPECT_LT((WorldPosition(scene, ids[1]) - (childBefore + offset)).Length(), 0.001f);
         EXPECT_LT((WorldPosition(scene, ids[2]) - otherBefore).Length(), 0.001f);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
-
-        ASSERT_TRUE(editor.Editor().PerformUndo());
-        EXPECT_LT((WorldPosition(scene, ids[0]) - parentBefore).Length(), 0.001f);
-        EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
     }));
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 1 回の編集の中で親を動かしてから元の位置へ戻すと、子も元の位置へ戻り、履歴に何も積まない
+// 1 回の編集の中で親を動かしてから元の位置へ戻すと、子も元の位置へ戻る
 TEST(EditorParent, ParentBackAtStartPutsChildrenBack)
 {
     NS::Application app(HiddenAppDesc("親を戻す試し", {160, 90}));
@@ -1533,7 +1445,6 @@ TEST(EditorParent, ParentBackAtStartPutsChildrenBack)
         editor.SelectActorById(ids[0]);
         const NS::Vector3 parentBefore = scene.Actors().FindByActorId(ids[0])->TransformObj().Position();
         const NS::Vector3 childBefore = scene.Actors().FindByActorId(ids[1])->TransformObj().Position();
-        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
 
         editor.BeginClassObjEdit();
         NS::SceneActor* parent = scene.Actors().FindByActorId(ids[0]);
@@ -1544,7 +1455,42 @@ TEST(EditorParent, ParentBackAtStartPutsChildrenBack)
         editor.CommitClassObjEdit();
 
         EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Position(), childBefore);
-        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
     }));
     EXPECT_EQ(app.Run(), 0);
+}
+
+// 改名・ギズモで動かす・親の付け替え は、どれも読み込んだだけのシーンを未保存にする
+// 複製は EditorCreate、シーン設定は EditorInspector.SkyboxEditMarksTheSceneUnsaved、
+// プレイから戻る時は EditorSelection.PlayFieldEditIsKeptWhenReturningToEdit が見る
+TEST(EditorUnsaved, RenameGizmoAndReparentMarkTheSceneUnsaved)
+{
+    nlohmann::json doc = NS::MakeSceneJson();
+    AddActorJson(doc, "GoalActor", 1);
+    AddActorJson(doc, "GoalActor", 2);
+    struct Edit
+    {
+        const char* name;
+        std::function<void(LevelEditorController&, NS::Scene&)> run;
+    };
+    const std::vector<Edit> edits{
+        {"改名", [](LevelEditorController& editor, NS::Scene&) { editor.RenameActor(1, "改名した"); }},
+        {"ギズモ",
+         [](LevelEditorController& editor, NS::Scene& scene) {
+             editor.SelectActorById(1);
+             editor.BeginTransformEdit();
+             scene.Actors().FindByActorId(1)->TransformObj().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
+             editor.CommitTransformEdit();
+         }},
+        {"親の付け替え",
+         [](LevelEditorController& editor, NS::Scene&) { EXPECT_TRUE(editor.ReparentActor(2, 1)); }},
+    };
+    for (const Edit& edit : edits)
+    {
+        NS::Scene scene;
+        scene.ResetFromJson(doc);
+        LevelEditorController editor(scene);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges()) << edit.name;
+        edit.run(editor, scene);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges()) << edit.name;
+    }
 }

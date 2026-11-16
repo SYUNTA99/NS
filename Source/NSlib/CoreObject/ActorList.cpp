@@ -120,36 +120,12 @@ namespace NS
 
         DetachedActor detached;
         detached.index = index;
-        detached.wasAppeared = m_actors[index]->IsAppeared();
         m_actors[index]->Disappear();
         detached.actor = std::move(m_actors[index]);
         m_actors.erase(m_actors.begin() + static_cast<std::ptrdiff_t>(index));
         MarkIndexDirty();
         ResolveActorRefs();
         return detached;
-    }
-
-    SceneActor* ActorList::Reattach(DetachedActor detached)
-    {
-        if (!detached.actor)
-        {
-            return nullptr;
-        }
-        NS_ASSERT(Scene,
-                  FindByActorId(detached.actor->Id()) == nullptr,
-                  "id {} のアクターが一覧に居るのに、外した物を戻そうとしている",
-                  detached.actor->Id());
-
-        SceneActor* raw = detached.actor.get();
-        const std::size_t index = std::min(detached.index, m_actors.size());
-        m_actors.insert(m_actors.begin() + static_cast<std::ptrdiff_t>(index), std::move(detached.actor));
-        MarkIndexDirty();
-        ResolveActorRefs();
-        if (detached.wasAppeared)
-        {
-            raw->Appear();
-        }
-        return raw;
     }
 
     void ActorList::RemoveDestroyed()

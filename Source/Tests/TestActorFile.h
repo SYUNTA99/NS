@@ -119,7 +119,7 @@ inline nlohmann::json CodeValuesActorFile(std::string_view className)
     return NS::CreateActorOfClass(NS::ActorFileLibrary::Get().ClassNameOf(name), NS::ActorInitInfo{.actorFile = name});
 }
 
-//! @brief 控えを当てる。作り直して返った古いアクターは、履歴が捨てる時と同じく OnEndPlay を呼んでから解放する
+//! @brief 控えを当てる。作り直して返った古いアクターは、Editor::ApplyActorSnapshot と同じく OnEndPlay を呼んでから解放する
 //! @details 古いアクターを見ない試しが使う
 inline NS::SceneActor* ApplySnapshot(NS::Scene& scene, const nlohmann::json& snapshot)
 {

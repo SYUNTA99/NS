@@ -153,7 +153,7 @@ TEST_F(EditorAssetPreview, TextureSelectionDisplaysTheSelectedImage)
     EXPECT_TRUE(m_app.Device().CaptureBackbufferToPng("build/asset-texture-preview.png"));
 }
 
-TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
+TEST_F(EditorAssetPreview, SkyboxSettingsPreviewPreservesTheScene)
 {
     const nlohmann::json before = m_scene.ToJson();
     const std::vector<NS::Editor::AssetOption> options =
@@ -178,9 +178,11 @@ TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
     NS::Scene restored;
     restored.ResetFromJson(std::move(loaded));
     EXPECT_EQ(restored.SkyboxPath(), "Assets/Skybox/kurt");
-    const std::size_t operations = m_editor.Editor().Undo().UndoSize();
+    // 同じ所を指す別の書き方は、変わらないので未保存の版を進めない
+    const NS::uint64 versionBeforeSamePath = m_editor.Editor().EditVersion();
     EXPECT_TRUE(m_editor.SetSkyboxPath("Assets/Skybox/./kurt"));
-    EXPECT_EQ(m_editor.Editor().Undo().UndoSize(), operations);
+    EXPECT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");
+    EXPECT_EQ(m_editor.Editor().EditVersion(), versionBeforeSamePath);
 
     m_editor.SelectAsset(NS::OS::FileSystem::Combine(
         NS::OS::FileSystem::ContentRoot(), "Assets/Textures/cube_test.png"));
@@ -202,12 +204,6 @@ TEST_F(EditorAssetPreview, SkyboxSettingsPreviewAndUndoPreserveTheScene)
 
     ASSERT_TRUE(m_editor.SetSkyboxPath(""));
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
-    ASSERT_TRUE(m_editor.Editor().PerformUndo());
-    EXPECT_EQ(m_editor.SkyboxPath(), "Assets/Skybox/kurt");
-    ASSERT_TRUE(m_editor.Editor().PerformUndo());
-    EXPECT_EQ(m_scene.ToJson(), before);
-    ASSERT_TRUE(m_editor.Editor().PerformRedo());
-    EXPECT_EQ(m_editor.SkyboxPath(), "Assets/Skybox/kurt");
 }
 
 TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackground)
@@ -229,8 +225,6 @@ TEST_F(EditorAssetPreview, SkyboxPickerPreviewsBeforeApplyingAndCanHideTheBackgr
     ASSERT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");
     Click(90.0f, 513.0f + addedRow);
     EXPECT_TRUE(m_scene.SkyboxPath().empty());
-    ASSERT_TRUE(m_editor.Editor().PerformUndo());
-    EXPECT_EQ(m_scene.SkyboxPath(), "Assets/Skybox/kurt");
 }
 
 TEST_F(EditorAssetPreview, MaterialPreviewChangesWithBaseColor)

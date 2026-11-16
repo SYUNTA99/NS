@@ -15,7 +15,11 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
 #include "NSlib/Gfx/Render/DebugDraw.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/ActorJson.h"
+#include "TestActorFile.h"
 #include "TestLogCapture.h"
+#include "TestSpawn.h"
 #include "Tests/TestCheckLayer.h"
 
 #include <gtest/gtest.h>
@@ -105,27 +109,6 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
     EXPECT_FLOAT_EQ(actor->TransformObj().Position().z, 3.0f);
     EXPECT_FLOAT_EQ(actor->TransformObj().Rotation().y, rotation.y);
     EXPECT_FLOAT_EQ(actor->TransformObj().Scale().x, 2.0f);
-}
-
-TEST(EditorPlacement, UndoRemovesPlacedActor)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
-    ASSERT_TRUE(item.has_value());
-
-    editor.PlaceItem(*item);
-    const NS::uint32 id = editor.SelectedActorId();
-    ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
-
-    ASSERT_TRUE(editor.Editor().Undo().Undo());
-    EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
-
-    // やり直すと同じ id・同じクラスで戻る
-    ASSERT_TRUE(editor.Editor().Undo().Redo());
-    NS::SceneActor* again = scene.Actors().FindByActorId(id);
-    ASSERT_NE(again, nullptr);
-    EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
 }
 
 // この試しは置いた物の種類と欄の名前だけを見るので、実在しない file で足りる
@@ -225,7 +208,7 @@ TEST(StageBuild, InvalidSizeAndAParallelRayDoNotProduceAPlacement)
         tool.Placement(NS::Ray{NS::Vector3{0.0f, 5.0f, 0.0f}, NS::Vector3{0.0f, -1.0f, 0.0f}}, scene.Physics()));
 }
 
-TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
+TEST(StageBuild, RepeatedPlacementMarksTheSceneUnsavedAndRejectsPlayMode)
 {
     GL::Level::GameScene scene;
     LevelEditorController editor(scene);
@@ -239,12 +222,8 @@ TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
     ASSERT_NE(second, NS::k_NoActorId);
     EXPECT_NE(first, second);
     EXPECT_EQ(editor.CurrentEditTool(), LevelEditorController::EditTool::StageBuild);
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), 2u);
     EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-    EXPECT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_EQ(scene.Actors().FindByActorId(second), nullptr);
     EXPECT_NE(scene.Actors().FindByActorId(first), nullptr);
-    EXPECT_TRUE(editor.Editor().PerformRedo());
     EXPECT_NE(scene.Actors().FindByActorId(second), nullptr);
 
     NS::Scene restored;
@@ -257,10 +236,8 @@ TEST(StageBuild, RepeatedPlacementUsesSceneHistoryAndRejectsPlayMode)
 
     editor.EnterPlay();
     const std::size_t count = scene.Actors().ActorCount();
-    const std::size_t history = editor.Editor().Undo().UndoSize();
     EXPECT_EQ(editor.PlaceStagePart(ray), NS::k_NoActorId);
     EXPECT_EQ(scene.Actors().ActorCount(), count);
-    EXPECT_EQ(editor.Editor().Undo().UndoSize(), history);
 }
 
 TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
@@ -331,4 +308,142 @@ TEST(StageBuild, ViewportInputPlacesOncePerClickAndHonorsUiOwnership)
         mouse.Update();
     }));
     EXPECT_EQ(app.Run(), 0);
+}
+
+namespace
+{
+    // 消したアクターを、その場で OnEndPlay を呼んで解放したかを見るためのゴール。
+    // 数えるのは counted を立てた物だけで、JSON から作り直した CountedGoal は数えない
+    class CountedGoal final : public GL::Level::GoalActor
+    {
+    public:
+        NS_REFLECT_NONE(CountedGoal, GL::Level::GoalActor)
+
+        ~CountedGoal() override
+        {
+            if (counted)
+            {
+                ++s_destroyed;
+            }
+        }
+
+        void OnEndPlay() override
+        {
+            if (counted)
+            {
+                ++s_endPlays;
+            }
+            GL::Level::GoalActor::OnEndPlay();
+        }
+
+        bool counted = false;
+        static int s_endPlays;
+        static int s_destroyed;
+    };
+
+    int CountedGoal::s_endPlays = 0;
+    int CountedGoal::s_destroyed = 0;
+
+    // GoalActor の .actor をクラスだけ替えて CountedGoal の .actor に敷き、数える CountedGoal を作って id を返す
+    // 敷いた .actor は outScope が試しの終わりに外す
+    NS::uint32 SpawnCountedGoal(NS::Scene& scene, std::optional<ScopedActorFile>& outScope)
+    {
+        CountedGoal::s_endPlays = 0;
+        CountedGoal::s_destroyed = 0;
+        const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
+        EXPECT_NE(goal, nullptr);
+        if (goal == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        nlohmann::json actorFile = *goal;
+        NS::SetActorFileClass(actorFile, "CountedGoal");
+        outScope.emplace("CountedGoal", std::move(actorFile));
+        CountedGoal* spawned = SpawnFromActorFile<CountedGoal>(scene, "CountedGoal", "GoalActor");
+        EXPECT_NE(spawned, nullptr);
+        if (spawned == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        spawned->counted = true;
+        return spawned->Id();
+    }
+} // namespace
+
+NS_CLASS(CountedGoal)
+
+// 置く・筆で回す・消す は、どれも未保存にする。読み込んだだけのシーンは未保存でない
+TEST(EditorUnsaved, PlaceRotateAndDeleteMarkTheSceneUnsaved)
+{
+    {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        ASSERT_TRUE(item.has_value());
+        editor.PlaceItem(*item);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    }
+    {
+        // 升に置いた立方体を、読み込んだシーンとして始める
+        NS::Scene source;
+        LevelEditorController placing(source);
+        placing.Editor().Palette().SetActiveSlot(0);
+        placing.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        const nlohmann::json loaded = source.ToJson();
+
+        NS::Scene scene;
+        scene.ResetFromJson(loaded);
+        LevelEditorController editor(scene);
+        ASSERT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 0, 0, 0), NS::k_NoActorId);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+        editor.Editor().RotateAtProgrammatic(0, 0, 0);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    }
+    {
+        NS::Scene scene;
+        const NS::uint32 id = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor")->Id();
+        LevelEditorController editor(scene);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+        editor.SelectActorById(id);
+        editor.DeleteSelectedActor();
+        EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    }
+}
+
+// エディタで消したアクターは、その場で OnEndPlay を呼んで解放し、一覧から無くなる
+TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
+{
+    std::optional<ScopedActorFile> scope;
+    NS::Scene scene;
+    const NS::uint32 id = SpawnCountedGoal(scene, scope);
+    ASSERT_NE(id, NS::k_NoActorId);
+    LevelEditorController editor(scene);
+    editor.SelectActorById(id);
+
+    editor.DeleteSelectedActor();
+
+    EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
+    EXPECT_EQ(CountedGoal::s_endPlays, 1);
+    EXPECT_EQ(CountedGoal::s_destroyed, 1);
+}
+
+// ApplyActorSnapshot が作り直しで置き換えた古いアクターも、その場で OnEndPlay を呼んで解放する
+TEST(EditorUnsaved, ActorReplacedBySnapshotIsEndedAndFreedAtOnce)
+{
+    std::optional<ScopedActorFile> scope;
+    NS::Scene scene;
+    const NS::uint32 id = SpawnCountedGoal(scene, scope);
+    ASSERT_NE(id, NS::k_NoActorId);
+    std::optional<nlohmann::json> snapshot = NS::Editor::CaptureActor(scene.Actors(), id);
+    ASSERT_TRUE(snapshot.has_value());
+    // 読まれていない .actor を指すと、値を重ねられないので作り直す
+    NS::SetActorJsonFile(*snapshot, "MissingActorFileForReplace");
+
+    const TestLogCapture log;
+    NS::Editor::ApplyActorSnapshot(scene, id, snapshot);
+
+    EXPECT_EQ(CountedGoal::s_endPlays, 1);
+    EXPECT_EQ(CountedGoal::s_destroyed, 1);
 }

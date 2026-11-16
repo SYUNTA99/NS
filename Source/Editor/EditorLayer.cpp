@@ -488,20 +488,6 @@ namespace NS
                     ImGui::EndMenu();
                 }
 
-                if (ImGui::BeginMenu("Edit"))
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Text, k_MenuBarText);
-                    if (ImGui::MenuItem("元に戻す", "Ctrl+Z", false, editEnabled && ed.CanUndo()))
-                    {
-                        ed.PerformUndo();
-                    }
-                    if (ImGui::MenuItem("やり直す", "Ctrl+Y", false, editEnabled && ed.CanRedo()))
-                    {
-                        ed.PerformRedo();
-                    }
-                    ImGui::PopStyleColor();
-                    ImGui::EndMenu();
-                }
                 m_dock.RenderWindowMenu();
                 ImGui::PopStyleColor();
 

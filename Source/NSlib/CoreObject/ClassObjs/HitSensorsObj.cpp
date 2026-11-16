@@ -95,7 +95,7 @@ namespace NS
         {
             return;
         }
-        // 前に読んだ値を残さない。取り消しで hitSensors が消えた時に、ファイルに無い大きさで当たり続ける
+        // 前に読んだ値を残さない。書き直した .actor や写しから hitSensors が消えた時に、ファイルに無い大きさで当たり続ける
         for (const Held& held : m_held)
         {
             (void)ApplyJsonFields(held.sensor.get(), held.declared); // 自分で書き出した値なので知らない欄は無い

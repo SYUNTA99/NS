@@ -5,8 +5,6 @@
 #include "Editor/EditorUi.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
-#include "Editor/Undo/CompositeCommand.h"
-#include "Editor/Undo/ActorSnapshotCommand.h"
 #include "NSlib/Core/AABB.h"
 #include "NSlib/Core/Math.h"
 #include "NSlib/CoreObject/ClassObjs/Transform.h"
@@ -119,7 +117,6 @@ namespace NS
             if (!editShortcutsBlocked)
             {
                 HandleRotationInput(presses);
-                HandleUndoRedoInput(presses);
                 HandleSaveLoadInput(presses);
             }
             m_palette.TickInput(m_input, presses, editShortcutsBlocked);
@@ -195,7 +192,7 @@ namespace NS
             if (ok)
             {
                 m_currentLevelName = safe;
-                m_savedUndoVersion = m_undo.Version();
+                m_savedEditVersion = EditVersion();
                 RememberCurrentLevel();
             }
             return ok;
@@ -297,11 +294,8 @@ namespace NS
                 return false;
             }
 
-            // 新レベルなので Undo 履歴を捨てる。履歴が持つアクターは組み直しが捨てる管理クラスを指すので、
-            // 組み直しより先に捨てる
-            m_undo.Clear();
             m_loadLevel(std::move(fresh));
-            m_savedUndoVersion = m_undo.Version();
+            m_savedEditVersion = EditVersion();
             m_levelDirty = true;
             m_currentLevelName = QualifyLevelPath(SanitizeLevelPath(name));
             RememberCurrentLevel();
@@ -504,7 +498,7 @@ namespace NS
 
         std::vector<uint32> EditorMode::CreateActors(std::vector<nlohmann::json> objects)
         {
-            // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残る
+            // プレイ中に作った物は、編集へ戻る組み直しで消えるので作らない
             std::vector<uint32> created;
             if (!IsSceneEditable() || m_scene == nullptr || objects.empty())
             {
@@ -526,15 +520,12 @@ namespace NS
                 created.push_back(id);
             }
 
-            std::vector<std::unique_ptr<ICommand>> commands;
-            commands.reserve(objects.size());
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
                 RemapActorRefs(objects[i], idMap);
-                commands.push_back(
-                    std::make_unique<ActorSnapshotCommand>(*m_scene, created[i], std::nullopt, std::move(objects[i])));
+                ApplyActorSnapshot(*m_scene, created[i], std::move(objects[i]));
             }
-            m_undo.Push(MakeUndoUnit(std::move(commands)));
+            MarkEdited();
             m_levelDirty = true;
             return created;
         }
@@ -573,9 +564,8 @@ namespace NS
             }
 
             // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateActors を通さない
-            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
-            SetActorJsonId(placed, id);
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(before), std::move(placed)));
+            ApplyActorSnapshot(*m_scene, id, std::move(placed));
+            MarkEdited();
             m_levelDirty = true;
         }
 
@@ -591,12 +581,8 @@ namespace NS
             {
                 return;
             }
-            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
-            if (!before)
-            {
-                return;
-            }
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(before), std::nullopt));
+            ApplyActorSnapshot(*m_scene, id, std::nullopt);
+            MarkEdited();
             m_levelDirty = true;
         }
 
@@ -617,9 +603,10 @@ namespace NS
             {
                 return;
             }
-            nlohmann::json after = *before;
+            nlohmann::json after = std::move(*before);
             Editor::AddCellQuarterTurn(after);
-            m_undo.Push(std::make_unique<Editor::ActorSnapshotCommand>(*m_scene, id, std::move(*before), std::move(after)));
+            ApplyActorSnapshot(*m_scene, id, std::move(after));
+            MarkEdited();
             m_levelDirty = true;
         }
 
@@ -806,58 +793,6 @@ namespace NS
             {
                 m_currentRotation = static_cast<uint8>((m_currentRotation + 1) & 0x03);
             }
-        }
-
-        void EditorMode::HandleUndoRedoInput(const OS::InputPresses& presses) noexcept
-        {
-            if (m_input == nullptr)
-            {
-                return;
-            }
-            // ドラッグ中は選択の貼り直しを飛ばすため、旧 Transform を指したまま undo が走らないように止める
-            if (m_undoRedoSuppressed)
-            {
-                return;
-            }
-
-            OS::Keyboard& kb = m_input->Keyboard();
-            const bool ctrl = kb.IsHeld(OS::Key::Ctrl);
-            const bool shift = kb.IsHeld(OS::Key::Shift);
-
-            if (ctrl && shift && presses.WasPressed(OS::Key::Z))
-            {
-                PerformRedo();
-                return;
-            }
-            if (ctrl && presses.WasPressed(OS::Key::Z))
-            {
-                PerformUndo();
-            }
-            if (ctrl && presses.WasPressed(OS::Key::Y))
-            {
-                PerformRedo();
-            }
-        }
-
-        bool EditorMode::PerformUndo() noexcept
-        {
-            // 履歴は編集の姿を指す。プレイ中の実体へ当てると、プレイの姿に編集の姿が混ざる
-            if (!IsSceneEditable() || !m_undo.Undo())
-            {
-                return false;
-            }
-            m_levelDirty = true;
-            return true;
-        }
-
-        bool EditorMode::PerformRedo() noexcept
-        {
-            if (!IsSceneEditable() || !m_undo.Redo())
-            {
-                return false;
-            }
-            m_levelDirty = true;
-            return true;
         }
     } // namespace Editor
 } // namespace NS
