@@ -227,6 +227,121 @@ TEST(FollowDashRebound, PitchInputAtTheLimitReturnsTheAddedAngle)
     EXPECT_LT(fall.AddedDegrees(), 0.1f);
 }
 
+namespace
+{
+    // カメラの水平の前から degrees だけ回した、水平の向き
+    NS::Vector3 DirectionFromCameraYaw(const DashScene& dash, float degrees)
+    {
+        const float yaw = dash.camera->Vcam().Yaw() + NS::DegreesToRadians(degrees);
+        return NS::Vector3{std::sin(yaw), 0.0f, std::cos(yaw)};
+    }
+
+    // 止めの 5 フレームの後に、カメラの前から degrees だけ回した向きへ返る反動を始める。向きは渡し続ける
+    void BeginReboundToward(DashScene& dash, float degrees)
+    {
+        dash.Step(30);
+        dash.target->rebound.rebounding = true;
+        dash.Step(5);
+        dash.target->rebound.chosenDirection = DirectionFromCameraYaw(dash, degrees);
+    }
+} // namespace
+
+// カメラの前から 90 度横へ返る反動では、カメラの水平の向きが返る向きへ回り切る
+TEST(FollowDashRebound, SidewaysReboundTurnsTheCameraToTheChosenDirection)
+{
+    DashScene dash;
+    dash.Step(30);
+    const float start = dash.camera->Vcam().Yaw();
+    dash.target->rebound.rebounding = true;
+    // 止めの間は返る向きが届かないので回らない
+    dash.Step(5);
+    EXPECT_FLOAT_EQ(dash.camera->Vcam().Yaw(), start);
+
+    dash.target->rebound.chosenDirection = DirectionFromCameraYaw(dash, 90.0f);
+    dash.Step(120);
+    EXPECT_NEAR(dash.camera->Vcam().Yaw(), start + NS::DegreesToRadians(90.0f), NS::DegreesToRadians(0.5f));
+}
+
+// 回り始めは止まった所からゆっくり動き出す。90 度の反動で、最初の 1 フレームに回る角度は 5 度より小さく、
+// 次のフレームはそれより大きく回る (差に比例する寄せ方は最初のフレームが一番速く、約 11 度回る)
+TEST(FollowDashRebound, ReboundTurnStartsSlowlyFromRest)
+{
+    DashScene dash;
+    BeginReboundToward(dash, 90.0f);
+    const float start = dash.camera->Vcam().Yaw();
+    dash.Step(1);
+    const float first = dash.camera->Vcam().Yaw() - start;
+    dash.Step(1);
+    const float second = dash.camera->Vcam().Yaw() - start - first;
+    EXPECT_GT(first, 0.0f);
+    EXPECT_LT(first, NS::DegreesToRadians(5.0f));
+    EXPECT_GT(second, first);
+}
+
+// 前へ返る反動 (20 度) と手前へ返る反動 (160 度) では、カメラは回らない
+TEST(FollowDashRebound, ForwardAndBackwardReboundsDoNotTurnTheCamera)
+{
+    DashScene forward;
+    BeginReboundToward(forward, 20.0f);
+    const float forwardStart = forward.camera->Vcam().Yaw();
+    forward.Step(60);
+    EXPECT_FLOAT_EQ(forward.camera->Vcam().Yaw(), forwardStart);
+
+    DashScene backward;
+    BeginReboundToward(backward, 160.0f);
+    const float backwardStart = backward.camera->Vcam().Yaw();
+    backward.Step(60);
+    EXPECT_FLOAT_EQ(backward.camera->Vcam().Yaw(), backwardStart);
+}
+
+// 回っている間に本人がカメラを横へ入力すると、そのフレームで回すのをやめる
+TEST(FollowDashRebound, SidewaysInputStopsTheReboundTurn)
+{
+    DashScene dash;
+    BeginReboundToward(dash, 90.0f);
+    const float start = dash.camera->Vcam().Yaw();
+    dash.Step(5);
+    ASSERT_GT(dash.camera->Vcam().Yaw(), start + NS::DegreesToRadians(5.0f));
+
+    NS::OS::Mouse& mouse = NS::OS::Input::Get().Mouse();
+    mouse.SetRelativeMode(true);
+    mouse.OnRawMove(10, 0);
+    dash.Step(1);
+    mouse.Update();
+    mouse.SetRelativeMode(false);
+    const float stopped = dash.camera->Vcam().Yaw();
+
+    dash.Step(60);
+    EXPECT_FLOAT_EQ(dash.camera->Vcam().Yaw(), stopped);
+}
+
+// 回っている途中に、返る向きとの角度が回し始める角度を下回り、反動の状態が終わっても、回り切る
+TEST(FollowDashRebound, ReboundTurnFinishesAfterTheReboundEnds)
+{
+    DashScene dash;
+    BeginReboundToward(dash, 90.0f);
+    const float goal = dash.camera->Vcam().Yaw() + NS::DegreesToRadians(90.0f);
+    dash.Step(15);
+    const float startDegrees =
+        NS::SerializeClassObjFields(&dash.camera->Vcam()).at("横の反動でカメラを回し始める角度").get<float>();
+    ASSERT_LT(goal - dash.camera->Vcam().Yaw(), NS::DegreesToRadians(startDegrees));
+    ASSERT_GT(goal - dash.camera->Vcam().Yaw(), NS::DegreesToRadians(1.0f));
+
+    dash.target->rebound = GL::Level::FollowReboundDesc{};
+    dash.Step(120);
+    EXPECT_NEAR(dash.camera->Vcam().Yaw(), goal, NS::DegreesToRadians(0.5f));
+}
+
+// 非数の返る向きは受け取らない
+TEST(FollowDashRebound, RejectsABrokenChosenDirection)
+{
+    DashScene dash;
+    GL::Level::FollowReboundDesc broken{};
+    broken.rebounding = true;
+    broken.chosenDirection = NS::Vector3{std::nanf(""), 0.0f, 1.0f};
+    EXPECT_FALSE(dash.camera->Vcam().SetFollowRebound(broken));
+}
+
 // 上へ返る反動は、追う相手を画面の下寄りに留める。注視点が早く上がり、上に空きができる
 TEST(FollowDashRebound, UpwardReboundKeepsTheTargetLowOnTheScreen)
 {

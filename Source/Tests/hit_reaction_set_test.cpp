@@ -1084,26 +1084,64 @@ namespace
     }
 } // namespace
 
-// 自機の束は地形の反動の 4 つ
+// 自機の束は、地形の反動の 4 つと、止めの明けに始める 2 つ
 TEST(ShippedHitReactions, PlayerHitSetsCarryTheTimelineValues)
 {
     const ShippedActorFile player = ReadShippedActorFile("PlayerActor");
-    EXPECT_EQ(player.sets.size(), 4u);
+    EXPECT_EQ(player.sets.size(), 6u);
 
     // 押す時機が合わなかった反動の束。玉を解いて落ちるので、残像は持たない
     const NS::HitReactionSet* terrainMissed = FindShippedSet(player, "地形の反動[失敗]");
     ASSERT_NE(terrainMissed, nullptr);
     EXPECT_EQ(terrainMissed->stopFrames, 0);
     EXPECT_EQ(FindOwnerEntry(*terrainMissed, "TackleGhost"), nullptr);
+    EXPECT_NE(FindEntry<GL::Level::HitShapeInfo>(*terrainMissed), nullptr);
+    // 失敗も面に当たったので、当たりのエフェクトは外れの段で出す
+    const NS::HitReactionEntry* missedEffect = FindOwnerEntry(*terrainMissed, "HitEffect");
+    ASSERT_NE(missedEffect, nullptr);
+    EXPECT_FLOAT_EQ(missedEffect->item.As<NS::HitOwnerInfo>()->values.at("中心"), 0.0f);
 
     // 地形の反動は当て方で 2 つ。止めの長さは自機の項目が持つので、どちらの束も止めない
     const NS::HitReactionSet* terrainFull = FindShippedSet(player, "地形の反動[全部]");
     ASSERT_NE(terrainFull, nullptr);
     EXPECT_EQ(terrainFull->stopFrames, 0);
     ASSERT_NE(FindOwnerEntry(*terrainFull, "TackleGhost"), nullptr);
+    // 潰れは、押しが合った時の一番長い止めより長く続き、明けの束の伸びが引き継ぐ
+    const NS::HitReactionEntry* squash = FindEntry<GL::Level::HitShapeInfo>(*terrainFull);
+    ASSERT_NE(squash, nullptr);
+    EXPECT_GT(squash->length, 8);
+    EXPECT_NE(FindEntry<GL::Level::HitCameraSinkInfo>(*terrainFull), nullptr);
+    // 強い束だけが、当たりのエフェクトを中心の段で出し、床の波を広げる
+    const NS::HitReactionEntry* fullEffect = FindOwnerEntry(*terrainFull, "HitEffect");
+    ASSERT_NE(fullEffect, nullptr);
+    EXPECT_FLOAT_EQ(fullEffect->item.As<NS::HitOwnerInfo>()->values.at("中心"), 1.0f);
+    EXPECT_GT(fullEffect->item.As<NS::HitOwnerInfo>()->values.at("強さ"), 0.0f);
+    EXPECT_NE(FindEntry<GL::Level::HitGroundWaveInfo>(*terrainFull), nullptr);
     const NS::HitReactionSet* terrainWeak = FindShippedSet(player, "地形の反動[弱い]");
     ASSERT_NE(terrainWeak, nullptr);
     EXPECT_EQ(terrainWeak->stopFrames, 0);
+    EXPECT_NE(FindEntry<GL::Level::HitShapeInfo>(*terrainWeak), nullptr);
+    EXPECT_EQ(FindEntry<GL::Level::HitCameraSinkInfo>(*terrainWeak), nullptr);
+    const NS::HitReactionEntry* weakEffect = FindOwnerEntry(*terrainWeak, "HitEffect");
+    ASSERT_NE(weakEffect, nullptr);
+    EXPECT_FLOAT_EQ(weakEffect->item.As<NS::HitOwnerInfo>()->values.at("中心"), 0.0f);
+    EXPECT_EQ(FindEntry<GL::Level::HitGroundWaveInfo>(*terrainWeak), nullptr);
+
+    // 明けの束は、強い方が体を伸ばして震わせ、沈んだ画面を戻す。弱い方は震わせるだけ
+    const NS::HitReactionSet* releaseFull = FindShippedSet(player, "地形の反動の明け[全部]");
+    ASSERT_NE(releaseFull, nullptr);
+    EXPECT_EQ(releaseFull->stopFrames, 0);
+    EXPECT_NE(FindEntry<GL::Level::HitShapeInfo>(*releaseFull), nullptr);
+    EXPECT_NE(FindEntry<GL::Level::HitBodyTremorInfo>(*releaseFull), nullptr);
+    EXPECT_NE(FindEntry<GL::Level::HitCameraSinkReleaseInfo>(*releaseFull), nullptr);
+    // 飛び出すフレームのエフェクト (粉・弾かれ線・反動の尾) は、どちらの明けの束も頼む
+    EXPECT_NE(FindOwnerEntry(*releaseFull, "FlightEffect"), nullptr);
+    const NS::HitReactionSet* releaseWeak = FindShippedSet(player, "地形の反動の明け[弱い]");
+    ASSERT_NE(releaseWeak, nullptr);
+    EXPECT_EQ(releaseWeak->stopFrames, 0);
+    ASSERT_EQ(releaseWeak->entries.size(), 2u);
+    EXPECT_NE(FindOwnerEntry(*releaseWeak, "FlightEffect"), nullptr);
+    EXPECT_NE(FindEntry<GL::Level::HitBodyTremorInfo>(*releaseWeak), nullptr);
     // 入力補正で向きを変えた時は、走っている振動を始め直さずに振動だけを重ねる
     const NS::HitReactionSet* terrainShift = FindShippedSet(player, "地形の反動[ずらし]");
     ASSERT_NE(terrainShift, nullptr);

@@ -94,7 +94,7 @@ namespace NS
         NS_ASSERT(Scene, camera != nullptr, "PlayerInput::Update: カメラを引くアクターが空");
 
         // camera 相対移動の基準 forward は CameraManager から読む。CameraManager 不在 (テスト等) は注入値のまま
-        if (camera->GetCameraManager() != nullptr)
+        if (!m_cameraForwardHeld && camera->GetCameraManager() != nullptr)
         {
             m_inputMatrix = MakeInputMatrix(CalcCameraForwardHorizontal(camera));
         }

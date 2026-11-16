@@ -107,7 +107,9 @@ namespace GL
             NS_FIELD(m_reboundStopMaxFrames, "反動の止めの上限のフレーム数")
             NS_FIELD(m_reboundStopStickChange, "スティックが動いているとみなす変化", NS::FieldRange::NonNegative())
             NS_FIELD(m_reboundPressLeadFrames, "反動の押しを受ける、当たる前のフレーム数")
+            NS_FIELD(m_reboundPressStopFrames, "反動の押しが合った時に足す止めのフレーム数")
             NS_FIELD(m_reboundMissedSpeedScale, "外した押しで返る速さの倍率", NS::FieldRange{0.0f, 1.0f})
+            NS_FIELD(m_reboundMissedControlWaitFrames, "外した押しの後に空中の操作が戻り始めるまでのフレーム数")
             NS_FIELD(m_reboundLockFrames, "反動の操作なしのフレーム数")
             NS_FIELD(m_reboundSteerEndFrames, "反動の補正が終わるフレーム数")
             NS_FIELD(m_dashReboundGravity, "地形の反動の重力")
@@ -188,6 +190,11 @@ namespace GL
             // 反射から決める時に、時機の合った押しが無い反動 (押さなかった時も入る) の返る速さに掛ける。
             // 当て方の向きへ小さく跳ね返り、玉を解いて落下の状態へ戻る。エアダッシュは着地まで戻らない
             float m_reboundMissedSpeedScale = 0.55f;
+            // 時機の合った押しの後、このフレーム数だけ止めを足してから曲げた向きへ返す。当たる前・止めの間・失敗の後の
+            // どの押しにも同じ長さを足し、当てた距離で手応えを変えない
+            int m_reboundPressStopFrames = 0;
+            // 失敗に決めたフレームを入れてこのフレーム数の間、スティックで空中の速度を変えない。押し戻される動きを先に見せる
+            int m_reboundMissedControlWaitFrames = 0;
             int m_reboundLockFrames = 9;      // 反動を始めてから操作が戻るまで
             int m_reboundSteerEndFrames = 36; // 反動を始めてから補正の段が終わるまで
             float m_dashReboundGravity = 30.0f;     // 補正の段の重力 (m/s²)

@@ -65,6 +65,8 @@ namespace GL
                 m_pressFrames = -1;
                 m_reboundPressed = false;
                 m_reboundMissed = false;
+                m_missedFrames = -1;
+                m_missedFullSpeed = 0.0f;
                 m_stickMoving = false;
                 m_steadyDirection = NS::Vector3{};
             }
@@ -91,6 +93,11 @@ namespace GL
             bool m_reboundPressed = false; // 今の反動で、ボタンを押す時機が合ったか。合った時だけ入力で向きを曲げる
             // 今の反動が、時機の合った押しの無い反動か (押さなかった時も入る)。止めの明けに玉を解いて落下の状態へ移る
             bool m_reboundMissed = false;
+            // 失敗に決めてから進んだフレーム数。数え終わった時・エアダッシュを出せない状態へ移った時・次のダッシュ・
+            // 次の反動で負に戻る。着地では戻らない。
+            // 押し直しを受ける間と、空中の操作が戻り始めるまでの待ちが読む
+            int m_missedFrames = -1;
+            float m_missedFullSpeed = 0.0f; // 失敗の倍率を掛ける前の返る速さ (m/s)。押し直して反動へ戻す時に使う
             NS::uint32 m_reboundCount = 0;
             TerrainReboundRecord m_last{};
         };

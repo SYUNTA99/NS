@@ -26,6 +26,7 @@ namespace NS
     class Collider;
     class ActorList;
     class PlayerInput;
+    struct HitOwnerInfo;
 } // namespace NS
 
 namespace GL
@@ -35,6 +36,7 @@ namespace GL
         class PlayerParams;
         class PlayerAppearance;
         class PlayerSounds;
+        class ImpactEffects;
     } // namespace Player
 } // namespace GL
 
@@ -77,6 +79,8 @@ public:
     //! エアダッシュの残像の部品。OnInit で作り、写しは自機の Model に書く
     [[nodiscard]] GL::Level::TackleGhost* Ghost() noexcept { return m_ghost.get(); }
     [[nodiscard]] const GL::Level::TackleGhost* Ghost() const noexcept { return m_ghost.get(); }
+    //! エアダッシュ・地形の反動・着地のエフェクトを出す部品。OnInit で作る
+    [[nodiscard]] const GL::Player::ImpactEffects& HitEffects() const noexcept { return *m_impactEffects; }
 
     // =========================================================================
     // 更新・アニメーション・移動入力・ジャンプ状態
@@ -267,10 +271,28 @@ private:
     //! から毎フレーム呼ぶ。反動の止めの間に左スティックが動いていたら、欄「反動の止めの上限のフレーム数」まで止めを 1
     //! フレーム延ばす
     void ExtendReboundStop() noexcept;
+    //! @brief DecideStep から毎フレーム呼ぶ。反動の向きを選んだ後、左スティックを倒している間だけ、
+    //! 入力の部品にカメラの向きを保たせる
+    //! @details 横へ返るとカメラが返る向きへ回る。回っている間に倒したままのスティックの世界の向きが変わると、
+    //! 補正の段で曲がる先が動く。保つのは反動の向きを選んだ後から、反動の状態を出るまで
+    void HoldCameraForwardWhileReboundStickIsTilted() noexcept;
     //! @brief DecideStep から毎フレーム呼ぶ。ダッシュの間の最初の押しからのフレーム数を数える
     //! @details 反射から決める時に、反動の止めの間に最初の押しが来たら、時機が合った押しにして強い束へ替える。
     //! 1 回のダッシュで数える押しは最初の 1 回だけ
     void ObserveReboundPress() noexcept;
+    //! DecideStep から毎フレーム呼ぶ。失敗に決めてからのフレーム数を数える。押し直しを受ける間と操作の待ちの長い方を
+    //! 過ぎた時と、エアダッシュを出せない状態に移った時に数えるのをやめる
+    void AdvanceMissedFrames() noexcept;
+    //! 待機・歩き・落下・ブレーキのどれかの状態なら true。エアダッシュを出せる状態
+    [[nodiscard]] bool IsInAirDashStartState() const noexcept;
+    //! 失敗の後の、空中の操作が戻り始めるまでの待ちの間なら true
+    [[nodiscard]] bool IsWaitingAfterMissedRebound() const noexcept;
+    //! @brief 失敗に決めた後の押しで、反動の状態へ戻す
+    //! @details 玉に戻し、失敗の倍率を掛ける前の速さに戻して、欄「反動の押しが合った時に足す止めのフレーム数」だけ止める。
+    //! 向きは、止めが明けたフレームに ChooseReboundAtRelease が選ぶ
+    void ReturnFromMissedRebound() noexcept;
+    //! 玉にする。宙では玉を立ち姿の中心に戻し、丸めたフレームに半長ぶん下へ飛ばさない
+    void CurlKeepingTheBodyCenter() noexcept;
     //! @brief 止めが明けたフレームに 1 度だけ呼ぶ。今の入力で返る向きを選んで入力補正を掛ける
     //! @details 表から選ぶ時は、入力が合えば弱い束を強い束に替える。反射から決める時は、ボタンを押す時機が合った時だけ
     //! 入力を読み、合わなければ当て方のままの向きにする
@@ -292,11 +314,21 @@ private:
     //! 今の入力を、カメラから見た向きのまま、返る向き assigned に垂直な面の向きにする。入力が無ければゼロ
     [[nodiscard]] NS::Vector3 ReboundShiftInput(const NS::Vector3& assigned) const noexcept;
     //! @brief 地形の反動の束 name を始める。音は鳴らさない
-    //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。向きを使う項目は向き無しになる
+    //! @details 地形には相手のセンサーが無いので、自分の体のセンサーを両方に渡す。相手への向きを使う項目は向き無しになり、
+    //! 体の形の項目だけが contact へ向かう向きで潰す
     void StartTerrainReboundReaction(const NS::Vector3& contact, std::string_view name) noexcept;
+    //! @brief 止めが明けて返るフレームの束を始める。full が真なら強い束の続き、偽なら弱い束の続き
+    //! @details 当たったフレームの束の残像と振動を残すので、走っている物は止めない
+    void StartReboundReleaseReaction(bool full) noexcept;
+    //! @brief 当たりのエフェクトを、最後の反動の記録と束の項目 HitEffect の値から頼む
+    //! @param[in] contact 衝突点。束を始めた位置
+    //! @param[in] item 項目の値「中心」が 0 でなければ中心の段、「強さ」は素材へ渡す強さ
+    void RequestHitEffect(const NS::Vector3& contact, const NS::HitOwnerInfo& item) noexcept;
     //! @brief 反射から決める時の、今の反動の束の名前
     //! @details 押す時機が合わなければ失敗の束。合った時は、最後の反動の返る向きが表の向きなら強い束、違えば弱い束
     [[nodiscard]] std::string_view ReflectedReboundReactionName() const;
+    //! 反射から決める時に、今の反動が強い束か。押す時機が合い、最後の反動の返る向きが表の向きの場合 true
+    [[nodiscard]] bool IsReflectedReboundFull() const;
     //! 入力補正で向きを変えた時の演出。走っている演出と残像を弱め、振動の束を重ねる
     void StartShiftedReboundReaction() noexcept;
     //! 欄「反動の線を描く」が真なら、最後の地形の反動の向きの線と、今の段の輪を描く
@@ -347,6 +379,7 @@ private:
     NS::StateMachineOf<PlayerActor>* m_states = nullptr; // 基底が所有し、OnInit の後から有効
     GL::Level::Health m_health;
     std::unique_ptr<GL::Level::TackleGhost> m_ghost;
+    std::unique_ptr<GL::Player::ImpactEffects> m_impactEffects;
     std::optional<NS::Vector3> m_courseStartPosition; // カプセル中心の世界座標
 
     // =========================================================================

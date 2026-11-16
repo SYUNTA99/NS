@@ -7,6 +7,7 @@
 #include "Game/Player/PlayerAcceleration.h"
 #include "Game/Player/PlayerJudges.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -54,8 +55,7 @@ bool PlayerActor::AcceptsAirDash() const noexcept
         // 操作なしの段は押しを受けない。補正の段に入るとダッシュが 1 回戻る
         return m_airDash.m_steerStarted;
     }
-    return m_states->IsCurrent<GL::Player::IdlePlayerState>() || m_states->IsCurrent<GL::Player::WalkPlayerState>() ||
-           m_states->IsCurrent<GL::Player::FallPlayerState>() || m_states->IsCurrent<GL::Player::BrakePlayerState>();
+    return IsInAirDashStartState();
 }
 
 bool PlayerActor::BeginAirDash() noexcept
@@ -73,21 +73,27 @@ bool PlayerActor::BeginAirDash() noexcept
     m_airDash.m_pressFrames = -1;
     m_airDash.m_reboundPressed = false;
     m_airDash.m_remaining = m_airDash.m_remaining - 1;
+    m_airDash.m_missedFrames = -1;
     m_facingDir = direction;
     // 押したフレームに玉になって飛び出す。解くのは接地して落ち着いた時 (UncurlWhenSettled)
-    // 丸まりは下端を揃えて根を下げる。宙では玉を立ち姿の中心に戻し、押したフレームに半長ぶん下へ飛ばさない
-    const bool curlInAir = !IsCurled() && !m_body->IsGrounded();
-    SetCurled(true);
-    if (curlInAir)
-    {
-        TransformObj().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
-    }
+    CurlKeepingTheBodyCenter();
     StartAirControlReturn();
     // 状態に入るのが止めで遅れても、面に当たった時の返る速さがこの控えを読む
     m_airDash.m_dashSpeed = speed;
     m_body->SetVelocity(direction * speed);
     (void)m_states->Change<GL::Player::AirDashPlayerState>();
     return true;
+}
+
+void PlayerActor::CurlKeepingTheBodyCenter() noexcept
+{
+    // 丸まりは下端を揃えて根を下げる
+    const bool curlInAir = !IsCurled() && !m_body->IsGrounded();
+    SetCurled(true);
+    if (curlInAir)
+    {
+        TransformObj().ShiftPosition(NS::Vector3{0.0f, m_collider->StandingHalfHeight(), 0.0f});
+    }
 }
 
 NS::Vector3 PlayerActor::AirDashStartDirection() const noexcept
@@ -504,6 +510,7 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
     m_airDash.m_reboundPressed = m_params->m_reboundUsesReflection && m_airDash.m_pressFrames >= 0 &&
                                  m_airDash.m_pressFrames <= m_params->m_reboundPressLeadFrames;
     m_airDash.m_reboundMissed = false;
+    m_airDash.m_missedFrames = -1;
     const float speed = baseSpeed;
     m_body->SetVelocity(assigned * speed);
 
@@ -543,7 +550,12 @@ void PlayerActor::BeginTerrainRebound(const NS::Vector3& incoming, const NS::Vec
         StartTerrainReboundReaction(contact, ReflectedReboundReactionName());
     }
     // 止めの間の押しも受ける。向きは明けのフレームに ChooseReboundAtRelease が選ぶ
-    RequestHitStop(m_params->m_reboundStopMinFrames);
+    int stopFrames = m_params->m_reboundStopMinFrames;
+    if (m_airDash.m_reboundPressed)
+    {
+        stopFrames += m_params->m_reboundPressStopFrames;
+    }
+    RequestHitStop(stopFrames);
 }
 
 void PlayerActor::ObserveReboundPress() noexcept
@@ -567,6 +579,12 @@ void PlayerActor::ObserveReboundPress() noexcept
         m_airDash.m_pressFrames = 0;
         return;
     }
+    // 失敗に決めた後も、操作なしの段と同じフレーム数の間は最初の押しを受ける。当たったのを感じてから押しても間に合う
+    if (m_airDash.m_missedFrames >= 0 && m_airDash.m_missedFrames <= m_params->m_reboundLockFrames)
+    {
+        ReturnFromMissedRebound();
+        return;
+    }
     if (!m_params->m_reboundUsesReflection || !IsDashRebounding() || m_airDash.m_reboundChosen)
     {
         return;
@@ -576,6 +594,58 @@ void PlayerActor::ObserveReboundPress() noexcept
     m_airDash.m_reboundPressed = true;
     const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
     StartTerrainReboundReaction(hit.point - hit.normal * m_collider->CapsuleRadius(), ReflectedReboundReactionName());
+    RequestHitStop(HitStopFramesRemaining() + m_params->m_reboundPressStopFrames);
+}
+
+void PlayerActor::AdvanceMissedFrames() noexcept
+{
+    if (m_airDash.m_missedFrames < 0)
+    {
+        return;
+    }
+    // 床の上から壁へ出すと失敗の次のフレームに着地するので、着地では数えるのをやめない。
+    // 縁を掴んだ後などの、エアダッシュを出せない状態の押しは、反動へ戻す押しに数えない
+    const int last = std::max(m_params->m_reboundLockFrames, m_params->m_reboundMissedControlWaitFrames);
+    if (!IsInAirDashStartState() || m_airDash.m_missedFrames > last)
+    {
+        m_airDash.m_missedFrames = -1;
+        return;
+    }
+    m_airDash.m_missedFrames = m_airDash.m_missedFrames + 1;
+}
+
+bool PlayerActor::IsWaitingAfterMissedRebound() const noexcept
+{
+    // 待つのは宙に居る間だけ。着地した後は歩ける
+    return !m_body->IsGrounded() && m_airDash.m_missedFrames >= 0 &&
+           m_airDash.m_missedFrames < m_params->m_reboundMissedControlWaitFrames;
+}
+
+bool PlayerActor::IsInAirDashStartState() const noexcept
+{
+    return m_states->IsCurrent<GL::Player::IdlePlayerState>() || m_states->IsCurrent<GL::Player::WalkPlayerState>() ||
+           m_states->IsCurrent<GL::Player::FallPlayerState>() || m_states->IsCurrent<GL::Player::BrakePlayerState>();
+}
+
+void PlayerActor::ReturnFromMissedRebound() noexcept
+{
+    m_airDash.m_pressFrames = 0;
+    m_airDash.m_reboundPressed = true;
+    m_airDash.m_reboundMissed = false;
+    m_airDash.m_reboundChosen = false;
+    m_airDash.m_reboundStopFrames = 1;
+    m_airDash.m_missedFrames = -1;
+    GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    hit.speed = m_airDash.m_missedFullSpeed;
+    m_body->SetVelocity(hit.assigned * hit.speed);
+    CurlKeepingTheBodyCenter();
+    StartAirControlReturn();
+    (void)m_states->Change<GL::Player::DashReboundPlayerState>();
+    // 当たった所から離れているので、今の位置から面の側の体の表面を衝突点にする
+    StartTerrainReboundReaction(TransformObj().Position() - hit.normal * m_collider->CapsuleRadius(),
+                                ReflectedReboundReactionName());
+    // 一度止まってから曲げた向きへ返す。飛び始めた後に向きだけが変わると、軌道が途中で折れて見える
+    RequestHitStop(m_params->m_reboundPressStopFrames);
 }
 
 void PlayerActor::ObserveStick() noexcept
@@ -623,18 +693,33 @@ void PlayerActor::ExtendReboundStop() noexcept
     RequestHitStop(HitStopFramesRemaining() + 1);
 }
 
+void PlayerActor::HoldCameraForwardWhileReboundStickIsTilted() noexcept
+{
+    // カメラが回るかは自機から見えないので、回らない反動でも保つ
+    NS::Vector3 direction{};
+    const bool tilted = TryStickDirection(direction);
+    // 保つのは反動の向きを選んだ後から、反動の状態を出るまで。出た後も保つと、押し続けている間は
+    // 回った後の画面と入力の向きがずれ続ける
+    m_input->SetCameraForwardHeld(tilted && IsDashRebounding() && m_airDash.m_reboundChosen);
+}
+
 void PlayerActor::ChooseReboundAtRelease() noexcept
 {
     m_airDash.m_reboundChosen = true;
+    // カメラはこのフレームから回り始める。次のフレームの入力の更新より前に、回る前の向きで保ち始める
+    HoldCameraForwardWhileReboundStickIsTilted();
     if (m_params->m_reboundUsesReflection && !m_airDash.m_reboundPressed)
     {
         // 反射から決める時は、時機の合った押しが無い反動は失敗。押さなかった時も、早すぎた時も同じ。
         // 勢いを失って、当て方の向きへ小さく跳ね返る。玉を解いて落下の状態へ戻すので、反動は続かず、
         // 続けて面に当たっても返らない。エアダッシュは着地まで戻らない
         m_airDash.m_reboundMissed = true;
+        m_airDash.m_missedFrames = 0;
         GL::Player::TerrainReboundRecord& missed = m_airDash.m_last;
+        m_airDash.m_missedFullSpeed = missed.speed;
         missed.speed = missed.speed * m_params->m_reboundMissedSpeedScale;
-        m_body->SetVelocity(missed.assigned * missed.speed);
+        // 面の向きを使わず、来た向きの真逆へ返す。どの壁にどの角度で当てても、失敗は同じ形に見える
+        m_body->SetVelocity(-missed.incoming * missed.speed);
         SetCurled(false);
         (void)m_states->Change<GL::Player::FallPlayerState>();
         return;
@@ -643,12 +728,62 @@ void PlayerActor::ChooseReboundAtRelease() noexcept
     const GL::Level::ReboundChoice choice = ChooseReboundInput();
     // 当たったフレームが弱い束だった時に入力が合ったら、選んだこのフレームに強い束へ替える。
     // 反射から決める時は、強い束を出すかをボタンを押す時機で決めたので替えない
-    if (!m_params->m_reboundUsesReflection && choice.result == GL::Level::ReboundInputResult::Matched &&
-        hit.facing < m_params->m_reboundFullFacing)
+    bool full = hit.facing >= m_params->m_reboundFullFacing;
+    if (m_params->m_reboundUsesReflection)
+    {
+        // 入力で向きを曲げる前の、当たったフレームの束と同じ条件で選ぶ
+        full = IsReflectedReboundFull();
+    }
+    else if (!full && choice.result == GL::Level::ReboundInputResult::Matched)
     {
         StartTerrainReboundReaction(hit.point - hit.normal * m_collider->CapsuleRadius(), "地形の反動[全部]");
+        full = true;
     }
+    StartReboundReleaseReaction(full);
     ApplyReboundChoice(choice);
+}
+
+void PlayerActor::StartReboundReleaseReaction(bool full) noexcept
+{
+    if (HitReactionClassObj() == nullptr || m_bodyHitSensor == nullptr)
+    {
+        return;
+    }
+    std::string_view name = "地形の反動の明け[弱い]";
+    if (full)
+    {
+        name = "地形の反動の明け[全部]";
+    }
+    // 失敗の後の押し直しでは当たった所から離れているので、今の位置から面の側の体の表面を衝突点にする
+    const NS::Vector3 contact = TransformObj().Position() - m_airDash.m_last.normal * m_collider->CapsuleRadius();
+    // 束の止めは 0 フレームで、始められなかった時は基盤が WARN を出す
+    for (const NS::HitOwnerRun& run : StartHitReactionRuns(name, contact, m_bodyHitSensor, m_bodyHitSensor))
+    {
+        if (run.item.name == "FlightEffect")
+        {
+            m_impactEffects->RequestFlight();
+        }
+    }
+}
+
+void PlayerActor::RequestHitEffect(const NS::Vector3& contact, const NS::HitOwnerInfo& item) noexcept
+{
+    // 項目の値は、中心の段を出すか (0 でなければ出す) と、素材へ渡す強さ。書いていない値は 0
+    const auto valueOf = [&item](std::string_view key) {
+        const std::map<std::string, float, std::less<>>::const_iterator found = item.values.find(key);
+        if (found == item.values.end())
+        {
+            return 0.0f;
+        }
+        return found->second;
+    };
+    const GL::Player::TerrainReboundRecord& hit = m_airDash.m_last;
+    m_impactEffects->RequestHit(GL::Player::TerrainHit{.contact = contact,
+                                                       .normal = hit.normal,
+                                                       .incoming = hit.incoming,
+                                                       .rebound = hit.shifted,
+                                                       .center = valueOf("中心") != 0.0f,
+                                                       .power = valueOf("強さ")});
 }
 
 std::string_view PlayerActor::ReflectedReboundReactionName() const
@@ -657,12 +792,17 @@ std::string_view PlayerActor::ReflectedReboundReactionName() const
     {
         return "地形の反動[失敗]";
     }
-    // 表の向きへ返る時は、当たる前の矢印が黄になる。同じ条件で強い束にする
-    if (GL::Level::IsTableDirection(ReboundTable(), m_airDash.m_last.assigned))
+    if (IsReflectedReboundFull())
     {
         return "地形の反動[全部]";
     }
     return "地形の反動[弱い]";
+}
+
+bool PlayerActor::IsReflectedReboundFull() const
+{
+    // 表の向きへ返る時は、当たる前の矢印が黄になる。同じ条件で強い束にする
+    return m_airDash.m_reboundPressed && GL::Level::IsTableDirection(ReboundTable(), m_airDash.m_last.assigned);
 }
 
 void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, std::string_view name) noexcept
@@ -680,6 +820,10 @@ void PlayerActor::StartTerrainReboundReaction(const NS::Vector3& contact, std::s
         if (run.item.name == "TackleGhost")
         {
             m_ghost->Start(this, run);
+        }
+        else if (run.item.name == "HitEffect")
+        {
+            RequestHitEffect(contact, run.item);
         }
     }
 }

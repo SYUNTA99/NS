@@ -6,6 +6,7 @@
 #include "Game/Level/SensorKinds.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerSounds.h"
 #include "Game/Player/States/AirDashPlayerState.h"
 #include "Game/Player/States/BrakePlayerState.h"
@@ -95,6 +96,7 @@ NS_CLASSOBJ(m_input, "Input")
 NS_CLASSOBJ(m_params, "Params")
 NS_CLASSOBJ(m_reboundPreview, "ReboundPreview")
 NS_CLASSOBJ(m_ghost, "TackleGhost")
+NS_CLASSOBJ(m_impactEffects, "ImpactEffects")
 NS_CLASSOBJ(m_playerSounds, "PlayerSounds")
 NS_REFLECT_END_IMPL()
 
@@ -119,6 +121,7 @@ void PlayerActor::OnInit()
     CreateClassObj(m_params);
     CreateClassObj(m_shadow);
     CreateClassObj(m_ghost);
+    CreateClassObj(m_impactEffects);
     CreateClassObj(m_hitReaction);
     CreateClassObj(m_actorAction);
     CreateClassObj(m_reboundPreview);
@@ -159,6 +162,12 @@ GL::Player::CameraTargetState PlayerActor::GetCameraTargetState() const
     {
         state.rebound.rebounding = true;
         state.rebound.verticalLean = std::clamp(m_airDash.LastRebound().shifted.y, -1.0f, 1.0f);
+        // 返る向きは止めが明けて選ぶまで決まらない。真上か真下へ返る時は水平の向きが無いので 0 のまま渡す
+        NS::Vector3 horizontal{};
+        if (m_airDash.m_reboundChosen && NS::TryNormalizeHorizontal(m_airDash.LastRebound().shifted, horizontal))
+        {
+            state.rebound.chosenDirection = horizontal;
+        }
     }
     return state;
 }
@@ -217,8 +226,10 @@ void PlayerActor::DecideStep()
     m_airDash.m_pressed = pressHeld && !m_airDash.m_prevPressHeld;
     m_airDash.m_prevPressHeld = pressHeld;
     ObserveStick();
+    AdvanceMissedFrames();
     ObserveReboundPress();
     ExtendReboundStop();
+    HoldCameraForwardWhileReboundStickIsTilted();
     // ヒットストップの間は押しを下ろさないので、その間の押しは明けのフレームまで残る
     if (m_input->RespawnPressed() && !hitAtStepStart)
     {
@@ -291,6 +302,19 @@ void PlayerActor::VisualStep()
     m_appearance->Update(m_model.get(), NS::GetFrameDelta(this), motion);
     // 音を重ねない間隔なので、ヒットストップでも伸び縮みしない実時間の秒で数える
     m_playerSounds->Update(this, NS::OS::FrameTimer::FixedDelta());
+    // 足元は当たりのカプセルの下端 (中心 − 軸 × (半分の高さ + 半径))
+    const NS::Vector3 center = TransformObj().Position();
+    const NS::Phys::Capsule capsule = m_collider->CapsuleAt(center);
+    m_impactEffects->Update(this,
+                            this,
+                            this,
+                            motion,
+                            GL::Player::ImpactSelf{.position = center,
+                                                   .foot = capsule.center -
+                                                           capsule.axis * (capsule.halfHeight + capsule.radius),
+                                                   .radius = m_collider->CapsuleRadius(),
+                                                   .grounded = m_body->IsGrounded(),
+                                                   .stopFrames = HitStopFramesRemaining()});
     DrawTerrainRebound();
 }
 
@@ -537,6 +561,7 @@ void PlayerActor::ResetState() noexcept
 {
     m_body->SetVelocity(NS::Vector3{0.0f, 0.0f, 0.0f});
     m_input->ResetMovementInput();
+    m_input->SetCameraForwardHeld(false);
     m_prevJumpHeld = false;
     m_jumpsRemaining = 1;
     m_coyoteTimer = 0;
@@ -562,6 +587,7 @@ void PlayerActor::ResetState() noexcept
     // StateMachineOf::Reset は OnExit を呼ばないので、当たりの演出もここで止める
     OverrideHitStop(0);
     StopTackleHitEffects();
+    m_impactEffects->Reset(this);
     // 動作が止めた自機以外の世界を、出現位置の世界へ持ち越さない
     StopAction();
     OwningScene()->RequestStopScene(this, 0);

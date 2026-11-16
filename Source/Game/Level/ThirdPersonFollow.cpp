@@ -124,6 +124,12 @@ namespace GL
             {
                 return false;
             }
+            // 非数の返る向きは回す先の角度を非数にし、カメラの向きごと壊す
+            if (!std::isfinite(desc.chosenDirection.x) || !std::isfinite(desc.chosenDirection.y) ||
+                !std::isfinite(desc.chosenDirection.z))
+            {
+                return false;
+            }
             m_rebound = desc;
             return true;
         }
@@ -148,6 +154,44 @@ namespace GL
             m_floorTiltVelocity = 0.0f;
             m_floorOrbitGoal = 0.0f;
             m_floorTiltGoal = 0.0f;
+            m_reboundYawGoal = 0.0f;
+            m_reboundYawVelocity = 0.0f;
+            m_reboundYawTurning = false;
+            m_reboundYawDecided = false;
+        }
+
+        void ThirdPersonFollow::UpdateReboundYaw(const NS::Vector3& chosenDirection, bool yawInput, float dt) noexcept
+        {
+            const bool decided = NS::HasPositiveMagnitude(NS::HorizontalLength(chosenDirection));
+            // 測るのは届いたフレームの 1 回だけ。回っている途中に測り直すと、角度が回し始める角度を下回った所で止まる
+            if (decided && !m_reboundYawDecided)
+            {
+                // 近い側へ回す。m_yaw は手動の回転で 1 周を超えるので、差を -π〜π に畳む
+                const float turn = std::remainder(std::atan2(chosenDirection.x, chosenDirection.z) - m_yaw, NS::k_Pi * 2.0f);
+                const float degrees = NS::RadiansToDegrees(std::abs(turn));
+                m_reboundYawTurning = degrees >= m_reboundYawStartDegrees && degrees <= m_reboundYawMaxDegrees;
+                m_reboundYawGoal = m_yaw + turn;
+                m_reboundYawVelocity = 0.0f;
+            }
+            m_reboundYawDecided = decided;
+            if (!m_reboundYawTurning)
+            {
+                return;
+            }
+            // 本人がカメラを動かしたら、本人の向きを優先する
+            if (yawInput)
+            {
+                m_reboundYawTurning = false;
+                m_reboundYawVelocity = 0.0f;
+                return;
+            }
+            // 止まった所から加速して、目標の手前で減速する。差に比例して寄せると最初のフレームが一番速く、目で追えない
+            CriticalSpringStep(m_yaw, m_reboundYawVelocity, m_reboundYawGoal, m_reboundYawOmega, dt);
+            if (!NS::HasPositiveMagnitude(std::abs(m_reboundYawGoal - m_yaw)))
+            {
+                m_reboundYawTurning = false;
+                m_reboundYawVelocity = 0.0f;
+            }
         }
 
         void ThirdPersonFollow::UpdateReboundPhase(bool began, bool rebounding, const NS::Vector3& head) noexcept
@@ -491,6 +535,7 @@ namespace GL
             m_wasRebounding = rebound.rebounding;
 
             const float pitchBeforeInput = m_pitch;
+            const float yawBeforeInput = m_yaw;
             // マウスと右スティックの手動回転
             NS::OS::Input& input = NS::OS::Input::Get();
             const NS::OS::Mouse& mouse = input.Mouse();
@@ -515,6 +560,7 @@ namespace GL
             // 上限や下限へ入力した時はクランプでピッチが変わらないので、クランプの前に見る
             const bool pitchInput = m_pitch != pitchBeforeInput;
             m_pitch = NS::Clamp(m_pitch, m_pitchMin, m_pitchMax);
+            UpdateReboundYaw(rebound.chosenDirection, m_yaw != yawBeforeInput, dt);
 
             const NS::Vector3 root = target->Position();
             const NS::Vector3 head{root.x, root.y + m_targetHeightOffset + m_headHeight, root.z};

@@ -1,5 +1,8 @@
+#include "Game/Level/BodyShake.h"
+#include "Game/Level/CameraHitModifiers.h"
 #include "Game/Level/ReboundDirections.h"
 #include "Game/Level/ReboundPreview.h"
+#include "Game/Player/ImpactEffects.h"
 #include "Game/Player/PlayerAppearance.h"
 #include "Game/Player/PlayerParams.h"
 #include "Game/Player/PlayerSounds.h"
@@ -11,10 +14,13 @@
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/Collider.h"
+#include "NSlib/CoreObject/ClassObjs/EffectObj.h"
 #include "NSlib/CoreObject/ClassObjs/HitReaction.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Phys/PhysicsScene.h"
 #include "Tests/TestActorFile.h"
 #include "Tests/TestLogCapture.h"
@@ -23,6 +29,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <vector>
 
@@ -62,14 +69,21 @@ namespace
         player->Input().SetStick(worldDir.x * speedScale, worldDir.z * speedScale);
     }
 
-    PlayerActor* PlaceFloatingPlayer(NS::Scene& scene)
+    // outCamera を渡すと、置いた試し用の仮想カメラを書く。カメラを回すテストが使う
+    PlayerActor* PlaceFloatingPlayer(NS::Scene& scene, TestViewCamera** outCamera = nullptr)
     {
         nlohmann::json doc = NS::MakeSceneJson();
         AddActorJson(doc, "PlayerActor", 1);
         scene.ResetFromJson(doc);
-        if (PlaceViewCamera(scene, NS::Vector3{0.0f, 5.0f, -5.0f}, NS::Vector3{0.0f, 5.0f, 0.0f}) == nullptr)
+        TestViewCamera* camera =
+            PlaceViewCamera(scene, NS::Vector3{0.0f, 5.0f, -5.0f}, NS::Vector3{0.0f, 5.0f, 0.0f});
+        if (camera == nullptr)
         {
             return nullptr;
+        }
+        if (outCamera != nullptr)
+        {
+            *outCamera = camera;
         }
         PlayerActor* player = static_cast<PlayerActor*>(scene.Actors().FindByActorId(1));
         if (player != nullptr)
@@ -1650,8 +1664,8 @@ TEST(PlayerAirDashTest, ReflectedReboundWithoutAPressLosesTheSpeedAndDoesNotBend
     EXPECT_NEAR(-player->Body().Velocity().z, full * scale, 1.0e-2f);
 }
 
-// 失敗の反動は、上へ返る面でも当て方の向きへ小さく跳ね返る。速度が 0 にならない
-TEST(PlayerAirDashTest, ReflectedReboundWithoutAPressStillBouncesOffAFloor)
+// 失敗の反動は、上へ返る面でも、面の向きを使わずに来た向きの真逆へ小さく跳ね返る。速度が 0 にならない
+TEST(PlayerAirDashTest, ReflectedReboundWithoutAPressBouncesBackEvenOffASlope)
 {
     NS::Scene scene;
     PlayerActor* player = PlaceFloatingPlayer(scene);
@@ -1664,7 +1678,8 @@ TEST(PlayerAirDashTest, ReflectedReboundWithoutAPressStillBouncesOffAFloor)
     ASSERT_TRUE(DashIntoFrontWall(player));
     ASSERT_GT(player->AirDash().LastRebound().assigned.y, 0.5f);
     StepToTheReboundRelease(player);
-    EXPECT_GT(player->Body().Velocity().y, 1.0f);
+    EXPECT_LT(player->Body().Velocity().z, -1.0f);
+    EXPECT_NEAR(player->Body().Velocity().x, 0.0f, 1.0e-3f);
 }
 
 // 当たる前の押しは、欄「反動の押しを受ける、当たる前のフレーム数」以内なら曲がり、それより 1 フレーム早いと曲がらない
@@ -1802,6 +1817,107 @@ TEST(PlayerAirDashTest, ReflectedReboundStartsTheFullReactionOnlyOnATimedPress)
     EXPECT_NEAR(AngleBetween(hit.assigned, pressed->Body().Velocity()), 0.0f, 1.0e-3f);
 }
 
+// 強い束は、止めの間は当たった面へ向かう向きに体を潰して画面を沈め、明けのフレームから体を伸ばして震わせる
+TEST(PlayerAirDashTest, FullReboundSquashesTowardTheWallAndStretchesAtTheRelease)
+{
+    // 描く倍率の、壁へ向かう向き (Z) の横 (X) に対する比。丸まりの倍率は両方に同じだけ掛かる
+    const auto alongOverSide = [](const PlayerActor* player) {
+        const NS::Vector3 scale = player->ModelClassObj()->GetDrawScale();
+        return scale.z / scale.x;
+    };
+    const int hitFrame = FramesToTheFrontWall();
+    ASSERT_GT(hitFrame, 3);
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_TRUE(DashIntoFrontWallPressing(player, hitFrame, 2, NS::Vector3{}));
+
+    player->Update(false);
+    ASSERT_TRUE(player->IsHitStopping());
+    EXPECT_LT(alongOverSide(player), 0.8f);
+    EXPECT_NE(scene.GetCameraManager()->FindModifier<GL::Level::CameraSinkModifier>(), nullptr);
+    EXPECT_FLOAT_EQ(GL::Level::BodyTremor::FromDrawValues(player->ModelClassObj()->DrawValues()).amplitude, 0.0f);
+
+    StepToTheReboundRelease(player);
+    float longest = alongOverSide(player);
+    float tremor = GL::Level::BodyTremor::FromDrawValues(player->ModelClassObj()->DrawValues()).amplitude;
+    for (int frame = 0; frame < 4; ++frame)
+    {
+        player->Update(false);
+        longest = std::max(longest, alongOverSide(player));
+        tremor = std::max(tremor, GL::Level::BodyTremor::FromDrawValues(player->ModelClassObj()->DrawValues()).amplitude);
+    }
+    EXPECT_GT(longest, 1.1f);
+    EXPECT_GT(tremor, 0.0f);
+}
+
+namespace
+{
+    // この Update の VisualStep で出したエフェクトに、道筋の終わりが file の素材があるか。
+    // 描画の無い世界では、出した再生は次の Update で一覧から外れる
+    bool PlayedEffectThisFrame(const PlayerActor* player, std::string_view file)
+    {
+        for (const NS::PlayingEffect& playing : player->GetEffect()->Records())
+        {
+            if (playing.asset != nullptr && playing.asset->Path().ends_with(file))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+} // namespace
+
+// エアダッシュを始めたフレームに、ダッシュの尾を出す
+TEST(PlayerAirDashTest, AirDashPlaysTheDashTrail)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    EXPECT_FALSE(PlayedEffectThisFrame(player, "slam.trail.efkefc"));
+
+    MoveStick(player, NS::Vector3{0.0f, 0.0f, 1.0f}, 1.0f);
+    player->Update(true);
+
+    ASSERT_TRUE(player->IsAirDashing());
+    EXPECT_TRUE(PlayedEffectThisFrame(player, "slam.trail.efkefc"));
+}
+
+// 強い反動は、当たったフレームに衝突点へ核を出し、止めの間に火花と輪を面の法線の向きへ出し、
+// 明けたフレームに反動の尾を出す
+TEST(PlayerAirDashTest, FullReboundPlaysTheImpactEffectsAtTheContact)
+{
+    const int hitFrame = FramesToTheFrontWall();
+    ASSERT_GT(hitFrame, 3);
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_TRUE(DashIntoFrontWallPressing(player, hitFrame, 2, NS::Vector3{}));
+
+    EXPECT_TRUE(PlayedEffectThisFrame(player, "impact.core.efkefc"));
+    const GL::Player::ImpactAim& aim = player->HitEffects().LastAim();
+    EXPECT_NEAR(aim.contact.z, 3.0f, 0.05f);
+    EXPECT_NEAR(aim.sparkDir.z, -1.0f, 1.0e-3f);
+
+    bool sparks = false;
+    bool ring = false;
+    for (int frame = 0; frame < 4 && player->IsHitStopping(); ++frame)
+    {
+        player->Update(false);
+        sparks = sparks || PlayedEffectThisFrame(player, "impact.sparks.efkefc");
+        ring = ring || PlayedEffectThisFrame(player, "impact.ring.efkefc");
+    }
+    EXPECT_TRUE(sparks);
+    EXPECT_TRUE(ring);
+
+    StepToTheReboundRelease(player);
+    EXPECT_TRUE(PlayedEffectThisFrame(player, "rebound.trail.efkefc"));
+}
+
 // 返る向きと同じ向きへ入力すると、向きは変わらず、入力が合ったと数える
 TEST(PlayerAirDashTest, ReflectedReboundCountsTheStickAlongTheReflectionAsMatched)
 {
@@ -1819,6 +1935,313 @@ TEST(PlayerAirDashTest, ReflectedReboundCountsTheStickAlongTheReflectionAsMatche
     EXPECT_EQ(hit.input, GL::Level::ReboundInputResult::Matched);
     EXPECT_NEAR(AngleBetween(hit.assigned, hit.shifted), 0.0f, 1.0e-3f);
     EXPECT_NEAR(AngleBetween(hit.assigned, player->Body().Velocity()), 0.0f, 1.0e-3f);
+}
+
+// 出荷の止めは 5 フレーム。当たったフレームの 4 フレーム後 (止めの最後のフレーム) の押しも、時機の合った押しに数える。
+// 外した押しは明けたフレームに反動の状態を出るので、明けた後も反動の状態なら合った押し
+TEST(PlayerAirDashTest, ShippedReboundStopTakesAPressFourFramesAfterTheHit)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    EXPECT_EQ(ParamsFields(player).at("反動の止めの最短のフレーム数").get<int>(), 5);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(), nlohmann::json{{"反動の向きを反射から決める", true}}), 0u);
+    ASSERT_TRUE(DashIntoFrontWall(player));
+
+    player->Update(false);
+    player->Update(false);
+    player->Update(false);
+    player->Update(true);
+    StepToTheReboundRelease(player);
+    EXPECT_TRUE(player->IsDashRebounding());
+}
+
+namespace
+{
+    // 反射から決める方式で前の壁へ正面から当て、押さないまま止めの明けに失敗させる。欄 fields を先に書く
+    void MissTheFrontWallRebound(NS::Scene& scene, PlayerActor*& outPlayer, const nlohmann::json& fields)
+    {
+        const int hitFrame = FramesToTheFrontWall();
+        outPlayer = PlaceFloatingPlayer(scene);
+        ASSERT_NE(outPlayer, nullptr);
+        AddFrontWall(scene);
+        UseReflectedRebound(outPlayer, 0);
+        ASSERT_EQ(NS::ApplyJsonFields(&outPlayer->Params(), fields), 0u);
+        ASSERT_TRUE(DashIntoFrontWallPressing(outPlayer, hitFrame, -1, NS::Vector3{}));
+        StepToTheReboundRelease(outPlayer);
+        ASSERT_FALSE(outPlayer->IsDashRebounding());
+    }
+} // namespace
+
+// 失敗の反動は、斜めに当てても面で反射せず、ダッシュで来た向きの真逆へ跳ね返る
+TEST(PlayerAirDashTest, MissedReboundBouncesBackAlongTheDashWay)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    const float yaw = NS::k_Pi * 30.0f / 180.0f;
+    MoveStick(player, NS::Vector3{std::sin(yaw), 0.0f, std::cos(yaw)}, 1.0f);
+    player->Update(true);
+    MoveStick(player, NS::Vector3{}, 0.0f);
+    for (int frame = 0; frame < 30 && !player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->IsDashRebounding());
+    StepToTheReboundRelease(player);
+    ASSERT_FALSE(player->IsDashRebounding());
+    const NS::Vector3 velocity = player->Body().Velocity();
+    const NS::Vector3 incoming = player->AirDash().LastRebound().incoming;
+    ASSERT_GT(incoming.x, 0.3f);
+    EXPECT_NEAR(AngleBetween(NS::Vector3{velocity.x, 0.0f, velocity.z}, -incoming), 0.0f, 1.0e-3f);
+}
+
+// 失敗の後は、欄「外した押しの後に空中の操作が戻り始めるまでのフレーム数」の間、スティックを倒しても水平の速度が変わらない。
+// 失敗に決めたフレームを入れて数え、その後はスティックで速度が変わる
+TEST(PlayerAirDashTest, MissedReboundWaitsBeforeTheStickMovesTheBody)
+{
+    NS::Scene scene;
+    PlayerActor* player = nullptr;
+    MissTheFrontWallRebound(scene,
+                            player,
+                            nlohmann::json{{"外した押しの後に空中の操作が戻り始めるまでのフレーム数", 4},
+                                           {"ダッシュと反動の後に空中の操作が戻るフレーム数", 0}});
+    ASSERT_NE(player, nullptr);
+    ASSERT_FALSE(player->IsDashRebounding());
+    // 跳ね返りは空中の速さの上限より速いので、横へ倒すと横へは加速せず、押し戻される速さだけが減る
+    const float pushedBack = player->Body().Velocity().z;
+    ASSERT_LT(pushedBack, -1.0f);
+    MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    player->Update(false);
+    player->Update(false);
+    player->Update(false);
+    EXPECT_NEAR(player->Body().Velocity().z, pushedBack, 1.0e-3f);
+    player->Update(false);
+    EXPECT_GT(player->Body().Velocity().z, pushedBack + 0.1f);
+}
+
+// 押さずに失敗した後も、欄「反動の操作なしのフレーム数」の間の最初の押しで反動へ戻る。
+// 欄「反動の押しが合った時に足す止めのフレーム数」だけ止まってから、元の速さで返る
+TEST(PlayerAirDashTest, PressAfterTheMissReturnsToTheReboundAfterTheAddedStop)
+{
+    NS::Scene scene;
+    PlayerActor* player = nullptr;
+    MissTheFrontWallRebound(scene, player, nlohmann::json{{"反動の押しが合った時に足す止めのフレーム数", 2}});
+    ASSERT_NE(player, nullptr);
+    ASSERT_FALSE(player->IsDashRebounding());
+    const nlohmann::json fields = ParamsFields(player);
+    const int lock = fields.at("反動の操作なしのフレーム数").get<int>();
+    const float full = DashSpeed(player) * fields.at("返る速さのダッシュの速さに対する倍率").get<float>();
+    for (int frame = 1; frame < lock; ++frame)
+    {
+        player->Update(false);
+    }
+    player->Update(true);
+    EXPECT_TRUE(player->IsDashRebounding());
+    EXPECT_TRUE(player->IsCurled());
+    ASSERT_TRUE(player->IsHitStopping());
+    EXPECT_EQ(CountReboundStopFrames(player, false), 2);
+    player->Update(false);
+    EXPECT_TRUE(player->IsDashRebounding());
+    EXPECT_NEAR(-player->Body().Velocity().z, full, 1.0e-2f);
+}
+
+// 床の上から壁へ出して失敗すると、次のフレームに着地する。着地した後の押しも、新しいエアダッシュにせず反動へ戻す
+TEST(PlayerAirDashTest, PressAfterTheMissOnTheFloorReturnsToTheReboundInsteadOfDashing)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    AddBox(scene, NS::Vector3{0.0f, -0.5f, 0.0f}, NS::Vector3{50.0f, 0.5f, 50.0f});
+    player->TransformObj().SetPosition(NS::Vector3{0.0f, 0.9f, 0.0f});
+    UseReflectedRebound(player, 0);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(),
+                                  nlohmann::json{{"反動の押しが合った時に足す止めのフレーム数", 2}}),
+              0u);
+    for (int frame = 0; frame < 5; ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_TRUE(player->Body().IsGrounded());
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    // ボタンを放してから止めの明けまで進める。押し直していないので失敗になる
+    player->Update(false);
+    StepToTheReboundRelease(player);
+    ASSERT_FALSE(player->IsDashRebounding());
+    player->Update(false);
+    player->Update(false);
+    ASSERT_TRUE(player->Body().IsGrounded());
+    player->Update(true);
+    EXPECT_TRUE(player->IsDashRebounding());
+    EXPECT_FALSE(player->IsAirDashing());
+    EXPECT_TRUE(player->IsHitStopping());
+}
+
+// 失敗の後の押しは、欄「反動の操作なしのフレーム数」を 1 フレーム過ぎると受けない
+TEST(PlayerAirDashTest, PressAfterTheLockFramesDoesNotReturnToTheRebound)
+{
+    NS::Scene scene;
+    PlayerActor* player = nullptr;
+    MissTheFrontWallRebound(scene, player, nlohmann::json{{"反動の押しが合った時に足す止めのフレーム数", 2}});
+    ASSERT_NE(player, nullptr);
+    ASSERT_FALSE(player->IsDashRebounding());
+    const int lock = ParamsFields(player).at("反動の操作なしのフレーム数").get<int>();
+    for (int frame = 1; frame <= lock; ++frame)
+    {
+        player->Update(false);
+    }
+    player->Update(true);
+    EXPECT_FALSE(player->IsDashRebounding());
+    EXPECT_FALSE(player->IsHitStopping());
+}
+
+// 早すぎる押しで失敗した後は、もう 1 回押しても反動へ戻らない。数える押しは最初の 1 回だけ
+TEST(PlayerAirDashTest, SecondPressAfterAnEarlyPressDoesNotReturnToTheRebound)
+{
+    const int hitFrame = FramesToTheFrontWall();
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_EQ(NS::ApplyJsonFields(&player->Params(),
+                                  nlohmann::json{{"反動の押しを受ける、当たる前のフレーム数", 2},
+                                                 {"反動の押しが合った時に足す止めのフレーム数", 2}}),
+              0u);
+    ASSERT_GT(hitFrame - 2, 2);
+    ASSERT_TRUE(DashIntoFrontWallPressing(player, hitFrame, hitFrame - 2, NS::Vector3{}));
+    StepToTheReboundRelease(player);
+    ASSERT_FALSE(player->IsDashRebounding());
+    player->Update(false);
+    player->Update(true);
+    EXPECT_FALSE(player->IsDashRebounding());
+}
+
+// 時機の合った押しは、当たる前でも止めの間でも、止めを欄「反動の押しが合った時に足す止めのフレーム数」だけ長くする
+TEST(PlayerAirDashTest, TimedPressAddsTheStopFramesBeforeAndDuringTheStop)
+{
+    const int hitFrame = FramesToTheFrontWall();
+    ASSERT_GT(hitFrame, 3);
+    const nlohmann::json added{{"反動の押しが合った時に足す止めのフレーム数", 2}};
+
+    NS::Scene leadScene;
+    PlayerActor* lead = PlaceFloatingPlayer(leadScene);
+    ASSERT_NE(lead, nullptr);
+    AddFrontWall(leadScene);
+    UseReflectedRebound(lead, 0);
+    ASSERT_EQ(NS::ApplyJsonFields(&lead->Params(), added), 0u);
+    const int shortest = ParamsFields(lead).at("反動の止めの最短のフレーム数").get<int>();
+    ASSERT_TRUE(DashIntoFrontWallPressing(lead, hitFrame, 2, NS::Vector3{}));
+    EXPECT_EQ(CountReboundStopFrames(lead, false), shortest + 2);
+
+    NS::Scene stopScene;
+    PlayerActor* stopped = PlaceFloatingPlayer(stopScene);
+    ASSERT_NE(stopped, nullptr);
+    AddFrontWall(stopScene);
+    UseReflectedRebound(stopped, 0);
+    ASSERT_EQ(NS::ApplyJsonFields(&stopped->Params(), added), 0u);
+    ASSERT_TRUE(DashIntoFrontWallPressing(stopped, hitFrame, -1, NS::Vector3{}));
+    PressInTheReboundStop(stopped);
+    // 当たったフレームと、押し直しの 2 フレームを数えてから、残りを数える
+    EXPECT_EQ(2 + CountReboundStopFrames(stopped, false), shortest + 2);
+}
+
+// 返る向きの水平の成分は、止めが明けて向きを選んだ後にだけカメラへ渡す。止めの間と、出直した後は 0 のまま
+TEST(PlayerAirDashTest, CameraStateCarriesTheChosenDirectionOnlyAfterTheChoice)
+{
+    NS::Scene scene;
+    PlayerActor* player = PlaceFloatingPlayer(scene);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_TRUE(DashIntoFrontWall(player));
+
+    MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    PressInTheReboundStop(player);
+    ASSERT_TRUE(player->IsHitStopping());
+    EXPECT_FLOAT_EQ(player->GetCameraTargetState().rebound.chosenDirection.Length(), 0.0f);
+
+    StepToTheReboundRelease(player);
+    ASSERT_TRUE(player->IsDashRebounding());
+    NS::Vector3 expected = player->AirDash().LastRebound().shifted;
+    expected.y = 0.0f;
+    ASSERT_GT(expected.Length(), 0.1f);
+    expected.Normalize();
+    const NS::Vector3 chosen = player->GetCameraTargetState().rebound.chosenDirection;
+    EXPECT_NEAR(chosen.x, expected.x, 1.0e-5f);
+    EXPECT_FLOAT_EQ(chosen.y, 0.0f);
+    EXPECT_NEAR(chosen.z, expected.z, 1.0e-5f);
+
+    player->ResetState();
+    EXPECT_FLOAT_EQ(player->GetCameraTargetState().rebound.chosenDirection.Length(), 0.0f);
+}
+
+// 反動の向きを選んだ後は、スティックを倒している間、カメラが回っても入力を世界へ回す向きを変えない。
+// スティックを戻すと、今のカメラの向きで読む
+TEST(PlayerAirDashTest, StickHeldAfterTheReboundChoiceKeepsTheInputWayWhileTheCameraTurns)
+{
+    NS::Scene scene;
+    TestViewCamera* camera = nullptr;
+    PlayerActor* player = PlaceFloatingPlayer(scene, &camera);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    PressInTheReboundStop(player);
+    StepToTheReboundRelease(player);
+    ASSERT_TRUE(player->IsDashRebounding());
+    // 向きを選んだ次のフレームに、倒したままのスティックを自機が見る
+    player->Update(false);
+
+    // カメラを +Z から +X へ回す。機器を読む Update はカメラの向きを読み直す所
+    camera->SetPose(NS::Vector3{-5.0f, 5.0f, 0.0f}, NS::Vector3{0.0f, 5.0f, 0.0f});
+    scene.GetCameraManager()->OnTick();
+    player->Input().Update(player);
+    player->Input().SetStick(0.0f, 1.0f);
+    EXPECT_NEAR(player->Input().DesiredDirection().x, 0.0f, 1.0e-4f);
+    EXPECT_NEAR(player->Input().DesiredDirection().z, 1.0f, 1.0e-4f);
+
+    player->Input().SetStick(0.0f, 0.0f);
+    player->Update(false);
+    player->Input().Update(player);
+    player->Input().SetStick(0.0f, 1.0f);
+    EXPECT_NEAR(player->Input().DesiredDirection().x, 1.0f, 1.0e-4f);
+    EXPECT_NEAR(player->Input().DesiredDirection().z, 0.0f, 1.0e-4f);
+}
+
+// スティックを倒したまま反動の状態を出たら、今のカメラの向きで読む。保ったままにすると、押し続けている間は
+// 回った後の画面と入力の向きがずれ続ける
+TEST(PlayerAirDashTest, StickHeldPastTheReboundEndReadsTheCameraAgain)
+{
+    NS::Scene scene;
+    TestViewCamera* camera = nullptr;
+    PlayerActor* player = PlaceFloatingPlayer(scene, &camera);
+    ASSERT_NE(player, nullptr);
+    AddFrontWall(scene);
+    UseReflectedRebound(player, 0);
+    ASSERT_TRUE(DashIntoFrontWall(player));
+    MoveStick(player, NS::Vector3{1.0f, 0.0f, 0.0f}, 1.0f);
+    PressInTheReboundStop(player);
+    StepToTheReboundRelease(player);
+    ASSERT_TRUE(player->IsDashRebounding());
+    for (int frame = 0; frame < 120 && player->IsDashRebounding(); ++frame)
+    {
+        player->Update(false);
+    }
+    ASSERT_FALSE(player->IsDashRebounding());
+    player->Update(false);
+
+    camera->SetPose(NS::Vector3{-5.0f, 5.0f, 0.0f}, NS::Vector3{0.0f, 5.0f, 0.0f});
+    scene.GetCameraManager()->OnTick();
+    player->Input().Update(player);
+    player->Input().SetStick(0.0f, 1.0f);
+    EXPECT_NEAR(player->Input().DesiredDirection().x, 1.0f, 1.0e-4f);
+    EXPECT_NEAR(player->Input().DesiredDirection().z, 0.0f, 1.0e-4f);
 }
 
 // 反射から決める時も、操作なしの段の後の補正の段では、スティックを倒した側へ曲がる。曲がる角度は補正の段の上限まで

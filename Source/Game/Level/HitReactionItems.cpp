@@ -49,11 +49,18 @@ namespace GL
             {
                 return;
             }
-            // 向きが決まらない時は水平の倍率を掛けず、高さだけを変える
+            // 相手への向きが決まらない時は、束を始めた位置へ向かう向きで潰す。地形に当てた時は相手のセンサーが無い。
+            // それも決まらない時 (床と天井) は水平の倍率を掛けず、高さだけを変える
             NS::Vector3 alongDirection{};
             if (start.hasToward)
             {
                 alongDirection = start.towardOther;
+            }
+            else
+            {
+                // 決まらなければ alongDirection は書かれず、ゼロのまま残る
+                (void)NS::TryNormalizeHorizontal(start.position - start.owner.actor->TransformObj().Position(),
+                                                 alongDirection);
             }
             start.reaction->AddRun(std::make_unique<BodyShapeRun>(BodyShapeDesc{.along = along,
                                                                                 .height = height,

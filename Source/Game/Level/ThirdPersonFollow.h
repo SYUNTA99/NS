@@ -26,6 +26,8 @@ namespace GL
             float verticalLean = 0.0f;
             // 速く動いている間か。真の間は視野角を欄「速い間に広げる視野角」へ寄せる
             bool widenView = false;
+            // 返る向きの水平の成分 (長さ 1)。0 なら、返る向きがまだ決まっていないか、真上か真下へ返る
+            NS::Vector3 chosenDirection{};
         };
 
         //! 反動に応じて構図を調整する三人称の追従カメラ
@@ -131,6 +133,9 @@ namespace GL
             NS_FIELD(m_floorViewProbe, "足元を探す距離")
             NS_FIELD(m_floorViewStartSpeed, "足元を映し始める縦の速さ")
             NS_FIELD(m_floorViewReturnOmega, "足元から戻すバネ角速度")
+            NS_FIELD(m_reboundYawStartDegrees, "横の反動でカメラを回し始める角度")
+            NS_FIELD(m_reboundYawMaxDegrees, "横の反動でカメラを回す角度の上限")
+            NS_FIELD(m_reboundYawOmega, "横の反動でカメラを回すバネ角速度")
             NS_PROTECTED_ACCESSOR(float, "ファークリップ", FarPlane(), SetFarPlane)
             NS_ACCESSOR(int, "優先度", VcamPriority(), SetVcamPriority)
             NS_REFLECT_END()
@@ -163,6 +168,11 @@ namespace GL
                                  bool rebounding,
                                  bool pitchMoved,
                                  float dt);
+
+            // 横へ返る反動で、水平の向きを返る向きへ 1 フレーム回す。手動の回転を足した後に呼ぶ。
+            // 返る向きが届いたフレームに 1 回だけ、カメラの前との角度を測って回すかを決める。
+            // yawInput は、このフレームに本人がカメラを横へ入力したか。真なら回すのをやめる
+            void UpdateReboundYaw(const NS::Vector3& chosenDirection, bool yawInput, float dt) noexcept;
 
             // カメラの位置を作る向き。本人が決めた向きから回り込みの分を下げる。遮りと帯もこの向きで調べる
             [[nodiscard]] float FollowPositionPitch() const noexcept;
@@ -235,6 +245,10 @@ namespace GL
             float m_floorViewReturnOmega = 8.0f; // 足した角度を 0 へ戻す向きのバネ角速度 (1/秒)
             float m_floorViewProbe = 60.0f;    // 真下の床を探す光線の長さ (m)
             float m_floorViewStartSpeed = 8.0f; // 縦の速さがこれを下回ると足元を映し始める (m/秒)。上昇の勢いが弱まった所から回す
+            // カメラの前と返る向きの間の角度 (度) が、この 2 つの間にある反動だけ回す。前へ返る時と手前へ返る時は回さない
+            float m_reboundYawStartDegrees = 45.0f;
+            float m_reboundYawMaxDegrees = 135.0f;
+            float m_reboundYawOmega = 8.0f; // 返る向きへ水平の向きを寄せるバネ角速度 (1/秒)
 
             FollowReboundDesc m_rebound{};    // 次の Update で使う反動の状態
             bool m_wasRebounding = false;     // 前のフレームに反動の状態だったか
@@ -259,6 +273,10 @@ namespace GL
             float m_floorTiltVelocity = 0.0f;      // m_floorTilt の速さ (ラジアン/秒)
             float m_floorOrbitGoal = 0.0f;         // m_floorOrbit の目標。床が見つからない間は前の値を保つ
             float m_floorTiltGoal = 0.0f;          // m_floorTilt の目標。床が見つからない間は前の値を保つ
+            float m_reboundYawGoal = 0.0f;         // 横の反動で回す先の m_yaw (ラジアン)。近い側へ回るよう m_yaw から測った値
+            float m_reboundYawVelocity = 0.0f;     // 横の反動で m_yaw を回している角速度 (ラジアン/秒)。回し始めは 0
+            bool m_reboundYawTurning = false;      // 横の反動で m_yaw を回しているか。反動の状態が終わっても回り切るまで真
+            bool m_reboundYawDecided = false;      // 前のフレームに返る向きが届いていたか
         };
 
     } // namespace Level

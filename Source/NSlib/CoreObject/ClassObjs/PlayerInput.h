@@ -16,6 +16,9 @@ namespace NS
         //! 水平の基準方向から入力用の行列を作り直す。シーンにカメラがあれば更新時に上書きし、未指定なら +Z
         //! 書いた後の世界の向きは、次に SetStick か Update でスティックを書いた時に決まる
         void SetCameraForward(const Vector3& cameraForwardHorizontal) noexcept;
+        //! 真の間、Update はカメラの向きを読み直さず、今の入力用の行列のままスティックを世界へ回す
+        //! カメラが回っている間も、倒したままのスティックの世界の向きを変えたくない時に使う
+        void SetCameraForwardHeld(bool held) noexcept { m_cameraForwardHeld = held; }
 
         //! カメラで回す前のスティックを直接書く。長さが 1 を超えたら向きを保って 1 に縮め、
         //! 入力用の行列で回した世界の向きと、長さを速度スケールとして書く
@@ -67,6 +70,7 @@ namespace NS
 
     private:
         Matrix m_inputMatrix = Matrix::Identity; // 単位行列は、カメラの水平の前が +Z の時の行列
+        bool m_cameraForwardHeld = false;        // Update が m_inputMatrix を作り直さない間か。保存しない
 
         // 直近に稼働したフレームで読み取った値。稼働していない間は書き換わらず、止めの間は中立を書く
         Vector3 m_desiredDir{0.0f, 0.0f, 0.0f}; // 世界座標系の目標移動方向

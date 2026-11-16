@@ -152,6 +152,11 @@ void PlayerActor::AccelerateToInputDirection(float dt) noexcept
     {
         return;
     }
+    // 失敗の跳ね返りは小さい速さなので、すぐ動かせるとスティックで打ち消せて、押し戻される形が見えない
+    if (IsWaitingAfterMissedRebound())
+    {
+        return;
+    }
     if (!body.IsGrounded())
     {
         // 空中は反動の入力と同じ数の向きへそろえる
@@ -189,7 +194,8 @@ void PlayerActor::StartAirControlReturn() noexcept
 
 void PlayerActor::AdvanceAirControlReturn() noexcept
 {
-    if (!m_airControlReturning)
+    // 失敗の後の待ちの間は進めない。待ちが明けてから、今までと同じ長さで戻す
+    if (!m_airControlReturning || IsWaitingAfterMissedRebound())
     {
         return;
     }

@@ -2,8 +2,10 @@
 #include "NSlib/CoreObject/ClassObjs/Body.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/Core/Windows/Input.h"
 #include "TestSpawn.h"
+#include "TestViewCamera.h"
 
 #include <gtest/gtest.h>
 
@@ -56,6 +58,34 @@ TEST(PlayerInputOwnership, StickTurnsIntoTheWorldByTheInputMatrix)
     EXPECT_NEAR(input->DesiredDirection().z, -1.0f, 1.0e-6f);
     EXPECT_FLOAT_EQ(input->StickRight(), 1.0f);
     EXPECT_FLOAT_EQ(input->StickForward(), 0.0f);
+}
+
+// カメラの向きを保っている間は、Update がカメラを読み直さず、前の行列でスティックを世界へ回す。解くと読み直す
+TEST(PlayerInputOwnership, HeldCameraForwardKeepsTheInputMatrixThroughUpdate)
+{
+    NS::Scene scene;
+    TestViewCamera* camera = PlaceViewCamera(scene, NS::Vector3{0.0f, 0.0f, -5.0f}, NS::Vector3{});
+    ASSERT_NE(camera, nullptr);
+    PlayerActor* spawned = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor");
+    ASSERT_NE(spawned, nullptr);
+    NS::PlayerInput* input = &spawned->Input();
+    input->Update(spawned);
+    input->SetStick(0.0f, 1.0f);
+    ASSERT_NEAR(input->DesiredDirection().z, 1.0f, 1.0e-4f);
+
+    input->SetCameraForwardHeld(true);
+    camera->SetPose(NS::Vector3{-5.0f, 0.0f, 0.0f}, NS::Vector3{});
+    scene.GetCameraManager()->OnTick();
+    input->Update(spawned);
+    input->SetStick(0.0f, 1.0f);
+    EXPECT_NEAR(input->DesiredDirection().x, 0.0f, 1.0e-4f);
+    EXPECT_NEAR(input->DesiredDirection().z, 1.0f, 1.0e-4f);
+
+    input->SetCameraForwardHeld(false);
+    input->Update(spawned);
+    input->SetStick(0.0f, 1.0f);
+    EXPECT_NEAR(input->DesiredDirection().x, 1.0f, 1.0e-4f);
+    EXPECT_NEAR(input->DesiredDirection().z, 0.0f, 1.0e-4f);
 }
 
 TEST(PlayerInputOwnership, PressIsKeptUntilMovementConsumesItAndCannotRepeat)
