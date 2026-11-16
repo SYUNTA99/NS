@@ -2,6 +2,7 @@
 
 #include "NSlib/Core/Interpolated.h"
 #include "NSlib/Core/Math.h"
+#include "NSlib/CoreObject/Reflection/ActorRef.h"
 #include "NSlib/CoreObject/Reflection/Reflection.h"
 #include "NSlib/CoreObject/Object.h"
 
@@ -14,6 +15,7 @@ namespace NS
     inline constexpr const char* k_PositionFieldName = "位置";
     inline constexpr const char* k_RotationFieldName = "回転";
     inline constexpr const char* k_ScaleFieldName = "スケール";
+    inline constexpr const char* k_ParentFieldName = "親";
 
     //! 個体の姿勢を持つ部品。Snapshot で控えた固定更新間の姿勢を描画時に補間する
     //! SceneActor::TransformObj() はこの部品を返す。持ち主なしでも作れる
@@ -39,6 +41,10 @@ namespace NS
         [[nodiscard]] const Quaternion& Rotation() const noexcept { return m_rotation.Current(); }
         [[nodiscard]] const Vector3& Scale() const noexcept { return m_scale.Current(); }
 
+        //! エディタで一緒に動かす親。位置は親に関わらず世界座標のままで、ゲームはこの欄を読まない
+        [[nodiscard]] ActorRef Parent() const noexcept { return m_parent; }
+        void SetParent(ActorRef parent) noexcept { m_parent = parent; }
+
         //! 補間用の前の値。Snapshot が控える
         [[nodiscard]] const Vector3& PreviousPosition() const noexcept { return m_position.Previous(); }
         [[nodiscard]] const Quaternion& PreviousRotation() const noexcept { return m_rotation.Previous(); }
@@ -56,6 +62,7 @@ namespace NS
         NS_GLOBAL_ACCESSOR(Vector3, k_PositionFieldName, Position(), SetPosition)
         NS_GLOBAL_ACCESSOR(Quaternion, k_RotationFieldName, Rotation(), SetRotation)
         NS_GLOBAL_ACCESSOR(Vector3, k_ScaleFieldName, Scale(), SetScaleField)
+        NS_GLOBAL_FIELD(m_parent, k_ParentFieldName)
         NS_REFLECT_END()
 
     private:
@@ -65,5 +72,6 @@ namespace NS
         Interpolated<Vector3> m_position{Vector3{0.0f, 0.0f, 0.0f}};
         Interpolated<Quaternion> m_rotation{Quaternion{}};
         Interpolated<Vector3> m_scale{Vector3{1.0f, 1.0f, 1.0f}};
+        ActorRef m_parent{}; // 一緒に動かす親の永続参照。シーンに保存する。0 は親なし
     };
 } // namespace NS

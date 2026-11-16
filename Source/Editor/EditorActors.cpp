@@ -15,6 +15,9 @@
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
+#include <algorithm>
+#include <unordered_set>
+
 namespace NS
 {
     namespace Editor
@@ -155,6 +158,41 @@ namespace NS
                 placed.push_back(object);
             }
             return placed;
+        }
+
+        std::vector<uint32> CollectWithDescendants(const ActorList& actors, const std::vector<uint32>& roots)
+        {
+            std::vector<uint32> collected;
+            std::unordered_set<uint32> seen;
+            for (const uint32 root : roots)
+            {
+                if (root != k_NoActorId && seen.insert(root).second)
+                {
+                    collected.push_back(root);
+                }
+            }
+            // 入れた順に子を探して後ろへ足す。seen に入った id は二度入らないので、輪でも止まる
+            for (std::size_t i = 0; i < collected.size(); ++i)
+            {
+                for (const SceneActor* object : actors)
+                {
+                    if (object->TransformObj().Parent().id == collected[i] && seen.insert(object->Id()).second)
+                    {
+                        collected.push_back(object->Id());
+                    }
+                }
+            }
+            return collected;
+        }
+
+        bool CanReparent(const ActorList& actors, uint32 child, uint32 parent)
+        {
+            if (parent == k_NoActorId)
+            {
+                return true;
+            }
+            const std::vector<uint32> family = CollectWithDescendants(actors, {child});
+            return std::find(family.begin(), family.end(), parent) == family.end();
         }
 
         bool IsCellBrushActor(const SceneActor* object) noexcept

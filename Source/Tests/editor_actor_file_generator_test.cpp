@@ -82,6 +82,11 @@ TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
         const nlohmann::json code = NS::SerializeClassObjFields(part);
         for (nlohmann::json::const_iterator field = code.begin(); field != code.end(); ++field)
         {
+            const NS::FieldDesc* desc = NS::FindField(part->GetReflection(), field.key());
+            if (desc != nullptr && desc->type == NS::FieldType::ActorRef)
+            {
+                continue;
+            }
             EXPECT_TRUE(written->contains(field.key())) << row.key << " " << field.key();
             ++checked;
         }

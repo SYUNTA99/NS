@@ -1230,3 +1230,321 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
     }));
     EXPECT_EQ(app.Run(), 0);
 }
+
+namespace
+{
+    // GoalActor を count 体置き、置いた順の永続 id を返す
+    std::vector<NS::uint32> PlaceGoals(LevelEditorController& editor, int count)
+    {
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        std::vector<NS::uint32> ids;
+        EXPECT_TRUE(item.has_value()) << "置く物の一覧に GoalActor が無い";
+        if (!item.has_value())
+        {
+            return ids;
+        }
+        for (int i = 0; i < count; ++i)
+        {
+            editor.PlaceItem(*item);
+            ids.push_back(editor.SelectedActorId());
+        }
+        return ids;
+    }
+
+    void SetParent(NS::Scene& scene, NS::uint32 child, NS::uint32 parent)
+    {
+        scene.Actors().FindByActorId(child)->TransformObj().SetParent(NS::ActorRef{parent});
+    }
+} // namespace
+
+// 親の欄はファイルに相手の名前で書かれ、読み直すと同じ相手の id を指す
+TEST(EditorParent, ParentFieldSurvivesSaveAndLoadByName)
+{
+    NS::Application app(HiddenAppDesc("親の保存の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
+        SetParent(scene, ids[1], ids[0]);
+        const std::string parentName = scene.Actors().FindByActorId(ids[0])->Name();
+
+        const std::string text = NS::SerializeSceneToJson(scene.ToJson());
+        const nlohmann::json file = nlohmann::json::parse(text);
+        const std::size_t childIndex = NS::FindActorIndexById(file, ids[1]);
+        ASSERT_LT(childIndex, NS::SceneJsonActors(file).size());
+        const nlohmann::json* transform = NS::ClassObjFields(NS::SceneJsonActors(file)[childIndex], "Transform");
+        ASSERT_NE(transform, nullptr);
+        ASSERT_TRUE(transform->contains(NS::k_ParentFieldName)) << text;
+        EXPECT_EQ(transform->at(NS::k_ParentFieldName).at("ref"), parentName);
+
+        nlohmann::json loaded;
+        ASSERT_TRUE(NS::DeserializeSceneFromJson(loaded, text));
+        scene.ResetFromJson(loaded);
+        const NS::SceneActor* child = scene.Actors().FindByActorId(ids[1]);
+        ASSERT_NE(child, nullptr);
+        EXPECT_EQ(child->TransformObj().Parent().id, ids[0]);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 親の無いアクターは親の欄を書かない。親の欄の無い今のステージは、読んで書き直しても親の欄が増えない
+TEST(EditorParent, EmptyParentIsNotWritten)
+{
+    nlohmann::json document;
+    const std::optional<std::string> path = NS::BuildLevelPath("Scenes/stages/apricot_ruins");
+    ASSERT_TRUE(path.has_value());
+    ASSERT_TRUE(NS::LoadSceneFromJsonFile(document, *path));
+
+    NS::Application app(HiddenAppDesc("空の親の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&] {
+        NS::Scene scene;
+        scene.ResetFromJson(document);
+        const std::string after = NS::SerializeSceneToJson(scene.ToJson());
+        EXPECT_EQ(after.find(std::string{"\""} + NS::k_ParentFieldName + "\""), std::string::npos);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 子孫は根から順に各 1 回だけ返す。親子が輪になっていても止まる
+TEST(EditorParent, CollectsDescendantsOnceEvenInACycle)
+{
+    NS::Application app(HiddenAppDesc("子孫の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 4);
+        SetParent(scene, ids[1], ids[0]);
+        SetParent(scene, ids[2], ids[1]);
+
+        const std::vector<NS::uint32> fromRoot = NS::Editor::CollectWithDescendants(scene.Actors(), {ids[0]});
+        EXPECT_EQ(fromRoot, (std::vector<NS::uint32>{ids[0], ids[1], ids[2]}));
+        const std::vector<NS::uint32> parentAndChild =
+            NS::Editor::CollectWithDescendants(scene.Actors(), {ids[1], ids[0]});
+        EXPECT_EQ(parentAndChild, (std::vector<NS::uint32>{ids[1], ids[0], ids[2]}));
+
+        SetParent(scene, ids[0], ids[2]);
+        const std::vector<NS::uint32> inCycle = NS::Editor::CollectWithDescendants(scene.Actors(), {ids[0]});
+        EXPECT_EQ(inCycle, (std::vector<NS::uint32>{ids[0], ids[1], ids[2]}));
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 自分自身と自分の子孫は親にできない。親を外すのはいつでもできる
+TEST(EditorParent, CannotParentToSelfOrDescendant)
+{
+    NS::Application app(HiddenAppDesc("付け替えの可否の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
+        SetParent(scene, ids[1], ids[0]);
+        SetParent(scene, ids[2], ids[1]);
+
+        EXPECT_FALSE(NS::Editor::CanReparent(scene.Actors(), ids[0], ids[0]));
+        EXPECT_FALSE(NS::Editor::CanReparent(scene.Actors(), ids[0], ids[2]));
+        EXPECT_TRUE(NS::Editor::CanReparent(scene.Actors(), ids[2], ids[0]));
+        EXPECT_TRUE(NS::Editor::CanReparent(scene.Actors(), ids[1], NS::k_NoActorId));
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+namespace
+{
+    NS::Vector3 WorldPosition(NS::Scene& scene, NS::uint32 id)
+    {
+        return scene.Actors().FindByActorId(id)->TransformObj().WorldMatrix().Translation();
+    }
+
+    // 主対象 primary を選び直し、ギズモの移動の取っ手を 1 回ドラッグする。選ぶ物は selection
+    void DragPrimary(NS::Application& app,
+                     NS::Scene& scene,
+                     LevelEditorController& editor,
+                     std::vector<NS::uint32> selection,
+                     NS::uint32 primary)
+    {
+        editor.SelectActors(std::move(selection), primary);
+        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        editor.SetGameView(view.x, view.y, view.width, view.height, true);
+        NS::OS::Mouse& mouse = app.Input().Mouse();
+        const int startX = mouse.GetX();
+        const int startY = mouse.GetY();
+        app.Input().Keyboard().ClearState();
+        mouse.ClearState();
+        editor.Tick();
+        editor.FocusSelectedInView();
+        editor.Tick();
+        const std::optional<NS::Vector2> handle = FindMoveHandle(
+            scene.Actors().FindByActorId(primary), scene.GetCameraManager()->ViewProjection(), view);
+        ASSERT_TRUE(handle.has_value());
+        DragHandle(editor, mouse, *handle);
+        // 共有の入力を始めの位置と押していない状態へ戻す。残すと後の試しがマウスの動きを読む
+        mouse.OnMove(startX, startY);
+        mouse.ClearState();
+        mouse.Update();
+    }
+} // namespace
+
+// 親を 1 体だけ選んでギズモで動かすと、子と孫が同じだけ動き、1 回の取り消しで全部戻る
+TEST(EditorParent, GizmoMovesDescendantsWithTheParent)
+{
+    NS::Application app(HiddenAppDesc("親のギズモの試し", {320, 200}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        editor.Setup({});
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
+        SetParent(scene, ids[1], ids[0]);
+        SetParent(scene, ids[2], ids[1]);
+        const NS::Vector3 parentBefore = WorldPosition(scene, ids[0]);
+        const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
+        const NS::Vector3 grandchildBefore = WorldPosition(scene, ids[2]);
+        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
+
+        DragPrimary(app, scene, editor, {ids[0]}, ids[0]);
+        const NS::Vector3 moved = WorldPosition(scene, ids[0]) - parentBefore;
+        EXPECT_GT(moved.Length(), 0.001f);
+        EXPECT_LT(((WorldPosition(scene, ids[1]) - childBefore) - moved).Length(), 0.001f);
+        EXPECT_LT(((WorldPosition(scene, ids[2]) - grandchildBefore) - moved).Length(), 0.001f);
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
+
+        ASSERT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_LT((WorldPosition(scene, ids[0]) - parentBefore).Length(), 0.001f);
+        EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
+        EXPECT_LT((WorldPosition(scene, ids[2]) - grandchildBefore).Length(), 0.001f);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 親と子を両方選んで動かしても、子は 1 回分だけ動く
+TEST(EditorParent, SelectingParentAndChildMovesTheChildOnce)
+{
+    NS::Application app(HiddenAppDesc("親と子を選んだギズモの試し", {320, 200}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        editor.Setup({});
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
+        SetParent(scene, ids[1], ids[0]);
+        const NS::Vector3 parentBefore = WorldPosition(scene, ids[0]);
+        const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
+
+        DragPrimary(app, scene, editor, {ids[1], ids[0]}, ids[0]);
+        const NS::Vector3 moved = WorldPosition(scene, ids[0]) - parentBefore;
+        EXPECT_GT(moved.Length(), 0.001f);
+        EXPECT_LT(((WorldPosition(scene, ids[1]) - childBefore) - moved).Length(), 0.001f);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 付け替えは世界座標を変えず、1 回の取り消しで戻り、保存して読み直しても残る。プレイ中は断る
+TEST(EditorParent, ReparentKeepsWorldAndIsUndoable)
+{
+    NS::Application app(HiddenAppDesc("付け替えの試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        GL::Level::GameScene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
+        const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
+        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
+
+        EXPECT_TRUE(editor.ReparentActor(ids[1], ids[0]));
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, ids[0]);
+        EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
+
+        // 自分の子孫を親にする付け替えは断り、履歴も変えない
+        EXPECT_FALSE(editor.ReparentActor(ids[0], ids[1]));
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
+
+        ASSERT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, NS::k_NoActorId);
+        ASSERT_TRUE(editor.Editor().PerformRedo());
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Parent().id, ids[0]);
+
+        nlohmann::json loaded;
+        ASSERT_TRUE(NS::DeserializeSceneFromJson(loaded, NS::SerializeSceneToJson(scene.ToJson())));
+        const std::size_t index = NS::FindActorIndexById(loaded, ids[1]);
+        ASSERT_LT(index, NS::SceneJsonActors(loaded).size());
+        const nlohmann::json* transform = NS::ClassObjFields(NS::SceneJsonActors(loaded)[index], "Transform");
+        ASSERT_NE(transform, nullptr);
+        EXPECT_EQ(NS::FieldActorRef(*transform, NS::k_ParentFieldName).id, ids[0]);
+
+        editor.EnterPlay();
+        const std::size_t undoInPlay = editor.Editor().Undo().UndoSize();
+        EXPECT_FALSE(editor.ReparentActor(ids[2], ids[0]));
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[2])->TransformObj().Parent().id, NS::k_NoActorId);
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoInPlay);
+        editor.EnterEdit();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// インスペクターで親の位置を書くと、子が同じだけ動き、1 回の取り消しで全部戻る。ほかに選んだ物は動かない
+TEST(EditorParent, InspectorPoseEditMovesDescendants)
+{
+    NS::Application app(HiddenAppDesc("インスペクターの親の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
+        SetParent(scene, ids[1], ids[0]);
+        editor.SelectActors({ids[2], ids[0]}, ids[0]);
+        const NS::Vector3 parentBefore = WorldPosition(scene, ids[0]);
+        const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
+        const NS::Vector3 otherBefore = WorldPosition(scene, ids[2]);
+        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
+        const NS::Vector3 offset{0.0f, 2.0f, 0.0f};
+
+        editor.BeginClassObjEdit();
+        NS::SceneActor* parent = scene.Actors().FindByActorId(ids[0]);
+        WritePoseField(editor, parent, NS::k_PositionFieldName, NS::Vector3{parentBefore + offset});
+        editor.FinishFieldWrite(parent, NS::FieldType::Vector3);
+        editor.CommitClassObjEdit();
+
+        EXPECT_LT((WorldPosition(scene, ids[1]) - (childBefore + offset)).Length(), 0.001f);
+        EXPECT_LT((WorldPosition(scene, ids[2]) - otherBefore).Length(), 0.001f);
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore + 1);
+
+        ASSERT_TRUE(editor.Editor().PerformUndo());
+        EXPECT_LT((WorldPosition(scene, ids[0]) - parentBefore).Length(), 0.001f);
+        EXPECT_LT((WorldPosition(scene, ids[1]) - childBefore).Length(), 0.001f);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// 1 回の編集の中で親を動かしてから元の位置へ戻すと、子も元の位置へ戻り、履歴に何も積まない
+TEST(EditorParent, ParentBackAtStartPutsChildrenBack)
+{
+    NS::Application app(HiddenAppDesc("親を戻す試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
+        SetParent(scene, ids[1], ids[0]);
+        editor.SelectActorById(ids[0]);
+        const NS::Vector3 parentBefore = scene.Actors().FindByActorId(ids[0])->TransformObj().Position();
+        const NS::Vector3 childBefore = scene.Actors().FindByActorId(ids[1])->TransformObj().Position();
+        const std::size_t undoBefore = editor.Editor().Undo().UndoSize();
+
+        editor.BeginClassObjEdit();
+        NS::SceneActor* parent = scene.Actors().FindByActorId(ids[0]);
+        WritePoseField(editor, parent, NS::k_PositionFieldName, NS::Vector3{parentBefore + NS::Vector3{9.0f, 0.0f, 0.0f}});
+        editor.FinishFieldWrite(parent, NS::FieldType::Vector3);
+        WritePoseField(editor, parent, NS::k_PositionFieldName, parentBefore);
+        editor.FinishFieldWrite(parent, NS::FieldType::Vector3);
+        editor.CommitClassObjEdit();
+
+        EXPECT_EQ(scene.Actors().FindByActorId(ids[1])->TransformObj().Position(), childBefore);
+        EXPECT_EQ(editor.Editor().Undo().UndoSize(), undoBefore);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}

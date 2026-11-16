@@ -66,6 +66,15 @@ namespace NS
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
         [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;
 
+        //! roots と、その子孫の永続 id。roots の順の後に子孫を根に近い順で並べ、各 id を 1 回だけ入れる
+        //! 親子が輪になったシーン (手で書いたファイル・インスペクタの参照の欄) でも 1 周で止まる
+        [[nodiscard]] std::vector<uint32> CollectWithDescendants(const ActorList& actors,
+                                                                 const std::vector<uint32>& roots);
+
+        //! child の親を parent にしてよい場合 true。自分自身と自分の子孫は輪になるので false
+        //! parent が k_NoActorId (親を外す) ならいつも true
+        [[nodiscard]] bool CanReparent(const ActorList& actors, uint32 child, uint32 parent);
+
         //! 実体のセル座標。Transform の位置を最も近い整数へ丸めた値
         [[nodiscard]] int16 ActorCellX(const SceneActor* object) noexcept;
         [[nodiscard]] int16 ActorCellY(const SceneActor* object) noexcept;

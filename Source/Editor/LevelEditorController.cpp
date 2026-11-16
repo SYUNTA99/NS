@@ -417,6 +417,8 @@ namespace NS
             }
             // 引いている途中の変形を確定してギズモを休ませる。引きを持ち越すと、編集へ戻る組み直しで消えた物を読む
             CommitTransformEdit();
+            // Inspector の編集が子孫の控えを持っていたら閉じる。持ち越すと、プレイ中の次の変形が編集の控えを確定する
+            CommitClassObjEdit();
             m_dragFollowers.clear();
             m_gizmoWasDragging = false;
             m_gizmo.SetActive(false);
@@ -734,7 +736,7 @@ namespace NS
                 {
                     BeginTransformEdit();
                     // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
-                    CaptureDragFollowers();
+                    CaptureDragFollowers(m_selectionIds);
                 }
                 else if (wasDragging && !nowDragging)
                 {
@@ -1287,24 +1289,21 @@ namespace NS
             m_editorCamera.SetDistance(distance);
         }
 
-        void LevelEditorController::CaptureDragFollowers() noexcept
+        void LevelEditorController::CaptureDragFollowers(const std::vector<uint32>& roots) noexcept
         {
             m_dragFollowers.clear();
-            if (m_selectionIds.size() < 2)
-            {
-                return;
-            }
-
-            SceneActor* primary = m_scene.Actors().FindByActorId(m_selectedActorId);
+            m_dragPrimaryId = m_selectedActorId;
+            SceneActor* primary = m_scene.Actors().FindByActorId(m_dragPrimaryId);
             if (primary == nullptr)
             {
                 return;
             }
             m_dragPrimaryWorld = primary->TransformObj().WorldMatrix();
 
-            for (const uint32 id : m_selectionIds)
+            // 子孫も主対象に付いて動く。各 id は 1 回だけ並ぶので、親と子を両方選んでも差分は 1 回だけかかる
+            for (const uint32 id : CollectWithDescendants(m_scene.Actors(), roots))
             {
-                if (id == m_selectedActorId)
+                if (id == m_dragPrimaryId)
                 {
                     continue;
                 }
@@ -1313,8 +1312,9 @@ namespace NS
                 {
                     continue;
                 }
-
-                m_dragFollowers.push_back(DragFollower{id, object->TransformObj().WorldMatrix()});
+                const Transform& pose = object->TransformObj();
+                m_dragFollowers.push_back(
+                    DragFollower{id, pose.WorldMatrix(), pose.Position(), pose.Rotation(), pose.Scale()});
             }
         }
 
@@ -1324,9 +1324,24 @@ namespace NS
             {
                 return;
             }
-            SceneActor* primary = m_scene.Actors().FindByActorId(m_selectedActorId);
+            SceneActor* primary = m_scene.Actors().FindByActorId(m_dragPrimaryId);
             if (primary == nullptr)
             {
+                return;
+            }
+            // 主対象が始めの姿へ戻ったら、残りも控えた値へそのまま戻す。分解し直すと誤差で変わったと記録される
+            // 控えた行列のコピーと比べて戻ったかを見るので == でよい
+            if (primary->TransformObj().WorldMatrix() == m_dragPrimaryWorld)
+            {
+                for (const DragFollower& follower : m_dragFollowers)
+                {
+                    if (SceneActor* object = m_scene.Actors().FindByActorId(follower.id))
+                    {
+                        object->TransformObj().SetPosition(follower.position);
+                        object->TransformObj().SetRotation(follower.rotation);
+                        object->TransformObj().SetScale(follower.scale);
+                    }
+                }
                 return;
             }
 
@@ -1361,9 +1376,24 @@ namespace NS
             {
                 return;
             }
+            // Inspector の編集が子孫の控えを使っていたら、先に確定して控えを空ける
+            if (m_classObjFollowing)
+            {
+                CommitClassObjEdit();
+            }
+            // 選択している分と、その子孫をまとめて控える。動かなかった物は確定時に落ちる
+            CaptureEditBaselines(CollectWithDescendants(m_scene.Actors(), m_selectionIds));
+            if (m_editBaselines.empty())
+            {
+                return;
+            }
+            m_transformEditing = true;
+        }
+
+        void LevelEditorController::CaptureEditBaselines(const std::vector<uint32>& ids)
+        {
             m_editBaselines.clear();
-            // 選択している分をまとめて控える。動かなかった物は確定時に落ちる
-            for (const uint32 id : m_selectionIds)
+            for (const uint32 id : ids)
             {
                 std::optional<nlohmann::json> baseline = CaptureActor(m_scene.Actors(), id);
                 if (!baseline)
@@ -1377,11 +1407,6 @@ namespace NS
                     m_editBaselines.push_back(TransformEditBaseline{id, std::move(*baseline), AllFieldValues(*actor)});
                 }
             }
-            if (m_editBaselines.empty())
-            {
-                return;
-            }
-            m_transformEditing = true;
         }
 
         void LevelEditorController::CommitTransformEdit() noexcept
@@ -1392,7 +1417,20 @@ namespace NS
             }
             m_transformEditing = false;
 
-            // ドラッグは実体の Transform を既に動かしている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
+            std::vector<std::unique_ptr<ICommand>> commands = TakeEditBaselineCommands();
+            // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
+            if (!IsSceneEditable() || commands.empty())
+            {
+                return;
+            }
+
+            // 実体は既に after なので Do を呼ばず履歴だけ積む。取り消し で baseline へ、やり直し で after へ戻す
+            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
+        }
+
+        std::vector<std::unique_ptr<ICommand>> LevelEditorController::TakeEditBaselineCommands()
+        {
+            // 実体の Transform は既に動いている。after は実体の忠実な写し。baseline と同じなら履歴に積まない
             std::vector<std::unique_ptr<ICommand>> commands;
             for (TransformEditBaseline& entry : m_editBaselines)
             {
@@ -1411,14 +1449,7 @@ namespace NS
                 commands.push_back(std::make_unique<ActorSnapshotCommand>(m_scene, id, baseline, std::move(*after)));
             }
             m_editBaselines.clear();
-            // プレイ中の控えはプレイの姿。編集へ戻った後に戻すと、プレイの位置を編集の物へ書く
-            if (!IsSceneEditable() || commands.empty())
-            {
-                return;
-            }
-
-            // 実体は既に after なので Do を呼ばず履歴だけ積む。取り消し で baseline へ、やり直し で after へ戻す
-            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
+            return commands;
         }
 
         void LevelEditorController::BeginClassObjEdit() noexcept
@@ -1435,6 +1466,18 @@ namespace NS
             m_classObjEditBaseline = std::move(*baseline);
             m_classObjEditBaselineId = m_selectedActorId;
             m_classObjEditing = true;
+
+            // 主対象の子孫は、ギズモと同じ控えと動かす処理で主対象に付いて動く。ほかに選んだ物は動かさない
+            // ギズモのドラッグ中は控えをギズモが使っているので触らない。プレイ中は子孫の値を編集へ持ち帰れないので動かさない
+            std::vector<uint32> descendants = CollectWithDescendants(m_scene.Actors(), {m_selectedActorId});
+            descendants.erase(descendants.begin());
+            if (m_transformEditing || !IsSceneEditable() || descendants.empty())
+            {
+                return;
+            }
+            CaptureEditBaselines(descendants);
+            CaptureDragFollowers({m_selectedActorId});
+            m_classObjFollowing = true;
         }
 
         void LevelEditorController::CommitClassObjEdit() noexcept
@@ -1446,21 +1489,64 @@ namespace NS
             }
             m_classObjEditing = false;
 
-            // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
-            // プレイ中の控えはプレイの姿なので積まない
-            if (!IsSceneEditable())
-            {
-                return;
-            }
+            std::vector<std::unique_ptr<ICommand>> commands;
             std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
-            if (!after || *after == m_classObjEditBaseline)
+            if (after && *after != m_classObjEditBaseline)
             {
-                return;
+                commands.push_back(std::make_unique<ActorSnapshotCommand>(
+                    m_scene, m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
+            }
+            if (m_classObjFollowing)
+            {
+                m_classObjFollowing = false;
+                m_dragFollowers.clear();
+                std::vector<std::unique_ptr<ICommand>> moved = TakeEditBaselineCommands();
+                for (std::unique_ptr<ICommand>& command : moved)
+                {
+                    commands.push_back(std::move(command));
+                }
             }
 
+            // リフレクション編集は実体の部品へ直接入っている。after は実体の忠実な写しで、baseline と同じなら積まない
+            // プレイ中の控えはプレイの姿なので積まない
+            if (!IsSceneEditable() || commands.empty())
+            {
+                return;
+            }
             // 実体は既に after なので Do を呼ばず履歴だけ積む
-            m_editor.Undo().Record(std::make_unique<ActorSnapshotCommand>(
-                m_scene, m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
+            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
+        }
+
+        bool LevelEditorController::ReparentActor(uint32 child, uint32 parent)
+        {
+            if (!IsSceneEditable() || !CanReparent(m_scene.Actors(), child, parent))
+            {
+                return false;
+            }
+            SceneActor* actor = m_scene.Actors().FindByActorId(child);
+            if (actor == nullptr || actor->TransformObj().Parent().id == parent)
+            {
+                return false;
+            }
+            if (parent != k_NoActorId && m_scene.Actors().FindByActorId(parent) == nullptr)
+            {
+                return false;
+            }
+            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), child);
+            if (!before)
+            {
+                return false;
+            }
+            // 位置は世界座標のままなので、親を替えても子は動かない
+            actor->TransformObj().SetParent(ActorRef{parent});
+            FinishFieldWrite(actor, FieldType::ActorRef);
+            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), child);
+            if (!after)
+            {
+                return false;
+            }
+            m_editor.Undo().Record(std::make_unique<ActorSnapshotCommand>(m_scene, child, std::move(*before), std::move(*after)));
+            return true;
         }
     } // namespace Editor
 } // namespace NS

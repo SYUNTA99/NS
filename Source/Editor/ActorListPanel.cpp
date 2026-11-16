@@ -6,6 +6,7 @@
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/ClassObjs/Transform.h"
 #include "NSlib/CoreObject/SceneActor.h"
 
 #include "NSlib/Core/Assert.h"
@@ -25,6 +26,9 @@ namespace NS
     {
         namespace
         {
+            // 一覧の行を別の行へ引きずる時の受け渡しの種類。中身は引きずった行の永続 id
+            constexpr const char* k_ActorRowDragType = "NS_ACTOR_ROW";
+
             void RenderPlacementMenu(LevelEditorController& editor)
             {
                 for (const PlacementItem& item : PlacementItems())
@@ -74,6 +78,7 @@ namespace NS
                 m_renameCommitId = 0;
                 m_duplicateRequestId = 0;
                 m_deleteRequestId = 0;
+                m_reparentRequested = false;
                 m_rangeSelectToId = 0;
                 m_focusPending = false;
                 m_visibleOrder.clear();
@@ -86,13 +91,7 @@ namespace NS
                     }
                 }
 
-                for (SceneActor* object : placed)
-                {
-                    if (!filtering || NameMatches(Editor::ActorDisplayName(object), m_actorListFilter))
-                    {
-                        RenderRow(editor, object);
-                    }
-                }
+                RenderActorRows(editor, placed, filtering);
 
                 if (placed.empty())
                 {
@@ -114,6 +113,8 @@ namespace NS
                 rest.x = std::max(rest.x, 1.0f);
                 rest.y = std::max(rest.y, ImGui::GetTextLineHeight());
                 ImGui::Dummy(rest);
+                // 一覧の下の余白へ行を落とすと、その行の親を外す
+                HandleReparentDrag(0, k_NoActorId, nullptr);
 
                 // 余白の右クリックからも同じ一覧で置く。描き終えた後なのでアクターを組み直しても崩れない
                 if (ImGui::BeginPopupContextItem("##actorListAdd"))
@@ -171,16 +172,150 @@ namespace NS
                     editor.SelectActorById(m_deleteRequestId);
                     editor.DeleteSelectedActor();
                 }
+                // 自分と子孫へ落とした時・プレイ中は ReparentActor が断る。断っても一覧は次の描画で元のまま
+                if (m_reparentRequested)
+                {
+                    (void)editor.ReparentActor(m_reparentChildId, m_reparentParentId);
+                }
             }
             ImGui::End();
         }
 
-        void ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor* object) noexcept
+        void ActorListPanel::RenderActorRows(LevelEditorController& editor,
+                                             const std::vector<SceneActor*>& placed,
+                                             bool filtering) noexcept
+        {
+            if (filtering)
+            {
+                // 検索している間は、当たった行を親子に関わらず平らに並べる
+                for (SceneActor* object : placed)
+                {
+                    if (NameMatches(Editor::ActorDisplayName(object), m_actorListFilter))
+                    {
+                        ImGui::PushID(static_cast<int>(object->Id()));
+                        (void)RenderRow(editor, object, false); // 子を描かないので木は積まれない
+                        ImGui::PopID();
+                    }
+                }
+                return;
+            }
+            // 子は親の下に並べる。親の居ない物と、親が居なくなった物が根になる
+            std::unordered_set<uint32> placedIds;
+            for (SceneActor* object : placed)
+            {
+                placedIds.insert(object->Id());
+            }
+            ChildrenMap childrenOf;
+            for (SceneActor* object : placed)
+            {
+                const uint32 parent = object->TransformObj().Parent().id;
+                if (placedIds.contains(parent))
+                {
+                    childrenOf[parent].push_back(object);
+                }
+            }
+            std::unordered_set<uint32> rendered;
+            for (SceneActor* object : placed)
+            {
+                if (!placedIds.contains(object->TransformObj().Parent().id))
+                {
+                    RenderTree(editor, object, childrenOf, rendered);
+                }
+            }
+            // 親子が輪になった物は根が無いので、残りを根として描く
+            for (SceneActor* object : placed)
+            {
+                if (!rendered.contains(object->Id()))
+                {
+                    RenderTree(editor, object, childrenOf, rendered);
+                }
+            }
+        }
+
+        void ActorListPanel::RenderTree(LevelEditorController& editor,
+                                        SceneActor* object,
+                                        const ChildrenMap& childrenOf,
+                                        std::unordered_set<uint32>& rendered) noexcept
+        {
+            NS_ASSERT(App, object != nullptr, "RenderTree: アクターが null");
+            const uint32 id = object->Id();
+            rendered.insert(id);
+            std::vector<SceneActor*> children;
+            const ChildrenMap::const_iterator found = childrenOf.find(id);
+            if (found != childrenOf.end())
+            {
+                for (SceneActor* child : found->second)
+                {
+                    if (!rendered.contains(child->Id()))
+                    {
+                        children.push_back(child);
+                    }
+                }
+            }
+
+            ImGui::PushID(static_cast<int>(id));
+            if (RenderRow(editor, object, !children.empty()))
+            {
+                for (SceneActor* child : children)
+                {
+                    // 前の兄弟の子孫として描いた物は飛ばす (輪の時だけ起きる)
+                    if (!rendered.contains(child->Id()))
+                    {
+                        RenderTree(editor, child, childrenOf, rendered);
+                    }
+                }
+                ImGui::TreePop();
+            }
+            else
+            {
+                // 畳んだ子孫も描いた事にする。輪の残りを根として描く所で、畳んだ子孫が根に出ないようにする
+                MarkDescendantsRendered(children, childrenOf, rendered);
+            }
+            ImGui::PopID();
+        }
+
+        void ActorListPanel::MarkDescendantsRendered(const std::vector<SceneActor*>& children,
+                                                     const ChildrenMap& childrenOf,
+                                                     std::unordered_set<uint32>& rendered) noexcept
+        {
+            for (SceneActor* child : children)
+            {
+                if (!rendered.insert(child->Id()).second)
+                {
+                    continue;
+                }
+                const ChildrenMap::const_iterator found = childrenOf.find(child->Id());
+                if (found != childrenOf.end())
+                {
+                    MarkDescendantsRendered(found->second, childrenOf, rendered);
+                }
+            }
+        }
+
+        void ActorListPanel::HandleReparentDrag(uint32 rowId, uint32 parent, const char* label) noexcept
+        {
+            if (rowId != 0 && ImGui::BeginDragDropSource())
+            {
+                ImGui::SetDragDropPayload(k_ActorRowDragType, &rowId, sizeof(rowId));
+                ImGui::TextUnformatted(label);
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget())
+            {
+                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(k_ActorRowDragType))
+                {
+                    std::memcpy(&m_reparentChildId, payload->Data, sizeof(m_reparentChildId));
+                    m_reparentParentId = parent;
+                    m_reparentRequested = true;
+                }
+                ImGui::EndDragDropTarget();
+            }
+        }
+
+        bool ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor* object, bool hasChildren) noexcept
         {
             NS_ASSERT(App, object != nullptr, "RenderRow: アクターが null");
             const uint32 id = object->Id();
-
-            ImGui::PushID(static_cast<int>(id));
 
             if (m_renamingActorId != 0 && m_renamingActorId == id)
             {
@@ -203,18 +338,27 @@ namespace NS
                 {
                     m_renamingActorId = 0; // Esc は入力欄が値を戻すのでそのまま捨てる
                 }
-
-                ImGui::PopID();
-                return;
+                // 改名の間は子の行を畳む
+                return false;
             }
 
             m_visibleOrder.push_back(id);
 
-            ImGui::Selectable(Editor::ActorDisplayName(object),
-                              editor.IsActorSelected(id),
-                              ImGuiSelectableFlags_AllowDoubleClick);
+            // 子を持つ行は矢印で開け閉めする。行の文字を押すと選ぶ
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow |
+                                       ImGuiTreeNodeFlags_DefaultOpen;
+            if (!hasChildren)
+            {
+                flags |= ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen;
+            }
+            if (editor.IsActorSelected(id))
+            {
+                flags |= ImGuiTreeNodeFlags_Selected;
+            }
+            const char* label = Editor::ActorDisplayName(object);
+            const bool open = ImGui::TreeNodeEx("##row", flags, "%s", label);
 
-            if (ImGui::IsItemClicked())
+            if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
             {
                 const ImGuiIO& io = ImGui::GetIO();
                 if (io.KeyCtrl)
@@ -237,30 +381,46 @@ namespace NS
             {
                 m_focusPending = true;
             }
+            // 引きずる元は見本の小窓を開くので、行のクリックと視点を寄せる判定を済ませてから置く
+            HandleReparentDrag(id, id, label);
 
-            if (ImGui::BeginPopupContextItem())
+            RenderRowMenu(editor, object);
+            // 子の無い行は NoTreePushOnOpen なので、開いていても積まれていない
+            return open && hasChildren;
+        }
+
+        void ActorListPanel::RenderRowMenu(LevelEditorController& editor, SceneActor* object) noexcept
+        {
+            if (!ImGui::BeginPopupContextItem())
             {
-                if (ImGui::MenuItem("名前を変更", "F2"))
-                {
-                    BeginRename(object);
-                }
-                if (ImGui::MenuItem("フォーカス", "F"))
-                {
-                    editor.SelectActorById(id);
-                    editor.FocusSelectedInView();
-                }
-                if (ImGui::MenuItem("複製", "Ctrl+D"))
-                {
-                    m_duplicateRequestId = id;
-                }
-                if (ImGui::MenuItem("削除", "Del"))
-                {
-                    m_deleteRequestId = id;
-                }
-                ImGui::EndPopup();
+                return;
             }
-
-            ImGui::PopID();
+            const uint32 id = object->Id();
+            if (ImGui::MenuItem("名前を変更", "F2"))
+            {
+                BeginRename(object);
+            }
+            if (ImGui::MenuItem("フォーカス", "F"))
+            {
+                editor.SelectActorById(id);
+                editor.FocusSelectedInView();
+            }
+            if (ImGui::MenuItem("複製", "Ctrl+D"))
+            {
+                m_duplicateRequestId = id;
+            }
+            // 一覧が長いと下の余白へ落としにくいので、親を外す操作をここにも置く
+            if (ImGui::MenuItem("親を外す", nullptr, false, object->TransformObj().Parent().IsSet()))
+            {
+                m_reparentChildId = id;
+                m_reparentParentId = k_NoActorId;
+                m_reparentRequested = true;
+            }
+            if (ImGui::MenuItem("削除", "Del"))
+            {
+                m_deleteRequestId = id;
+            }
+            ImGui::EndPopup();
         }
 
         void ActorListPanel::BeginRename(SceneActor* object) noexcept

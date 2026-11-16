@@ -215,4 +215,26 @@ namespace NS
             }
         });
     }
+
+    void EraseRefsWithoutTarget(nlohmann::json& actorJson, const std::unordered_set<uint32>& ids)
+    {
+        // 欄ごと消すので ForEachRefValue (中の値だけを渡す) は使えない。たどる形は ForEachRefValue と同じにする
+        for (nlohmann::json& entry : ActorJsonClassObjs(actorJson))
+        {
+            if (!entry.is_object())
+            {
+                continue;
+            }
+            for (nlohmann::json::iterator field = entry.begin(); field != entry.end();)
+            {
+                ActorRef ref{};
+                if (IsRefValue(field.value()) && ReadRefValue(field.value(), ref) && !ids.contains(ref.id))
+                {
+                    field = entry.erase(field);
+                    continue;
+                }
+                ++field;
+            }
+        }
+    }
 } // namespace NS

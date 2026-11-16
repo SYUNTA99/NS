@@ -348,6 +348,17 @@ namespace NS
         WriteSceneEnvironment(out, ReadSceneEnvironment(scene));
         SetSceneJsonNextActorId(out, SceneJsonNextActorId(scene));
         out["objects"] = SceneJsonActors(scene);
+        // 相手の無い参照の欄 (未設定と、消したアクターを指す物) はファイルに書かない
+        // 読み込みで作るアクターの参照は、欄が無ければ未設定のまま。消えた相手の id を数で残すと、読む時に警告が出る
+        std::unordered_set<uint32> ids;
+        for (const nlohmann::json& object : SceneJsonActors(out))
+        {
+            ids.insert(ActorJsonId(object));
+        }
+        for (nlohmann::json& object : SceneJsonActors(out))
+        {
+            EraseRefsWithoutTarget(object, ids);
+        }
         WriteRefsByName(out);
 
         // 不正 UTF-8 は replace で握り、dump が例外を投げないようにして noexcept 経路を保つ

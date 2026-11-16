@@ -551,6 +551,11 @@ namespace NS
         void LevelEditorController::FinishFieldWrite(SceneActor* actor, FieldType writtenType)
         {
             NS_ASSERT(App, actor != nullptr, "FinishFieldWrite: アクターが null");
+            // インスペクタで主対象の姿勢を書いた時は、控えた子孫へギズモと同じ差分をかける。姿勢が変わっていなければ差分は無い
+            if (m_classObjFollowing && actor->Id() == m_classObjEditBaselineId)
+            {
+                ApplyDragToFollowers();
+            }
             // 部品は ActorRef の指す相手を取得して持つので、欄を書き換えた時に取得し直す
             if (writtenType == FieldType::ActorRef)
             {

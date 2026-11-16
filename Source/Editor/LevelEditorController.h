@@ -199,14 +199,20 @@ namespace NS
             //! Inspector が編集 / 表示できる選択を持つか
             [[nodiscard]] bool HasInspectableSelection() const noexcept;
 
-            //! ドラッグでの変形を始める / 確定する
+            //! ドラッグでの変形を始める / 確定する。選んだ物の子孫も控えて一緒に確定する
             //! 確定では、始めた時から値が変わったシーンに書く項目 (姿勢の位置・回転・スケールなど) を上書きの一覧に足す
             void BeginTransformEdit() noexcept;
             void CommitTransformEdit() noexcept;
 
             //! Inspector のリフレクション項目をドラッグで編集し始める / 確定する
+            //! 主対象の姿勢を書くと、子孫がギズモと同じ差分で付いて動き、確定で主対象と 1 回の取り消しにまとまる
             void BeginClassObjEdit() noexcept;
             void CommitClassObjEdit() noexcept;
+
+            //! child の親を parent にする。parent が k_NoActorId なら親を外す。位置は世界座標のままで動かない
+            //! 編集できない時・自分か自分の子孫を親にする時・相手が居ない時・親が同じ時は何もせず false
+            //! 付け替えたら 1 回の取り消しに積んで true
+            bool ReparentActor(uint32 child, uint32 parent);
 
             //! プレイ中の手編集を、プレイを始めた時のシーンの JSON へも写す。編集復帰の組み直しを跨いで調整値が残る
             //! 写した欄は履歴へ 1 つずつ積まず、編集へ戻る時にプレイ開始の写しと比べて 1 まとまりで積む
@@ -363,8 +369,13 @@ namespace NS
             //! 主対象だけを差し替える。選択集合には触らない
             void SetPrimarySelection(uint32 id) noexcept;
 
-            //! ドラッグ開始時に、主対象以外の選択物の世界変換を控える
-            void CaptureDragFollowers() noexcept;
+            //! 主対象に付いて動く物 (roots とその子孫から主対象を除いた物) の世界変換を控える
+            //! ギズモは選択を、Inspector は主対象だけを roots に渡す
+            void CaptureDragFollowers(const std::vector<uint32>& roots) noexcept;
+            //! ids のアクターの今の姿を、変形の確定で比べる控えにする
+            void CaptureEditBaselines(const std::vector<uint32>& ids);
+            //! 控えから変わったアクターの取り消しのコマンドを作り、控えを空にする
+            [[nodiscard]] std::vector<std::unique_ptr<ICommand>> TakeEditBaselineCommands();
             //! 主対象がドラッグで動いた分を、控えた残りの選択へ同じだけ効かせる
             void ApplyDragToFollowers() noexcept;
 
@@ -410,9 +421,14 @@ namespace NS
             {
                 uint32 id = 0;
                 Matrix world{};
+                // 主対象が始めの姿へ戻った時に、分解し直さずにそのまま戻す値
+                Vector3 position{};
+                Quaternion rotation{};
+                Vector3 scale{};
             };
-            std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択
+            std::vector<DragFollower> m_dragFollowers; // 主対象に付いて動く残りの選択と子孫
             Matrix m_dragPrimaryWorld{};               // ドラッグ開始時の主対象の世界変換
+            uint32 m_dragPrimaryId = k_NoActorId;      // 控えた時の主対象。途中で選択が変わっても同じ物の差分を取る
 
             bool m_gizmoWasDragging = false;
             bool m_transformEditing = false;
@@ -428,6 +444,7 @@ namespace NS
             std::vector<TransformEditBaseline> m_editBaselines;
 
             bool m_classObjEditing = false;
+            bool m_classObjFollowing = false; // Inspector の編集で、主対象の子孫を m_dragFollowers で動かしているか
             uint32 m_classObjEditBaselineId = k_NoActorId; // 編集開始時の対象 id
             nlohmann::json m_classObjEditBaseline;         // 編集開始時の状態スナップショット
 

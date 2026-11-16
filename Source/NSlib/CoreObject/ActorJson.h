@@ -10,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace NS
 {
@@ -100,4 +101,9 @@ namespace NS
     //! object の参照の欄のうち、idMap に載った id を指す物を載った先の id へ付け替える
     //! 複製で使う。コピーした範囲の中を指す参照だけをコピー側へ向け、範囲の外を指す参照は元のまま残す
     void RemapActorRefs(nlohmann::json& actorJson, const std::unordered_map<uint32, uint32>& idMap);
+
+    //! object の参照の欄のうち、相手の無い欄 (id が 0 の欄と、ids に無い id を指す欄) を消す
+    //! シーンのファイルへ書く時だけ使う。取り消しの控えは .actor の値に参照の欄が無いので、空の欄も残す
+    //! id は使い回さないので、消えた相手を指す参照は未設定と同じ意味になる
+    void EraseRefsWithoutTarget(nlohmann::json& actorJson, const std::unordered_set<uint32>& ids);
 } // namespace NS
