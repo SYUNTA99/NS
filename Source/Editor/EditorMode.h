@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Editor/LevelFileBrowser.h"
+#include "Editor/Undo/UndoStack.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -34,7 +35,7 @@ namespace NS
             WriteFailed,   // ファイルへ書けなかった
         };
 
-        //! レベルを開く・保存する・アクターを作る・未保存の版を数えるエディタの機能
+        //! レベルを開く・保存する・アクターを作る・取り消す・未保存の版を数えるエディタの機能
         class EditorMode : public NonCopyable
         {
         public:
@@ -51,15 +52,21 @@ namespace NS
             void SetInput(OS::Input* input) noexcept { m_input = input; }
 
             //! シーンを変えてよいかを答える関数を差す。EditorController::IsSceneEditable を差す
-            //! 偽の間は作る・開く・保存を全部断る。未設定なら変えてよい
+            //! 偽の間は作る・取り消し・開く・保存を全部断る。未設定なら変えてよい
             void SetSceneEditableFn(std::function<bool()> fn) noexcept { m_sceneEditable = std::move(fn); }
 
-            //! 保存のショートカットの入力を 1 固定ステップ分進める
-            //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。真の間は Ctrl+S を受けない
+            //! ギズモのドラッグ中だけ取り消しとやり直しを止める。旧 Transform への書込を防ぐ
+            void SetUndoRedoSuppressed(bool suppressed) noexcept { m_undoRedoSuppressed = suppressed; }
+
+            //! 保存と取り消しのショートカットの入力を 1 固定ステップ分進める
+            //! @param[in] editShortcutsBlocked ResolveInputOwnership の答え。真の間は Ctrl+Z・Ctrl+Y・Ctrl+S を受けない
             //! @param[in] presses 持ち主がこの固定ステップに読んだ押し
             void Tick(bool editShortcutsBlocked, const OS::InputPresses& presses) noexcept;
 
-            //! 新しいアクターを作ってシーンを未保存にする。作る経路 (置く・複製) は全部ここを通す
+            [[nodiscard]] const UndoStack& Undo() const noexcept { return m_undo; }
+            [[nodiscard]] UndoStack& Undo() noexcept { return m_undo; }
+
+            //! 新しいアクターを 1 回の履歴で作り、シーンを未保存にする。作る経路 (置く・複製) は全部ここを通す
             //! 各 JSON に新しい永続 id を振り、写した元の id を指す参照を、一緒に作る物の新しい id へ付け替える。
             //! 作った物を選ぶかは呼び手が決める
             //! @return 作った物の id を渡した順に返す。休止の間 (プレイ中) と、シーンが無い時は作らずに空を返す
@@ -91,7 +98,7 @@ namespace NS
             [[nodiscard]] std::string QuitSaveLevelName() const noexcept;
 
             //! レベルを読み、プレイヤーと落下死の範囲が無ければ補ってから実体へ取り込む
-            //! 読めたら名前を控え、未保存でない状態にする。起動と「開く」の両方がここを通る
+            //! 読めたら名前を控え、履歴を空にして未保存でない状態にする。起動と「開く」の両方がここを通る
             //! @return 名前が使えない・取り込み関数が無い・読めない時は false で、今のレベルと名前を保つ。
             //! 名前の無いまま実在するファイルを読めなかった時は、終了の保存の書き先を退避の名前にする
             bool OpenLevel(std::string_view name) noexcept;
@@ -99,8 +106,15 @@ namespace NS
             void SetSessionPath(std::string path) noexcept { m_sessionPath = std::move(path); }
             //! 前回開いたシーンを復元し、記録が無いか開けなければ fallback を開く
             [[nodiscard]] bool OpenStartupLevel(std::string_view fallback) noexcept;
-            // 現在の編集内容を保ち、既存ファイルを上書きしない
+            // 現在の編集内容と履歴を保ち、既存ファイルを上書きしない
             [[nodiscard]] CreateLevelResult CreateLevel(std::string_view name) noexcept;
+
+            //! 1 手戻す。戻せたら true。メニューとキーが同じ入口で呼ぶ
+            bool PerformUndo() noexcept;
+            //! 1 手やり直す。やり直せたら true
+            bool PerformRedo() noexcept;
+            [[nodiscard]] bool CanUndo() const noexcept { return m_undo.UndoSize() > 0; }
+            [[nodiscard]] bool CanRedo() const noexcept { return m_undo.RedoSize() > 0; }
 
             //! 現在名で上書き保存。名前が無ければ名前を付けて保存を開く
             void RequestSave() noexcept;
@@ -114,8 +128,10 @@ namespace NS
             OS::Input* m_input = nullptr;
 
             std::function<bool()> m_sceneEditable;
+            bool m_undoRedoSuppressed = false; // ギズモのドラッグ中だけ立てて取り消しとやり直しを止める
             bool m_levelDirty = true;
 
+            UndoStack m_undo;
             LevelFileBrowser m_fileBrowser{};
 
             std::string m_currentLevelName;
@@ -127,6 +143,8 @@ namespace NS
             std::string m_statusMessage;
             bool m_statusError = false;
             float m_statusTimer = 0.0f;
+
+            void HandleUndoRedoInput(const OS::InputPresses& presses) noexcept;
 
             //! 差した関数の答え。シーンを変える関数は全部、頭でこれを見る
             [[nodiscard]] bool IsSceneEditable() const noexcept;

@@ -155,7 +155,7 @@ namespace NS
         }
 
         //! 2〜3成分を軸名付きで編集する。幅が足りない時は軸ごとに行を分ける
-        //! 各軸の編集開始と終了を返し、呼び出し側でドラッグ全体を 1 回の編集として確定できる
+        //! 各軸の編集開始と終了を返し、呼び出し側で取り消しの履歴をまとめられる
         inline AxisEditResult DragAxisFloats(std::span<float> values, float speed, const char* format = "%.3f") noexcept
         {
             IM_ASSERT(values.size() >= 2 && values.size() <= 3);

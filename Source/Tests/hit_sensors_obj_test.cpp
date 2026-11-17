@@ -216,7 +216,7 @@ TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
     ASSERT_NE(actor, nullptr);
 
     NS::SetActorJsonFile(placed, "WideGoal");
-    ASSERT_EQ(scene.ApplyFromJson(placed), actor);
+    ASSERT_EQ(ApplySnapshot(scene, placed), actor);
 
     const NS::ShapeHitSensor* sensor = NS::Cast<NS::ShapeHitSensor>(actor->HitSensorsClassObj()->Find("Body"));
     ASSERT_NE(sensor, nullptr);
@@ -224,7 +224,7 @@ TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
 }
 
 // hitSensors に無い値を持つセンサーは、宣言した時の値へ戻して WARN を出す。前に読んだ値を残さない
-// 書き直した .actor や写しから hitSensors が消えた時に、ファイルに無い大きさで当たり続けないため
+// 取り消しで hitSensors が消えた時に、ファイルに無い大きさで当たり続けないため
 TEST(HitSensorsObj, ReloadValuesResetsASensorMissingFromTheFile)
 {
     const ScopedActorFileDirectory scope("HitSensorsReset");

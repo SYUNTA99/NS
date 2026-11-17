@@ -321,7 +321,7 @@ TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
 
 TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
 {
-    // 写しは上書きした欄だけを持つ。写しを反映すると、写しに無い欄も .actor の値へ戻る
+    // undo の控えは上書きだけを持つ。控えを当てると、控えに無い欄も .actor の値へ戻る
     const ScopedActorFileDirectory scope("SnapshotReset");
     NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f)));
 
@@ -334,7 +334,7 @@ TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
     const nlohmann::json snapshot = NS::ActorToJson(actor);
 
     ColliderOf(actor)->SetCapsuleRadius(9.0f);
-    NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
+    NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
     ASSERT_EQ(applied, actor); // 同じクラスなので作り直さない
     EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }
@@ -1010,7 +1010,7 @@ namespace
 } // namespace
 
 // シーンで上書きできない欄を直し終えると .actor のファイルへ書き、同じ .actor
-// のアクターの全部に効く
+// のアクターの全部に効く。戻すと全部が前の値へ戻る
 TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
 {
     const ScopedActorFileDirectory scope("EditorWritesActorFile");
@@ -1025,6 +1025,16 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     collider->SetCapsuleRadius(3.0f);
     ASSERT_NO_FATAL_FAILURE(EditField(editor, first, collider, "半径"));
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
 }
 
@@ -1048,6 +1058,39 @@ TEST(ActorFile, UnreadableActorFileIsNotOverwrittenAndStaysUnsaved)
 
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), broken);
     EXPECT_TRUE(editor.HasUnsavedAssetWrites());
+}
+
+// 欄を直した後に動作の窓が .actor の動作を書いても、欄の取り消しとやり直しは欄だけを戻し、動作は残る
+TEST(ActorFile, UndoingAFieldEditKeepsActionsWrittenAfterIt)
+{
+    const ScopedActorFileDirectory scope("UndoKeepsActions");
+    NS::Scene scene;
+    ResetTwoPlayers(scene);
+    EditorController editor(scene);
+    NS::SceneActor* first = scene.Actors().FindByActorId(1);
+    ASSERT_NE(first, nullptr);
+    NS::Collider* collider = ColliderOf(first);
+    ASSERT_NE(collider, nullptr);
+    collider->SetCapsuleRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, collider, "半径"));
+
+    // 動作の窓は取り消しの履歴を通さずに .actor の文書を書く
+    NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
+    nlohmann::json document = *library.Find("PlayerActor");
+    NS::WriteActorActions(document, {NS::ActorActionInfo{"Jump", {}, {}}});
+    ASSERT_TRUE(library.Set("PlayerActor", std::move(document)));
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    std::vector<NS::ActorActionInfo> actions = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    ASSERT_EQ(actions.size(), 1u);
+    EXPECT_EQ(actions[0].name, "Jump");
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    actions = NS::ReadActorActions("PlayerActor", *library.Find("PlayerActor"));
+    ASSERT_EQ(actions.size(), 1u);
+    EXPECT_EQ(actions[0].name, "Jump");
 }
 
 // シーンで上書きできる欄を直すと、その 1 体だけが変わり、.actor は変わらない
@@ -1093,6 +1136,30 @@ TEST(ActorFile, EditingAnUnmarkedFieldLeavesTheSceneSaved)
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
     EXPECT_FALSE(editor.HasUnsavedAssetWrites());
+}
+
+// .actor の欄の直しを取り消しても、やり直しても、.actor のファイルが戻るだけで、シーンは未保存にならない
+TEST(ActorFile, UndoingAnUnmarkedFieldEditLeavesTheSceneSaved)
+{
+    const ScopedActorFileDirectory scope("UndoUnmarkedFieldKeepsSceneSaved");
+    NS::Scene scene;
+    ResetTwoPlayers(scene);
+    EditorController editor(scene);
+    NS::SceneActor* first = scene.Actors().FindByActorId(1);
+    ASSERT_NE(first, nullptr);
+    NS::Collider* collider = ColliderOf(first);
+    ASSERT_NE(collider, nullptr);
+    collider->SetCapsuleRadius(3.0f);
+    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, collider, "半径"));
+    ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+
+    ASSERT_TRUE(editor.Editor().PerformUndo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+
+    ASSERT_TRUE(editor.Editor().PerformRedo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
 }
 
 // プレイ中にシーンで上書きできない欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN
@@ -1173,6 +1240,15 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
     EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
+
+    // 戻すと .actor とアクターの全部が前の値へ戻り、選んだ .actor も前の値を見せる
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
+    NS::SceneActor* again = NS::Cast<NS::SceneActor>(editor.SelectedAsset());
+    ASSERT_NE(again, nullptr);
+    EXPECT_FLOAT_EQ(RadiusOf(again), 2.0f);
 }
 
 // 素材の窓ではシーンで上書きできる欄の .actor
@@ -1212,6 +1288,10 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
         const nlohmann::json* savedParams = SavedFields(object, "Shadow");
         EXPECT_TRUE(savedParams == nullptr || !savedParams->contains("基本直径"));
     }
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(1)), 2.0f);
+    EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 5.0f);
 }
 
 TEST(ActorFile, ShippedActorFilesLoad)
@@ -1642,7 +1722,7 @@ TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
 
 // 素材の窓で .actor から派生を作ると、元を指して何も書いていない .actor をファイルへ書く。
 // 派生から作っても、その派生の元を指して何も書いていない .actor になり、派生が書いた項目は写さない。
-// 派生を指すアクターから作ると、アクターの値は元の値に戻る。
+// 派生を指すアクターから作ると、アクターの値は元の値に戻り、取り消すと前の派生と値へ戻る。
 // ある名前と、ファイルの名前に使えない名前では作らない
 TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
 {
@@ -1675,6 +1755,9 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     EXPECT_TRUE(NS::ActorJsonClassObjs(tuned).empty());
     EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "TunedHeavyRock");
     EXPECT_EQ(DrawsLinesOf(scene.Actors().FindByActorId(2)), baseLines);
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_EQ(scene.Actors().FindByActorId(2)->ActorFileName(), "HeavyRock");
+    EXPECT_EQ(DrawsLinesOf(scene.Actors().FindByActorId(2)), false);
 
     const TestLogCapture log;
     EXPECT_FALSE(editor.CreateDerivedActorFile("PlayerActor", "HeavyRock"));
@@ -1827,7 +1910,7 @@ TEST(ActorFile, SaveRefusesADocumentOverTheSizeLimit)
 }
 
 // シーンで詰めたアクターから派生を作ると、上書きを派生の .actor へ移し、アクターをその派生に切り替える。
-// 値と位置は変わらず、保存は上書きを書かない
+// 値と位置は変わらず、保存は上書きを書かない。取り消すと元の .actor と上書きへ戻る
 TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
 {
     const ScopedActorFileDirectory scope("DeriveFromActor");
@@ -1861,6 +1944,14 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     const nlohmann::json& afterObject = NS::SceneJsonActors(after)[NS::FindActorIndexById(after, 1)];
     EXPECT_FALSE(NS::HasField(*NS::ClassObjFields(afterObject, "Shadow"), "基本直径"));
     EXPECT_EQ(*SavedFields(afterObject, "Transform"), *SavedFields(beforeObject, "Transform"));
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    const NS::SceneActor* restored = scene.Actors().FindByActorId(1);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored, first);
+    EXPECT_EQ(restored->ActorFileName(), "PlayerActor");
+    EXPECT_TRUE(restored->IsSceneOverride("Shadow", "基本直径"));
+    EXPECT_FLOAT_EQ(DiameterOf(restored), 9.0f);
 }
 
 // 元の .actor の束を書き替えると、元を指すアクターにも派生を指すアクターにも新しい束が効く

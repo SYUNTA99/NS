@@ -219,7 +219,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterTheInspectorRewritesIt)
     EXPECT_NEAR(world.LookAfterUpdate().x, 10.0f, 1.0e-4f);
 }
 
-// 写しを ApplyFromJson で反映した後も、写しの相手を追う
+// 取り消しとやり直しが控えを当てた後も、控えの相手を追う
 TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
 {
     FollowScene world;
@@ -230,6 +230,8 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
     ASSERT_TRUE(snapshot.has_value());
     NS::ActorJsonClassObjs(*snapshot)["Vcam"]["追従対象"] = nlohmann::json{{"ref", world.second->Id()}};
     // 作り直さずに同じアクターへ書く
-    EXPECT_EQ(world.scene.ApplyFromJson(*snapshot), world.camera);
+    std::unique_ptr<NS::SceneActor> replaced;
+    EXPECT_EQ(world.scene.ApplyFromJson(*snapshot, &replaced), world.camera);
+    EXPECT_EQ(replaced, nullptr);
     EXPECT_NEAR(world.LookAfterUpdate().x, 10.0f, 1.0e-4f);
 }

@@ -94,6 +94,27 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
     EXPECT_FLOAT_EQ(actor->TransformObj().Scale().x, 2.0f);
 }
 
+TEST(EditorPlacement, UndoRemovesPlacedActor)
+{
+    NS::Scene scene;
+    EditorController editor(scene);
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
+    ASSERT_TRUE(item.has_value());
+
+    editor.PlaceItem(*item);
+    const NS::uint32 id = editor.SelectedActorId();
+    ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
+
+    // やり直すと同じ id・同じクラスで戻る
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
+    NS::SceneActor* again = scene.Actors().FindByActorId(id);
+    ASSERT_NE(again, nullptr);
+    EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
+}
+
 // この試しは置いた物の種類と欄の名前だけを見るので、実在しない file で足りる
 TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
@@ -120,13 +141,13 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 namespace
 {
     // 消したアクターを、その場で OnEndPlay を呼んで解放したかを見るためのゴール。
-    // 数えるのは counted を立てた物だけで、JSON から作り直した CountedGoal は数えない
-    class CountedGoal final : public GL::Level::GoalActor
+    // 数えるのは counted を立てた物だけで、JSON から作り直した PlacementCountedGoal は数えない
+    class PlacementCountedGoal final : public GL::Level::GoalActor
     {
     public:
-        NS_REFLECT_NONE(CountedGoal, GL::Level::GoalActor)
+        NS_REFLECT_NONE(PlacementCountedGoal, GL::Level::GoalActor)
 
-        ~CountedGoal() override
+        ~PlacementCountedGoal() override
         {
             if (counted)
             {
@@ -148,15 +169,15 @@ namespace
         static int s_destroyed;
     };
 
-    int CountedGoal::s_endPlays = 0;
-    int CountedGoal::s_destroyed = 0;
+    int PlacementCountedGoal::s_endPlays = 0;
+    int PlacementCountedGoal::s_destroyed = 0;
 
-    // GoalActor の .actor をクラスだけ替えて CountedGoal の .actor に敷き、数える CountedGoal を作って id を返す
+    // GoalActor の .actor をクラスだけ替えて PlacementCountedGoal の .actor に敷き、数える PlacementCountedGoal を作って id を返す
     // 敷いた .actor は outScope が試しの終わりに外す
     NS::uint32 SpawnCountedGoal(NS::Scene& scene, std::optional<ScopedActorFile>& outScope)
     {
-        CountedGoal::s_endPlays = 0;
-        CountedGoal::s_destroyed = 0;
+        PlacementCountedGoal::s_endPlays = 0;
+        PlacementCountedGoal::s_destroyed = 0;
         const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
         EXPECT_NE(goal, nullptr);
         if (goal == nullptr)
@@ -164,9 +185,9 @@ namespace
             return NS::k_NoActorId;
         }
         nlohmann::json actorFile = *goal;
-        NS::SetActorFileClass(actorFile, "CountedGoal");
-        outScope.emplace("CountedGoal", std::move(actorFile));
-        CountedGoal* spawned = SpawnFromActorFile<CountedGoal>(scene, "CountedGoal", "GoalActor");
+        NS::SetActorFileClass(actorFile, "PlacementCountedGoal");
+        outScope.emplace("PlacementCountedGoal", std::move(actorFile));
+        PlacementCountedGoal* spawned = SpawnFromActorFile<PlacementCountedGoal>(scene, "PlacementCountedGoal", "GoalActor");
         EXPECT_NE(spawned, nullptr);
         if (spawned == nullptr)
         {
@@ -177,7 +198,7 @@ namespace
     }
 } // namespace
 
-NS_CLASS(CountedGoal)
+NS_CLASS(PlacementCountedGoal)
 
 // 置く・消す は、どれも未保存にする。読み込んだだけのシーンは未保存でない
 TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
@@ -216,25 +237,6 @@ TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
     editor.DeleteSelectedActor();
 
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
-    EXPECT_EQ(CountedGoal::s_endPlays, 1);
-    EXPECT_EQ(CountedGoal::s_destroyed, 1);
-}
-
-// ApplyActorSnapshot が作り直しで置き換えた古いアクターも、その場で OnEndPlay を呼んで解放する
-TEST(EditorUnsaved, ActorReplacedBySnapshotIsEndedAndFreedAtOnce)
-{
-    std::optional<ScopedActorFile> scope;
-    NS::Scene scene;
-    const NS::uint32 id = SpawnCountedGoal(scene, scope);
-    ASSERT_NE(id, NS::k_NoActorId);
-    std::optional<nlohmann::json> snapshot = NS::Ed::CaptureActor(scene.Actors(), id);
-    ASSERT_TRUE(snapshot.has_value());
-    // 読まれていない .actor を指すと、値を重ねられないので作り直す
-    NS::SetActorJsonFile(*snapshot, "MissingActorFileForReplace");
-
-    const TestLogCapture log;
-    NS::Ed::ApplyActorSnapshot(scene, id, snapshot);
-
-    EXPECT_EQ(CountedGoal::s_endPlays, 1);
-    EXPECT_EQ(CountedGoal::s_destroyed, 1);
+    EXPECT_EQ(PlacementCountedGoal::s_endPlays, 1);
+    EXPECT_EQ(PlacementCountedGoal::s_destroyed, 1);
 }

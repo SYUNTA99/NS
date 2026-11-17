@@ -177,18 +177,28 @@ namespace NS
 
         //! アクターの JSON から 1 体を組んで入れる。id と名前は JSON のまま使う
         //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
-        //! ApplyFromJson で同じ id が居ない時に通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
+        //! undo の作り直しと複製が通る。.actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
         SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
 
         //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
         //! .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
         //! 書いてから、束・動作・素材を読み直す。替えた先の .actor が違うクラスなら ERROR を出し、何も変えずに nullptr を返す。
-        //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターは OnEndPlay を呼んで解放する
-        SceneActor* ApplyFromJson(const nlohmann::json& actorJson);
+        //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターを解放せずに外して
+        //! replaced へ渡す。replaced を捨てる時は、呼び手が先に OnEndPlay を呼ぶ
+        //! @param[out] replaced 作り直した時の古いアクター。作り直さなければ触らない。nullptr は渡さない
+        SceneActor* ApplyFromJson(const nlohmann::json& actorJson, std::unique_ptr<SceneActor>* replaced);
 
         //! アクターを 1 体消す。居なければ何もしない
         //! 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
         void RemoveActor(uint32 objectId);
+
+        //! アクターを 1 体、解放せずにシーンから外して返す。.actor が見つからずに持っている同じ id の JSON は捨てる
+        //! Disappear で登録の組が無効になるが、OnEndPlay は呼ばない。返した物を捨てる時は、呼び手が先に
+        //! OnEndPlay を呼ぶ。居なければ空を返す。1 歩の更新の最中は断る
+        [[nodiscard]] DetachedActor DetachActor(uint32 objectId);
+
+        //! DetachActor で外したアクターを外す前の並びの位置へ戻す。外す前に出ていた物は Appear する
+        SceneActor* ReattachActor(DetachedActor detached);
 
         //! 1 固定ステップを進める。始めに前の歩で頼まれた止めを効かせ、シーンが止まっている歩と普段の歩で
         //! StepStopped・StepWorld を呼び分ける。止まっているかはこの歩の間変えない。
@@ -244,9 +254,8 @@ namespace NS
         //! 作れた時は同じ id の持っていた JSON を捨てる
         [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
 
-        //! ApplyFromJson の作り直す道。同じ id のアクターを外し、同じ並びの位置へ JSON から作って入れてから、
-        //! 外した古いアクターの OnEndPlay を呼んで解放する
-        SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot);
+        //! ApplyFromJson の作り直す道。同じ id のアクターを外して replaced へ渡し、同じ並びの位置へ JSON から作って入れる
+        SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced);
 
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);

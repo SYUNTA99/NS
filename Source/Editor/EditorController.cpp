@@ -8,6 +8,8 @@
 #include "Editor/EditorActors.h"
 #include "Editor/GridMath.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/ActorSnapshotCommand.h"
+#include "Editor/Undo/CompositeCommand.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/ThirdPersonFollow.h"
 #include "Game/PlayerActor.h"
@@ -72,6 +74,26 @@ namespace NS
             // 秒と揃え、モード切替の繋ぎを同じ感触にする
             constexpr float k_EditBlendSeconds = 0.35f;
 
+            class EnvironmentCommand final : public ICommand
+            {
+            public:
+                EnvironmentCommand(Scene& scene, SceneEnvironment before, SceneEnvironment after)
+                    : m_scene(scene), m_before(std::move(before)), m_after(std::move(after))
+                {}
+
+                void Do() noexcept override { m_scene.SetEnvironment(m_after); }
+                void Undo() noexcept override { m_scene.SetEnvironment(m_before); }
+                [[nodiscard]] std::size_t EstimatedBytes() const noexcept override
+                {
+                    return sizeof(*this) + m_before.skybox.size() + m_after.skybox.size() +
+                           AssetFieldName(m_before.music).size() + AssetFieldName(m_after.music).size();
+                }
+
+            private:
+                Scene& m_scene;
+                SceneEnvironment m_before;
+                SceneEnvironment m_after;
+            };
         } // namespace
 
         EditorController::EditorController(Scene& scene) noexcept : m_scene(scene)
@@ -84,6 +106,7 @@ namespace NS
                 CommitTransformEdit();
                 CommitClassObjEdit();
                 ClearAssetSelection();
+                m_editor.Undo().Clear();
                 SelectActorById(k_NoActorId);
                 m_dragFollowers.clear();
                 m_gizmoWasDragging = false;
@@ -136,7 +159,8 @@ namespace NS
             {
                 SceneEnvironment after = m_scene.Environment();
                 after.skybox = std::move(normalized);
-                m_scene.SetEnvironment(after);
+                m_editor.Undo().Push(
+                    std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
                 m_editor.MarkEdited();
             }
             return true;
@@ -173,7 +197,8 @@ namespace NS
                 after.musicVolume != m_scene.Environment().musicVolume ||
                 after.soundFullVolumeDistance != m_scene.Environment().soundFullVolumeDistance)
             {
-                m_scene.SetEnvironment(after);
+                m_editor.Undo().Push(
+                    std::make_unique<EnvironmentCommand>(m_scene, m_scene.Environment(), std::move(after)));
                 m_editor.MarkEdited();
             }
             return true;
@@ -412,9 +437,11 @@ namespace NS
             else
             {
                 // 戻す姿が無くても、プレイを終えるのは組み直しだけなので、今の姿で組み直す。
-                // プレイで動いた分を編集の変更にしない
+                // プレイで動いた分を編集の変更として履歴に積まない
                 baseline = m_scene.ToJson();
             }
+            // 履歴は残す。持っているアクターは組み直しが捨てる管理クラスを指すので、先に解放して JSON から戻す形にする
+            m_editor.Undo().ReleaseHeldActors();
             m_scene.ResetFromJson(std::move(baseline));
             // プレイ中にインスペクタで変えた値は、組み直しの姿に入っている。書いていればシーンを未保存にする
             // プレイで動いた値は baseline へ書かないので数えない
@@ -625,10 +652,12 @@ namespace NS
             }
             m_gizmoWasDragging = nowDragging;
 
+            // 掴んでいる間は選択の貼り直しを飛ばすので、取り消しが旧 Transform を指す。掴んでいる間は取り消しを止める
+            m_editor.SetUndoRedoSuppressed(m_gizmo.IsDragging());
             m_editor.Tick(m_editShortcutsBlocked, presses);
             if (m_editor.IsLevelDirty())
             {
-                // 作る・読込はアクターを組み直し済。gizmo を今の実体へ貼り直す
+                // 作る・取り消し・読込はアクターを組み直し済。gizmo を今の実体へ貼り直す
                 // 消えた選択や読込での id 振り直しは解決が自然に外す
                 ResolveSelectionFromId();
                 m_editor.ClearLevelDirty();
@@ -908,7 +937,8 @@ namespace NS
                 return;
             }
             SceneActor* object = m_scene.Actors().FindByActorId(id);
-            if (object == nullptr)
+            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), id);
+            if (object == nullptr || !before)
             {
                 return;
             }
@@ -918,8 +948,13 @@ namespace NS
             m_scene.Actors().RenameActor(object, name);
             if (object->Name() == previous)
             {
-                return; // 同じ名前なら未保存にしない
+                return; // 同じ名前なら履歴に積まず、未保存にもしない
             }
+
+            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), id);
+            // 実体は既に after なので Do を呼ばず履歴だけ積む
+            m_editor.Undo().Record(
+                std::make_unique<ActorSnapshotCommand>(m_scene, id, std::move(before), std::move(after)));
             m_editor.MarkEdited();
 
             ResolveSelectionFromId();
@@ -978,20 +1013,26 @@ namespace NS
                 return;
             }
 
-            bool deleted = false;
+            std::vector<std::unique_ptr<ICommand>> commands;
+            commands.reserve(m_selectionIds.size());
             for (const uint32 victim : m_selectionIds)
             {
-                if (m_scene.Actors().FindByActorId(victim) == nullptr)
+                std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), victim);
+                if (!before)
                 {
                     continue;
                 }
                 m_scene.RemoveActor(victim);
-                deleted = true;
+                commands.push_back(
+                    std::make_unique<ActorSnapshotCommand>(m_scene, victim, std::move(before), std::nullopt));
             }
-            if (!deleted)
+            if (commands.empty())
             {
                 return;
             }
+
+            // 消し終えた変更を、Do を呼ばずに 1 回の履歴として積む
+            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
             m_editor.MarkEdited();
 
             SelectActorById(k_NoActorId);
@@ -1151,9 +1192,10 @@ namespace NS
             for (const uint32 id : ids)
             {
                 const SceneActor* actor = m_scene.Actors().FindByActorId(id);
-                if (actor != nullptr)
+                std::optional<nlohmann::json> snapshot = CaptureActor(m_scene.Actors(), id);
+                if (actor != nullptr && snapshot)
                 {
-                    m_editBaselines.push_back(TransformEditBaseline{id, AllFieldValues(actor)});
+                    m_editBaselines.push_back(TransformEditBaseline{id, std::move(*snapshot), AllFieldValues(actor)});
                 }
             }
         }
@@ -1166,35 +1208,44 @@ namespace NS
             }
             m_transformEditing = false;
 
-            const bool changed = FinishEditBaselines();
-            // プレイ中に動いた姿勢は、編集へ戻る組み直しで消えるので未保存にしない
-            if (!IsSceneEditable() || !changed)
+            std::vector<std::unique_ptr<ICommand>> commands = TakeEditBaselineCommands();
+            // プレイ中に動いた姿勢は、編集へ戻る組み直しで消えるので履歴に積まず、未保存にもしない
+            if (!IsSceneEditable() || commands.empty())
             {
                 return;
             }
+            // 実体は既に動いた後なので Do を呼ばず履歴だけ積む。取り消しで控えへ、やり直しで動いた後へ戻す
+            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
             m_editor.MarkEdited();
         }
 
-        bool EditorController::FinishEditBaselines()
+        std::vector<std::unique_ptr<ICommand>> EditorController::TakeEditBaselineCommands()
         {
             // 実体の Transform は既に動いている。シーンに書く欄の値が控えと同じなら変わっていない
             // .actor へ書く欄は、.actor を書き直して値が変わってもシーンの変更にしない
-            bool changed = false;
-            for (const TransformEditBaseline& entry : m_editBaselines)
+            std::vector<std::unique_ptr<ICommand>> commands;
+            for (TransformEditBaseline& entry : m_editBaselines)
             {
                 SceneActor* actor = m_scene.Actors().FindByActorId(entry.id);
                 if (actor == nullptr)
                 {
                     continue;
                 }
-                // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足す
-                if (AddChangedSceneOverrides(actor, entry.fields))
+                // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足してから後の姿を写す
+                if (!AddChangedSceneOverrides(actor, entry.fields))
                 {
-                    changed = true;
+                    continue;
                 }
+                std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), entry.id);
+                if (!after)
+                {
+                    continue;
+                }
+                commands.push_back(
+                    std::make_unique<ActorSnapshotCommand>(m_scene, entry.id, std::move(entry.snapshot), std::move(*after)));
             }
             m_editBaselines.clear();
-            return changed;
+            return commands;
         }
 
         void EditorController::BeginClassObjEdit() noexcept
@@ -1235,23 +1286,31 @@ namespace NS
             m_classObjEditing = false;
 
             // リフレクション編集は実体の部品へ直接入っている。今の姿が控えと違えば変わった
-            const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
-            bool changed = after && *after != m_classObjEditBaseline;
+            std::vector<std::unique_ptr<ICommand>> commands;
+            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_classObjEditBaselineId);
+            if (after && *after != m_classObjEditBaseline)
+            {
+                commands.push_back(std::make_unique<ActorSnapshotCommand>(
+                    m_scene, m_classObjEditBaselineId, m_classObjEditBaseline, std::move(*after)));
+            }
             if (m_classObjFollowing)
             {
                 m_classObjFollowing = false;
                 m_dragFollowers.clear();
-                if (FinishEditBaselines())
+                std::vector<std::unique_ptr<ICommand>> moved = TakeEditBaselineCommands();
+                for (std::unique_ptr<ICommand>& command : moved)
                 {
-                    changed = true;
+                    commands.push_back(std::move(command));
                 }
             }
 
             // プレイ中の値は、MirrorPlayEditToBaseline が数え、編集へ戻る時に LeavePlayForEdit が未保存にする
-            if (!IsSceneEditable() || !changed)
+            if (!IsSceneEditable() || commands.empty())
             {
                 return;
             }
+            // 実体は既に変えた後なので Do を呼ばず履歴だけ積む
+            m_editor.Undo().Record(MakeUndoUnit(std::move(commands)));
             m_editor.MarkEdited();
         }
 
@@ -1270,9 +1329,20 @@ namespace NS
             {
                 return false;
             }
+            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), child);
+            if (!before)
+            {
+                return false;
+            }
             // 位置は世界座標のままなので、親を替えても子は動かない
             actor->TransformObj().SetParent(ActorRef{parent});
             FinishFieldWrite(actor, FieldType::ActorRef);
+            std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), child);
+            if (!after)
+            {
+                return false;
+            }
+            m_editor.Undo().Record(std::make_unique<ActorSnapshotCommand>(m_scene, child, std::move(*before), std::move(*after)));
             m_editor.MarkEdited();
             return true;
         }

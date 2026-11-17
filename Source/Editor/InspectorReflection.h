@@ -31,7 +31,7 @@ namespace NS
         };
 
         //! 1フレームのアクターの持ち物の編集で起きた相互作用の集約
-        //! activated/committed はドラッグ全体を 1 回の編集として確定するための開始・終了フレームのフラグ
+        //! activated/committed はドラッグ全体を 1 回の取り消しにまとめるための開始・終了フレームのフラグ
         struct ClassObjEditResult
         {
             bool changed = false;   // いずれかの値が編集された
@@ -39,7 +39,7 @@ namespace NS
             bool committed = false; // いずれかのウィジェットが非活性化した (編集の有無は問わない)
 
             // 既定へ戻す要求。ボタンが押されたフレームだけ対象と欄が入る
-            // 値をこの場で書くと編集の始まりの控えを取る前に実体が動くので、適用は呼び出し側へ預ける
+            // 値をこの場で書くと取り消しの控えを取る前に実体が動くので、適用は呼び出し側へ預ける
             Object* revertTarget = nullptr;
             const FieldDesc* revertField = nullptr;
 
@@ -57,7 +57,7 @@ namespace NS
                                          const FieldDesc& field,
                                          const SceneActor* actor);
 
-        //! リフレクション欄を編集し、編集の確定に要る編集開始・終了と変更内容を返す
+        //! リフレクション欄を編集し、取り消しに要る編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力。partKey と actor があれば上書きの表示と既定に戻すを使える
         //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object* comp,

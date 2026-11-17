@@ -1,0 +1,188 @@
+#include "Editor/EditorMode.h"
+#include "Editor/EditorController.h"
+#include "Editor/LevelFilePaths.h"
+#include "Editor/EditorActors.h"
+#include "Editor/Undo/ActorSnapshotCommand.h"
+#include "Editor/Undo/UndoStack.h"
+#include "Game/Level/GameScene.h"
+#include "Game/Game.h"
+#include "Game/Level/FollowCameraActor.h"
+#include "Game/Level/GoalActor.h"
+#include "Game/PlayerActor.h"
+#include "NSlib/CoreObject/ActorList.h"
+#include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/Reflection/ActorFile.h"
+#include "NSlib/CoreObject/Reflection/TypeRegistry.h"
+#include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/System/CameraManager.h"
+#include "NSlib/CoreObject/System/HitSensorDirector.h"
+#include "TestRegistrations.h"
+#include "TestSpawn.h"
+
+#include <gtest/gtest.h>
+
+#include <memory>
+#include <optional>
+
+using NS::Ed::EditorController;
+
+namespace
+{
+    // エディタで消す操作と同じく、今の姿を前に、居ない姿を後にしたコマンドを積む
+    void DeleteActor(NS::Ed::UndoStack& undo, NS::Scene& scene, NS::uint32 id)
+    {
+        std::optional<nlohmann::json> before = NS::Ed::CaptureActor(scene.Actors(), id);
+        ASSERT_TRUE(before.has_value());
+        undo.Push(std::make_unique<NS::Ed::ActorSnapshotCommand>(scene, id, std::move(before), std::nullopt));
+    }
+
+    // 履歴が持つアクターを解放したかを見るためのゴール。数えるのは counted を立てた物だけで、
+    // JSON から作り直した CountedGoal は数えない
+    class CountedGoal final : public GL::Level::GoalActor
+    {
+    public:
+        NS_REFLECT_NONE(CountedGoal, GL::Level::GoalActor)
+
+        ~CountedGoal() override
+        {
+            if (counted)
+            {
+                ++s_destroyed;
+            }
+        }
+
+        void OnEndPlay() override
+        {
+            if (counted)
+            {
+                ++s_endPlays;
+            }
+            GL::Level::GoalActor::OnEndPlay();
+        }
+
+        bool counted = false;
+        static int s_endPlays;
+        static int s_destroyed;
+    };
+
+    int CountedGoal::s_endPlays = 0;
+    int CountedGoal::s_destroyed = 0;
+
+    // GoalActor の .actor をクラスだけ替えて CountedGoal の .actor に敷き、数える CountedGoal を作って id を返す
+    NS::uint32 SpawnCountedGoal(NS::Scene& scene)
+    {
+        const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
+        EXPECT_NE(goal, nullptr);
+        if (goal == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        nlohmann::json actorFile = *goal;
+        NS::SetActorFileClass(actorFile, "CountedGoal");
+        EXPECT_TRUE(NS::ActorFileLibrary::Get().Set("CountedGoal", std::move(actorFile)));
+        CountedGoal* spawned = SpawnFromActorFile<CountedGoal>(scene, "CountedGoal", "GoalActor");
+        EXPECT_NE(spawned, nullptr);
+        if (spawned == nullptr)
+        {
+            return NS::k_NoActorId;
+        }
+        spawned->counted = true;
+        return spawned->Id();
+    }
+} // namespace
+
+NS_CLASS(CountedGoal)
+
+// 消した操作を元に戻すと、消す前と同じアクターが同じ並びの位置に戻り、登録も消す前と同じ数になる
+TEST(EditorUndoActor, UndoDeleteRestoresTheSameActor)
+{
+    NS::Scene scene;
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "A");
+    GL::Level::GoalActor* middle = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "B");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "C");
+    const NS::uint32 id = middle->Id();
+    const std::size_t index = scene.Actors().IndexOfActorId(id);
+    const Registrations before = CountRegistrations(scene);
+
+    NS::Ed::UndoStack undo;
+    DeleteActor(undo, scene, id);
+    ASSERT_EQ(scene.Actors().FindByActorId(id), nullptr);
+
+    ASSERT_TRUE(undo.Undo());
+    EXPECT_EQ(scene.Actors().FindByActorId(id), middle);
+    EXPECT_EQ(scene.Actors().IndexOfActorId(id), index);
+    EXPECT_EQ(CountRegistrations(scene), before);
+}
+
+// 消した後に履歴を捨てると、消したアクターの登録が 1 つも残らない
+TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
+{
+    NS::Scene scene;
+    // 当たりの画面と振動の管理クラスは持ち主が消えても残るので、残すアクターに先に作らせてから数える
+    (void)SpawnFromActorFile<PlayerActor>(scene, "PlayerActor", "Keep");
+    const Registrations kept = CountRegistrations(scene);
+
+    const NS::uint32 goal = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor")->Id();
+    const NS::uint32 player = SpawnFromActorFile<PlayerActor>(scene, "PlayerActor")->Id();
+    const NS::uint32 light = SpawnFromActorFile<NS::LightActor>(scene, "LightActor")->Id();
+    const NS::uint32 camera = SpawnFromActorFile<GL::Level::FollowCameraActor>(scene, "FollowCameraActor")->Id();
+
+    NS::Ed::UndoStack undo;
+    DeleteActor(undo, scene, goal);
+    DeleteActor(undo, scene, player);
+    DeleteActor(undo, scene, light);
+    DeleteActor(undo, scene, camera);
+    undo.Clear();
+
+    EXPECT_EQ(CountRegistrations(scene), kept);
+}
+
+// 消してからプレイに入って戻ると、組み直しの前に履歴が持つアクターを解放し、元に戻すと JSON から作り直す
+TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
+{
+    GL::Level::GameScene scene;
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    const NS::uint32 id = SpawnCountedGoal(scene);
+    EditorController editor(scene);
+    const Registrations before = CountRegistrations(scene);
+    CountedGoal::s_endPlays = 0;
+    CountedGoal::s_destroyed = 0;
+
+    DeleteActor(editor.Editor().Undo(), scene, id);
+    editor.EnterPlay();
+    editor.EnterEdit();
+
+    // 組み直しの後に履歴が持ったままだと、捨てた管理クラスを指したアクターを戻してしまう
+    ASSERT_EQ(CountedGoal::s_destroyed, 1);
+    EXPECT_EQ(CountedGoal::s_endPlays, 1);
+
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    const NS::SceneActor* restored = scene.Actors().FindByActorId(id);
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(CountedGoal::s_destroyed, 1);
+    EXPECT_EQ(CountRegistrations(scene), before);
+}
+
+// 消してからレベルを開くと、読み込んだシーンを組み直す前に、履歴が持つアクターを解放する
+TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
+{
+    NS::Scene scene;
+    const NS::uint32 id = SpawnCountedGoal(scene);
+    CountedGoal::s_endPlays = 0;
+    CountedGoal::s_destroyed = 0;
+
+    NS::Ed::EditorMode editor;
+    DeleteActor(editor.Undo(), scene, id);
+
+    int destroyedAtRebuild = -1;
+    int endPlaysAtRebuild = -1;
+    editor.SetLoadLevelFn([&destroyedAtRebuild, &endPlaysAtRebuild](nlohmann::json&&) {
+        destroyedAtRebuild = CountedGoal::s_destroyed;
+        endPlaysAtRebuild = CountedGoal::s_endPlays;
+    });
+    ASSERT_TRUE(editor.OpenLevel(NS::Ed::StartLevelName()));
+
+    EXPECT_EQ(destroyedAtRebuild, 1);
+    EXPECT_EQ(endPlaysAtRebuild, 1);
+    EXPECT_EQ(editor.Undo().UndoSize(), 0u);
+}

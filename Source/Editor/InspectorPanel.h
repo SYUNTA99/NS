@@ -62,7 +62,7 @@ namespace NS
             std::string m_skyboxDraft;
             std::string m_skyboxPreviewPath;
             bool m_skyboxPreviewFailed = false;
-            // 曲の元の値と下書き。元の値がシーンと違ったら (読み直しなど) 下書きを合わせ直す
+            // 曲の元の値と下書き。元の値がシーンと違ったら (元に戻す・読み直し) 下書きを合わせ直す
             std::string m_musicSource;
             float m_musicVolumeSource = 0.0f;
             std::string m_musicDraft;

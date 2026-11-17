@@ -4,6 +4,8 @@
 #include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
 #include "Editor/LevelFilePaths.h"
+#include "Editor/Undo/ActorSnapshotCommand.h"
+#include "Editor/Undo/CompositeCommand.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/Core/Windows/Clock.h"
@@ -35,6 +37,7 @@ namespace NS
             {
                 return;
             }
+            HandleUndoRedoInput(presses);
             HandleSaveLoadInput(presses);
         }
 
@@ -204,6 +207,9 @@ namespace NS
                 return false;
             }
 
+            // 新レベルなので取り消しの履歴を捨てる。履歴が持つアクターは組み直しが捨てる管理クラスを指すので、
+            // 組み直しより先に捨てる
+            m_undo.Clear();
             m_loadLevel(std::move(fresh));
             m_savedEditVersion = EditVersion();
             m_levelDirty = true;
@@ -301,7 +307,7 @@ namespace NS
 
         std::vector<uint32> EditorMode::CreateActors(std::vector<nlohmann::json> objects)
         {
-            // プレイ中に作った物は、編集へ戻る組み直しで消えるので作らない
+            // プレイ中に作った物は、編集へ戻る組み直しで消える。履歴だけがプレイの姿を指して残るので作らない
             std::vector<uint32> created;
             if (!IsSceneEditable() || m_scene == nullptr || objects.empty())
             {
@@ -323,15 +329,85 @@ namespace NS
                 created.push_back(id);
             }
 
+            std::vector<std::unique_ptr<ICommand>> commands;
+            commands.reserve(objects.size());
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
                 RemapActorRefs(objects[i], idMap);
                 // 組めない姿は Scene が JSON のまま持って保存に残すので、作れたかは確かめない
                 (void)m_scene->SpawnFromJson(objects[i]);
+                commands.push_back(
+                    std::make_unique<ActorSnapshotCommand>(*m_scene, created[i], std::nullopt, std::move(objects[i])));
             }
+            // 作り終えた変更を、Do を呼ばずに 1 回の履歴として積む
+            m_undo.Record(MakeUndoUnit(std::move(commands)));
             MarkEdited();
             m_levelDirty = true;
             return created;
+        }
+
+        void EditorMode::HandleUndoRedoInput(const OS::InputPresses& presses) noexcept
+        {
+            if (m_input == nullptr)
+            {
+                return;
+            }
+            // ドラッグ中は選択の貼り直しを飛ばすため、旧 Transform を指したまま取り消しが走らないように止める
+            if (m_undoRedoSuppressed)
+            {
+                return;
+            }
+
+            OS::Keyboard& kb = m_input->Keyboard();
+            const bool ctrl = kb.IsHeld(OS::Key::Ctrl);
+            const bool shift = kb.IsHeld(OS::Key::Shift);
+
+            if (ctrl && shift && presses.WasPressed(OS::Key::Z))
+            {
+                PerformRedo();
+                return;
+            }
+            if (ctrl && presses.WasPressed(OS::Key::Z))
+            {
+                PerformUndo();
+                return;
+            }
+            if (ctrl && presses.WasPressed(OS::Key::Y))
+            {
+                PerformRedo();
+            }
+        }
+
+        bool EditorMode::PerformUndo() noexcept
+        {
+            // 履歴は編集の姿を指す。プレイ中の実体へ当てると、プレイの姿に編集の姿が混ざる
+            const bool changesScene = m_undo.NextUndoChangesScene();
+            if (!IsSceneEditable() || !m_undo.Undo())
+            {
+                return false;
+            }
+            // 版は戻らないので、保存した時の姿へ戻しても未保存のまま。.actor だけを戻した時は未保存にしない
+            if (changesScene)
+            {
+                MarkEdited();
+            }
+            m_levelDirty = true;
+            return true;
+        }
+
+        bool EditorMode::PerformRedo() noexcept
+        {
+            const bool changesScene = m_undo.NextRedoChangesScene();
+            if (!IsSceneEditable() || !m_undo.Redo())
+            {
+                return false;
+            }
+            if (changesScene)
+            {
+                MarkEdited();
+            }
+            m_levelDirty = true;
+            return true;
         }
     } // namespace Ed
 } // namespace NS

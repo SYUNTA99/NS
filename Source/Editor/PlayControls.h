@@ -68,7 +68,7 @@ namespace NS
             bool uiMouse = false;
             bool uiKeyboard = false;
             bool leftButtonToGame = false; // UI がマウスを持つ間も、左ボタンだけゲームへ渡すか
-            // 編集のショートカット (削除・複製・寄る など) を止めるか。
+            // 編集のショートカット (削除・複製・寄る・元に戻す など) を止めるか。
             // パネルに焦点があるだけでは止めず、文字を打つ間・項目を操作する間・モーダルの窓を開いている間だけ止める
             bool editShortcutsBlocked = false;
         };

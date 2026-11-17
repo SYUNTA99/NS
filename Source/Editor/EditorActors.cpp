@@ -51,7 +51,7 @@ namespace NS
             {
                 return std::nullopt;
             }
-            // 写しから同じ姿を作り直せるように、アクターが自分を全部品の値まで書き出す
+            // 取り消しは編集値ごと戻すため、アクターが自分を全部品の値まで忠実に書き出す
             return ActorToJson(actor);
         }
 
@@ -93,18 +93,6 @@ namespace NS
                 }
             });
             return changed;
-        }
-
-        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired)
-        {
-            if (!desired)
-            {
-                scene.RemoveActor(id);
-                return;
-            }
-            SetActorJsonId(*desired, id);
-            // 当てられなかった時は ApplyFromJson がログに理由を出す。呼び手は姿を確かめないので戻り値は捨てる
-            (void)scene.ApplyFromJson(*desired);
         }
 
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)

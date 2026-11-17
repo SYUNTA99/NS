@@ -6,6 +6,7 @@
 #include "Editor/LevelFilePaths.h"
 #include "Editor/EditorController.h"
 #include "Editor/PlacementCatalog.h"
+#include "Editor/Undo/CompositeCommand.h"
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Windows/Keyboard.h"
@@ -289,15 +290,17 @@ TEST(EditorLevelOpen, LevelNameOfScenePathRejectsPathsOutsideAssetsOrNotScenes)
     EXPECT_EQ(NS::LevelNameOfScenePath("Assets/../a.scene"), "");
 }
 
-// 自機の居ないレベルを開くと、何も補わずに書いたまま読み、名前を控え、開く前に編集していても未保存でない状態で始まる
-TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsSaved)
+// 自機の居ないレベルを開くと、自機と落下死の範囲を 1 体ずつ補い、名前を控え、前の履歴を捨てて未保存でない
+TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsCleanHistory)
 {
     const std::string name = WriteLevel("empty", NS::MakeSceneJson().dump());
 
     NS::Ed::EditorMode editor;
     nlohmann::json loaded;
     editor.SetLoadLevelFn([&loaded](nlohmann::json&& fresh) { loaded = std::move(fresh); });
-    // 開く前に編集して、未保存の状態にする
+    // 開く前の編集が履歴に残っている状態にする
+    editor.Undo().Record(
+        std::make_unique<NS::Ed::CompositeCommand>(std::vector<std::unique_ptr<NS::Ed::ICommand>>{}));
     editor.MarkEdited();
     ASSERT_TRUE(editor.HasUnsavedChanges());
 
@@ -307,6 +310,7 @@ TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsSaved)
     EXPECT_EQ(CountActorsOfClass(loaded, "PlayerActor"), 0);
     EXPECT_EQ(CountActorsOfClass(loaded, "DeathZoneActor"), 0);
     EXPECT_EQ(editor.CurrentLevelName(), name);
+    EXPECT_EQ(editor.Undo().UndoSize(), 0u);
     EXPECT_FALSE(editor.HasUnsavedChanges());
 }
 

@@ -119,6 +119,19 @@ inline nlohmann::json CodeValuesActorFile(std::string_view className)
     return NS::CreateActorOfClass(NS::ActorFileLibrary::Get().ClassNameOf(name), NS::ActorInitInfo{.actorFile = name});
 }
 
+//! @brief 控えを当てる。作り直して返った古いアクターは、履歴が捨てる時と同じく OnEndPlay を呼んでから解放する
+//! @details 古いアクターを見ない試しが使う
+inline NS::SceneActor* ApplySnapshot(NS::Scene& scene, const nlohmann::json& snapshot)
+{
+    std::unique_ptr<NS::SceneActor> replaced;
+    NS::SceneActor* applied = scene.ApplyFromJson(snapshot, &replaced);
+    if (replaced)
+    {
+        replaced->OnEndPlay();
+    }
+    return applied;
+}
+
 //! @brief 試しの間だけ name の .actor を読んだ物として敷き、壊す時に前の文書へ戻す
 //! @details ファイルへは書かない。前に文書が無ければ外す。
 //! 置き場を差し替える型と使う時は、置き場を差し替えた後に作る。差し替えは読み直すので、前に敷いた物が消える

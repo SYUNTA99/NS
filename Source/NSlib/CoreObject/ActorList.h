@@ -25,6 +25,7 @@ namespace NS
     {
         std::unique_ptr<SceneActor> actor; // 居なかった時と、外すのを断った時は空
         std::size_t index = 0;             // 外す前の並びの位置
+        bool wasAppeared = false;          // 外す前に出ていたか。戻す時に出す物を決める
     };
 
     //! アクターを所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
@@ -140,6 +141,9 @@ namespace NS
         //! objectId のアクターを Disappear してから、解放せずに一覧から外す。OnEndPlay は呼ばない
         //! 居なければ空を返す。1 歩の更新の最中は断る
         [[nodiscard]] DetachedActor DetachByActorId(uint32 objectId);
+
+        //! DetachByActorId で外したアクターを外す前の位置へ戻し、出ていた物は Appear する。OnStart は呼び直さない
+        SceneActor* Reattach(DetachedActor detached);
 
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄したアクターを索引に残さない
         void MarkIndexDirty() noexcept;

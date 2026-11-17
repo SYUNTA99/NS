@@ -230,8 +230,9 @@ namespace NS
         return raw;
     }
 
-    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
+    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced)
     {
+        NS_ASSERT(Scene, replaced != nullptr, "作り直した時の古いアクターを受ける先が無い");
         SceneActor* obj = m_actors.FindByActorId(ActorJsonId(snapshot));
         if (obj == nullptr)
         {
@@ -254,12 +255,12 @@ namespace NS
         const nlohmann::json* values = ActorFileLibrary::Get().Values(actorFile);
         if (values == nullptr)
         {
-            return RebuildActorFromJson(snapshot);
+            return RebuildActorFromJson(snapshot, replaced);
         }
         const std::optional<nlohmann::json> merged = MergeLayer(*values, snapshot, FieldDestination::Scene, obj);
         if (!merged.has_value())
         {
-            return RebuildActorFromJson(snapshot);
+            return RebuildActorFromJson(snapshot, replaced);
         }
         const nlohmann::json& object = *merged;
         const bool actorFileChanged = actorFile != obj->ActorFileName();
@@ -295,27 +296,27 @@ namespace NS
         return obj;
     }
 
-    SceneActor* Scene::RebuildActorFromJson(const nlohmann::json& snapshot)
+    SceneActor* Scene::RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced)
     {
-        // 古いアクターは新しいアクターを入れ終えるまで解放しない。外したアクターの番地に新しいアクターが作られない
+        // 古いアクターは解放せずに呼び手へ渡す。外したアクターの番地に新しいアクターが作られない
         DetachedActor detached = m_actors.DetachByActorId(ActorJsonId(snapshot));
         if (!detached.actor)
         {
             return nullptr;
         }
+        *replaced = std::move(detached.actor);
         // 組めない姿は居ない姿として扱い、JSON は BuildOrKeepUnresolved が持つ
-        SceneActor* raw = nullptr;
         std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(snapshot);
-        if (built)
+        if (!built)
         {
-            raw = m_actors.InsertFromJson(std::move(built), snapshot, detached.index);
+            return nullptr;
         }
-        if (raw != nullptr)
+        SceneActor* raw = m_actors.InsertFromJson(std::move(built), snapshot, detached.index);
+        if (raw == nullptr)
         {
-            StartSpawned(raw);
+            return nullptr;
         }
-        // 外した時に Disappear 済み。ここで終わらせ、detached が解放する
-        detached.actor->OnEndPlay();
+        StartSpawned(raw);
         return raw;
     }
 
@@ -325,6 +326,23 @@ namespace NS
         std::erase_if(m_unresolvedActors, [objectId](const nlohmann::json& unresolved) {
             return ActorJsonId(unresolved) == objectId;
         });
+    }
+
+    DetachedActor Scene::DetachActor(uint32 objectId)
+    {
+        DetachedActor detached = m_actors.DetachByActorId(objectId);
+        std::erase_if(m_unresolvedActors, [objectId](const nlohmann::json& unresolved) {
+            return ActorJsonId(unresolved) == objectId;
+        });
+        return detached;
+    }
+
+    SceneActor* Scene::ReattachActor(DetachedActor detached)
+    {
+        NS_ASSERT(Scene,
+                  !detached.actor || detached.actor->OwningScene() == this,
+                  "別のシーンから外したアクターを戻そうとしている");
+        return m_actors.Reattach(std::move(detached));
     }
 
     void Scene::ClearEffects() noexcept

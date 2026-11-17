@@ -1268,7 +1268,7 @@ namespace NS
                                        view.size,
                                        ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight |
                                            ImGuiButtonFlags_MouseButtonMiddle);
-                // ドラッグ全体を 1 回の編集として確定するため、グラフの活性化と非活性化も集約へ入れる
+                // ドラッグ全体を 1 回の取り消しにまとめるため、グラフの活性化と非活性化も集約へ入れる
                 result.activated |= ImGui::IsItemActivated();
                 const bool graphDeactivated = ImGui::IsItemDeactivated();
 
@@ -1375,12 +1375,12 @@ namespace NS
                     const Curve::Key menuAt = ScreenToCurve(view, mouse);
                     storage->SetFloat(ids.menuXId, menuAt.x);
                     storage->SetFloat(ids.menuYId, menuAt.y);
-                    // 開く瞬間に activated を立てる。編集の始まりの控えを、開いている間の編集より前に取らせるため
+                    // 開く瞬間に activated を立てる。取り消しの控えを、開いている間の編集より前に取らせるため
                     result.activated = true;
                     ImGui::OpenPopup("curve-menu");
                 }
                 edited |= DrawCurveMenu(value, storage, ids);
-                // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集を確定で見落とすため
+                // メニューが開いている間は確定を遅らせる。開いた瞬間に確定するとメニューの編集が履歴に残らないため
                 const bool menuOpen = ImGui::IsPopupOpen("curve-menu");
                 const bool menuWasOpen = storage->GetBool(ids.menuWasOpenId, false);
                 if (!menuOpen && (graphDeactivated || menuWasOpen))
@@ -1449,7 +1449,7 @@ namespace NS
                 }
                 const bool open = ImGui::IsPopupOpen(editorName);
                 result.popupActive |= open;
-                // 拡大画面のつまみを離すたびに確定せず、画面を閉じるまでを 1 回の編集にまとめる
+                // 拡大画面のつまみを離すたびに履歴を区切らず、画面を閉じるまでをまとめる
                 if (open)
                 {
                     result.committed = false;
@@ -1585,7 +1585,7 @@ namespace NS
 
                 result.activated |= ImGui::IsItemActivated();
                 // 編集無しのクリックでもラッチを解くため、確定ではなく非活性化で committed を立てる
-                // 空編集は CommitClassObjEdit が before==after で弾くので未保存にならない
+                // 空編集は CommitClassObjEdit が before==after で弾くので、履歴に積まず未保存にもしない
                 if (!result.popupActive)
                 {
                     result.committed |= ImGui::IsItemDeactivated();

@@ -471,7 +471,7 @@ namespace NS
             {
                 source = *list;
             }
-            // ほかの窓で文書が変わったら読み直す。直している途中は打った値を残す
+            // 取り消しやほかの窓で文書が変わったら読み直す。直している途中は打った値を残す
             if (m_hitSetsActorFile != actorFileName || (!m_hitSetsEditing && m_hitSetsSource != source))
             {
                 m_hitSetsActorFile = actorFileName;
@@ -778,7 +778,7 @@ namespace NS
                 // 直前の HasInspectableSelection で同じ識別番号の対象を確認済み
                 SceneActor* go = editor.SelectedActor();
 
-                // 名前の正は実体。一覧での改名も映すよう、打っていない間は毎回入れ直す
+                // 名前の正は実体。一覧での改名と取り消しも映すよう、打っていない間は毎回入れ直す
                 const uint32 selectedId = editor.SelectedActorId();
                 // 打っている間は入れ直さない。打った名前は打ち始めた対象へ確定する
                 if (m_nameEditId == 0)
@@ -866,7 +866,7 @@ namespace NS
                 });
                 DrawHitSensors(editor, go);
                 DrawHitReactionSets(editor, go);
-                // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり、確定で変化を見落とす
+                // 戻すは控えを取ってから実体を書く。順を逆にすると変更後が控えになり履歴が空になる
                 if (classObjEdit.revertTarget != nullptr && revertRow != nullptr)
                 {
                     editor.BeginClassObjEdit();

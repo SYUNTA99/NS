@@ -177,7 +177,7 @@ namespace NS
             bool opened = false;
             if (!m_pendingSceneName.empty() && editor.IsSceneEditable() && !ImGui::IsPopupOpen("シーンの切り替え"))
             {
-                // 入力欄で直している途中の値は、まだ未保存に数えていない。先に確定して、未保存かを問う。
+                // 入力欄で直している途中の値は、まだ履歴に入っていない。先に確定して、未保存かを問う。
                 // 確かめの窓を開いた後は、窓が答えを受けるまでここを通らない
                 editor.CommitTransformEdit();
                 editor.CommitClassObjEdit();

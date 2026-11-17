@@ -26,7 +26,7 @@ namespace NS
     //! 部品名 partName の欄の object を返す。無い部品は作らない
     //! @return 無いか object でなければ nullptr
     [[nodiscard]] nlohmann::json* ClassObjFields(nlohmann::json& actorJson, std::string_view partName) noexcept;
-    //! アクターの保存・凍結・エディタの写しで共用する JSON。参照はメモリ上では id、ファイルでは名前
+    //! アクターの保存・凍結・編集履歴で共用する JSON。参照はメモリ上では id、ファイルでは名前
     [[nodiscard]] nlohmann::json MakeActorJson();
 
     //! アクターの永続 id。未採番と壊れた形は 0
@@ -103,7 +103,7 @@ namespace NS
     void RemapActorRefs(nlohmann::json& actorJson, const std::unordered_map<uint32, uint32>& idMap);
 
     //! object の参照の欄のうち、相手の無い欄 (id が 0 の欄と、ids に無い id を指す欄) を消す
-    //! シーンのファイルへ書く時だけ使う。エディタの写し (CaptureActor) は .actor の値に参照の欄が無いので、空の欄も残す
+    //! シーンのファイルへ書く時だけ使う。取り消しの控えは .actor の値に参照の欄が無いので、空の欄も残す
     //! id は使い回さないので、消えた相手を指す参照は未設定と同じ意味になる
     void EraseRefsWithoutTarget(nlohmann::json& actorJson, const std::unordered_set<uint32>& ids);
 } // namespace NS
