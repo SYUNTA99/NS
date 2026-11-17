@@ -385,7 +385,7 @@ project "Game"
 --============================================================================
 -- Editor (StaticLib) — エディタモジュール (NS::Editor)
 --   Editor / LevelEditorController / EditorCamera / EditorMode /
---   GizmoEditor / CategoryPalette / LevelFileBrowser / LevelFilePaths。
+--   GizmoEditor / LevelFileBrowser / LevelFilePaths。
 --   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、
 --   「ゲーム本体は editor を知らない」をリンカで強制する。
 --============================================================================
@@ -712,8 +712,6 @@ project "Tests"
         "Source/Editor/InspectorPanel.cpp",
         "Source/Editor/GizmoEditor.cpp",
         "Source/Editor/GridMath.cpp",
-        "Source/Editor/CategoryPalette.cpp",
-        "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/PlacementCatalog.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",

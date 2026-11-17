@@ -1,4 +1,3 @@
-#include "Editor/CategoryPalette.h"
 #include "Editor/EditorActors.h"
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
@@ -69,23 +68,6 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
     EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->CollisionClassObj()), nullptr);
 }
 
-// 坂の角度は組み込みの形の表だけが持つ。ひな形とパレットのブラシは、その表の角度を読む
-TEST(EditorPlacement, SlopeAnglesComeFromTheBuiltinShapes)
-{
-    for (const std::string_view name : {"wedge45", "wedge30", "wedge22", "wedge15"})
-    {
-        const std::optional<float> angle = NS::AssetManager::BuiltinSlopeAngleDegrees(name);
-        ASSERT_TRUE(angle.has_value()) << name;
-        EXPECT_FLOAT_EQ(NS::Editor::PartsSlopeAngleDegrees(NS::Editor::MakeMeshPartsPrototype(name)), *angle)
-            << name;
-    }
-    EXPECT_FALSE(NS::AssetManager::BuiltinSlopeAngleDegrees("cube").has_value());
-
-    NS::Editor::CategoryPalette palette;
-    palette.SetActiveSlot(1);
-    EXPECT_FLOAT_EQ(palette.CurrentSlopeAngleDegrees(), *NS::AssetManager::BuiltinSlopeAngleDegrees("wedge45"));
-}
-
 // エディタの姿勢の関数で JSON に書いた姿が、そのまま組んだアクターの根の姿になる
 TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 {
@@ -133,26 +115,6 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
     EXPECT_NE(NS::Cast<NS::MeshCollision>(placed->CollisionClassObj()), nullptr);
     // 名前はファイル名から付く
     EXPECT_EQ(placed->Name(), "__ns_missing_terrain__");
-}
-
-// 1 m の升として数えるのは組み込みの立方体と坂だけ。投げ込んだメッシュは大きさが分からないので数えない
-TEST(EditorPlacement, OnlyTheBuiltInPartsCountAsCells)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    ASSERT_TRUE(cube.has_value());
-    editor.PlaceItem(*cube);
-    const NS::SceneActor* placedCube = scene.Actors().FindByActorId(editor.SelectedActorId());
-    ASSERT_NE(placedCube, nullptr);
-    editor.AddMeshParts(NS::OS::FileSystem::Combine(
-        NS::OS::FileSystem::Combine(NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets"), "Models"),
-        "__ns_missing_terrain__.glb"));
-    const NS::SceneActor* dropped = scene.Actors().FindByActorId(editor.SelectedActorId());
-    ASSERT_NE(dropped, nullptr);
-
-    EXPECT_TRUE(NS::Editor::IsCellBrushActor(placedCube));
-    EXPECT_FALSE(NS::Editor::IsCellBrushActor(dropped));
 }
 
 namespace
@@ -217,8 +179,8 @@ namespace
 
 NS_CLASS(CountedGoal)
 
-// 置く・筆で回す・消す は、どれも未保存にする。読み込んだだけのシーンは未保存でない
-TEST(EditorUnsaved, PlaceRotateAndDeleteMarkTheSceneUnsaved)
+// 置く・消す は、どれも未保存にする。読み込んだだけのシーンは未保存でない
+TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
 {
     {
         NS::Scene scene;
@@ -227,22 +189,6 @@ TEST(EditorUnsaved, PlaceRotateAndDeleteMarkTheSceneUnsaved)
         const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-    }
-    {
-        // 升に置いた立方体を、読み込んだシーンとして始める
-        NS::Scene source;
-        LevelEditorController placing(source);
-        placing.Editor().Palette().SetActiveSlot(0);
-        placing.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        const nlohmann::json loaded = source.ToJson();
-
-        NS::Scene scene;
-        scene.ResetFromJson(loaded);
-        LevelEditorController editor(scene);
-        ASSERT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 0, 0, 0), NS::k_NoActorId);
-        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
-        editor.Editor().RotateAtProgrammatic(0, 0, 0);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
     }
     {
@@ -272,97 +218,5 @@ TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
     EXPECT_EQ(CountedGoal::s_endPlays, 1);
     EXPECT_EQ(CountedGoal::s_destroyed, 1);
-}
-
-namespace
-{
-    // 升 (0, 0, 0) にパレットの slot の物を筆で置き、そこに居るアクターの id を返す
-    NS::uint32 PaintCell(LevelEditorController& editor, NS::Scene& scene, std::size_t slot)
-    {
-        editor.Editor().Palette().SetActiveSlot(slot);
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        return NS::Editor::FindActorIdAtCell(scene.Actors(), 0, 0, 0);
-    }
-
-    // パレットの slot の物の .actor の名前
-    std::string SlotActorFile(LevelEditorController& editor, std::size_t slot)
-    {
-        editor.Editor().Palette().SetActiveSlot(slot);
-        return NS::ReadActorHeader(editor.Editor().Palette().CurrentTemplate()).actorFile;
-    }
-} // namespace
-
-// 升を回した向きは、シーンを書き出して読み直しても残る
-TEST(EditorDirectEdit, RotatedCellKeepsItsRotationAfterReload)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const NS::uint32 id = PaintCell(editor, scene, 0);
-    ASSERT_NE(id, NS::k_NoActorId);
-
-    editor.Editor().RotateAtProgrammatic(0, 0, 0);
-    const NS::SceneActor* rotated = scene.Actors().FindByActorId(id);
-    ASSERT_NE(rotated, nullptr);
-    const NS::Quaternion expected = rotated->TransformObj().Rotation();
-    // 回っていなければ、読み直しで残るかを見分けられない
-    ASSERT_GT(std::abs(expected.y), 0.1f);
-
-    NS::Scene reloaded;
-    reloaded.ResetFromJson(scene.ToJson());
-    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
-    ASSERT_NE(loaded, nullptr);
-    const NS::Quaternion actual = loaded->TransformObj().Rotation();
-    EXPECT_NEAR(actual.x, expected.x, 1e-5f);
-    EXPECT_NEAR(actual.y, expected.y, 1e-5f);
-    EXPECT_NEAR(actual.z, expected.z, 1e-5f);
-    EXPECT_NEAR(actual.w, expected.w, 1e-5f);
-}
-
-// 物のある升へ別の形を筆で置くと、同じ id のまま新しい形になり、読み直しても残る
-TEST(EditorDirectEdit, PaintingOverACellReplacesItWithTheSameId)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const NS::uint32 id = PaintCell(editor, scene, 0);
-    ASSERT_NE(id, NS::k_NoActorId);
-
-    // 枠 0 と 1 は同じ .actor でメッシュだけが違う。置き換わったかはメッシュで見分ける
-    const std::string expected = SlotActorFile(editor, 1);
-
-    EXPECT_EQ(PaintCell(editor, scene, 1), id);
-
-    NS::Scene reloaded;
-    reloaded.ResetFromJson(scene.ToJson());
-    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
-    ASSERT_NE(loaded, nullptr);
-    EXPECT_EQ(loaded->ActorFileName(), expected);
-    ASSERT_NE(loaded->ModelClassObj(), nullptr);
-    EXPECT_EQ(loaded->ModelClassObj()->MeshRef(), "wedge45");
-}
-
-// 升の物をクラスの違う物 (ゴール) で置き換えても、同じ id のままそのクラスになり、読み直しても残る
-TEST(EditorDirectEdit, PaintingADifferentClassOverACellReplacesIt)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const NS::uint32 id = PaintCell(editor, scene, 0);
-    ASSERT_NE(id, NS::k_NoActorId);
-
-    const std::string before = SlotActorFile(editor, 0);
-    const std::string expected = SlotActorFile(editor, 2);
-    ASSERT_NE(expected, before);
-
-    editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-    const NS::SceneActor* replaced = scene.Actors().FindByActorId(id);
-    ASSERT_NE(replaced, nullptr);
-    EXPECT_EQ(std::string_view{replaced->ClassName()}, "GoalActor");
-    EXPECT_EQ(replaced->ActorFileName(), expected);
-
-    NS::Scene reloaded;
-    reloaded.ResetFromJson(scene.ToJson());
-    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
-    ASSERT_NE(loaded, nullptr);
-    EXPECT_EQ(std::string_view{loaded->ClassName()}, "GoalActor");
-    EXPECT_EQ(loaded->ActorFileName(), expected);
 }
 

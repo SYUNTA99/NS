@@ -427,7 +427,6 @@ TEST(EditorSelection, AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
         scene.SetSimulationEnabled(false);
         scene.ResetFromJson(source.ToJson());
         LevelEditorController editor(scene);
-        editor.SetGizmoToolActive(true);
         editor.SelectActorById(id);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
@@ -588,112 +587,6 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         mouse.OnMove(startX, startY);
         mouse.ClearState();
         mouse.Update();
-    }));
-    EXPECT_EQ(app.Run(), 0);
-}
-
-// 地形の部品でない物が居る升には筆で重ねて置かない
-TEST(EditorBrush, DoesNotStackOnAnOccupiedCell)
-{
-    NS::Application app(HiddenAppDesc("筆の重なりの試し", {160, 90}));
-    ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
-        LevelEditorController editor(scene);
-        editor.Setup({});
-        editor.Editor().Palette().SetActiveSlot(2);
-        ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        const std::size_t placed = scene.Actors().ActorCount();
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        EXPECT_EQ(scene.Actors().ActorCount(), placed);
-    }));
-    EXPECT_EQ(app.Run(), 0);
-}
-
-// シーンはコントローラーを作った時からあるので、筆は Setup の前からシーンのアクターを見る
-TEST(EditorBrush, PlacesBeforeSetup)
-{
-    NS::Scene scene;
-    LevelEditorController editor(scene);
-    const std::size_t before = scene.Actors().ActorCount();
-    editor.Editor().Palette().SetActiveSlot(2);
-    ASSERT_STREQ(editor.Editor().Palette().CurrentTemplateName(), "ゴール");
-    editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-    EXPECT_EQ(scene.Actors().ActorCount(), before + 1);
-}
-
-// カーソルの光線が升の面へ当たると、左クリックは面の先の升へ置き、右クリックは当たった升を消す
-TEST(EditorBrush, ClickPlacesBesideTheHitCellAndRightClickRemovesIt)
-{
-    NS::ApplicationDesc desc;
-    desc.window.title = "筆のクリックの試し";
-    desc.window.size = {160, 90};
-    desc.window.visible = false;
-    NS::Application app(desc);
-    ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
-        LevelEditorController editor(scene);
-        editor.Setup({});
-        editor.Editor().Palette().SetActiveSlot(0);
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        ASSERT_TRUE(NS::Editor::HasPlacedActorAtCell(scene.Actors(), 0, 0, 0));
-
-        NS::SceneCamera camera;
-        camera.SetPosition(NS::Vector3{0.0f, 0.0f, -5.0f});
-        camera.SetTarget(NS::Vector3::Zero);
-        editor.Editor().SetSceneCamera(&camera);
-        editor.Editor().SetViewRect(NS::Editor::ViewRect{0, 0, 160, 90});
-
-        NS::OS::Mouse& mouse = NS::Application::Get()->Input().Mouse();
-        const int startX = mouse.GetX();
-        const int startY = mouse.GetY();
-        mouse.OnMove(80, 45);
-        NS::OS::InputReader reader;
-        const auto click = [&editor, &mouse, &reader](NS::OS::MouseButton button) {
-            mouse.OnButtonDown(button);
-            mouse.OnButtonUp(button);
-            editor.Editor().Tick(true, reader.Read());
-        };
-
-        click(NS::OS::MouseButton::Left);
-        EXPECT_TRUE(NS::Editor::HasPlacedActorAtCell(scene.Actors(), 0, 0, -1));
-
-        click(NS::OS::MouseButton::Right);
-        EXPECT_FALSE(NS::Editor::HasPlacedActorAtCell(scene.Actors(), 0, 0, -1));
-        EXPECT_TRUE(NS::Editor::HasPlacedActorAtCell(scene.Actors(), 0, 0, 0));
-
-        // 共有の入力を始めの位置へ戻す。残すと後の試しがマウスの動きを読む
-        mouse.OnMove(startX, startY);
-        mouse.Update();
-    }));
-    EXPECT_EQ(app.Run(), 0);
-}
-
-// R は今の向きに縦軸の四半回転を足す。傾けた物も傾きを保つ
-TEST(EditorBrush, RotateKeepsTheTilt)
-{
-    NS::Application app(HiddenAppDesc("筆の回転の試し", {160, 90}));
-    ASSERT_TRUE(app.IsValid());
-    app.AddLayer(std::make_unique<TestCheckLayer>([] {
-        NS::Scene scene;
-        LevelEditorController editor(scene);
-        editor.Setup({});
-        editor.Editor().Palette().SetActiveSlot(0);
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        ASSERT_EQ(scene.Actors().ActorCount(), 1u);
-        const NS::uint32 id = scene.Actors().ActorAt(0)->Id();
-        editor.SelectActorById(id);
-        WritePoseField(
-            editor, scene.Actors().FindByActorId(id), NS::k_RotationFieldName, NS::Quaternion::CreateFromYawPitchRoll(0.0f, 0.5f, 0.0f));
-        const auto up = [&scene, id] {
-            return NS::Vector3::Transform(NS::Vector3::UnitY, scene.Actors().FindByActorId(id)->TransformObj().Rotation());
-        };
-        const float tiltBefore = up().y;
-
-        editor.Editor().RotateAtProgrammatic(0, 0, 0);
-        EXPECT_NEAR(up().y, tiltBefore, 1.0e-4f);
     }));
     EXPECT_EQ(app.Run(), 0);
 }

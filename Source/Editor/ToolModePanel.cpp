@@ -14,24 +14,8 @@ namespace NS
             // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
             if (ImGui::Begin(k_PanelEditMode))
             {
-                const LevelEditorController::EditTool tool = editor.CurrentEditTool();
                 ImGui::BeginDisabled(!editor.IsSceneEditable());
-                if (ImGui::RadioButton("選択・変形", tool == LevelEditorController::EditTool::Gizmo))
-                {
-                    editor.SetGizmoToolActive(true);
-                }
-                if (ImGui::RadioButton("グリッド配置", tool == LevelEditorController::EditTool::Grid))
-                {
-                    editor.SetGizmoToolActive(false);
-                }
-                if (editor.GizmoToolActive())
-                {
-                    ImGui::TextWrapped("クリックで選択。Q/W/E/R = 選択 / 移動 / 回転 / 拡大縮小");
-                }
-                else
-                {
-                    ImGui::TextUnformatted("左クリックで部品を配置");
-                }
+                ImGui::TextWrapped("クリックで選択。Q/W/E/R = 選択 / 移動 / 回転 / 拡大縮小");
                 ImGui::EndDisabled();
 
                 // 感度はこの場で効き、シーンには保存しない

@@ -405,7 +405,6 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
     const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
     NS::Scene scene;
     LevelEditorController editor(scene);
-    editor.SetGizmoToolActive(false);
     NS::Editor::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
         CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}), &ImGui::DestroyContext);
@@ -432,7 +431,9 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
             ImGui::GetStateStorage()->SetInt(ImGui::GetID(label.c_str()), label == m_folder);
             if (label == m_folder)
             {
-                const ImVec2 origin = ImGui::GetCursorScreenPos();
+                // 木の前に、選択の見出しの 1 行と区切り線が入る
+                ImVec2 origin = ImGui::GetCursorScreenPos();
+                origin.y += ImGui::GetTextLineHeightWithSpacing() + 1.0f + ImGui::GetStyle().ItemSpacing.y;
                 folderClick = {origin.x + 60.0f,
                                origin.y + (static_cast<float>(index) + 0.5f) * ImGui::GetTextLineHeightWithSpacing()};
                 click = {origin.x + 60.0f,

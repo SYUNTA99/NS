@@ -170,17 +170,6 @@ namespace NS
             //! 編集対象の ActorList。一覧と参照候補はここから直接取得する
             [[nodiscard]] const ActorList& Actors() const noexcept;
 
-            enum class EditTool
-            {
-                Gizmo,
-                Grid
-            };
-            [[nodiscard]] EditTool CurrentEditTool() const noexcept { return m_editTool; }
-            void SetEditTool(EditTool tool) noexcept;
-            [[nodiscard]] bool GizmoToolActive() const noexcept { return m_editTool == EditTool::Gizmo; }
-            //! 配置ツールを Build / Object 切替える。Build へ戻す時はギズモ選択を解除する
-            void SetGizmoToolActive(bool active) noexcept;
-
             //! 永続 id でアクターを 1 体だけ選択する。0 を渡すと選択を外す
             void SelectActorById(uint32 id) noexcept;
             //! 現在の主対象の永続 id。未選択は 0。ギズモと Inspector はこの 1 体を見る
@@ -259,11 +248,8 @@ namespace NS
             //! 編集カメラの注視点を選択中のアクターへ寄せる。広がりに応じて距離も取り直す
             void FocusSelectedInView() noexcept;
 
-            //! Object ツール中にギズモがアクターを選択しているか
-            [[nodiscard]] bool HasGizmoSelection() const noexcept
-            {
-                return GizmoToolActive() && m_gizmo.Selected() != nullptr;
-            }
+            //! ギズモがアクターを選択しているか
+            [[nodiscard]] bool HasGizmoSelection() const noexcept { return m_gizmo.Selected() != nullptr; }
             //! 選択中のアクターの Model に材質を割り当て、変わった時だけシーンを未保存にする。対象外なら false
             bool ApplyMaterialToSelected(std::string_view matPath);
 
@@ -399,8 +385,6 @@ namespace NS
 
             EditorMode m_editor{};
             Mode m_mode = Mode::Edit;
-
-            EditTool m_editTool = EditTool::Gizmo;
 
             GizmoEditor m_gizmo{};
 

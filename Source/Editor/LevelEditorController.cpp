@@ -77,8 +77,6 @@ namespace NS
         LevelEditorController::LevelEditorController(Scene& scene) noexcept : m_scene(scene)
         {
             // シーンだけで決まる物は Setup の前から使えるよう、ここで差す。入力は Application が要るので Setup で差す
-            m_editor.SetActors(&m_scene.Actors());
-            m_editor.SetSceneCamera(&MainCamera());
             m_editor.SetCaptureLevelFn([this]() { return m_scene.ToJson(); });
             m_editor.SetScene(&m_scene);
             m_editor.SetSceneEditableFn([this]() { return IsSceneEditable(); });
@@ -446,9 +444,6 @@ namespace NS
                     app->Window().SetCursorLockPoint(x + width / 2, y + height / 2);
                 }
             }
-            // 編集入力は表示矩形から光線を飛ばす。カーソルが重なっていない間は配置位置を表示しない
-            m_editor.SetViewRect(m_gameViewRect);
-            m_editor.SetViewHovered(hovered);
         }
 
         void LevelEditorController::ClearGameView() noexcept
@@ -457,8 +452,6 @@ namespace NS
             m_gameViewRectValid = false;
             m_gameViewHovered = true;
             m_gameViewHidden = false;
-            m_editor.SetViewRect(CurrentViewRect());
-            m_editor.SetViewHovered(true);
         }
 
         void LevelEditorController::HideGameView() noexcept
@@ -466,7 +459,6 @@ namespace NS
             // 前面のパネルが裏へ隠れた。配置カーソルと編集オーバーレイを止める
             m_gameViewHidden = true;
             m_gameViewHovered = false;
-            m_editor.SetViewHovered(false);
         }
 
         ViewRect LevelEditorController::CurrentViewRect() const noexcept
@@ -568,7 +560,7 @@ namespace NS
             // Esc: Object モードで選択中ならまず選択解除に使い終了させない
             if (presses.WasPressed(OS::Key::Escape))
             {
-                if (GizmoToolActive() && m_gizmo.Selected() != nullptr)
+                if (m_gizmo.Selected() != nullptr)
                 {
                     // 選択の id ごと外す。ギズモだけ外すと、次のフレームに id から選び直される
                     SelectActorById(k_NoActorId);
@@ -596,64 +588,52 @@ namespace NS
             }
             MainCamera().ApplyPose(pose);
 
-            // 同時に1つの道具だけがクリックと R を使う。グリッド入力はグリッド配置中だけ受ける。
-            // モード切替は EditorLayer の UI ボタンが SetGizmoToolActive で入れる。Tab は Edit↔Play 専用
-            const bool objectMode = GizmoToolActive();
-            m_gizmo.SetActive(objectMode);
-            m_editor.SetInputSuppressed(m_editTool != EditTool::Grid);
+            // 編集の道具はギズモだけなので、編集中はいつもクリックと Q/W/E/R をギズモが受ける。Tab は Edit↔Play 専用
+            m_gizmo.SetActive(true);
 
-            if (objectMode)
+            // 追従カメラの Transform を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
+            SyncFollowCameraPoses();
+
+            // 組み直しで破棄されたアクターを参照しないよう、選択を現在の実体へ引き直す
+            ResolveSelectionFromId();
+
+            const Matrix vp = Cameras().ViewProjection();
+            const bool wasDragging = m_gizmoWasDragging;
+            m_gizmo.Tick(
+                vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses, m_scene.Actors());
+
+            // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
+            CaptureSelectionFromGizmo();
+
+            // 追従カメラを掴んでいたら Transform の位置を初期姿勢へ逆算し ThirdPersonFollow
+            // へ書き戻す。位置の書き戻しはこちら
+            ApplyFollowCameraGizmoDrag();
+
+            // ドラッグ開始で baseline を控え、終了で変わっていればシーンを未保存にする
+            // 追従カメラの引きは初期姿勢の欄を変える。控えは部品の値まで写すので同じ道で変化を見つけられる
+            const bool nowDragging = m_gizmo.IsDragging();
+            if (!wasDragging && nowDragging)
             {
-                // 追従カメラの Transform を実プレイ視点位置へ寄せてからギズモを回す。判定箱とギズモがその位置に出る
-                SyncFollowCameraPoses();
-
-                // 組み直しで破棄されたアクターを参照しないよう、選択を現在の実体へ引き直す
-                ResolveSelectionFromId();
-
-                const Matrix vp = Cameras().ViewProjection();
-                const bool wasDragging = m_gizmoWasDragging;
-                m_gizmo.Tick(
-                    vp, CurrentViewRect(), m_gameViewHovered, m_editShortcutsBlocked, presses, m_scene.Actors());
-
-                // ビューポートでのギズモ選択変化を選択 id と Inspector が見る派生添字へ追従させる
-                CaptureSelectionFromGizmo();
-
-                // 追従カメラを掴んでいたら Transform の位置を初期姿勢へ逆算し ThirdPersonFollow
-                // へ書き戻す。位置の書き戻しはこちら
-                ApplyFollowCameraGizmoDrag();
-
-                // ドラッグ開始で baseline を控え、終了で変わっていればシーンを未保存にする
-                // 追従カメラの引きは初期姿勢の欄を変える。控えは部品の値まで写すので同じ道で変化を見つけられる
-                const bool nowDragging = m_gizmo.IsDragging();
-                if (!wasDragging && nowDragging)
-                {
-                    BeginTransformEdit();
-                    // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
-                    CaptureDragFollowers(m_selectionIds);
-                }
-                else if (wasDragging && !nowDragging)
-                {
-                    CommitTransformEdit();
-                    m_dragFollowers.clear();
-                }
-                // ギズモは主対象しか動かさないので、残りの選択はここで追わせる
-                if (nowDragging)
-                {
-                    ApplyDragToFollowers();
-                }
-                m_gizmoWasDragging = nowDragging;
+                BeginTransformEdit();
+                // 掴んだ瞬間はまだ動いていない。ここで控えれば差分の基準が揃う
+                CaptureDragFollowers(m_selectionIds);
             }
-            else if (m_transformEditing)
+            else if (wasDragging && !nowDragging)
             {
-                // Object モードを抜けても未確定の変形があれば確定し、記録されない変更を残さない
                 CommitTransformEdit();
-                m_gizmoWasDragging = false;
+                m_dragFollowers.clear();
             }
+            // ギズモは主対象しか動かさないので、残りの選択はここで追わせる
+            if (nowDragging)
+            {
+                ApplyDragToFollowers();
+            }
+            m_gizmoWasDragging = nowDragging;
 
             m_editor.Tick(m_editShortcutsBlocked, presses);
             if (m_editor.IsLevelDirty())
             {
-                // grid 編集と読込はアクターを組み直し済。gizmo を今の実体へ貼り直す
+                // 作る・読込はアクターを組み直し済。gizmo を今の実体へ貼り直す
                 // 消えた選択や読込での id 振り直しは解決が自然に外す
                 ResolveSelectionFromId();
                 m_editor.ClearLevelDirty();
@@ -668,41 +648,10 @@ namespace NS
                 return;
             }
 
-            m_editor.RenderCursorPreview();
-            // Object モードはブラシを置かないので Build モードの時だけ出す
-            // Game ビュー前面などで編集ビューが隠れているフレームは、ゲーム画面へ被せないよう出さない
-            if (m_editTool == EditTool::Grid && !m_gameViewHidden)
-            {
-                m_editor.Palette().Render(CurrentViewRect());
-            }
-            // Object モードのギズモは最前面の drawlist に重ねる
+            // ギズモは最前面の drawlist に重ねる
             if (m_gizmo.IsActive())
             {
                 m_gizmo.Render(Cameras().ViewProjection(), CurrentViewRect());
-            }
-        }
-
-        void LevelEditorController::SetGizmoToolActive(bool active) noexcept
-        {
-            if (active)
-            {
-                SetEditTool(EditTool::Gizmo);
-                return;
-            }
-            SetEditTool(EditTool::Grid);
-        }
-
-        void LevelEditorController::SetEditTool(EditTool tool) noexcept
-        {
-            if (tool == m_editTool)
-            {
-                return;
-            }
-            CommitTransformEdit();
-            m_editTool = tool;
-            if (tool != EditTool::Gizmo)
-            {
-                SelectActorById(k_NoActorId);
             }
         }
 
@@ -850,9 +799,6 @@ namespace NS
             // アクターの選択と素材の選択は排他
             ClearAssetSelection();
 
-            // ハンドルを出すため Object ツールへ切替える。Build のままだとギズモが描かれない
-            SetGizmoToolActive(true);
-
             // player も含め全アクターが ActorList に居る。選択したアクターを id で引いて、その Transform をギズモへ貼る
             if (SceneActor* go = m_scene.Actors().FindByActorId(id))
             {
@@ -963,7 +909,6 @@ namespace NS
             m_selectedActorId = created.front();
             m_selectionIds.assign(1, created.front());
             ClearAssetSelection();
-            SetGizmoToolActive(true);
             ResolveSelectionFromId();
         }
 

@@ -196,7 +196,6 @@ namespace NS
                 return;
             }
 
-            m_editor.DrawCursorShapes(shapes);
             // 錐台の横幅はゲーム画面の比で出す。窓が無い時は RenderCameraGizmos が 16:9 で代える
             Size2D viewport{};
             if (const Application* app = Application::Get())

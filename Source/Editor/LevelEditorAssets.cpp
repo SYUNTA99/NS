@@ -486,7 +486,7 @@ namespace NS
         bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
         {
             Application* app = Application::Get();
-            if (!IsSceneEditable() || !GizmoToolActive() || app == nullptr)
+            if (!IsSceneEditable() || app == nullptr)
             {
                 return false;
             }

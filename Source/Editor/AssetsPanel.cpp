@@ -47,19 +47,15 @@ namespace NS
         {
             if (ImGui::Begin(k_PanelAssets))
             {
-                // 適用にはギズモ選択が要るので枠は Object モード時だけ出す
-                if (editor.GizmoToolActive())
+                // マテリアルの適用にはギズモの選択が要るので、選んでいるかを出す
+                const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
+                if (editor.HasGizmoSelection())
                 {
-                    const bool hasSelection = editor.HasGizmoSelection();
-                    const char* selectionLabel = "オブジェクトが未選択。クリックで選ぶ";
-                    if (hasSelection)
-                    {
-                        selectionLabel = "オブジェクトを選択中";
-                    }
-                    ImGui::TextUnformatted(selectionLabel);
-
-                    ImGui::Separator();
+                    selectionLabel = "オブジェクトを選択中";
                 }
+                ImGui::TextUnformatted(selectionLabel);
+
+                ImGui::Separator();
 
                 const std::string assetsDirectory = OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "Assets");
                 RenderTree(assetsDirectory, editor);

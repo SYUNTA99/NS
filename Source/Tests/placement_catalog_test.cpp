@@ -1,4 +1,3 @@
-#include "Editor/PaletteTemplates.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
@@ -6,11 +5,10 @@
 
 #include <gtest/gtest.h>
 
-#include <array>
 #include <string>
 #include <string_view>
 
-// エディタで置ける物の一覧と、パレットのブラシがそこから組まれることを縛る
+// エディタで置ける物の一覧の中身を確かめる
 
 TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
 {
@@ -83,38 +81,6 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     EXPECT_TRUE(slope->rotatable);
     // 形の決まらない素の「地形の部品」は並べない
     EXPECT_FALSE(NS::Editor::FindPlacementItem("地形の部品").has_value());
-}
-
-TEST(PlacementCatalog, SlopeAngleComesFromMesh)
-{
-    const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    const std::optional<NS::Editor::PlacementItem> slope = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
-    ASSERT_TRUE(cube.has_value());
-    ASSERT_TRUE(slope.has_value());
-    EXPECT_LT(NS::Editor::PartsSlopeAngleDegrees(cube->prototype), 0.0f);
-    EXPECT_FLOAT_EQ(NS::Editor::PartsSlopeAngleDegrees(slope->prototype), 45.0f);
-}
-
-TEST(PlacementCatalog, PaletteSlotsComeFromCatalog)
-{
-    const std::array<NS::Editor::PaletteTemplate, NS::Editor::k_PaletteSlotCount>& slots =
-        NS::Editor::PaletteTemplateSlots();
-    const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    const std::optional<NS::Editor::PlacementItem> slope = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
-    const std::optional<NS::Editor::PlacementItem> goal = NS::Editor::FindPlacementItem("GoalActor");
-    ASSERT_TRUE(cube.has_value());
-    ASSERT_TRUE(slope.has_value());
-    ASSERT_TRUE(goal.has_value());
-    // 3 つのブラシはどれも置く物を持つ
-    for (const NS::Editor::PaletteTemplate& slot : slots)
-    {
-        EXPECT_FALSE(NS::ActorJsonFile(slot.prototype).empty()) << slot.name;
-    }
-    EXPECT_EQ(slots[0].prototype, cube->prototype);
-    EXPECT_EQ(slots[1].prototype, slope->prototype);
-    EXPECT_EQ(slots[2].prototype, goal->prototype);
-    EXPECT_TRUE(slots[0].rotatable);
-    EXPECT_FALSE(slots[2].rotatable);
 }
 
 TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
