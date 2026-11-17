@@ -410,44 +410,51 @@ namespace NS
                 NS_LOG_WARN(App, "編集モードでないので、アクターから派生 {} を作らない", name);
                 return false;
             }
-            const SceneActor* actor = m_scene.Actors().FindByActorId(actorId);
+            SceneActor* actor = m_scene.Actors().FindByActorId(actorId);
             if (actor == nullptr)
             {
                 NS_LOG_WARN(App, "アクター {} が居ないので派生 {} を作らない", actorId, name);
                 return false;
             }
             std::optional<nlohmann::json> document = NewDerivedActorFile(actor->ActorFileName(), name);
-            std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), actorId);
-            if (!document.has_value() || !before.has_value())
+            const std::optional<nlohmann::json> saved = CaptureActor(m_scene.Actors(), actorId);
+            if (!document.has_value() || !saved.has_value())
             {
                 return false;
             }
             // 保存の JSON はシーンの上書きと参照の欄だけを持つ。派生に書ける項目を移し、残りはシーンに残す
-            nlohmann::json after = *before;
+            std::vector<std::pair<std::string, std::string>> moved;
             ForEachReflectedClassObj(actor, [&](const ClassObjInfo& row, const Object* part) {
-                nlohmann::json* fields = ClassObjFields(after, row.key);
+                const nlohmann::json* fields = ClassObjFields(*saved, row.key);
                 if (fields == nullptr)
                 {
                     return;
                 }
-                for (nlohmann::json::iterator entry = fields->begin(); entry != fields->end();)
+                for (nlohmann::json::const_iterator entry = fields->begin(); entry != fields->end(); ++entry)
                 {
                     const FieldDesc* field = FindField(part->GetReflection(), entry.key());
                     if (field == nullptr || !CanWriteField(FieldDestination::DerivedActorFile, *field))
                     {
-                        ++entry;
                         continue;
                     }
                     ActorJsonClassObjs(*document)[std::string{row.key}][entry.key()] = entry.value();
-                    entry = fields->erase(entry);
+                    moved.emplace_back(std::string{row.key}, entry.key());
                 }
             });
             if (!AddActorFile(name, *document))
             {
                 return false;
             }
-            SetActorJsonFile(after, name);
-            ApplyActorSnapshot(m_scene, actorId, std::move(after));
+            // 移した項目を上書きの一覧から外して派生を指し、作る時と同じ順で派生の .actor の値を読み直す
+            // 派生の元は元の .actor の元なので、元の .actor が派生だった時は上書きでない欄の値が変わる
+            for (const std::pair<std::string, std::string>& entry : moved)
+            {
+                actor->RemoveSceneOverride(entry.first, entry.second);
+            }
+            m_scene.Actors().ChangeActorFile(actor, name);
+            ApplyActorFile(actor);
+            actor->ReloadActorFileOnlyValues();
+            actor->ReloadAssets();
             m_editor.MarkEdited();
             ResolveSelectionFromId();
             return true;
@@ -514,12 +521,12 @@ namespace NS
                 return false;
             }
 
-            // matRef を実体へ書き込み、読み直した後の姿が前と違う時だけ未保存にする
-            const std::optional<nlohmann::json> before = CaptureActor(m_scene.Actors(), m_selectedActorId);
+            // matRef を実体へ書き込み、変わった欄をギズモと同じく上書きの一覧に足す。足さないと保存されない
+            // 変わらなかった時 (同じマテリアル) は未保存にしない
+            const nlohmann::json before = AllFieldValues(*go);
             mesh->SetMaterialRef(*stored);
             FinishFieldWrite(go, FieldType::Asset);
-            const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), m_selectedActorId);
-            if (before != after)
+            if (AddChangedSceneOverrides(*go, before))
             {
                 m_editor.MarkEdited();
             }

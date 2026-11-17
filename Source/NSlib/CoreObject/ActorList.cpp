@@ -294,8 +294,14 @@ namespace NS
     {
         NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentityExceptPresence: 写す先のアクターが無い");
         obj->SetId(header.id);
-        obj->m_actorFileName = header.actorFile;
+        ChangeActorFile(obj, header.actorFile);
         RenameActor(obj, header.name);
+    }
+
+    void ActorList::ChangeActorFile(SceneActor* obj, std::string_view actorFileName)
+    {
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::ChangeActorFile: .actor の名前を書くアクターが無い");
+        obj->m_actorFileName = actorFileName;
     }
 
     void ActorList::ApplyPresence(SceneActor* obj, const ActorHeader& header)

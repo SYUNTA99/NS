@@ -40,6 +40,10 @@ namespace NS
         //! obj の名前を変える。他のアクターと重なれば番号を付ける。名前を書けるのはシーンのアクターを持つここだけ
         void RenameActor(SceneActor* obj, std::string_view name);
 
+        //! obj の指す .actor の名前を書き換える。値は読み直さないので、.actor だけの値は呼び手が読み直す
+        //! .actor の名前を書けるのはシーンのアクターを持つここだけ
+        void ChangeActorFile(SceneActor* obj, std::string_view actorFileName);
+
         //! アクターの OnEndPlay を逆順に呼んでから所有物を空へ戻す。scene の OnShutdown と RebuildFromJson の冒頭が呼ぶ
         //! 1 歩の更新の最中は断る。その歩で後に呼ぶ予定のアクターを解放しない
         void Clear();

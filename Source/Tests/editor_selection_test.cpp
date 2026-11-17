@@ -408,7 +408,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
 }
 
 // マテリアルを付けると未保存になり、書き出して読み直しても付けたマテリアルのまま。同じ物をもう一度付けても版は進まない
-TEST(EditorSelection, DISABLED_AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
+TEST(EditorSelection, AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
 {
     NS::Application app(HiddenAppDesc("マテリアルの保存の試し", {160, 90}));
     ASSERT_TRUE(app.IsValid());
