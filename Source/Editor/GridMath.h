@@ -4,15 +4,12 @@
 
 #include "NSlib/Core/Types.h"
 
-//! エディタでのグリッド計算やレイキャスト判定を補助する数学ユーティリティ
+//! エディタのビューの矩形・画面から世界への光線・画面の上で大きさを保つ倍率を補助する数学ユーティリティ
 
 namespace NS
 {
     namespace Editor
     {
-        //! グリッドの基本サイズ
-        inline constexpr float k_GridSize = 1.0f;
-
         //! ゲーム画面を映すパネルの矩形。スクリーン座標で、編集入力の変換と内外の判定に使う
         struct ViewRect
         {
@@ -39,9 +36,6 @@ namespace NS
                                                Size2D viewport,
                                                int mouseX,
                                                int mouseY) noexcept;
-
-        //! ワールド座標を最も近いグリッドセルの中心座標に丸める
-        [[nodiscard]] Vector3 SnapWorldPointToGrid(Vector3 worldPoint, float gridSize = k_GridSize) noexcept;
 
         //! 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
         //! 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1

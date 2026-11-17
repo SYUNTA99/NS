@@ -509,11 +509,6 @@ namespace NS
             return Cameras().EvaluateTopPose(1.0f);
         }
 
-        nlohmann::json LevelEditorController::SceneSnapshot() const
-        {
-            return m_scene.ToJson();
-        }
-
         void LevelEditorController::SetSceneViews(std::vector<SceneView> views)
         {
             m_scene.GetSceneRenderer()->SetSceneViews(std::move(views));
@@ -668,12 +663,6 @@ namespace NS
                 return nullptr;
             }
             return m_scene.Actors().FindByActorId(m_selectedActorId);
-        }
-
-        bool LevelEditorController::SelectedIsPlayerActor() const noexcept
-        {
-            SceneActor* player = FindPlayer(m_scene.Actors());
-            return player != nullptr && m_selectedActorId != k_NoActorId && m_selectedActorId == player->Id();
         }
 
         GL::Level::ThirdPersonFollow* LevelEditorController::SelectedFollowCamera() noexcept

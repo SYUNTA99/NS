@@ -84,8 +84,6 @@ namespace NS
             }
             [[nodiscard]] bool IsActive() const noexcept { return m_active; }
 
-            void SetSpace(GizmoSpace space) noexcept { m_space = space; }
-
             //! ギズモを局所座標系と世界座標系で切り替える
             void ToggleSpace() noexcept
             {

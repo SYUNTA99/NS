@@ -474,16 +474,6 @@ namespace NS
         return names;
     }
 
-    std::optional<float> AssetManager::BuiltinSlopeAngleDegrees(std::string_view name) noexcept
-    {
-        const BuiltinShape* shape = FindBuiltinShape(name);
-        if (shape == nullptr)
-        {
-            return std::nullopt;
-        }
-        return shape->slopeAngleDegrees;
-    }
-
     std::string_view AssetManager::DefaultMaterialPath() noexcept
     {
         return "Assets/Materials/default.mat";

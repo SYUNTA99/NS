@@ -111,8 +111,6 @@ namespace NS
 
         //! コードで作る組み込みの形 cube / sphere / capsule / wedge45 / wedge30 / wedge22 / wedge15 / shadowQuad の名前
         [[nodiscard]] static std::span<const std::string_view> BuiltinMeshNames() noexcept;
-        //! 組み込みの形が坂なら、頂点を作るのと同じ角度 (度)。坂でない名前と組み込みでない名前は nullopt
-        [[nodiscard]] static std::optional<float> BuiltinSlopeAngleDegrees(std::string_view name) noexcept;
         //! マテリアルの欄が空の時に描く灰色の既定のマテリアルの道筋
         [[nodiscard]] static std::string_view DefaultMaterialPath() noexcept;
         //! 欄の名前のマテリアルを返す。名前は ContentRoot からの .mat の道筋

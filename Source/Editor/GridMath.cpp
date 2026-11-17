@@ -76,14 +76,6 @@ namespace NS
             return Ray{wNear, dir};
         }
 
-        Vector3 SnapWorldPointToGrid(Vector3 p, float g) noexcept
-        {
-            const float gx = std::floor(p.x / g + 0.5f) * g;
-            const float gy = std::floor(p.y / g + 0.5f) * g;
-            const float gz = std::floor(p.z / g + 0.5f) * g;
-            return {gx, gy, gz};
-        }
-
         float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept
         {
             // 見かけの寸法は世界の長さ / clip.w に比例するので、長さを clip.w に比例させると相殺される

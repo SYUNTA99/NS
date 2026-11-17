@@ -71,7 +71,7 @@ namespace NS
         // アクターの値が .actor と違う欄の名前の色。値を変えた欄が一覧の中で目に留まる
         inline const ImVec4 k_OverriddenFieldColor{1.0f, 0.78f, 0.35f, 1.0f};
 
-        // 値列の右端に置くボタンの幅。戻すボタンと上書きボタンの広い方に揃え、どの行も値の幅を揃える
+        // 値列の右端に置く上書きボタンの幅。ボタンの無い行も同じ幅を空け、どの行も値の幅を揃える
         inline float RevertButtonWidth() noexcept
         {
             return ImGui::CalcTextSize("上書き").x + ImGui::GetStyle().FramePadding.x * 2.0f;
@@ -193,18 +193,6 @@ namespace NS
             }
             ImGui::EndGroup();
             return result;
-        }
-
-        // 既定と違う行だけ右端に戻すボタンを出す。同じ値の行は幅を空けるだけで並びを保つ
-        inline bool RevertButton(bool changed) noexcept
-        {
-            ImGui::SameLine();
-            if (!changed)
-            {
-                ImGui::Dummy(ImVec2{RevertButtonWidth(), 0.0f});
-                return false;
-            }
-            return ImGui::SmallButton("戻す");
         }
 
         // 上書きボタンで選ばれた操作

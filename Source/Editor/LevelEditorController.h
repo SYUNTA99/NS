@@ -119,7 +119,6 @@ namespace NS
             void HideGameView() noexcept;
             //! 現在の表示矩形。未設定時は全画面の予備矩形を返す
             [[nodiscard]] ViewRect CurrentViewRect() const noexcept;
-            [[nodiscard]] bool GameViewHidden() const noexcept { return m_gameViewHidden; }
 
             //! プレイ中に Scene タブへ自由視点を映すフレームで毎回呼ぶ。入力を自由視点カメラへ流す
             //! 編集モード中は何もしない
@@ -131,10 +130,6 @@ namespace NS
             [[nodiscard]] std::optional<CameraPose> GameViewPose() noexcept;
             //! 可視な中央ビュー列を Scene へ流す。空なら現描画先へ 1 回だけ描く
             void SetSceneViews(std::vector<SceneView> views);
-
-            //! 編集中の場面の写し (Scene::ToJson)。当たりの下見が写しから別の場面を組むのに読む
-            //! @return 写し。場面が無ければ空の場面の文書
-            [[nodiscard]] nlohmann::json SceneSnapshot() const;
 
             [[nodiscard]] EditorMode& Editor() noexcept { return m_editor; }
             [[nodiscard]] const EditorMode& Editor() const noexcept { return m_editor; }
@@ -232,8 +227,6 @@ namespace NS
 
             //! 選択中のアクターに対応する runtime SceneActor。未選択 / 未構築は nullptr
             [[nodiscard]] SceneActor* SelectedActor() noexcept;
-            //! 選択中のアクターがプレイヤー実体か
-            [[nodiscard]] bool SelectedIsPlayerActor() const noexcept;
 
             //! 改名してシーンを未保存にする。不在なら何もしない。重複には番号を付け、空名は Object にする
             void RenameActor(uint32 id, std::string_view name);
