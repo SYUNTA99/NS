@@ -72,11 +72,6 @@ namespace NS
         //! @return シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
         [[nodiscard]] bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before);
 
-        //! id のアクターを desired の姿にする。nullopt は消す。居なければ desired から作る
-        //! 消したアクターと、作り直しで置き換えた古いアクターは、その場で OnEndPlay を呼んで解放する
-        //! desired は id を書き込むので値で受ける。最後に使う呼び手は std::move で渡せる
-        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired);
-
         //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
         [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;

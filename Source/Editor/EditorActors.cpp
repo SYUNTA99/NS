@@ -93,18 +93,6 @@ namespace NS
             return changed;
         }
 
-        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired)
-        {
-            if (!desired)
-            {
-                scene.RemoveActor(id);
-                return;
-            }
-            SetActorJsonId(*desired, id);
-            // 当てられなかった時は ApplyFromJson がログに理由を出す。呼び手は姿を確かめないので戻り値は捨てる
-            (void)scene.ApplyFromJson(*desired);
-        }
-
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)
         {
             nlohmann::json& transform = ActorJsonClassObjs(actorJson)["Transform"];
