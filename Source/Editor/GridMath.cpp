@@ -84,35 +84,6 @@ namespace NS
             return {gx, gy, gz};
         }
 
-        bool TryGroundPlaneFallback(const Ray& ray, Vector3& outCenter, float g) noexcept
-        {
-            // 水平または上向きのレイは交差対象外とする
-            if (ray.direction.y > -1e-4f)
-            {
-                return false;
-            }
-            const float t = -ray.position.y / ray.direction.y;
-            if (t < 0.0f)
-            {
-                return false;
-            }
-            const Vector3 hit{
-                ray.position.x + ray.direction.x * t,
-                0.0f,
-                ray.position.z + ray.direction.z * t,
-            };
-            outCenter = SnapWorldPointToGrid(hit, g);
-            outCenter.y = 0.0f;
-            return true;
-        }
-
-        Quaternion RotationToQuaternion(uint8 rotation) noexcept
-        {
-            const uint8 r = static_cast<uint8>(rotation & 0x03);
-            const float angle = static_cast<float>(r) * (k_Pi * 0.5f);
-            return Quaternion::CreateFromAxisAngle({0.0f, 1.0f, 0.0f}, angle);
-        }
-
         float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept
         {
             // 見かけの寸法は世界の長さ / clip.w に比例するので、長さを clip.w に比例させると相殺される

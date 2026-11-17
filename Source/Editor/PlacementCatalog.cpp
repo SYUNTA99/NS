@@ -3,7 +3,6 @@
 #include "Editor/EditorActors.h"
 
 #include "NSlib/CoreObject/ActorInitInfo.h"
-#include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
@@ -60,12 +59,11 @@ namespace NS
             [[nodiscard]] PlacementItem MakePartsItem(std::string_view label,
                                                       std::string_view actorFileName,
                                                       std::string_view className,
-                                                      std::string_view meshName,
-                                                      bool rotatable)
+                                                      std::string_view meshName)
             {
                 const std::unique_ptr<SceneActor> actor =
                     CreateActorOfClass(className, ActorInitInfo{.actorFile = actorFileName});
-                return PlacementItem{std::string(label), PartsPrototypeOf(*actor, meshName), rotatable};
+                return PlacementItem{std::string(label), PartsPrototypeOf(*actor, meshName)};
             }
         } // namespace
 
@@ -86,14 +84,13 @@ namespace NS
                 // 型から作る地形の部品と同じ .actor だけを、メッシュの形ごとに並べる
                 if (name != "MapPartsActor")
                 {
-                    items.push_back(PlacementItem{name, MakePrototypeJson(name), false});
+                    items.push_back(PlacementItem{name, MakePrototypeJson(name)});
                     continue;
                 }
 
-                // 組み込みの形はどれも 1m のセルに合わせた大きさ
-                items.push_back(MakePartsItem(k_PartsCubeLabel, name, className, "cube", true));
-                items.push_back(MakePartsItem("地形の部品 (球)", name, className, "sphere", false));
-                items.push_back(MakePartsItem(k_PartsSlopeLabel, name, className, "wedge45", true));
+                items.push_back(MakePartsItem(k_PartsCubeLabel, name, className, "cube"));
+                items.push_back(MakePartsItem("地形の部品 (球)", name, className, "sphere"));
+                items.push_back(MakePartsItem(k_PartsSlopeLabel, name, className, "wedge45"));
             }
             return items;
         }
@@ -119,34 +116,6 @@ namespace NS
             // 型から作るのでクラスと同じ名前の .actor を敷く
             const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry->className);
             return PartsPrototypeOf(*actor, meshRef);
-        }
-
-        float PartsSlopeAngleDegrees(const nlohmann::json& prototype) noexcept
-        {
-            const std::string_view actorFileName = ActorJsonFile(prototype);
-            const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFileName);
-            if (className.empty())
-            {
-                return -1.0f;
-            }
-            const std::unique_ptr<SceneActor> actor =
-                CreateActorOfClass(className, ActorInitInfo{.actorFile = actorFileName});
-            if (actor == nullptr)
-            {
-                return -1.0f;
-            }
-            ApplyActorClassObjs(actor.get(), prototype);
-            const Model* model = actor->ModelClassObj();
-            if (model == nullptr)
-            {
-                return -1.0f;
-            }
-            const std::optional<float> angle = AssetManager::BuiltinSlopeAngleDegrees(model->MeshRef());
-            if (!angle.has_value())
-            {
-                return -1.0f;
-            }
-            return *angle;
         }
     } // namespace Editor
 } // namespace NS

@@ -43,16 +43,6 @@ namespace NS
         //! ワールド座標を最も近いグリッドセルの中心座標に丸める
         [[nodiscard]] Vector3 SnapWorldPointToGrid(Vector3 worldPoint, float gridSize = k_GridSize) noexcept;
 
-        //! レイと水平な地面との交点を算出し、グリッドにスナップした座標を取得する
-        //! @param[out] outCellCenter スナップ後のセル中心。交差した時だけ書く
-        //! @return 交差した場合 true、それ以外の場合は false
-        [[nodiscard]] bool TryGroundPlaneFallback(const Ray& ray,
-                                                  Vector3& outCellCenter,
-                                                  float gridSize = k_GridSize) noexcept;
-
-        //! 0〜3の段階的な回転値を、Y軸周りの90度刻みのクォータニオンに変換する
-        [[nodiscard]] Quaternion RotationToQuaternion(uint8 rotation) noexcept;
-
         //! 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
         //! 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1
         [[nodiscard]] float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept;

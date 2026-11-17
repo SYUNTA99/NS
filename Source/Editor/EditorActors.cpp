@@ -162,9 +162,6 @@ namespace NS
 
         namespace
         {
-            // cell ブラシの回転値 0..3 を Y 軸 90° 刻みの yaw ラジアンへ写す係数
-            constexpr float k_QuarterTurnYaw = k_Pi * 0.5f;
-
             // 登録の表示名、なければクラス名。未登録は SceneActor。返す文字列は登録情報が所有する
             const char* ClassDisplayName(std::string_view className) noexcept
             {
@@ -235,82 +232,6 @@ namespace NS
             }
             const std::vector<uint32> family = CollectWithDescendants(actors, {child});
             return std::find(family.begin(), family.end(), parent) == family.end();
-        }
-
-        bool IsCellBrushActor(const SceneActor* object) noexcept
-        {
-            NS_ASSERT(App, object != nullptr, "IsCellBrushActor: アクターが null");
-            // 自前の振る舞いを持つ SceneActor は、ブラシの置換や削除で崩さない
-            if (std::string_view{object->ClassName()} != "MapPartsActor")
-            {
-                return false;
-            }
-            const Model* model = object->ModelClassObj();
-            if (model == nullptr)
-            {
-                return false;
-            }
-            const std::string_view mesh = model->MeshRef();
-            return mesh == "cube" || mesh == "wedge45";
-        }
-
-        int16 ActorCellX(const SceneActor* object) noexcept
-        {
-            NS_ASSERT(App, object != nullptr, "ActorCellX: アクターが null");
-            return static_cast<int16>(std::lround(object->TransformObj().Position().x));
-        }
-
-        int16 ActorCellY(const SceneActor* object) noexcept
-        {
-            NS_ASSERT(App, object != nullptr, "ActorCellY: アクターが null");
-            return static_cast<int16>(std::lround(object->TransformObj().Position().y));
-        }
-
-        int16 ActorCellZ(const SceneActor* object) noexcept
-        {
-            NS_ASSERT(App, object != nullptr, "ActorCellZ: アクターが null");
-            return static_cast<int16>(std::lround(object->TransformObj().Position().z));
-        }
-
-        uint32 FindActorIdAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
-        {
-            for (const SceneActor* object : PlacedActors(objects))
-            {
-                if (IsCellBrushActor(object) && ActorCellX(object) == x && ActorCellY(object) == y &&
-                    ActorCellZ(object) == z)
-                {
-                    return object->Id();
-                }
-            }
-            return k_NoActorId;
-        }
-
-        bool HasPlacedActorAtCell(const ActorList& objects, int16 x, int16 y, int16 z) noexcept
-        {
-            for (const SceneActor* object : PlacedActors(objects))
-            {
-                if (ActorCellX(object) == x && ActorCellY(object) == y && ActorCellZ(object) == z)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        void TurnCellQuarter(SceneActor* object) noexcept
-        {
-            NS_ASSERT(App, object != nullptr, "TurnCellQuarter: アクターが null");
-            // 今の回転の後に世界の Y 軸まわりを掛ける。段へ丸めると傾きが消える
-            const Quaternion quarter = Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
-            Transform& transform = object->TransformObj();
-            transform.SetRotation(transform.Rotation() * quarter);
-        }
-
-        void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept
-        {
-            const float yaw = static_cast<float>(rotationStep & 0x03) * k_QuarterTurnYaw;
-            const Quaternion rotation = Quaternion::CreateFromYawPitchRoll(yaw, 0.0f, 0.0f);
-            SetActorJsonRotation(actorJson, rotation);
         }
 
         const char* ActorDisplayName(const SceneActor* object)

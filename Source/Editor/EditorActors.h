@@ -72,10 +72,6 @@ namespace NS
         //! @return シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
         [[nodiscard]] bool AddChangedSceneOverrides(SceneActor* actor, const nlohmann::json& before);
 
-        //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
-        //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。
-        [[nodiscard]] bool IsCellBrushActor(const SceneActor* object) noexcept;
-
         //! roots と、その子孫の永続 id。roots の順の後に子孫を根に近い順で並べ、各 id を 1 回だけ入れる
         //! 親子が輪になったシーン (手で書いたファイル・インスペクタの参照の欄) でも 1 周で止まる
         [[nodiscard]] std::vector<uint32> CollectWithDescendants(const ActorList& actors,
@@ -84,29 +80,6 @@ namespace NS
         //! child の親を parent にしてよい場合 true。自分自身と自分の子孫は輪になるので false
         //! parent が k_NoActorId (親を外す) ならいつも true
         [[nodiscard]] bool CanReparent(const ActorList& actors, uint32 child, uint32 parent);
-
-        //! 実体のセル座標。Transform の位置を最も近い整数へ丸めた値
-        [[nodiscard]] int16 ActorCellX(const SceneActor* object) noexcept;
-        [[nodiscard]] int16 ActorCellY(const SceneActor* object) noexcept;
-        [[nodiscard]] int16 ActorCellZ(const SceneActor* object) noexcept;
-
-        //! objects からセルが一致する最初のセルブラシのアクターの永続識別番号を返す。不在は k_NoActorId
-        [[nodiscard]] uint32 FindActorIdAtCell(const ActorList& objects,
-                                                    int16 x,
-                                                    int16 y,
-                                                    int16 z) noexcept;
-
-        //! objects に種類を問わずセルが一致するアクターがある場合 true、それ以外の場合は false
-        [[nodiscard]] bool HasPlacedActorAtCell(const ActorList& objects,
-                                                 int16 x,
-                                                 int16 y,
-                                                 int16 z) noexcept;
-
-        //! object の Transform の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
-        void TurnCellQuarter(SceneActor* object) noexcept;
-
-        //! object の回転を rotationStep に対応する Y 軸回転のクォータニオンに設定する
-        void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept;
 
         //! 個体名を優先し、空なら登録の表示名かクラス名。未登録の型は SceneActor
         [[nodiscard]] const char* ActorDisplayName(const SceneActor* object);

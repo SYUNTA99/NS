@@ -75,10 +75,6 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     EXPECT_EQ(NS::FieldString(*cubeMesh, "メッシュ", ""), "cube");
     EXPECT_EQ(NS::FieldString(*sphereMesh, "メッシュ", ""), "sphere");
     EXPECT_EQ(NS::FieldString(*slopeMesh, "メッシュ", ""), "wedge45");
-    // 90 度ずつ回して意味があるのは箱と坂だけ
-    EXPECT_TRUE(cube->rotatable);
-    EXPECT_FALSE(sphere->rotatable);
-    EXPECT_TRUE(slope->rotatable);
     // 形の決まらない素の「地形の部品」は並べない
     EXPECT_FALSE(NS::Editor::FindPlacementItem("地形の部品").has_value());
 }
