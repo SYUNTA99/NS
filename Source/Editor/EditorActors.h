@@ -63,6 +63,15 @@ namespace NS
         //! id のアクターの今の姿を JSON へ書き出す。居なければ nullopt
         [[nodiscard]] std::optional<nlohmann::json> CaptureActor(ActorList& actors, uint32 id);
 
+        //! actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
+        //! 編集の前に控え、編集の後に AddChangedSceneOverrides へ渡す
+        [[nodiscard]] nlohmann::json AllFieldValues(const SceneActor& actor);
+
+        //! before (AllFieldValues の形) から値が変わった、シーンに書く項目を actor の上書きの一覧に足す
+        //! 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
+        //! @return シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
+        [[nodiscard]] bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before);
+
         //! id のアクターを desired の姿にする。nullopt は消す。居なければ desired から作る
         //! 消したアクターと、作り直しで置き換えた古いアクターは、その場で OnEndPlay を呼んで解放する
         //! desired は id を書き込むので値で受ける。最後に使う呼び手は std::move で渡せる
@@ -98,8 +107,8 @@ namespace NS
                                                  int16 y,
                                                  int16 z) noexcept;
 
-        //! object の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
-        void AddCellQuarterTurn(nlohmann::json& actorJson) noexcept;
+        //! object の Transform の今の回転に、世界の Y 軸まわりの 90° を足す。傾きは残る
+        void TurnCellQuarter(SceneActor* object) noexcept;
 
         //! object の回転を rotationStep に対応する Y 軸回転のクォータニオンに設定する
         void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept;

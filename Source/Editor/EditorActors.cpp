@@ -12,6 +12,7 @@
 #include "NSlib/CoreObject/Reflection/ClassObjEntry.h"
 #include "NSlib/CoreObject/Reflection/ActorBuilder.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
+#include "NSlib/CoreObject/Reflection/ReflectionJson.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/SceneActor.h"
@@ -52,6 +53,44 @@ namespace NS
             }
             // 写しから同じ姿を作り直せるように、アクターが自分を全部品の値まで書き出す
             return ActorToJson(actor);
+        }
+
+        nlohmann::json AllFieldValues(const SceneActor& actor)
+        {
+            nlohmann::json values = nlohmann::json::object();
+            nlohmann::json& parts = ActorJsonClassObjs(values);
+            ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
+                parts[std::string{row.key}] = SerializeClassObjFields(part);
+            });
+            return values;
+        }
+
+        bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before)
+        {
+            bool changed = false;
+            ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
+                const nlohmann::json now = SerializeClassObjFields(part);
+                const nlohmann::json* was = ClassObjFields(before, row.key);
+                for (nlohmann::json::const_iterator entry = now.begin(); entry != now.end(); ++entry)
+                {
+                    // 触ったかを見る比べなので、値の写しどうしを == で比べる
+                    if (was != nullptr && was->contains(entry.key()) && was->at(entry.key()) == entry.value())
+                    {
+                        continue;
+                    }
+                    const FieldDesc* field = FindField(part->GetReflection(), entry.key());
+                    if (field == nullptr || FieldDestinationOf(&actor, *field) != FieldDestination::Scene)
+                    {
+                        continue;
+                    }
+                    changed = true;
+                    if (field->type != FieldType::ActorRef)
+                    {
+                        actor.AddSceneOverride(row.key, entry.key());
+                    }
+                }
+            });
+            return changed;
         }
 
         void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired)
@@ -268,11 +307,13 @@ namespace NS
             return false;
         }
 
-        void AddCellQuarterTurn(nlohmann::json& actorJson) noexcept
+        void TurnCellQuarter(SceneActor* object) noexcept
         {
+            NS_ASSERT(App, object != nullptr, "TurnCellQuarter: アクターが null");
             // 今の回転の後に世界の Y 軸まわりを掛ける。段へ丸めると傾きが消える
             const Quaternion quarter = Quaternion::CreateFromYawPitchRoll(k_QuarterTurnYaw, 0.0f, 0.0f);
-            SetActorJsonRotation(actorJson, ActorJsonRotation(actorJson) * quarter);
+            Transform& transform = object->TransformObj();
+            transform.SetRotation(transform.Rotation() * quarter);
         }
 
         void SetCellRotationStep(nlohmann::json& actorJson, uint8 rotationStep) noexcept

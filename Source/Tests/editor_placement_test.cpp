@@ -486,7 +486,7 @@ TEST(EditorDirectEdit, PaintingOverACellReplacesItWithTheSameId)
 }
 
 // 升の物をクラスの違う物 (ゴール) で置き換えても、同じ id のままそのクラスになり、読み直しても残る
-TEST(EditorDirectEdit, DISABLED_PaintingADifferentClassOverACellReplacesIt)
+TEST(EditorDirectEdit, PaintingADifferentClassOverACellReplacesIt)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);

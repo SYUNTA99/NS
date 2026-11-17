@@ -523,7 +523,8 @@ namespace NS
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
                 RemapActorRefs(objects[i], idMap);
-                ApplyActorSnapshot(*m_scene, created[i], std::move(objects[i]));
+                // 組めない姿は Scene が JSON のまま持って保存に残すので、作れたかは確かめない
+                (void)m_scene->SpawnFromJson(objects[i]);
             }
             MarkEdited();
             m_levelDirty = true;
@@ -563,8 +564,11 @@ namespace NS
                 return;
             }
 
-            // 今ある cell は同じ永続 id で置き換える。作るのでなく編集なので CreateActors を通さない
-            ApplyActorSnapshot(*m_scene, id, std::move(placed));
+            // 今ある cell を消し、同じ永続 id で作り直す。作るのでなく編集なので CreateActors を通さない
+            // 作り直したアクターは一覧の最後に入る
+            SetActorJsonId(placed, id);
+            m_scene->RemoveActor(id);
+            (void)m_scene->SpawnFromJson(placed);
             MarkEdited();
             m_levelDirty = true;
         }
@@ -581,7 +585,7 @@ namespace NS
             {
                 return;
             }
-            ApplyActorSnapshot(*m_scene, id, std::nullopt);
+            m_scene->RemoveActor(id);
             MarkEdited();
             m_levelDirty = true;
         }
@@ -598,14 +602,18 @@ namespace NS
             {
                 return;
             }
-            std::optional<nlohmann::json> before = CaptureActor(m_scene->Actors(), id);
-            if (!before)
+            SceneActor* actor = m_scene->Actors().FindByActorId(id);
+            if (actor == nullptr)
             {
                 return;
             }
-            nlohmann::json after = std::move(*before);
-            Editor::AddCellQuarterTurn(after);
-            ApplyActorSnapshot(*m_scene, id, std::move(after));
+            // 回した回転を上書きの一覧に足さないと保存されない。ギズモと同じ控えと比べで足す
+            const nlohmann::json before = AllFieldValues(*actor);
+            TurnCellQuarter(actor);
+            if (!AddChangedSceneOverrides(*actor, before))
+            {
+                return;
+            }
             MarkEdited();
             m_levelDirty = true;
         }

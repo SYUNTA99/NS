@@ -100,51 +100,6 @@ namespace NS
             return m_mode == Mode::Edit;
         }
 
-        namespace
-        {
-            // actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
-            nlohmann::json AllFieldValues(const SceneActor& actor)
-            {
-                nlohmann::json values = nlohmann::json::object();
-                nlohmann::json& parts = ActorJsonClassObjs(values);
-                ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
-                    parts[std::string{row.key}] = SerializeClassObjFields(part);
-                });
-                return values;
-            }
-
-            // before (AllFieldValues の形) から値が変わった、シーンに書く項目を actor の上書きの一覧に足す
-            // 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
-            // 戻り値は、シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
-            bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before)
-            {
-                bool changed = false;
-                ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
-                    const nlohmann::json now = SerializeClassObjFields(part);
-                    const nlohmann::json* was = ClassObjFields(before, row.key);
-                    for (nlohmann::json::const_iterator entry = now.begin(); entry != now.end(); ++entry)
-                    {
-                        // 触ったかを見る比べなので、値の写しどうしを == で比べる
-                        if (was != nullptr && was->contains(entry.key()) && was->at(entry.key()) == entry.value())
-                        {
-                            continue;
-                        }
-                        const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                        if (field == nullptr || FieldDestinationOf(&actor, *field) != FieldDestination::Scene)
-                        {
-                            continue;
-                        }
-                        changed = true;
-                        if (field->type != FieldType::ActorRef)
-                        {
-                            actor.AddSceneOverride(row.key, entry.key());
-                        }
-                    }
-                });
-                return changed;
-            }
-        } // namespace
-
         void LevelEditorController::SelectSceneSettings()
         {
             ClearAssetSelection();
@@ -1167,7 +1122,7 @@ namespace NS
                 {
                     continue;
                 }
-                ApplyActorSnapshot(m_scene, victim, std::nullopt);
+                m_scene.RemoveActor(victim);
                 deleted = true;
             }
             if (!deleted)
