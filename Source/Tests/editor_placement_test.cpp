@@ -26,6 +26,7 @@
 
 #include "NSlib/Core/Types.h"
 #include "Tests/TestHiddenApp.h"
+#include <cmath>
 #include <optional>
 #include <string_view>
 
@@ -427,6 +428,82 @@ TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
     EXPECT_EQ(CountedGoal::s_endPlays, 1);
     EXPECT_EQ(CountedGoal::s_destroyed, 1);
+}
+
+namespace
+{
+    // 升 (0, 0, 0) にパレットの slot の物を筆で置き、そこに居るアクターの id を返す
+    NS::uint32 PaintCell(LevelEditorController& editor, NS::Scene& scene, std::size_t slot)
+    {
+        editor.Editor().Palette().SetActiveSlot(slot);
+        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+        return NS::Editor::FindActorIdAtCell(scene.Actors(), 0, 0, 0);
+    }
+} // namespace
+
+// 升を回した向きは、シーンを書き出して読み直しても残る
+TEST(EditorDirectEdit, RotatedCellKeepsItsRotationAfterReload)
+{
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    const NS::uint32 id = PaintCell(editor, scene, 0);
+    ASSERT_NE(id, NS::k_NoActorId);
+
+    editor.Editor().RotateAtProgrammatic(0, 0, 0);
+    const NS::SceneActor* rotated = scene.Actors().FindByActorId(id);
+    ASSERT_NE(rotated, nullptr);
+    const NS::Quaternion expected = rotated->TransformObj().Rotation();
+    // 回っていなければ、読み直しで残るかを見分けられない
+    ASSERT_GT(std::abs(expected.y), 0.1f);
+
+    NS::Scene reloaded;
+    reloaded.ResetFromJson(scene.ToJson());
+    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
+    ASSERT_NE(loaded, nullptr);
+    const NS::Quaternion actual = loaded->TransformObj().Rotation();
+    EXPECT_NEAR(actual.x, expected.x, 1e-5f);
+    EXPECT_NEAR(actual.y, expected.y, 1e-5f);
+    EXPECT_NEAR(actual.z, expected.z, 1e-5f);
+    EXPECT_NEAR(actual.w, expected.w, 1e-5f);
+}
+
+// 物のある升へ別の形を筆で置くと、同じ id のまま新しい形になり、読み直しても残る
+TEST(EditorDirectEdit, PaintingOverACellReplacesItWithTheSameId)
+{
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    const NS::uint32 id = PaintCell(editor, scene, 0);
+    ASSERT_NE(id, NS::k_NoActorId);
+
+    EXPECT_EQ(PaintCell(editor, scene, 1), id);
+
+    NS::Scene reloaded;
+    reloaded.ResetFromJson(scene.ToJson());
+    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
+    ASSERT_NE(loaded, nullptr);
+    ASSERT_NE(loaded->ModelClassObj(), nullptr);
+    EXPECT_EQ(loaded->ModelClassObj()->MeshRef(), "wedge45");
+}
+
+// 升の物をクラスの違う物 (ゴール) で置き換えても、同じ id のままそのクラスになり、読み直しても残る
+TEST(EditorDirectEdit, DISABLED_PaintingADifferentClassOverACellReplacesIt)
+{
+    NS::Scene scene;
+    LevelEditorController editor(scene);
+    const NS::uint32 id = PaintCell(editor, scene, 0);
+    ASSERT_NE(id, NS::k_NoActorId);
+
+    editor.Editor().Palette().SetActiveSlot(2);
+    editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
+    const NS::SceneActor* replaced = scene.Actors().FindByActorId(id);
+    ASSERT_NE(replaced, nullptr);
+    EXPECT_EQ(std::string_view{replaced->ClassName()}, "GoalActor");
+
+    NS::Scene reloaded;
+    reloaded.ResetFromJson(scene.ToJson());
+    const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
+    ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(std::string_view{loaded->ClassName()}, "GoalActor");
 }
 
 // ApplyActorSnapshot が作り直しで置き換えた古いアクターも、その場で OnEndPlay を呼んで解放する

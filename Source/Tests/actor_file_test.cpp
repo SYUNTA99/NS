@@ -1840,6 +1840,9 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     ASSERT_NO_FATAL_FAILURE(EditField(editor, first, first->ShadowClassObj(), "基本直径"));
     const nlohmann::json before = scene.ToJson();
     const nlohmann::json& beforeObject = NS::SceneJsonActors(before)[NS::FindActorIndexById(before, 1)];
+    ASSERT_NE(first->ModelClassObj(), nullptr);
+    const std::string meshBefore = first->ModelClassObj()->MeshRef();
+    const std::string materialBefore = first->ModelClassObj()->MaterialRef();
 
     ASSERT_TRUE(editor.DeriveActorFileFromActor(1, "TunedRock"));
     const nlohmann::json tuned = SavedActorFile(scope.Path(), "TunedRock");
@@ -1851,6 +1854,9 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     EXPECT_EQ(moved->ActorFileName(), "TunedRock");
     EXPECT_FALSE(moved->IsSceneOverride("Shadow", "基本直径"));
     EXPECT_FLOAT_EQ(DiameterOf(moved), 9.0f);
+    // 移した値は前と同じなので、描くメッシュと素材も変わらない
+    EXPECT_EQ(moved->ModelClassObj()->MeshRef(), meshBefore);
+    EXPECT_EQ(moved->ModelClassObj()->MaterialRef(), materialBefore);
     const nlohmann::json after = scene.ToJson();
     const nlohmann::json& afterObject = NS::SceneJsonActors(after)[NS::FindActorIndexById(after, 1)];
     EXPECT_FALSE(NS::HasField(*NS::ClassObjFields(afterObject, "Shadow"), "基本直径"));

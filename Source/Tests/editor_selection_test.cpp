@@ -407,6 +407,50 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
     EXPECT_EQ(app.Run(), 0);
 }
 
+// マテリアルを付けると未保存になり、書き出して読み直しても付けたマテリアルのまま。同じ物をもう一度付けても版は進まない
+TEST(EditorSelection, DISABLED_AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
+{
+    NS::Application app(HiddenAppDesc("マテリアルの保存の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        // 置いた立方体を、読み込んだ (未保存でない) シーンとして始める
+        NS::Scene source;
+        source.SetSimulationEnabled(false);
+        NS::uint32 id = NS::k_NoActorId;
+        {
+            LevelEditorController placing(source);
+            placing.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+            id = placing.SelectedActorId();
+        }
+        ASSERT_NE(id, NS::k_NoActorId);
+        NS::Scene scene;
+        scene.SetSimulationEnabled(false);
+        scene.ResetFromJson(source.ToJson());
+        LevelEditorController editor(scene);
+        editor.SetGizmoToolActive(true);
+        editor.SelectActorById(id);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+
+        const std::string stone = "Assets/Materials/stone.mat";
+        const std::string stonePath = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone);
+        ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+
+        NS::Scene reloaded;
+        reloaded.SetSimulationEnabled(false);
+        reloaded.ResetFromJson(scene.ToJson());
+        const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
+        ASSERT_NE(loaded, nullptr);
+        ASSERT_NE(loaded->ModelClassObj(), nullptr);
+        EXPECT_EQ(loaded->ModelClassObj()->MaterialRef(), stone);
+
+        const NS::uint64 versionBefore = editor.Editor().EditVersion();
+        ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
+        EXPECT_EQ(editor.Editor().EditVersion(), versionBefore);
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
 // 追従カメラもギズモで引いて動かせる
 TEST(EditorSelection, DraggingTheFollowCameraMovesIt)
 {
