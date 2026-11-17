@@ -72,6 +72,11 @@ namespace NS
         //! @return シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
         [[nodiscard]] bool AddChangedSceneOverrides(SceneActor* actor, const nlohmann::json& before);
 
+        //! id のアクターを desired の姿にする。nullopt は消す。居なければ desired から作る
+        //! 消したアクターと、作り直しで置き換えた古いアクターは、その場で OnEndPlay を呼んで解放する
+        //! desired は id を書き込むので値で受ける。最後に使う呼び手は std::move で渡せる
+        void ApplyActorSnapshot(Scene& scene, uint32 id, std::optional<nlohmann::json> desired);
+
         //! roots と、その子孫の永続 id。roots の順の後に子孫を根に近い順で並べ、各 id を 1 回だけ入れる
         //! 親子が輪になったシーン (手で書いたファイル・インスペクタの参照の欄) でも 1 周で止まる
         [[nodiscard]] std::vector<uint32> CollectWithDescendants(const ActorList& actors,

@@ -20,6 +20,13 @@ namespace NS
     //! アクターの JSON 1 件からアクターを組むファクトリ。組めない JSON には nullptr を返し、RebuildFromJson が読み飛ばす
     using ActorFactoryFn = std::function<std::unique_ptr<SceneActor>(const nlohmann::json&)>;
 
+    //! 解放せずに一覧から外したアクター。持つ側は捨てる前に OnEndPlay を呼ぶ
+    struct DetachedActor
+    {
+        std::unique_ptr<SceneActor> actor; // 居なかった時と、外すのを断った時は空
+        std::size_t index = 0;             // 外す前の並びの位置
+    };
+
     //! アクターを所有し、永続 id から参照を解決する一覧。個体の構築は渡された生成関数が行う
     class ActorList : public NonCopyable
     {
@@ -130,6 +137,10 @@ namespace NS
         //! シーンへの接続と開始は呼び手が済ませる
         SceneActor* InsertFromJson(std::unique_ptr<SceneActor> obj, const nlohmann::json& entry, std::size_t index);
 
+        //! objectId のアクターを Disappear してから、解放せずに一覧から外す。OnEndPlay は呼ばない
+        //! 居なければ空を返す。1 歩の更新の最中は断る
+        [[nodiscard]] DetachedActor DetachByActorId(uint32 objectId);
+
         //! 並びが変わったので索引を捨てる。並びを変える箇所は必ず呼び、破棄したアクターを索引に残さない
         void MarkIndexDirty() noexcept;
         //! 一覧に入れた後と外した後に呼び、全部のアクターに ActorRef の指す相手を取得し直させる
@@ -139,6 +150,8 @@ namespace NS
         //! header の id・.actor の名前・名前・出現を obj へ写す。名前は他のアクターと重なれば番号を付ける
         //! 出すのは最後なので、JSON の値を全部当てたアクターに使う
         void ApplyIdentity(SceneActor* obj, const ActorHeader& header);
+        //! header の id・.actor の名前・名前を obj へ写し、出現は変えない
+        void ApplyIdentityExceptPresence(SceneActor* obj, const ActorHeader& header);
         //! header の出現のとおりに obj を出すか隠す。出す時は今の姿で当たりと補間の前の値を揃えるので、JSON の値を全部当ててから呼ぶ
         static void ApplyPresence(SceneActor* obj, const ActorHeader& header);
 

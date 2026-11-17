@@ -17,6 +17,7 @@ namespace GL
         //! 自機の立ち姿・玉と、描画時の回転・変形を管理する部品
         //! 姿のメッシュは素材の姿のポインタの欄 (NS::Mesh*)
         //! に持ち、姿ごとの倍率で大きさを合わせる。当たりの寸法には付いて行かない
+        // TODO: 部分的な JSON 適用 (ApplyFromJson) では Model の値を反映し直せない。ResetFromJson で直る
         class PlayerAppearance : public NS::Object
         {
         public:

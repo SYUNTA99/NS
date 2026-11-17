@@ -189,12 +189,28 @@ namespace NS
     std::unique_ptr<SceneActor> Scene::BuildOrKeepUnresolved(const nlohmann::json& actorJson)
     {
         std::unique_ptr<SceneActor> built = ActorFromJson(actorJson, *this);
+        const uint32 id = ActorJsonId(actorJson);
+        std::vector<nlohmann::json>::iterator kept = std::find_if(
+            m_unresolvedActors.begin(), m_unresolvedActors.end(), [id](const nlohmann::json& unresolved) {
+                return ActorJsonId(unresolved) == id;
+            });
         if (built)
         {
+            if (kept != m_unresolvedActors.end())
+            {
+                m_unresolvedActors.erase(kept);
+            }
             return built;
         }
-        // 組めない姿も保存で消さないよう JSON のまま持つ。同じ id で入れ直す時は、先に RemoveActor が捨てる
-        m_unresolvedActors.push_back(actorJson);
+        // 同じ id の物は 1 つだけ持つ。戻しの控えを何度当てても保存のアクターは増えない
+        if (kept != m_unresolvedActors.end())
+        {
+            *kept = actorJson;
+        }
+        else
+        {
+            m_unresolvedActors.push_back(actorJson);
+        }
         return nullptr;
     }
 
@@ -211,6 +227,95 @@ namespace NS
             return nullptr;
         }
         StartSpawned(raw);
+        return raw;
+    }
+
+    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot)
+    {
+        SceneActor* obj = m_actors.FindByActorId(ActorJsonId(snapshot));
+        if (obj == nullptr)
+        {
+            return SpawnFromJson(snapshot);
+        }
+        // 部品はクラスで決まるので、同じクラスなら .actor が替わっても作り直さずに値を書き直せる
+        const std::string_view actorFile = ActorJsonFile(snapshot);
+        const std::string className = ActorFileLibrary::Get().ClassNameOf(actorFile);
+        if (!className.empty() && className != obj->ClassName())
+        {
+            NS_LOG_ERROR(Scene,
+                         "id {} のアクターの控えの .actor {} はクラス {} で、今のクラス {} と違うので当てない",
+                         obj->Id(),
+                         actorFile,
+                         className,
+                         obj->ClassName());
+            return nullptr;
+        }
+        // 控えはシーンの上書きだけを持つ。上書きの無い項目も .actor の値へ戻すため、全部の値に重ねてから写す
+        const nlohmann::json* values = ActorFileLibrary::Get().Values(actorFile);
+        if (values == nullptr)
+        {
+            return RebuildActorFromJson(snapshot);
+        }
+        const std::optional<nlohmann::json> merged = MergeLayer(*values, snapshot, FieldDestination::Scene, obj);
+        if (!merged.has_value())
+        {
+            return RebuildActorFromJson(snapshot);
+        }
+        const nlohmann::json& object = *merged;
+        const bool actorFileChanged = actorFile != obj->ActorFileName();
+        const ActorHeader header = ReadActorHeader(snapshot);
+        m_actors.ApplyIdentityExceptPresence(obj, header);
+        ReadSceneOverrides(obj, snapshot);
+        bool written = false;
+        ForEachReflectedClassObj(obj, [&](const ClassObjInfo& field, Object* classObj) {
+            const nlohmann::json* fields = ClassObjFields(object, field.key);
+            if (fields == nullptr || SerializeClassObjFields(classObj) == *fields)
+            {
+                return;
+            }
+            (void)ApplyJsonFields(classObj, *fields);
+            written = true;
+        });
+        if (actorFileChanged)
+        {
+            obj->ReloadActorFileOnlyValues();
+        }
+        // 書き換えた欄に参照があれば読み直す。作る時と同じ組を通る
+        if (written || actorFileChanged)
+        {
+            obj->ReloadAssets();
+        }
+        // 出す時は今の姿で当たりと補間の前の値を揃えるので、JSON の値を全部当ててから出す
+        ActorList::ApplyPresence(obj, header);
+        // 書き換えた欄に ActorRef があれば、指す相手を取得し直す
+        if (written)
+        {
+            obj->ResolveActorRefs();
+        }
+        return obj;
+    }
+
+    SceneActor* Scene::RebuildActorFromJson(const nlohmann::json& snapshot)
+    {
+        // 古いアクターは新しいアクターを入れ終えるまで解放しない。外したアクターの番地に新しいアクターが作られない
+        DetachedActor detached = m_actors.DetachByActorId(ActorJsonId(snapshot));
+        if (!detached.actor)
+        {
+            return nullptr;
+        }
+        // 組めない姿は居ない姿として扱い、JSON は BuildOrKeepUnresolved が持つ
+        SceneActor* raw = nullptr;
+        std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(snapshot);
+        if (built)
+        {
+            raw = m_actors.InsertFromJson(std::move(built), snapshot, detached.index);
+        }
+        if (raw != nullptr)
+        {
+            StartSpawned(raw);
+        }
+        // 外した時に Disappear 済み。ここで終わらせ、detached が解放する
+        detached.actor->OnEndPlay();
         return raw;
     }
 

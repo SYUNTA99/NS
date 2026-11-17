@@ -102,6 +102,32 @@ namespace NS
         }
     }
 
+    DetachedActor ActorList::DetachByActorId(uint32 objectId)
+    {
+        // 歩の最中に外すと、その歩で後に呼ぶ予定の生ポインタが一覧の外を指す
+        if (m_updating)
+        {
+            NS_LOG_ERROR(
+                Scene, "ActorList::DetachByActorId: 1 歩の更新の最中に呼ばれたので id {} を外すのを断った", objectId);
+            return DetachedActor{};
+        }
+
+        const std::size_t index = IndexOfActorId(objectId);
+        if (index >= m_actors.size())
+        {
+            return DetachedActor{};
+        }
+
+        DetachedActor detached;
+        detached.index = index;
+        m_actors[index]->Disappear();
+        detached.actor = std::move(m_actors[index]);
+        m_actors.erase(m_actors.begin() + static_cast<std::ptrdiff_t>(index));
+        MarkIndexDirty();
+        ResolveActorRefs();
+        return detached;
+    }
+
     void ActorList::RemoveDestroyed()
     {
         if (m_updating)
@@ -260,11 +286,16 @@ namespace NS
 
     void ActorList::ApplyIdentity(SceneActor* obj, const ActorHeader& header)
     {
-        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentity: 写す先のアクターが無い");
+        ApplyIdentityExceptPresence(obj, header);
+        ApplyPresence(obj, header);
+    }
+
+    void ActorList::ApplyIdentityExceptPresence(SceneActor* obj, const ActorHeader& header)
+    {
+        NS_ASSERT(Scene, obj != nullptr, "ActorList::ApplyIdentityExceptPresence: 写す先のアクターが無い");
         obj->SetId(header.id);
         ChangeActorFile(obj, header.actorFile);
         RenameActor(obj, header.name);
-        ApplyPresence(obj, header);
     }
 
     void ActorList::ChangeActorFile(SceneActor* obj, std::string_view actorFileName)
