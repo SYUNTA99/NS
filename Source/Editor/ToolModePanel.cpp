@@ -16,10 +16,6 @@ namespace NS
             {
                 const LevelEditorController::EditTool tool = editor.CurrentEditTool();
                 ImGui::BeginDisabled(!editor.IsSceneEditable());
-                if (ImGui::RadioButton("ステージ作成", tool == LevelEditorController::EditTool::StageBuild))
-                {
-                    editor.SetEditTool(LevelEditorController::EditTool::StageBuild);
-                }
                 if (ImGui::RadioButton("選択・変形", tool == LevelEditorController::EditTool::Gizmo))
                 {
                     editor.SetGizmoToolActive(true);
@@ -28,11 +24,7 @@ namespace NS
                 {
                     editor.SetGizmoToolActive(false);
                 }
-                if (editor.CurrentEditTool() == LevelEditorController::EditTool::StageBuild)
-                {
-                    editor.StageBuilder().RenderControls();
-                }
-                else if (editor.GizmoToolActive())
+                if (editor.GizmoToolActive())
                 {
                     ImGui::TextWrapped("クリックで選択。Q/W/E/R = 選択 / 移動 / 回転 / 拡大縮小");
                 }

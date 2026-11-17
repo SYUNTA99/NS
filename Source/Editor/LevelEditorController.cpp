@@ -568,14 +568,6 @@ namespace NS
             // Esc: Object モードで選択中ならまず選択解除に使い終了させない
             if (presses.WasPressed(OS::Key::Escape))
             {
-                if (m_editTool == EditTool::StageBuild)
-                {
-                    if (!m_editShortcutsBlocked)
-                    {
-                        SetEditTool(EditTool::Gizmo);
-                    }
-                    return;
-                }
                 if (GizmoToolActive() && m_gizmo.Selected() != nullptr)
                 {
                     // 選択の id ごと外す。ギズモだけ外すと、次のフレームに id から選び直される
@@ -609,7 +601,6 @@ namespace NS
             const bool objectMode = GizmoToolActive();
             m_gizmo.SetActive(objectMode);
             m_editor.SetInputSuppressed(m_editTool != EditTool::Grid);
-            TickStageBuild(presses);
 
             if (objectMode)
             {
@@ -709,50 +700,9 @@ namespace NS
             }
             CommitTransformEdit();
             m_editTool = tool;
-            m_stagePlacement.reset();
             if (tool != EditTool::Gizmo)
             {
                 SelectActorById(k_NoActorId);
-            }
-        }
-
-        void LevelEditorController::TickStageBuild(const OS::InputPresses& presses)
-        {
-            m_stagePlacement.reset();
-            if (m_editTool != EditTool::StageBuild || m_editShortcutsBlocked || !m_gameViewHovered || m_gameViewHidden)
-            {
-                return;
-            }
-            Application* app = Application::Get();
-            if (app == nullptr)
-            {
-                return;
-            }
-            OS::Mouse& mouse = app->Input().Mouse();
-            if (mouse.IsHeld(OS::MouseButton::Right) || mouse.IsHeld(OS::MouseButton::Middle))
-            {
-                return;
-            }
-            if (presses.WasPressed(OS::Key::R))
-            {
-                m_stageBuilder.YawDegrees() += 90.0f;
-            }
-            const ViewRect view = CurrentViewRect();
-            int mouseX = 0;
-            int mouseY = 0;
-            WindowMouseToViewSpace(mouse.GetX(), mouse.GetY(), mouseX, mouseY);
-            if (!ViewRectContains(view, mouseX, mouseY))
-            {
-                return;
-            }
-            int localX = 0;
-            int localY = 0;
-            ViewRectToLocal(view, mouseX, mouseY, localX, localY);
-            const Ray ray = ScreenToWorldRay(MainCamera().ViewProjection(), ViewRectSize(view), localX, localY);
-            m_stagePlacement = m_stageBuilder.Placement(ray, m_scene.Physics());
-            if (m_stagePlacement && presses.WasPressed(OS::MouseButton::Left))
-            {
-                (void)PlaceStagePart(ray);
             }
         }
 
@@ -980,27 +930,6 @@ namespace NS
             nlohmann::json object = item.prototype;
             SetActorJsonPosition(object, m_editorCamera.Center());
             CreateActorAndSelect(std::move(object));
-        }
-
-        uint32 LevelEditorController::PlaceStagePart(const Ray& ray)
-        {
-            if (!IsSceneEditable())
-            {
-                return k_NoActorId;
-            }
-            const std::optional<Vector3> center = m_stageBuilder.Placement(ray, m_scene.Physics());
-            if (!center)
-            {
-                return k_NoActorId;
-            }
-            std::vector<nlohmann::json> objects;
-            objects.push_back(m_stageBuilder.MakeActor(*center));
-            const std::vector<uint32> created = m_editor.CreateActors(std::move(objects));
-            if (created.empty())
-            {
-                return k_NoActorId;
-            }
-            return created.front();
         }
 
         void LevelEditorController::AddMeshParts(std::string_view meshPath)

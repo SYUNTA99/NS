@@ -715,7 +715,6 @@ project "Tests"
         "Source/Editor/CategoryPalette.cpp",
         "Source/Editor/PaletteTemplates.cpp",
         "Source/Editor/PlacementCatalog.cpp",
-        "Source/Editor/StageBuildTool.cpp",
         "Source/Editor/LevelFileBrowser.cpp",
         "Source/Editor/LevelFilePaths.cpp",
         "Source/Editor/PlayControls.cpp",

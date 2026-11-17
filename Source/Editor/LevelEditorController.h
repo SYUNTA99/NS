@@ -6,7 +6,6 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/PlayControls.h"
-#include "Editor/StageBuildTool.h"
 #include "NSlib/Core/NonCopyable.h"
 #include "NSlib/Core/Windows/InputReader.h"
 #include "NSlib/CoreObject/ClassObjs/VirtualCamera.h"
@@ -174,8 +173,7 @@ namespace NS
             enum class EditTool
             {
                 Gizmo,
-                Grid,
-                StageBuild
+                Grid
             };
             [[nodiscard]] EditTool CurrentEditTool() const noexcept { return m_editTool; }
             void SetEditTool(EditTool tool) noexcept;
@@ -238,9 +236,6 @@ namespace NS
 
             //! 編集視点の中心付近へ配置して選び、シーンを未保存にする
             void PlaceItem(const PlacementItem& item);
-            [[nodiscard]] StageBuildTool& StageBuilder() noexcept { return m_stageBuilder; }
-            // 作成道具を保って置く。プレイ中や配置失敗では k_NoActorId。
-            [[nodiscard]] uint32 PlaceStagePart(const Ray& ray);
 
             //! メッシュ資産を地形の部品として編集視点の中心あたりへ置く
             //! @param[in] meshPath 資産ファイルの絶対パス。参照は ContentRoot 相対へ直して持つ
@@ -403,12 +398,9 @@ namespace NS
             bool m_editBlending = false;
 
             EditorMode m_editor{};
-            StageBuildTool m_stageBuilder;
             Mode m_mode = Mode::Edit;
 
             EditTool m_editTool = EditTool::Gizmo;
-            std::optional<Vector3> m_stagePlacement;
-            void TickStageBuild(const OS::InputPresses& presses);
 
             GizmoEditor m_gizmo{};
 
