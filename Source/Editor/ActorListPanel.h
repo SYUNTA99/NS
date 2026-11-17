@@ -14,7 +14,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -63,5 +63,5 @@ namespace NS
             bool m_focusPending = false;
             std::vector<uint32> m_visibleOrder;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -6,7 +6,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! ドック配置とパネルの全面化を管理する。パネルの内容は呼び手が描く
         class DockController : public NonCopyable
@@ -68,5 +68,5 @@ namespace NS
             const char* m_normalIniFilename = nullptr;
             std::string m_layoutStatus;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

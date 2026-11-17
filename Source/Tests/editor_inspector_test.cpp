@@ -43,7 +43,7 @@
 #include <variant>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
 // 始まりが値の後だと、控えが変わった後の値になり、確定で変化を見落としてシーンが未保存にならない
@@ -53,7 +53,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     ImGuiIO& io = ImGui::GetIO();
 
     GL::Level::ThirdPersonFollow follow;
-    const std::vector<NS::Editor::ActorRefOption> options{{7u, "相手"}};
+    const std::vector<NS::Ed::ActorRefOption> options{{7u, "相手"}};
     ImVec2 tableMin{};
     float tableWidth = 0.0f;
     const auto frame = [&] {
@@ -63,7 +63,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
         ImGui::Begin("参照の欄");
         tableMin = ImGui::GetCursorScreenPos();
         tableWidth = ImGui::GetContentRegionAvail().x;
-        const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&follow, options);
+        const NS::Ed::ClassObjEditResult result = NS::Ed::DrawReflectedClassObj(&follow, options);
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -71,7 +71,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     const auto click = [&](ImVec2 at) {
         io.AddMousePosEvent(at.x, at.y);
         io.AddMouseButtonEvent(0, true);
-        std::vector<NS::Editor::ClassObjEditResult> results{frame()};
+        std::vector<NS::Ed::ClassObjEditResult> results{frame()};
         io.AddMouseButtonEvent(0, false);
         results.push_back(frame());
         return results;
@@ -92,7 +92,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
     const float line = ImGui::GetTextLineHeight();
     const ImVec2 option{popup->Pos.x + popup->Size.x * 0.5f,
                         popup->Pos.y + popup->WindowPadding.y + line + ImGui::GetStyle().ItemSpacing.y + line * 0.5f};
-    const std::vector<NS::Editor::ClassObjEditResult> results = click(option);
+    const std::vector<NS::Ed::ClassObjEditResult> results = click(option);
     ASSERT_EQ(follow.TargetRef().id, 7u);
 
     int activatedAt = -1;
@@ -154,7 +154,7 @@ TEST(EditorInspector, LabeledFieldSavesByNameAndShowsTheLabel)
         {
             ImGui::LogToBuffer();
         }
-        (void)NS::Editor::DrawReflectedClassObj(&object);
+        (void)NS::Ed::DrawReflectedClassObj(&object);
         if (capture)
         {
             drawnText = GImGui->LogBuffer.c_str();
@@ -200,7 +200,7 @@ TEST(EditorInspector, VectorAxesStayReadableWhenThePanelNarrows)
             ImGui::Begin("Vector fields", nullptr, ImGuiWindowFlags_NoSavedSettings);
             const float top = ImGui::GetCursorScreenPos().y;
             ImGui::LogToBuffer();
-            const NS::Editor::ClassObjEditResult edit = NS::Editor::DrawReflectedClassObj(&object);
+            const NS::Ed::ClassObjEditResult edit = NS::Ed::DrawReflectedClassObj(&object);
             const std::string text = GImGui->LogBuffer.c_str();
             ImGui::LogFinish();
             EXPECT_FALSE(edit.changed);
@@ -294,7 +294,7 @@ TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
         ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
         ImGui::SetNextWindowSize(ImVec2{panelWidth, 400.0f});
         ImGui::Begin("Vector2 values", nullptr, ImGuiWindowFlags_NoSavedSettings);
-        const NS::Editor::ValueEditResult result = NS::Editor::DrawReflectedValue(&object, *object.GetReflection());
+        const NS::Ed::ValueEditResult result = NS::Ed::DrawReflectedValue(&object, *object.GetReflection());
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -318,7 +318,7 @@ TEST(EditorInspector, Vector2ValueAxesEditIndependentlyAcrossPanelResizes)
         panelWidth = 170.0f;
         EXPECT_FALSE(frame().committed);
         io.AddInputCharactersUTF8(values[axis]);
-        const NS::Editor::ValueEditResult edit = frame();
+        const NS::Ed::ValueEditResult edit = frame();
         EXPECT_TRUE(edit.changed);
         ASSERT_NE(edit.changedField, nullptr);
         EXPECT_STREQ(edit.changedField->name, "offset");
@@ -365,7 +365,7 @@ namespace
 
     private:
         LevelEditorController& m_editor;
-        NS::Editor::InspectorPanel m_inspector;
+        NS::Ed::InspectorPanel m_inspector;
         ImGuiContext* m_gui = nullptr;
     };
 
@@ -439,7 +439,7 @@ namespace
         // 束の欄の識別番号。path は束の欄の並びの識別番号から、欄までの識別を積む
         ImGuiID FieldId(const std::function<ImGuiID(ImGuiID)>& path) const
         {
-            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
             EXPECT_NE(window, nullptr);
             if (window == nullptr)
             {
@@ -470,7 +470,7 @@ namespace
 
     private:
         LevelEditorController& m_editor;
-        NS::Editor::InspectorPanel m_inspector;
+        NS::Ed::InspectorPanel m_inspector;
         ImGuiContext* m_gui = nullptr;
     };
 
@@ -492,7 +492,7 @@ namespace
     ImGuiID FieldRowId(const NS::ClassObjInfo& row, const NS::Object* part, std::string_view fieldName)
     {
         NS_ASSERT(Game, part != nullptr, "FieldRowId: 渡したアクターか部品が無い");
-        const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        const ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
         const NS::ReflectionInfo* info = part->GetReflection();
         if (window == nullptr || info == nullptr)
         {
@@ -548,7 +548,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("SphereProbeActor"));
+    editor.PlaceItem(*NS::Ed::FindPlacementItem("SphereProbeActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     ASSERT_EQ(prop->TransformObj().Scale(), NS::Vector3::One);
@@ -589,7 +589,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
+    editor.PlaceItem(*NS::Ed::FindPlacementItem("GoalActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
     const NS::ClassObjInfo* row = RowOf(prop, &prop->TransformObj());
@@ -627,7 +627,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+    editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
     NS::SceneActor* parts = editor.SelectedActor();
     ASSERT_NE(parts, nullptr);
     NS::Model* model = parts->ModelClassObj();
@@ -679,7 +679,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("SphereProbeActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("SphereProbeActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     NS::SceneActor* source = editor.SelectedActor();
@@ -722,7 +722,7 @@ TEST(EditorInspector, MaterialApplyReachesTheModelDraw)
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
         LevelEditorController editor(scene);
-        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
         NS::SceneActor* parts = editor.SelectedActor();
         ASSERT_NE(parts, nullptr);
         const std::string stone = "Assets/Materials/stone.mat";
@@ -747,7 +747,7 @@ TEST(EditorInspector, SkyboxEditMarksTheSceneUnsaved)
     InspectorFrames frames(editor);
     frames.Frame();
     frames.Frame();
-    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
     ASSERT_NE(window, nullptr);
     ImGui::ActivateItemByID(ImHashStr("表示しない", 0, window->ID));
     frames.Frame();
@@ -769,7 +769,7 @@ TEST(EditorInspector, MusicVolumeEditAppliesOnlyWhenApplyIsPressed)
     InspectorFrames frames(editor);
     frames.Frame();
     frames.Frame();
-    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    const ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
     ASSERT_NE(window, nullptr);
     const NS::ReflectionInfo* info = NS::SceneEnvironment::StaticReflection();
     int volumeIndex = -1;
@@ -837,7 +837,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PlayerActor", shipped));
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("PlayerActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("PlayerActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 other = editor.SelectedActorId();

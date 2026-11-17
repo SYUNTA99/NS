@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -72,5 +72,5 @@ namespace NS
             value.numbers[0] = static_cast<double>(flag);
             return changed;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

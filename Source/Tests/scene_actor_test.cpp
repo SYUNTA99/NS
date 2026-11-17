@@ -45,7 +45,7 @@
 #include <string>
 #include <string_view>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // シーンの保存と読込が SceneActor のクラスを保つことを縛る
 // 部品の構成はクラスが決め、データは値だけを運ぶ
@@ -397,8 +397,8 @@ TEST(SceneActor, RestartBeforeTheCourseStartsKeepsThePosition)
 {
     const NS::Vector3 placed{3.0f, 40.0f, 3.0f};
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json playerJson = NS::Editor::MakePrototypeJson<PlayerActor>();
-    NS::Editor::SetActorJsonPosition(playerJson, placed);
+    nlohmann::json playerJson = NS::Ed::MakePrototypeJson<PlayerActor>();
+    NS::Ed::SetActorJsonPosition(playerJson, placed);
     NS::SceneJsonActors(doc).push_back(std::move(playerJson));
     NS::EnsureUniqueActorIds(doc);
     NS::Scene scene;
@@ -504,7 +504,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptAndItsIdStaysTaken)
     NS::SetActorJsonName(NS::SceneJsonActors(doc)[0], "Rock");
     NS::SetActorJsonName(lost, "Lost");
     NS::ActorJsonClassObjs(lost)["Collision"] = nlohmann::json{{"半径", 3.0f}};
-    NS::Editor::SetActorJsonPosition(lost, NS::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Ed::SetActorJsonPosition(lost, NS::Vector3{1.0f, 2.0f, 3.0f});
     NS::SetSceneJsonNextActorId(doc, 2);
 
     const TestLogCapture log;
@@ -779,11 +779,11 @@ TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
     editor.CommitClassObjEdit();
 
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
-    NS::Editor::ActionTimelinePanel timeline;
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
+    NS::Ed::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(NS::Ed::SaveAllForQuit(editor, timeline));
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), handEdit);
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
 }
 
 TEST(SceneActor, FailedDirectFieldSaveStaysPendingWhileTheSceneIsSaved)
@@ -814,10 +814,10 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingWhileTheSceneIsSaved)
     editor.NoteFieldEdit(goal, *row, "クリアの暗転秒");
     editor.CommitClassObjEdit();
     ASSERT_FALSE(editor.HasUnsavedSceneChanges());
-    NS::Editor::ActionTimelinePanel timeline;
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    NS::Ed::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(NS::Ed::SaveAllForQuit(editor, timeline));
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
     const std::optional<nlohmann::json> beforeRetry =
         NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(beforeRetry.has_value());
@@ -825,8 +825,8 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingWhileTheSceneIsSaved)
     std::error_code error;
     EXPECT_TRUE(std::filesystem::remove(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(blocker)}, error));
     EXPECT_FALSE(error);
-    EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
-    EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(NS::Ed::SaveAllForQuit(editor, timeline));
+    EXPECT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
     const std::optional<nlohmann::json> afterRetry =
         NS::ReadActorFileAt(NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor"));
     ASSERT_TRUE(afterRetry.has_value());

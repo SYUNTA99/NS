@@ -37,7 +37,7 @@ namespace
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }
 
-        NS::Editor::ValueEditResult Frame()
+        NS::Ed::ValueEditResult Frame()
         {
             ImGui::NewFrame();
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
@@ -45,7 +45,7 @@ namespace
             ImGui::Begin("カーブの欄");
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
-            const NS::Editor::ValueEditResult result = NS::Editor::DrawReflectedValue(m_settings);
+            const NS::Ed::ValueEditResult result = NS::Ed::DrawReflectedValue(m_settings);
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             ImGui::PushOverrideID(ImGui::GetID("##value-fields"));
             ImGui::PushID(0);
@@ -171,7 +171,7 @@ TEST_F(EditorCurveTest, DraggingKeepsTheViewStableAndCommitsOnRelease)
     EXPECT_TRUE(Frame().activated);
     const ImVec2 target = Point(0.65f, 1.8f);
     ImGui::GetIO().AddMousePosEvent(target.x, target.y);
-    const NS::Editor::ValueEditResult moved = Frame();
+    const NS::Ed::ValueEditResult moved = Frame();
     EXPECT_TRUE(moved.changed);
     EXPECT_FALSE(moved.committed);
     EXPECT_NEAR(m_settings.curve.keys[1].y, 1.8f, 0.01f);
@@ -187,13 +187,13 @@ TEST_F(EditorCurveTest, DraggingKeepsTheViewStableAndCommitsOnRelease)
 TEST_F(EditorCurveTest, ExpandedEditorStartsBeforeChangesAndCommitsWhenClosed)
 {
     const NS::Curve before = m_settings.curve;
-    const float x = m_tableMin.x + m_tableWidth * NS::Editor::k_FieldNameColumnRatio + 12.0f;
+    const float x = m_tableMin.x + m_tableWidth * NS::Ed::k_FieldNameColumnRatio + 12.0f;
     const float y = m_tableMin.y + ImGui::GetStyle().CellPadding.y + ImGui::GetFrameHeight() * 0.5f;
     MoveMouse(ImVec2{x, y});
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     bool activated = Frame().activated;
     ImGui::GetIO().AddMouseButtonEvent(0, false);
-    const NS::Editor::ValueEditResult opened = Frame();
+    const NS::Ed::ValueEditResult opened = Frame();
     activated |= opened.activated;
     EXPECT_TRUE(activated);
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
@@ -209,7 +209,7 @@ TEST_F(EditorCurveTest, ExpandedEditorStartsBeforeChangesAndCommitsWhenClosed)
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     (void)Frame();
     ImGui::GetIO().AddMousePosEvent(key.x + 30.0f, key.y - 30.0f);
-    const NS::Editor::ValueEditResult edited = Frame();
+    const NS::Ed::ValueEditResult edited = Frame();
     EXPECT_TRUE(edited.changed);
     EXPECT_FALSE(edited.committed);
     ImGui::GetIO().AddMouseButtonEvent(0, false);
@@ -271,7 +271,7 @@ TEST_F(EditorCurveTest, InterpolationChoiceKeepsTheEditOpenUntilTheMenuCloses)
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     bool activated = Frame().activated;
     ImGui::GetIO().AddMouseButtonEvent(0, false);
-    const NS::Editor::ValueEditResult opened = Frame();
+    const NS::Ed::ValueEditResult opened = Frame();
     activated |= opened.activated;
     EXPECT_TRUE(activated);
     EXPECT_FALSE(opened.committed);
@@ -285,7 +285,7 @@ TEST_F(EditorCurveTest, InterpolationChoiceKeepsTheEditOpenUntilTheMenuCloses)
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     (void)Frame();
     ImGui::GetIO().AddMouseButtonEvent(0, false);
-    const NS::Editor::ValueEditResult chosen = Frame();
+    const NS::Ed::ValueEditResult chosen = Frame();
     EXPECT_TRUE(chosen.changed);
     bool committed = chosen.committed;
     committed |= Frame().committed;

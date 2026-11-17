@@ -25,7 +25,7 @@ inline void AddActorJson(nlohmann::json& doc, std::string_view actorFile, NS::ui
     nlohmann::json actor = NS::MakeActorJson();
     NS::SetActorJsonFile(actor, actorFile);
     NS::SetActorJsonId(actor, id);
-    NS::Editor::SetActorJsonPosition(actor, position);
+    NS::Ed::SetActorJsonPosition(actor, position);
     NS::SceneJsonActors(doc).push_back(std::move(actor));
 }
 
@@ -39,8 +39,8 @@ inline void AddActorJson(nlohmann::json& doc,
     nlohmann::json actor = NS::MakeActorJson();
     NS::SetActorJsonFile(actor, actorFile);
     NS::SetActorJsonId(actor, id);
-    NS::Editor::SetActorJsonPosition(actor, position);
-    NS::Editor::SetActorJsonScale(actor, scale);
+    NS::Ed::SetActorJsonPosition(actor, position);
+    NS::Ed::SetActorJsonScale(actor, scale);
     NS::SceneJsonActors(doc).push_back(std::move(actor));
 }
 

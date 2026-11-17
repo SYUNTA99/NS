@@ -35,10 +35,10 @@ namespace
                 beforeHost();
             }
             m_dock.RenderDockSpaceHost(30.0f);
-            const char* panels[] = {NS::Editor::k_PanelScene, NS::Editor::k_PanelGame,
-                                    NS::Editor::k_PanelActorList, NS::Editor::k_PanelInspector,
-                                    NS::Editor::k_PanelConsole, NS::Editor::k_PanelAssets,
-                                    NS::Editor::k_PanelEditMode, NS::Editor::k_PanelActionTimeline};
+            const char* panels[] = {NS::Ed::k_PanelScene, NS::Ed::k_PanelGame,
+                                    NS::Ed::k_PanelActorList, NS::Ed::k_PanelInspector,
+                                    NS::Ed::k_PanelConsole, NS::Ed::k_PanelAssets,
+                                    NS::Ed::k_PanelEditMode, NS::Ed::k_PanelActionTimeline};
             for (const char* panel : panels)
             {
                 if (m_dock.IsMaximized() && m_dock.MaximizedPanel() != panel)
@@ -64,7 +64,7 @@ namespace
         {
             if (floating)
             {
-                Frame([&]() { m_dock.MovePanel(panel, nullptr, NS::Editor::DockController::Placement::Floating); });
+                Frame([&]() { m_dock.MovePanel(panel, nullptr, NS::Ed::DockController::Placement::Floating); });
                 Frame();
             }
             const ImGuiWindow* window = ImGui::FindWindowByName(panel);
@@ -96,7 +96,7 @@ namespace
         }
 
         ImGuiContext* m_context = nullptr;
-        NS::Editor::DockController m_dock;
+        NS::Ed::DockController m_dock;
     };
 }
 
@@ -112,10 +112,10 @@ TEST_F(EditorDockTest, DroppingIntoThePanelBodyMergesWithoutAimingAtAMarker)
 {
     Frame();
     Frame();
-    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
     const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.62f, scene->Pos.y + scene->Size.y * 0.67f};
-    DragPanelTo(NS::Editor::k_PanelAssets, destination);
-    const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+    DragPanelTo(NS::Ed::k_PanelAssets, destination);
+    const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Ed::k_PanelAssets);
     EXPECT_NE(assets->DockId, 0u);
     EXPECT_EQ(assets->DockId, scene->DockId);
 }
@@ -124,10 +124,10 @@ TEST_F(EditorDockTest, DraggingADockedTabDirectlyIntoAnotherPanelBodyMergesIt)
 {
     Frame();
     Frame();
-    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
     const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.62f, scene->Pos.y + scene->Size.y * 0.67f};
-    DragPanelTo(NS::Editor::k_PanelAssets, destination, false);
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
+    DragPanelTo(NS::Ed::k_PanelAssets, destination, false);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelAssets)->DockId, scene->DockId);
 }
 
 TEST_F(EditorDockTest, DroppingNearAPanelEdgeSplitsAwayFromTheOldMarker)
@@ -137,11 +137,11 @@ TEST_F(EditorDockTest, DroppingNearAPanelEdgeSplitsAwayFromTheOldMarker)
     {
         Frame([&]() { m_dock.ResetLayout(); });
         Frame();
-        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
         const ImVec2 destination{scene->Pos.x + scene->Size.x * points[direction].x,
                                  scene->Pos.y + scene->Size.y * points[direction].y};
-        DragPanelTo(NS::Editor::k_PanelAssets, destination);
-        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+        DragPanelTo(NS::Ed::k_PanelAssets, destination);
+        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Ed::k_PanelAssets);
         ASSERT_NE(assets->DockNode, nullptr);
         EXPECT_NE(assets->DockId, scene->DockId);
         if (direction == ImGuiDir_Left)
@@ -168,11 +168,11 @@ TEST_F(EditorDockTest, DroppingOntoATabBarMergesInsteadOfSplittingTheWholeLayout
 {
     Frame();
     Frame();
-    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
     ASSERT_NE(scene->DockNode->TabBar, nullptr);
     const ImRect bar = scene->DockNode->TabBar->BarRect;
-    DragPanelTo(NS::Editor::k_PanelAssets, ImVec2{bar.Min.x + bar.GetWidth() * 0.62f, bar.GetCenter().y});
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
+    DragPanelTo(NS::Ed::k_PanelAssets, ImVec2{bar.Min.x + bar.GetWidth() * 0.62f, bar.GetCenter().y});
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelAssets)->DockId, scene->DockId);
 }
 
 TEST_F(EditorDockTest, DroppingAlongTheWorkspaceEdgeSplitsTheWholeLayout)
@@ -181,7 +181,7 @@ TEST_F(EditorDockTest, DroppingAlongTheWorkspaceEdgeSplitsTheWholeLayout)
     {
         Frame([&]() { m_dock.ResetLayout(); });
         Frame();
-        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
         const ImGuiDockNode* root = ImGui::DockNodeGetRootNode(scene->DockNode);
         const ImVec2 size = root->Size;
         ImVec2 destination{root->Pos.x + size.x * 0.55f, root->Pos.y + size.y * 0.64f};
@@ -201,8 +201,8 @@ TEST_F(EditorDockTest, DroppingAlongTheWorkspaceEdgeSplitsTheWholeLayout)
         {
             destination.y = root->Pos.y + size.y - 8.0f;
         }
-        DragPanelTo(NS::Editor::k_PanelAssets, destination);
-        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+        DragPanelTo(NS::Ed::k_PanelAssets, destination);
+        const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Ed::k_PanelAssets);
         ASSERT_NE(assets->DockNode, nullptr);
         if (direction == ImGuiDir_Left || direction == ImGuiDir_Right)
         {
@@ -220,24 +220,24 @@ TEST_F(EditorDockTest, DisablingSplitsStillAllowsBodyDropsToMerge)
     Frame();
     Frame();
     ImGui::GetIO().ConfigDockingNoSplit = true;
-    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
+    const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
     const ImVec2 destination{scene->Pos.x + scene->Size.x * 0.12f, scene->Pos.y + scene->Size.y * 0.68f};
-    DragPanelTo(NS::Editor::k_PanelAssets, destination);
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelAssets)->DockId, scene->DockId);
+    DragPanelTo(NS::Ed::k_PanelAssets, destination);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelAssets)->DockId, scene->DockId);
 }
 
 TEST_F(EditorDockTest, EverySplitDirectionCanBeMergedBackIntoTheSameTabGroup)
 {
-    using Placement = NS::Editor::DockController::Placement;
+    using Placement = NS::Ed::DockController::Placement;
     Frame();
     Frame();
     const Placement placements[] = {Placement::Left, Placement::Right, Placement::Above, Placement::Below};
     for (Placement placement : placements)
     {
-        Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelGame, NS::Editor::k_PanelScene, placement); });
+        Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelGame, NS::Ed::k_PanelScene, placement); });
         Frame();
-        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Editor::k_PanelScene);
-        const ImGuiWindow* game = ImGui::FindWindowByName(NS::Editor::k_PanelGame);
+        const ImGuiWindow* scene = ImGui::FindWindowByName(NS::Ed::k_PanelScene);
+        const ImGuiWindow* game = ImGui::FindWindowByName(NS::Ed::k_PanelGame);
         ASSERT_NE(scene->DockId, game->DockId);
         if (placement == Placement::Left)
         {
@@ -255,7 +255,7 @@ TEST_F(EditorDockTest, EverySplitDirectionCanBeMergedBackIntoTheSameTabGroup)
         {
             EXPECT_GT(game->Pos.y, scene->Pos.y);
         }
-        Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelGame, NS::Editor::k_PanelScene, Placement::Tab); });
+        Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelGame, NS::Ed::k_PanelScene, Placement::Tab); });
         Frame();
         EXPECT_EQ(scene->DockId, game->DockId);
     }
@@ -263,16 +263,16 @@ TEST_F(EditorDockTest, EverySplitDirectionCanBeMergedBackIntoTheSameTabGroup)
 
 TEST_F(EditorDockTest, FloatingPanelCanHostAnotherPanelAndResetReturnsBothToTheEditor)
 {
-    using Placement = NS::Editor::DockController::Placement;
+    using Placement = NS::Ed::DockController::Placement;
     Frame();
     Frame();
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelInspector, nullptr, Placement::Floating); });
+    Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelInspector, nullptr, Placement::Floating); });
     Frame();
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelInspector)->DockId, 0u);
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelAssets, NS::Editor::k_PanelInspector, Placement::Below); });
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelInspector)->DockId, 0u);
+    Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelAssets, NS::Ed::k_PanelInspector, Placement::Below); });
     Frame();
-    const ImGuiWindow* inspector = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
-    const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+    const ImGuiWindow* inspector = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
+    const ImGuiWindow* assets = ImGui::FindWindowByName(NS::Ed::k_PanelAssets);
     ASSERT_NE(inspector->DockNode, nullptr);
     ASSERT_NE(assets->DockNode, nullptr);
     EXPECT_EQ(ImGui::DockNodeGetRootNode(inspector->DockNode), ImGui::DockNodeGetRootNode(assets->DockNode));
@@ -286,11 +286,11 @@ TEST_F(EditorDockTest, HiddenDockspaceKeepsCustomSplitsAlive)
 {
     Frame();
     Frame();
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelGame, NS::Editor::k_PanelScene,
-                                 NS::Editor::DockController::Placement::Right); });
+    Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelGame, NS::Ed::k_PanelScene,
+                                 NS::Ed::DockController::Placement::Right); });
     Frame();
-    const ImGuiID sceneId = ImGui::FindWindowByName(NS::Editor::k_PanelScene)->DockId;
-    const ImGuiID gameId = ImGui::FindWindowByName(NS::Editor::k_PanelGame)->DockId;
+    const ImGuiID sceneId = ImGui::FindWindowByName(NS::Ed::k_PanelScene)->DockId;
+    const ImGuiID gameId = ImGui::FindWindowByName(NS::Ed::k_PanelGame)->DockId;
     for (int i = 0; i < 5; ++i)
     {
         ImGui::NewFrame();
@@ -298,44 +298,44 @@ TEST_F(EditorDockTest, HiddenDockspaceKeepsCustomSplitsAlive)
         ImGui::EndFrame();
     }
     Frame();
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelScene)->DockId, sceneId);
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelGame)->DockId, gameId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelScene)->DockId, sceneId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelGame)->DockId, gameId);
 }
 
 TEST_F(EditorDockTest, MaximizeRestoresCustomDockingAndSuspendsAutomaticSaving)
 {
     Frame();
     Frame();
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelActionTimeline, NS::Editor::k_PanelScene,
-                                 NS::Editor::DockController::Placement::Below); });
+    Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelActionTimeline, NS::Ed::k_PanelScene,
+                                 NS::Ed::DockController::Placement::Below); });
     Frame();
-    const ImGuiID originalId = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId;
+    const ImGuiID originalId = ImGui::FindWindowByName(NS::Ed::k_PanelActionTimeline)->DockId;
     ImGui::GetIO().IniFilename = "unused-editor-dock-test.ini";
-    Frame([&]() { m_dock.EnterMaximize(NS::Editor::k_PanelActionTimeline); });
+    Frame([&]() { m_dock.EnterMaximize(NS::Ed::k_PanelActionTimeline); });
     Frame();
     EXPECT_TRUE(m_dock.IsMaximized());
     EXPECT_EQ(ImGui::GetIO().IniFilename, nullptr);
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId, 0u);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelActionTimeline)->DockId, 0u);
     Frame([&]() { m_dock.ExitMaximize(); });
     Frame();
     EXPECT_FALSE(m_dock.IsMaximized());
     EXPECT_STREQ(ImGui::GetIO().IniFilename, "unused-editor-dock-test.ini");
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline)->DockId, originalId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelActionTimeline)->DockId, originalId);
 }
 
 TEST_F(EditorDockTest, SavedLayoutSurvivesANewContextAndRejectsAnInvalidFile)
 {
     Frame();
     Frame();
-    Frame([&]() { m_dock.MovePanel(NS::Editor::k_PanelGame, NS::Editor::k_PanelScene,
-                                 NS::Editor::DockController::Placement::Right); });
+    Frame([&]() { m_dock.MovePanel(NS::Ed::k_PanelGame, NS::Ed::k_PanelScene,
+                                 NS::Ed::DockController::Placement::Right); });
     Frame();
-    const ImGuiID originalId = ImGui::FindWindowByName(NS::Editor::k_PanelGame)->DockId;
+    const ImGuiID originalId = ImGui::FindWindowByName(NS::Ed::k_PanelGame)->DockId;
     const std::filesystem::path directory = std::filesystem::temp_directory_path() /
         ("ns-editor-dock-" + std::to_string(reinterpret_cast<std::size_t>(m_context)));
     const std::string path = (directory / "layout.ini").string();
     ASSERT_TRUE(m_dock.SaveLayout(path.c_str()));
-    Frame([&]() { m_dock.EnterMaximize(NS::Editor::k_PanelGame); });
+    Frame([&]() { m_dock.EnterMaximize(NS::Ed::k_PanelGame); });
     Frame();
     ASSERT_TRUE(m_dock.SaveLayout(path.c_str()));
     m_dock.ExitMaximize();
@@ -343,11 +343,11 @@ TEST_F(EditorDockTest, SavedLayoutSurvivesANewContextAndRejectsAnInvalidFile)
     SetUp();
     Frame([&]() { ASSERT_TRUE(m_dock.LoadLayout(path.c_str())); });
     Frame();
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelGame)->DockId, originalId);
-    EXPECT_NE(ImGui::FindWindowByName(NS::Editor::k_PanelScene)->DockId, originalId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelGame)->DockId, originalId);
+    EXPECT_NE(ImGui::FindWindowByName(NS::Ed::k_PanelScene)->DockId, originalId);
     const std::string invalid = "invalid layout";
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(path, std::as_bytes(std::span{invalid.data(), invalid.size()})));
     EXPECT_FALSE(m_dock.LoadLayout(path.c_str()));
-    EXPECT_EQ(ImGui::FindWindowByName(NS::Editor::k_PanelGame)->DockId, originalId);
+    EXPECT_EQ(ImGui::FindWindowByName(NS::Ed::k_PanelGame)->DockId, originalId);
     std::filesystem::remove_all(directory);
 }

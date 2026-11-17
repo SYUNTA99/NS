@@ -53,7 +53,7 @@
 #include <system_error>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 namespace
 {
@@ -78,7 +78,7 @@ namespace
 
     std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor* target,
                                               const NS::Matrix& viewProjection,
-                                              const NS::Editor::ViewRect& view)
+                                              const NS::Ed::ViewRect& view)
     {
         NS_ASSERT(Game, target != nullptr, "FindMoveHandle: 渡したアクターか部品が無い");
         const NS::AffineDecomposition world = NS::DecomposeAffine(target->TransformObj().WorldMatrix());
@@ -87,13 +87,13 @@ namespace
             for (int x = 0; x < view.width; ++x)
             {
                 const NS::Vector2 point{static_cast<float>(x), static_cast<float>(y)};
-                if (NS::Editor::GizmoEditor::ToolHandlePick(world.translation,
+                if (NS::Ed::GizmoEditor::ToolHandlePick(world.translation,
                                                             world.rotation,
-                                                            NS::Editor::GizmoTool::Move,
+                                                            NS::Ed::GizmoTool::Move,
                                                             point,
                                                             viewProjection,
-                                                            NS::Editor::ViewRectSize(view)) !=
-                    NS::Editor::GizmoAxis::None)
+                                                            NS::Ed::ViewRectSize(view)) !=
+                    NS::Ed::GizmoAxis::None)
                 {
                     return point;
                 }
@@ -138,7 +138,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
@@ -164,7 +164,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -190,7 +190,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -206,9 +206,9 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
         const std::size_t index = NS::FindActorIndexById(baseline, id);
         ASSERT_NE(index, NS::k_NoActorIndex);
         const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
-        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 5.0f);
-        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
-        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
+        EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(object).x, 5.0f);
+        EXPECT_FLOAT_EQ(NS::Ed::ActorJsonRotation(object).y, rotation.y);
+        EXPECT_FLOAT_EQ(NS::Ed::ActorJsonScale(object).x, 2.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -222,7 +222,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 id = editor.SelectedActorId();
@@ -237,8 +237,8 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
         const std::size_t index = NS::FindActorIndexById(baseline, id);
         ASSERT_NE(index, NS::k_NoActorIndex);
         const nlohmann::json& object = NS::SceneJsonActors(baseline)[index];
-        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).x, 3.0f);
-        EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).z, 7.0f);
+        EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(object).x, 3.0f);
+        EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(object).z, 7.0f);
         editor.EnterEdit();
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -267,7 +267,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     const nlohmann::json& entry = NS::SceneJsonActors(saved)[NS::FindActorIndexById(saved, 1)];
     const nlohmann::json* transform = NS::ClassObjFields(entry, "Transform");
     ASSERT_NE(transform, nullptr);
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(entry).x, 2.0f);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonScale(entry).x, 2.0f);
     EXPECT_FALSE(NS::HasField(*transform, NS::k_RotationFieldName));
 }
 
@@ -294,18 +294,18 @@ TEST(EditorSelection, PlayFieldEditIsKeptWhenReturningToEdit)
         };
         const nlohmann::json colorBefore = colorOf();
         const NS::Vector3 positionBefore = scene.Actors().FindByActorId(id)->TransformObj().Position();
-        NS::Editor::ActionTimelinePanel timeline;
+        NS::Ed::ActionTimelinePanel timeline;
 
         // 何も変えずに戻る
         editor.EnterPlay();
-        EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+        EXPECT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
 
         // 位置だけがプレイで動く
         editor.EnterPlay();
         scene.Actors().FindByActorId(id)->TransformObj().SetPosition(NS::Vector3{7.0f, 3.0f, 1.0f});
-        EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+        EXPECT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
         editor.EnterEdit();
         EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
         EXPECT_EQ(scene.Actors().FindByActorId(id)->TransformObj().Position(), positionBefore);
@@ -324,8 +324,8 @@ TEST(EditorSelection, PlayFieldEditIsKeptWhenReturningToEdit)
         });
         ASSERT_NE(modelRow, nullptr);
         editor.NoteFieldEdit(actor, *modelRow, "基本色");
-        EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-        EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
+        EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
+        EXPECT_FALSE(NS::Ed::SaveAllForQuit(editor, timeline));
         const nlohmann::json colorEdited = colorOf();
         ASSERT_NE(colorEdited, colorBefore);
         editor.EnterEdit();
@@ -389,7 +389,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
         const NS::Vector3 stoneColor = app.Assets().LoadMaterial(stone)->BaseColor().ToVector3();
         ASSERT_EQ(stoneColor, (NS::Vector3{0.6f, 0.6f, 0.65f}));
 
-        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
         NS::Model* overridden = editor.SelectedActor()->ModelClassObj();
         overridden->SetColorOverride(NS::Color{0.1f, 0.2f, 0.3f});
         ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
@@ -397,7 +397,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
         EXPECT_EQ(overridden->ColorOverride()->ToVector3(), (NS::Vector3{0.1f, 0.2f, 0.3f}));
         EXPECT_EQ(overridden->DrawColor().ToVector3(), (NS::Vector3{0.1f, 0.2f, 0.3f}));
 
-        editor.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+        editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
         NS::Model* empty = editor.SelectedActor()->ModelClassObj();
         empty->SetColorOverride(std::nullopt);
         ASSERT_TRUE(editor.ApplyMaterialToSelected(stonePath));
@@ -419,7 +419,7 @@ TEST(EditorSelection, AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
         NS::uint32 id = NS::k_NoActorId;
         {
             LevelEditorController placing(source);
-            placing.PlaceItem(*NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel));
+            placing.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
             id = placing.SelectedActorId();
         }
         ASSERT_NE(id, NS::k_NoActorId);
@@ -459,10 +459,10 @@ TEST(EditorSelection, DraggingTheFollowCameraMovesIt)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("FollowCameraActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
@@ -501,14 +501,14 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 otherId = editor.SelectedActorId();
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
         editor.SelectActors({otherId, actorId}, actorId);
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
@@ -551,7 +551,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
@@ -560,7 +560,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
                        scene.Actors().FindByActorId(actorId),
                        NS::k_PositionFieldName,
                        NS::Vector3{placed + NS::Vector3{3.0f, 0.0f, 0.0f}});
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
@@ -599,24 +599,24 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 first = editor.SelectedActorId();
     editor.PlaceItem(*item);
     const NS::uint32 second = editor.SelectedActorId();
     ASSERT_NE(first, second);
-    const std::string secondName = NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(second));
+    const std::string secondName = NS::Ed::ActorDisplayName(scene.Actors().FindByActorId(second));
     editor.SelectActorById(first);
 
-    NS::Editor::InspectorPanel inspector;
+    NS::Ed::InspectorPanel inspector;
     const auto frame = [&] {
         ImGui::NewFrame();
         inspector.Render(editor);
         ImGui::EndFrame();
     };
     frame();
-    ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+    ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
     ASSERT_NE(window, nullptr);
     ImGui::ActivateItemByID(window->GetID("##actorName"));
     frame();
@@ -630,15 +630,15 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
     inspector.Render(editor);
     ImGui::EndFrame();
 
-    EXPECT_NE(std::string{NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(first))}.find("Typed"),
+    EXPECT_NE(std::string{NS::Ed::ActorDisplayName(scene.Actors().FindByActorId(first))}.find("Typed"),
               std::string::npos);
-    EXPECT_EQ(NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(second)), secondName);
+    EXPECT_EQ(NS::Ed::ActorDisplayName(scene.Actors().FindByActorId(second)), secondName);
     ImGui::DestroyContext(gui);
 }
 
 namespace
 {
-    void RenderInspectorFrame(NS::Editor::InspectorPanel& inspector, LevelEditorController& editor)
+    void RenderInspectorFrame(NS::Ed::InspectorPanel& inspector, LevelEditorController& editor)
     {
         ImGui::NewFrame();
         inspector.Render(editor);
@@ -646,9 +646,9 @@ namespace
     }
 
     // 名前の欄を打ち始めた時に欄が持っていた文字。何も打たずに離すので改名は流れない
-    std::string ReadInspectorNameField(NS::Editor::InspectorPanel& inspector, LevelEditorController& editor)
+    std::string ReadInspectorNameField(NS::Ed::InspectorPanel& inspector, LevelEditorController& editor)
     {
-        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
         if (window == nullptr)
         {
             return {};
@@ -677,13 +677,13 @@ TEST(EditorSelection, InspectorNameFieldFollowsRename)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedActorId();
-    const std::string before = NS::Editor::ActorDisplayName(scene.Actors().FindByActorId(id));
+    const std::string before = NS::Ed::ActorDisplayName(scene.Actors().FindByActorId(id));
 
-    NS::Editor::InspectorPanel inspector;
+    NS::Ed::InspectorPanel inspector;
     RenderInspectorFrame(inspector, editor);
     ASSERT_EQ(ReadInspectorNameField(inspector, editor), before);
 
@@ -701,9 +701,9 @@ TEST(EditorSelection, ReferenceOptionsFollowThePlacedActors)
     (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "b");
     (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "c");
 
-    const std::vector<NS::SceneActor*> placed = NS::Editor::PlacedActors(scene.Actors());
+    const std::vector<NS::SceneActor*> placed = NS::Ed::PlacedActors(scene.Actors());
     ASSERT_EQ(placed.size(), 3u);
-    const std::vector<NS::Editor::ActorRefOption> options = NS::Editor::MakeActorRefOptions(scene.Actors());
+    const std::vector<NS::Ed::ActorRefOption> options = NS::Ed::MakeActorRefOptions(scene.Actors());
     ASSERT_EQ(options.size(), placed.size());
     for (std::size_t i = 0; i < placed.size(); ++i)
     {
@@ -719,11 +719,11 @@ TEST(EditorSelection, InspectorAxisInputsWriteOnlyThatAxis)
 
     NS::Scene scene;
     LevelEditorController editor(scene);
-    editor.PlaceItem(*NS::Editor::FindPlacementItem("GoalActor"));
+    editor.PlaceItem(*NS::Ed::FindPlacementItem("GoalActor"));
     const NS::uint32 id = editor.SelectedActorId();
     const NS::Vector3 beforePosition = editor.SelectedActor()->TransformObj().Position();
     const NS::Vector3 beforeScale = editor.SelectedActor()->TransformObj().Scale();
-    NS::Editor::InspectorPanel inspector;
+    NS::Ed::InspectorPanel inspector;
     const auto frame = [&] {
         ImGui::NewFrame();
         ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
@@ -748,7 +748,7 @@ TEST(EditorSelection, InspectorAxisInputsWriteOnlyThatAxis)
                 fieldIndex = static_cast<int>(i);
             }
         }
-        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelInspector);
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
         ImGuiID inputId = ImHashStr("Transform", 0, window->ID);
         inputId = ImHashStr("##fields", 0, inputId);
         inputId = ImHashData(&fieldIndex, sizeof(fieldIndex), inputId);
@@ -781,7 +781,7 @@ TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     const NS::uint32 placed = editor.SelectedActorId();
@@ -818,12 +818,12 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         NS::Scene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         const NS::uint32 actorId = editor.SelectedActorId();
         ASSERT_NE(actorId, NS::k_NoActorId);
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
@@ -906,8 +906,8 @@ TEST(EditorCreate, EveryCreatePathMarksTheSceneUnsavedAndPlayCreatesNothing)
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> prop = NS::Editor::FindPlacementItem("GoalActor");
-        const std::optional<NS::Editor::PlacementItem> camera = NS::Editor::FindPlacementItem("FollowCameraActor");
+        const std::optional<NS::Ed::PlacementItem> prop = NS::Ed::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> camera = NS::Ed::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(prop.has_value());
         ASSERT_TRUE(camera.has_value());
 
@@ -989,8 +989,8 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
         GL::Level::GameScene scene;
         LevelEditorController editor(scene);
         editor.Setup({});
-        const std::optional<NS::Editor::PlacementItem> cube =
-            NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
+        const std::optional<NS::Ed::PlacementItem> cube =
+            NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel);
         ASSERT_TRUE(cube.has_value());
         editor.PlaceItem(*cube);
         const NS::uint32 followerId = editor.SelectedActorId();
@@ -1044,7 +1044,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
     NS::Application app(HiddenAppDesc("ショートカットを止める試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
@@ -1054,20 +1054,20 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 
         // ギズモの道具のキーは、答えを Tick で受けるギズモを直に回して見る
         NS::ActorList actors;
-        NS::Editor::GizmoEditor gizmo;
+        NS::Ed::GizmoEditor gizmo;
         gizmo.SetInput(&app.Input());
         gizmo.SetActive(true);
-        ASSERT_NE(gizmo.Tool(), NS::Editor::GizmoTool::Rotate);
+        ASSERT_NE(gizmo.Tool(), NS::Ed::GizmoTool::Rotate);
 
         for (const bool blocked : {true, false})
         {
-            const NS::Editor::GizmoTool toolBefore = gizmo.Tool();
+            const NS::Ed::GizmoTool toolBefore = gizmo.Tool();
             // 前のキーをギズモへ渡さないよう、E の直前から読む
             NS::OS::InputReader gizmoReader;
             keyboard.OnKeyDown(NS::OS::Key::E);
             gizmo.Tick(NS::Matrix::Identity, view, true, blocked, gizmoReader.Read(), actors);
             keyboard.OnKeyUp(NS::OS::Key::E);
-            NS::Editor::GizmoTool expectedTool = NS::Editor::GizmoTool::Rotate;
+            NS::Ed::GizmoTool expectedTool = NS::Ed::GizmoTool::Rotate;
             if (blocked)
             {
                 expectedTool = toolBefore;
@@ -1089,7 +1089,7 @@ namespace
     // GoalActor を count 体置き、置いた順の永続 id を返す
     std::vector<NS::uint32> PlaceGoals(LevelEditorController& editor, int count)
     {
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         std::vector<NS::uint32> ids;
         EXPECT_TRUE(item.has_value()) << "置く物の一覧に GoalActor が無い";
         if (!item.has_value())
@@ -1172,14 +1172,14 @@ TEST(EditorParent, CollectsDescendantsOnceEvenInACycle)
         SetParent(scene, ids[1], ids[0]);
         SetParent(scene, ids[2], ids[1]);
 
-        const std::vector<NS::uint32> fromRoot = NS::Editor::CollectWithDescendants(scene.Actors(), {ids[0]});
+        const std::vector<NS::uint32> fromRoot = NS::Ed::CollectWithDescendants(scene.Actors(), {ids[0]});
         EXPECT_EQ(fromRoot, (std::vector<NS::uint32>{ids[0], ids[1], ids[2]}));
         const std::vector<NS::uint32> parentAndChild =
-            NS::Editor::CollectWithDescendants(scene.Actors(), {ids[1], ids[0]});
+            NS::Ed::CollectWithDescendants(scene.Actors(), {ids[1], ids[0]});
         EXPECT_EQ(parentAndChild, (std::vector<NS::uint32>{ids[1], ids[0], ids[2]}));
 
         SetParent(scene, ids[0], ids[2]);
-        const std::vector<NS::uint32> inCycle = NS::Editor::CollectWithDescendants(scene.Actors(), {ids[0]});
+        const std::vector<NS::uint32> inCycle = NS::Ed::CollectWithDescendants(scene.Actors(), {ids[0]});
         EXPECT_EQ(inCycle, (std::vector<NS::uint32>{ids[0], ids[1], ids[2]}));
     }));
     EXPECT_EQ(app.Run(), 0);
@@ -1197,10 +1197,10 @@ TEST(EditorParent, CannotParentToSelfOrDescendant)
         SetParent(scene, ids[1], ids[0]);
         SetParent(scene, ids[2], ids[1]);
 
-        EXPECT_FALSE(NS::Editor::CanReparent(scene.Actors(), ids[0], ids[0]));
-        EXPECT_FALSE(NS::Editor::CanReparent(scene.Actors(), ids[0], ids[2]));
-        EXPECT_TRUE(NS::Editor::CanReparent(scene.Actors(), ids[2], ids[0]));
-        EXPECT_TRUE(NS::Editor::CanReparent(scene.Actors(), ids[1], NS::k_NoActorId));
+        EXPECT_FALSE(NS::Ed::CanReparent(scene.Actors(), ids[0], ids[0]));
+        EXPECT_FALSE(NS::Ed::CanReparent(scene.Actors(), ids[0], ids[2]));
+        EXPECT_TRUE(NS::Ed::CanReparent(scene.Actors(), ids[2], ids[0]));
+        EXPECT_TRUE(NS::Ed::CanReparent(scene.Actors(), ids[1], NS::k_NoActorId));
     }));
     EXPECT_EQ(app.Run(), 0);
 }
@@ -1220,7 +1220,7 @@ namespace
                      NS::uint32 primary)
     {
         editor.SelectActors(std::move(selection), primary);
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();

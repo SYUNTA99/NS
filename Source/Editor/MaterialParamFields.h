@@ -12,7 +12,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! 浮動小数の項目の書式。表の最小の幅もこの書式で測る
         inline constexpr const char* k_MaterialFloatFormat = "%.3f";
@@ -26,5 +26,5 @@ namespace NS
 
         //! 真偽の欄。値を変えたフレームに true
         bool DrawParamBool(MaterialParamValue& value);
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -31,7 +31,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         struct AssetsPanel::ActorThumbnail
         {
@@ -471,5 +471,5 @@ namespace NS
 
             RenderFiles(OS::FileSystem::ListFiles(dir), editor);
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

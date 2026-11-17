@@ -233,7 +233,7 @@ TEST(ClassObj, EveryBuildPathRunsOnInitExactlyOnce)
     EXPECT_EQ(loose->inits, 1);
 
     const ClassObjInitProbeActor* fromJson =
-        NS::Cast<ClassObjInitProbeActor>(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<ClassObjInitProbeActor>()));
+        NS::Cast<ClassObjInitProbeActor>(scene.SpawnFromJson(NS::Ed::MakePrototypeJson<ClassObjInitProbeActor>()));
     ASSERT_NE(fromJson, nullptr);
     EXPECT_EQ(fromJson->inits, 1);
     EXPECT_NE(fromJson->ModelClassObj(), nullptr);
@@ -264,14 +264,14 @@ TEST(ClassObj, EveryBuildPathLoadsAssetsOnceBeforeEnteringTheScene)
         EXPECT_TRUE(actor->started);
     };
 
-    nlohmann::json placed = NS::Editor::MakePrototypeJson<AssetTimingProbeActor>();
+    nlohmann::json placed = NS::Ed::MakePrototypeJson<AssetTimingProbeActor>();
     NS::SetActorJsonId(placed, 1);
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonActors(doc).push_back(placed);
     scene.ResetFromJson(doc);
     check(scene.Actors().FindByActorId(1), "組み直し");
 
-    check(scene.SpawnFromJson(NS::Editor::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
+    check(scene.SpawnFromJson(NS::Ed::MakePrototypeJson<AssetTimingProbeActor>()), "JSON から湧かす");
 }
 
 // AssetManager を差していない間も素材を読む道を通る。試しも本番と同じ順を通る
@@ -285,6 +285,6 @@ TEST(ClassObj, ActorLoadsAssetsWithoutAssetManagerScope)
 
 TEST(ClassObj, PrototypeJsonListsTheClassObjsInit)
 {
-    const nlohmann::json prototype = NS::Editor::MakePrototypeJson<ClassObjInitProbeActor>();
+    const nlohmann::json prototype = NS::Ed::MakePrototypeJson<ClassObjInitProbeActor>();
     EXPECT_NE(NS::ClassObjFields(prototype, "Model"), nullptr);
 }

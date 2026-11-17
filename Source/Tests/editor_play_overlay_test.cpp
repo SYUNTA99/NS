@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // Scene タブを描く時に渡される溜め場へ、エディタが図形を積むことを縛る
 // どのビューにこの口が付くかは ImGui のパネルが決めるので、ここでは見ない
@@ -21,7 +21,7 @@ namespace
     // 範囲のセンサーを持つゴールを 1 体置く。置いた物は選ばれる
     void PlaceGoal(LevelEditorController& editor)
     {
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
     }

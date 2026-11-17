@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // エディタが世界を動かし直す時 (再開・コマ送り) に、止めている間の押しを自機へ渡さず、
 // エディタの読み手の押しは残す事を縛る。ツールバーは描画の中から呼ぶので、エディタがまだ読んでいない押しがある
@@ -28,7 +28,7 @@ namespace
     nlohmann::json SceneWithPlayer()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        NS::SceneJsonActors(doc).push_back(NS::Editor::MakePrototypeJson<PlayerActor>());
+        NS::SceneJsonActors(doc).push_back(NS::Ed::MakePrototypeJson<PlayerActor>());
         NS::EnsureUniqueActorIds(doc);
         return doc;
     }

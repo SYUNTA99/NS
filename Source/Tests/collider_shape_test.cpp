@@ -130,7 +130,7 @@ TEST(ColliderShape, PlayerOwnsAFixedColliderPart)
 {
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&player), "Collider"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Ed::MakePrototypeJson(&player), "Collider"), nullptr);
 }
 
 TEST(ColliderShape, BodyHasNoShapeFields)

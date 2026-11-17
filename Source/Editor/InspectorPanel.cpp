@@ -48,7 +48,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         InspectorPanel::InspectorPanel() = default;
         InspectorPanel::~InspectorPanel() = default;
@@ -784,7 +784,7 @@ namespace NS
                 if (m_nameEditId == 0)
                 {
                     m_nameId = selectedId;
-                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Editor::ActorDisplayName(go));
+                    std::snprintf(m_nameBuffer, sizeof(m_nameBuffer), "%s", Ed::ActorDisplayName(go));
                 }
                 ImGui::SetNextItemWidth(-1.0f);
                 ImGui::InputText("##actorName", m_nameBuffer, sizeof(m_nameBuffer));
@@ -816,7 +816,7 @@ namespace NS
 
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
 
-                Editor::ClassObjEditResult classObjEdit{};
+                Ed::ClassObjEditResult classObjEdit{};
                 // 戻すは描いた後に行うので、対象の部品の行を控える
                 const ClassObjInfo* revertRow = nullptr;
                 ForEachReflectedClassObj(go, [&](const ClassObjInfo& field, Object* live) {
@@ -828,9 +828,9 @@ namespace NS
 
                     ImGui::PushID(field.key);
 
-                    ImGui::PushStyleColor(ImGuiCol_Header, Editor::k_ClassObjHeaderColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Editor::k_ClassObjHeaderHoveredColor);
-                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Editor::k_ClassObjHeaderActiveColor);
+                    ImGui::PushStyleColor(ImGuiCol_Header, Ed::k_ClassObjHeaderColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, Ed::k_ClassObjHeaderHoveredColor);
+                    ImGui::PushStyleColor(ImGuiCol_HeaderActive, Ed::k_ClassObjHeaderActiveColor);
                     std::string header{field.key};
                     if (header != typeName)
                     {
@@ -844,7 +844,7 @@ namespace NS
 
                     if (open)
                     {
-                        const Editor::ClassObjEditResult r = Editor::DrawReflectedClassObj(
+                        const Ed::ClassObjEditResult r = Ed::DrawReflectedClassObj(
                             live, refOptions, field.key, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
@@ -901,5 +901,5 @@ namespace NS
                 m_derivedNameBuffer[0] = '\0';
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

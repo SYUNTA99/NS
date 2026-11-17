@@ -49,7 +49,7 @@
 #include <utility>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄)
 // と、差分の保存と、エディタの書く先を縛る
@@ -461,7 +461,7 @@ TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
     nlohmann::json follow = nlohmann::json::object();
     NS::SetField(follow, "追従対象", NS::ActorRef{1});
     NS::ActorJsonClassObjs(object)["Vcam"] = std::move(follow);
-    NS::Editor::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Ed::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
 
     const TestLogCapture log;
     NS::Scene scene;
@@ -477,7 +477,7 @@ TEST(ActorFile, ReferenceAndPoseFieldsComeFromThePlacement)
     const nlohmann::json* savedVcam = NS::ClassObjFields(saved, "Vcam");
     ASSERT_NE(savedVcam, nullptr);
     EXPECT_TRUE(NS::HasField(*savedVcam, "追従対象"));
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(saved).z, 3.0f);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(saved).z, 3.0f);
 }
 
 TEST(ActorFile, ReferenceFieldsAreNotActorFileValues)
@@ -533,15 +533,15 @@ TEST(ActorFile, OverrideIsShownOnlyOnFieldsInTheSceneOverrides)
     ASSERT_NE(radius, nullptr);
     ASSERT_NE(diameter, nullptr);
 
-    EXPECT_FALSE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, player));
+    EXPECT_FALSE(NS::Ed::ShowsOverride(shadow, shadowRow->key, *diameter, player));
     ASSERT_EQ(NS::ApplyJsonFields(shadow, DiameterEntry(4.0f)), 0u);
-    EXPECT_FALSE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, player));
+    EXPECT_FALSE(NS::Ed::ShowsOverride(shadow, shadowRow->key, *diameter, player));
     player->AddSceneOverride(shadowRow->key, "基本直径");
-    EXPECT_TRUE(NS::Editor::ShowsOverride(shadow, shadowRow->key, *diameter, player));
+    EXPECT_TRUE(NS::Ed::ShowsOverride(shadow, shadowRow->key, *diameter, player));
 
     collider->SetCapsuleRadius(2.5f);
     player->AddSceneOverride(colliderRow->key, "半径");
-    EXPECT_FALSE(NS::Editor::ShowsOverride(collider, colliderRow->key, *radius, player));
+    EXPECT_FALSE(NS::Ed::ShowsOverride(collider, colliderRow->key, *radius, player));
 }
 
 // 欄の書く先は 1 つの関数が決め、行の地の色は同じ答えの方の色になる
@@ -577,7 +577,7 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         {player, &player->TransformObj(), NS::k_PositionFieldName, NS::FieldDestination::Scene},
     };
     // シーンへ書く欄だけを塗り、.actor へ書く欄は塗らない
-    NS::Editor::EditorAppearance appearance;
+    NS::Ed::EditorAppearance appearance;
     for (const Case& c : cases)
     {
         SCOPED_TRACE(c.field);
@@ -585,7 +585,7 @@ TEST(ActorFile, EachFieldKindHasOneDestinationAndTheRowColorFollowsIt)
         ASSERT_NE(field, nullptr);
         const NS::FieldDestination destination = NS::FieldDestinationOf(c.actor, *field);
         EXPECT_EQ(destination, c.expected);
-        const std::optional<NS::Color> color = NS::Editor::FieldRowColor(appearance, c.actor, *field);
+        const std::optional<NS::Color> color = NS::Ed::FieldRowColor(appearance, c.actor, *field);
         if (destination != NS::FieldDestination::Scene)
         {
             EXPECT_FALSE(color.has_value());
@@ -817,7 +817,7 @@ TEST(ActorFile, ActorFileScaleReachesOnlyActorsThatDoNotOverrideIt)
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     ASSERT_TRUE(library.Set("PlayerActor", CodeValuesActorFile("PlayerActor")));
     nlohmann::json overridden = PlayerJson(1);
-    NS::Editor::SetActorJsonScale(overridden, NS::Vector3{3.0f, 3.0f, 3.0f});
+    NS::Ed::SetActorJsonScale(overridden, NS::Vector3{3.0f, 3.0f, 3.0f});
     nlohmann::json doc = NS::MakeSceneJson();
     NS::SceneJsonActors(doc).push_back(std::move(overridden));
     NS::SceneJsonActors(doc).push_back(PlayerJson(2));

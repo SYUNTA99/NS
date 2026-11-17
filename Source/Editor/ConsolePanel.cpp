@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void ConsolePanel::Render() noexcept
         {
@@ -51,5 +51,5 @@ namespace NS
             }
             ImGui::End();
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -22,7 +22,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -267,5 +267,5 @@ namespace NS
             }
             return k_NoActorIndex;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

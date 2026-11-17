@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         // 状態メッセージの表示色。失敗は赤、警告は橙、成功は緑
         inline const ImVec4 k_MsgErrorColor{1.0f, 0.4f, 0.4f, 1.0f};
@@ -256,5 +256,5 @@ namespace NS
                 }
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -29,7 +29,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! 変形操作のツール種別
         enum class GizmoTool : uint8
@@ -198,5 +198,5 @@ namespace NS
             Vector2 m_dragStartScreen{}; // ドラッグ開始時のスクリーン座標
             TransformState m_dragBefore{};   // ドラッグ開始時の 位置・回転・スケール
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

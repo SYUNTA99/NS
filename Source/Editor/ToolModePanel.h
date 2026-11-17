@@ -4,7 +4,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -15,5 +15,5 @@ namespace NS
             //! Edit Mode パネルを 1 枚描く。エディタを外したビルドでは何もしない
             void Render(LevelEditorController& editor) noexcept;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -53,7 +53,7 @@
 #include <system_error>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 namespace
 {
@@ -71,8 +71,8 @@ namespace
 
 TEST(EditorTimeline, SeekingStaysInsideTheRange)
 {
-    const NS::Editor::TimelineFrameRange range{0, 20};
-    NS::Editor::TimelinePlayback playback;
+    const NS::Ed::TimelineFrameRange range{0, 20};
+    NS::Ed::TimelinePlayback playback;
     playback.Seek(5, range);
     EXPECT_EQ(playback.frame, 5);
     playback.Seek(100, range);
@@ -82,25 +82,25 @@ TEST(EditorTimeline, SeekingStaysInsideTheRange)
 TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
 {
     TimelineGui gui;
-    NS::Editor::TimelinePlayback playback;
+    NS::Ed::TimelinePlayback playback;
     std::optional<std::size_t> selected;
-    const std::vector<NS::Editor::TimelineTrack> tracks{{"音量", -5, 20}, {"カメラの位置", 0, 10}};
-    const NS::Editor::TimelineFrameRange range{-5, 20};
-    std::optional<NS::Editor::TimelineFrameRange> seekRange;
+    const std::vector<NS::Ed::TimelineTrack> tracks{{"音量", -5, 20}, {"カメラの位置", 0, 10}};
+    const NS::Ed::TimelineFrameRange range{-5, 20};
+    std::optional<NS::Ed::TimelineFrameRange> seekRange;
     ImVec2 click{};
     const auto draw = [&] {
         ImGui::NewFrame();
         ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
         ImGui::SetNextWindowSize(ImVec2{800.0f, 500.0f});
         ImGui::Begin("共通の時間軸");
-        const bool moved = NS::Editor::DrawTimelineTracks(
+        const bool moved = NS::Ed::DrawTimelineTracks(
             tracks,
             range,
             playback,
             selected,
             true,
             0.0f,
-            [&click](const NS::Editor::TimelineLayout& layout) {
+            [&click](const NS::Ed::TimelineLayout& layout) {
                 const ImVec2 window = ImGui::GetWindowPos();
                 const ImVec2 origin = ImGui::GetCursorStartPos();
                 click = ImVec2{window.x + origin.x + layout.labelWidth +
@@ -119,7 +119,7 @@ TEST(EditorTimeline, ScrubbingAnUnrelatedTrackUsesTheSameSignedClock)
     EXPECT_EQ(playback.frame, 7);
     ImGui::GetIO().AddMouseButtonEvent(0, false);
     (void)draw();
-    seekRange = NS::Editor::TimelineFrameRange{-5, 4};
+    seekRange = NS::Ed::TimelineFrameRange{-5, 4};
     ImGui::GetIO().AddMouseButtonEvent(0, true);
     EXPECT_TRUE(draw());
     EXPECT_EQ(playback.frame, 4);
@@ -136,7 +136,7 @@ TEST(EditorGameCursor, EscapeThenGameImageClickRecapturesTheCursor)
     TimelineGui gui;
     GL::Level::GameScene scene;
     LevelEditorController editor(scene);
-    NS::Editor::GameViewPanel game;
+    NS::Ed::GameViewPanel game;
     const auto frame = [&] {
         ImGui::NewFrame();
         ImGui::SetNextWindowPos({0.0f, 0.0f});
@@ -182,7 +182,7 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     GL::Level::GameScene scene;
     LevelEditorController editor(scene);
-    NS::Editor::GameViewPanel game;
+    NS::Ed::GameViewPanel game;
     const ImGuiID dock = ImHashStr("カーソル復帰のドック");
     bool built = false;
     const auto frame = [&] {
@@ -191,13 +191,13 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
         {
             ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
             ImGui::DockBuilderSetNodeSize(dock, io.DisplaySize);
-            ImGui::DockBuilderDockWindow(NS::Editor::k_PanelGame, dock);
-            ImGui::DockBuilderDockWindow(NS::Editor::k_PanelScene, dock);
+            ImGui::DockBuilderDockWindow(NS::Ed::k_PanelGame, dock);
+            ImGui::DockBuilderDockWindow(NS::Ed::k_PanelScene, dock);
             ImGui::DockBuilderFinish(dock);
             built = true;
         }
         ImGui::DockSpaceOverViewport(dock, ImGui::GetMainViewport());
-        ImGui::Begin(NS::Editor::k_PanelScene);
+        ImGui::Begin(NS::Ed::k_PanelScene);
         ImGui::End();
         game.Render(editor);
         ImGui::EndFrame();
@@ -208,7 +208,7 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     {
         frame();
     }
-    ImGui::SetWindowFocus(NS::Editor::k_PanelGame);
+    ImGui::SetWindowFocus(NS::Ed::k_PanelGame);
     frame();
     frame();
     NS::OS::Keyboard& keyboard = app.Input().Keyboard();
@@ -216,7 +216,7 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     editor.Tick();
     keyboard.OnKeyUp(NS::OS::Key::Escape);
     ASSERT_TRUE(app.Window().IsCursorVisible());
-    ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelGame);
+    ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelGame);
     ASSERT_NE(window, nullptr);
     ASSERT_NE(window->DockNode, nullptr);
     const ImVec2 tab = window->DC.DockTabItemRect.GetCenter();
@@ -247,7 +247,7 @@ TEST(EditorGameCursor, EscapeThenGameTabClickRecapturesTheCursor)
     EXPECT_FALSE(app.Input().Mouse().IsRelativeMode());
     scene.SetSimulationPaused(false);
 
-    ImGui::SetWindowFocus(NS::Editor::k_PanelScene);
+    ImGui::SetWindowFocus(NS::Ed::k_PanelScene);
     frame();
     frame();
     clickTab();
@@ -302,13 +302,13 @@ TEST(EditorActionTimelinePanel, SaveWritesEveryEditedActorFile)
     scene.ResetFromJson(std::move(snapshot));
     scene.SetSimulationEnabled(false);
     LevelEditorController editor(scene);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
 
     const auto frame = [&](const char* press) {
         ImGui::NewFrame();
         if (press != nullptr)
         {
-            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelActionTimeline);
             ASSERT_NE(window, nullptr);
             ImGuiContext& context = *ImGui::GetCurrentContext();
             context.NavActivateId = window->GetID(press);
@@ -375,7 +375,7 @@ namespace
     }
 
     //! パネルを 1 回描いてから、label のボタンを押して描く
-    void PressPanelButton(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline, const char* label)
+    void PressPanelButton(LevelEditorController& editor, NS::Ed::ActionTimelinePanel& timeline, const char* label)
     {
         const auto drawPanel = [&] {
             ImGui::SetNextWindowPos({0.0f, 0.0f});
@@ -386,7 +386,7 @@ namespace
         drawPanel();
         ImGui::EndFrame();
         ImGui::NewFrame();
-        ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelActionTimeline);
+        ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelActionTimeline);
         ASSERT_NE(window, nullptr);
         ImGuiContext& context = *ImGui::GetCurrentContext();
         context.NavActivateId = window->GetID(label);
@@ -396,13 +396,13 @@ namespace
     }
 
     //! パネルの「再生の位置に足す」を押し、選んだアクターの .actor の動作に事象を 1 つ足す
-    void AddEventThroughThePanel(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline)
+    void AddEventThroughThePanel(LevelEditorController& editor, NS::Ed::ActionTimelinePanel& timeline)
     {
         PressPanelButton(editor, timeline, "再生の位置に足す");
     }
 
     //! 足す項目の種類のコンボボックスを開き、ポップアップの中の label の種類を選ぶ
-    void ChooseAddType(LevelEditorController& editor, NS::Editor::ActionTimelinePanel& timeline, const char* label)
+    void ChooseAddType(LevelEditorController& editor, NS::Ed::ActionTimelinePanel& timeline, const char* label)
     {
         const auto drawPanel = [&] {
             ImGui::SetNextWindowPos({0.0f, 0.0f});
@@ -431,7 +431,7 @@ TEST(EditorActionTimelinePanel, AddsEveryItemKindAndASensorSwitchAndSavesThem)
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     PlaceEditedPlayer(directory, scene, editor);
     const std::vector<NS::ActorActionInfo> before =
         NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
@@ -478,7 +478,7 @@ TEST(EditorActionTimelinePanel, RevertReloadsActorsOfADerivedActorFile)
         NS::ReadActorActions("PlayerActor", *NS::ActorFileLibrary::Get().Find("PlayerActor"));
     ASSERT_FALSE(before.empty());
 
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
 
     const auto eventCount = [&] {
         const NS::ActorAction* actions = scene.Actors().FindByActorId(1)->ActorActionClassObj();
@@ -525,7 +525,7 @@ TEST(EditorActionTimelinePanel, RevertRestoresActionsAfterTheSameActorFileIsSave
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     const std::size_t before = FirstActionEventCount();
 
     AddEventThroughThePanel(editor, timeline);
@@ -555,7 +555,7 @@ TEST(EditorActionTimelinePanel, RevertKeepsEditsWhenTheActorFileCannotBeRead)
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     const std::size_t before = FirstActionEventCount();
     AddEventThroughThePanel(editor, timeline);
     ASSERT_EQ(FirstActionEventCount(), before + 1);
@@ -580,7 +580,7 @@ TEST(EditorActionTimelinePanel, RevertKeepsActorFileEditsThatCouldNotBeWritten)
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     const std::size_t before = FirstActionEventCount();
     AddEventThroughThePanel(editor, timeline);
     ASSERT_EQ(FirstActionEventCount(), before + 1);
@@ -633,13 +633,13 @@ TEST(EditorQuit, TimelineEditAloneIsUnsavedWork)
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
-    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    NS::Ed::ActionTimelinePanel timeline;
+    ASSERT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
 
     AddEventThroughThePanel(editor, timeline);
 
     EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
 }
 
 TEST(EditorQuit, UnchangedSceneClosesWithoutOpeningConfirmation)
@@ -647,10 +647,10 @@ TEST(EditorQuit, UnchangedSceneClosesWithoutOpeningConfirmation)
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActionTimelinePanel timeline;
-    NS::Editor::QuitModal quit;
-    ASSERT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_TRUE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+    NS::Ed::ActionTimelinePanel timeline;
+    NS::Ed::QuitModal quit;
+    ASSERT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(quit.RequestQuit(NS::Ed::HasUnsavedWork(editor, timeline)));
     ImGui::NewFrame();
     quit.Render(editor, timeline);
     EXPECT_EQ(ImGui::GetTopMostPopupModal(), nullptr);
@@ -661,8 +661,8 @@ TEST(EditorQuit, CleanWorkDoesNotRequireASceneSave)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActionTimelinePanel timeline;
-    EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
+    NS::Ed::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Ed::SaveAllForQuit(editor, timeline));
 }
 
 // 終了の保存は動作のタイムラインで直した .actor も書く。シーンだけを書くと、動作の変更が黙って失われる
@@ -674,7 +674,7 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
     const std::size_t before = FirstActionEventCount();
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
 
     // シーンの書き先は、Assets の下に作る試しのレベルにする。起動シーンのファイルを書かない
     const std::string folder =
@@ -686,14 +686,14 @@ TEST(EditorQuit, SaveAllForQuitWritesTheTimeline)
     const std::span<const std::byte> levelBytes{reinterpret_cast<const std::byte*>(levelText.data()), levelText.size()};
     ASSERT_TRUE(
         NS::OS::FileSystem::WriteAllBytes(NS::OS::FileSystem::Combine(levelDirectory, "quit.scene"), levelBytes));
-    NS::Editor::EditorMode& mode = editor.Editor();
+    NS::Ed::EditorMode& mode = editor.Editor();
     mode.SetLoadLevelFn([](nlohmann::json&&) {});
     mode.SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     const bool opened = mode.OpenLevel(folder + "/quit");
 
     AddEventThroughThePanel(editor, timeline);
-    const bool saved = NS::Editor::SaveAllForQuit(editor, timeline);
-    const bool unsavedAfter = NS::Editor::HasUnsavedWork(editor, timeline);
+    const bool saved = NS::Ed::SaveAllForQuit(editor, timeline);
+    const bool unsavedAfter = NS::Ed::HasUnsavedWork(editor, timeline);
     std::error_code error;
     std::filesystem::remove_all(std::filesystem::path{NS::OS::StringUtils::WideFromUtf8(levelDirectory)}, error);
 
@@ -712,7 +712,7 @@ TEST(EditorActionTimelinePanel, SaveKeepsAFileThatBecameUnreadableAndStaysUnsave
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     const std::size_t before = FirstActionEventCount();
     AddEventThroughThePanel(editor, timeline);
 
@@ -736,7 +736,7 @@ TEST(EditorActionTimelinePanel, SaveKeepsAFileChangedOutsideAndStaysUnsaved)
     NS::Scene scene;
     LevelEditorController editor(scene);
     PlaceEditedPlayer(directory, scene, editor);
-    NS::Editor::ActionTimelinePanel timeline;
+    NS::Ed::ActionTimelinePanel timeline;
     const std::string path = NS::OS::FileSystem::Combine(directory.Path(), "PlayerActor.actor");
     const std::optional<std::string> saved = NS::OS::FileSystem::ReadAllText(path);
     ASSERT_TRUE(saved.has_value());
@@ -766,9 +766,9 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
     TimelineGui gui;
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::ActionTimelinePanel timeline;
-    NS::Editor::QuitModal quit;
-    NS::Editor::LevelFileBrowser files;
+    NS::Ed::ActionTimelinePanel timeline;
+    NS::Ed::QuitModal quit;
+    NS::Ed::LevelFileBrowser files;
 
     // EditorLayer の描画と同じ順で 1 フレーム描き、EditorLayer.cpp が問いへ入れる値で答えを返す
     const auto frame = [&](const char* activate) {
@@ -795,7 +795,7 @@ TEST(EditorQuit, QuitAndLevelFileWindowsBlockEditShortcutsWhileOpen)
         return name;
     };
     const auto blocked = [](const std::string& modalName) {
-        return NS::Editor::ResolveInputOwnership({.modalOpen = !modalName.empty()}).editShortcutsBlocked;
+        return NS::Ed::ResolveInputOwnership({.modalOpen = !modalName.empty()}).editShortcutsBlocked;
     };
 
     EXPECT_FALSE(blocked(frame(nullptr)));

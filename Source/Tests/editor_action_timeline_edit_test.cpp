@@ -22,13 +22,13 @@ namespace
 TEST(EditorActionTimelineEdit, AddsAtThePlayheadAndStartsNoEarlierThanTheEntry)
 {
     NS::ActorActionInfo action = MakeTwoEvents();
-    const std::size_t screen = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Screen"), 5);
+    const std::size_t screen = NS::Ed::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Screen"), 5);
     ASSERT_EQ(screen, 2u);
     EXPECT_EQ(action.events[2].start, 5);
     EXPECT_EQ(action.events[2].length, 1);
     EXPECT_EQ(NS::ItemTypeName(action.events[2].item), "Screen");
 
-    const std::size_t early = NS::Editor::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Sound"), -3);
+    const std::size_t early = NS::Ed::AddActionEvent(action, *NS::MakeItem<NS::ActionEventInfo>("Sound"), -3);
     EXPECT_EQ(action.events[early].start, 0);
 }
 
@@ -36,8 +36,8 @@ TEST(EditorActionTimelineEdit, AddsAtThePlayheadAndStartsNoEarlierThanTheEntry)
 TEST(EditorActionTimelineEdit, RemovesARow)
 {
     NS::ActorActionInfo action = MakeTwoEvents();
-    EXPECT_FALSE(NS::Editor::RemoveActionEvent(action, 5));
-    ASSERT_TRUE(NS::Editor::RemoveActionEvent(action, 0));
+    EXPECT_FALSE(NS::Ed::RemoveActionEvent(action, 5));
+    ASSERT_TRUE(NS::Ed::RemoveActionEvent(action, 0));
     ASSERT_EQ(action.events.size(), 1u);
     EXPECT_EQ(NS::ItemTypeName(action.events[0].item), "Screen");
 }
@@ -46,7 +46,7 @@ TEST(EditorActionTimelineEdit, RemovesARow)
 TEST(EditorActionTimelineEdit, FrameRangeCoversEvents)
 {
     const NS::ActorActionInfo action = MakeTwoEvents();
-    const NS::Editor::TimelineFrameRange range = NS::Editor::ActionFrameRange(action);
+    const NS::Ed::TimelineFrameRange range = NS::Ed::ActionFrameRange(action);
     EXPECT_EQ(range.first, 0);
     EXPECT_EQ(range.last, 13);
 }
@@ -57,13 +57,13 @@ TEST(EditorActionTimelineEdit, FrameRangeCoversTheActionLength)
     NS::ActorActionInfo dash;
     dash.name = "AirDash";
     dash.length = 29;
-    NS::Editor::TimelineFrameRange range = NS::Editor::ActionFrameRange(dash);
+    NS::Ed::TimelineFrameRange range = NS::Ed::ActionFrameRange(dash);
     EXPECT_EQ(range.first, 0);
     EXPECT_EQ(range.last, 28);
 
     NS::ActorActionInfo shorter = MakeTwoEvents();
     shorter.length = 5;
-    range = NS::Editor::ActionFrameRange(shorter);
+    range = NS::Ed::ActionFrameRange(shorter);
     EXPECT_EQ(range.first, 0);
     EXPECT_EQ(range.last, 13);
 }

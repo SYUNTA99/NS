@@ -14,7 +14,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -60,5 +60,5 @@ namespace NS
             int m_addType = 0;
             TimelinePlayback m_playback; // frame だけを使う。目盛りで動かし、事象と入り切りを足す始まりにする
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -236,7 +236,7 @@ TEST(PlayerParams, ShippedAssetsKeepEveryFieldUnderThePartThatReadsIt)
         const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
         PlayerActor& player = *playerOwned;
         const nlohmann::json& parts = NS::ActorJsonClassObjs(entry);
-        const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&player);
+        const nlohmann::json prototype = NS::Ed::MakePrototypeJson(&player);
         for (nlohmann::json::const_iterator it = parts.begin(); it != parts.end(); ++it)
         {
             EXPECT_NE(NS::ClassObjFields(prototype, it.key()), nullptr) << source << " " << it.key();

@@ -49,7 +49,7 @@ namespace
         NS::SetActorJsonId(object, id);
         NS::SetActorJsonFile(object, "LifeBoxActor");
         NS::SetActorJsonName(object, name);
-        NS::Editor::SetActorJsonPosition(object, {x, 0.0f, 0.0f});
+        NS::Ed::SetActorJsonPosition(object, {x, 0.0f, 0.0f});
         return object;
     }
 

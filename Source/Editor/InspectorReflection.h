@@ -19,7 +19,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         struct EditorAppearance;
 
@@ -91,5 +91,5 @@ namespace NS
         {
             return DrawReflectedValue(&value, *T::StaticReflection());
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

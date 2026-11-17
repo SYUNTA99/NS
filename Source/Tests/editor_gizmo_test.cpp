@@ -30,7 +30,7 @@ namespace
         return surface;
     }
 
-    NS::Matrix MakeViewProjection(const NS::Editor::ViewRect& view)
+    NS::Matrix MakeViewProjection(const NS::Ed::ViewRect& view)
     {
         const NS::Matrix viewMatrix =
             NS::Matrix::CreateLookAt(NS::Vector3{3.0f, 3.0f, -5.0f}, NS::Vector3{0.0f, 0.0f, 0.0f}, NS::Vector3::Up);
@@ -38,21 +38,21 @@ namespace
         return viewMatrix * NS::Matrix::CreatePerspectiveFieldOfView(1.0f, aspect, 0.1f, 100.0f);
     }
 
-    std::optional<NS::Vector2> FindMoveHandle(const NS::Matrix& viewProjection, const NS::Editor::ViewRect& view)
+    std::optional<NS::Vector2> FindMoveHandle(const NS::Matrix& viewProjection, const NS::Ed::ViewRect& view)
     {
-        const NS::Size2D viewport = NS::Editor::ViewRectSize(view);
+        const NS::Size2D viewport = NS::Ed::ViewRectSize(view);
         for (int y = 0; y < view.height; ++y)
         {
             for (int x = 0; x < view.width; ++x)
             {
                 const NS::Vector2 point{static_cast<float>(x), static_cast<float>(y)};
-                const NS::Editor::GizmoAxis axis = NS::Editor::GizmoEditor::ToolHandlePick(NS::Vector3::Zero,
+                const NS::Ed::GizmoAxis axis = NS::Ed::GizmoEditor::ToolHandlePick(NS::Vector3::Zero,
                                                                                            NS::Quaternion::Identity,
-                                                                                           NS::Editor::GizmoTool::Move,
+                                                                                           NS::Ed::GizmoTool::Move,
                                                                                            point,
                                                                                            viewProjection,
                                                                                            viewport);
-                if (axis != NS::Editor::GizmoAxis::None)
+                if (axis != NS::Ed::GizmoAxis::None)
                 {
                     return point;
                 }
@@ -69,14 +69,14 @@ TEST(EditorGizmo, DeactivatingEndsTheDrag)
     input.Mouse().ClearState();
     const int startX = input.Mouse().GetX();
     const int startY = input.Mouse().GetY();
-    const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+    const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
     const NS::Matrix viewProjection = MakeViewProjection(view);
     const std::optional<NS::Vector2> handle = FindMoveHandle(viewProjection, view);
     ASSERT_TRUE(handle.has_value());
 
     NS::Transform target;
     NS::ActorList actors;
-    NS::Editor::GizmoEditor gizmo;
+    NS::Ed::GizmoEditor gizmo;
     gizmo.SetInput(&input);
     gizmo.SetActive(true);
     gizmo.SetSelected(&target);
@@ -123,10 +123,10 @@ TEST(EditorGizmo, BatchedMeshBoundsDoNotBlockSmallObjects)
         NS::MapPartsActor* smallObject = SpawnFromActorFile<NS::MapPartsActor>(scene, "MapPartsActor", "SmallObject");
         ASSERT_NE(batch->ModelClassObj(), nullptr);
         batch->ModelClassObj()->SetMesh(&batchMesh);
-        NS::Editor::GizmoEditor gizmo;
+        NS::Ed::GizmoEditor gizmo;
         gizmo.SetInput(&app.Input());
         gizmo.SetActive(true);
-        const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
+        const NS::Ed::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
         const NS::Matrix camera = NS::Matrix::CreateLookAt(
             NS::Vector3{0.0f, 0.0f, -30.0f}, NS::Vector3::Zero, NS::Vector3::Up);
         const NS::Matrix projection = NS::Matrix::CreatePerspectiveFieldOfView(1.0f, 1.6f, 0.1f, 100.0f);
@@ -156,11 +156,11 @@ TEST(EditorGizmo, MeshSurfaceDistanceDecidesWhichObjectIsInFront)
         NS::AABB{{0.0f, 0.0f, 5.0f}, {1.0f, 1.0f, 0.1f}}};
     const std::array<const NS::Phys::MeshShape*, 2> meshes{&terrain, &object};
     const NS::Ray ray{NS::Vector3::Zero, NS::Vector3::UnitZ};
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 1);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 1);
     terrain = PickSurface(2.0f);
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 0);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 0);
     const std::array<NS::uint8, 2> mask{0, 1};
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, mask, meshes), 1);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, mask, meshes), 1);
 }
 
 TEST(EditorGizmo, MeshPickingUsesMeshCoordinatesAndWorldDistanceAfterNonUniformScale)
@@ -175,7 +175,7 @@ TEST(EditorGizmo, MeshPickingUsesMeshCoordinatesAndWorldDistanceAfterNonUniformS
         NS::AABB{{3.0f, 0.0f, 2.0f}, {1.0f, 1.0f, 0.1f}}};
     const std::array<const NS::Phys::MeshShape*, 2> meshes{&farSurface, &nearSurface};
     const NS::Ray ray{NS::Vector3::Zero, NS::Vector3::UnitZ};
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 1);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, meshes), 1);
 }
 
 TEST(EditorGizmo, MeshPickingSupportsRotationAndEitherTriangleSide)
@@ -190,10 +190,10 @@ TEST(EditorGizmo, MeshPickingSupportsRotationAndEitherTriangleSide)
         NS::AABB{{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.1f}},
         NS::AABB{{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 0.1f}}};
     const std::array<const NS::Phys::MeshShape*, 2> meshes{&surface, &surface};
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(
                   NS::Ray{NS::Vector3::Zero, NS::Vector3::UnitX}, worlds, bounds, {}, meshes),
               0);
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(
                   NS::Ray{{10.0f, 0.0f, 0.0f}, -NS::Vector3::UnitX}, worlds, bounds, {}, meshes),
               1);
 }
@@ -206,7 +206,7 @@ TEST(EditorGizmo, EmptyMeshDoesNotBecomeABoxButObjectsWithoutMeshKeepTheirBox)
     const std::array<const NS::Phys::MeshShape*, 1> empty{&emptyMesh};
     const std::array<const NS::Phys::MeshShape*, 1> noMesh{nullptr};
     const NS::Ray ray{NS::Vector3::Zero, NS::Vector3::UnitZ};
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, empty), -1);
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, noMesh), 0);
-    EXPECT_EQ(NS::Editor::GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, empty), -1);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds, {}, noMesh), 0);
+    EXPECT_EQ(NS::Ed::GizmoEditor::PickNearestOBB(ray, worlds, bounds), 0);
 }

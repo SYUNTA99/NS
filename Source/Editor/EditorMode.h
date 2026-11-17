@@ -22,7 +22,7 @@ namespace NS
 } // namespace NS
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! CreateLevel の答え。作れなかった時は理由を返し、作成の窓が理由ごとの文を出す
         enum class CreateLevelResult : uint8
@@ -135,5 +135,5 @@ namespace NS
             void RememberCurrentLevel() const noexcept;
             void OverwriteCurrentLevel() noexcept;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

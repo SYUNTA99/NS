@@ -58,7 +58,7 @@ TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
     NS::ActorJsonClassObjs(actorFile)["Transform"] = {{NS::k_PositionFieldName, {1.0f, 2.0f, 3.0f}}};
 
     std::vector<std::string> added;
-    const nlohmann::json full = NS::Editor::CompleteActorFile(actorFile, added);
+    const nlohmann::json full = NS::Ed::CompleteActorFile(actorFile, added);
 
     EXPECT_EQ(NS::ActorFileClass(full), "GoalActor");
     const nlohmann::json* params = NS::ClassObjFields(full, "Params");
@@ -97,7 +97,7 @@ TEST(ActorFileGenerator, CompletesMissingFieldsFromTheCodeAndKeepsWrittenValues)
 TEST(ActorFileGenerator, LeavesOutReferenceFields)
 {
     std::vector<std::string> added;
-    const nlohmann::json full = NS::Editor::CompleteActorFile(ClassOnlyActorFile("FollowCameraActor"), added);
+    const nlohmann::json full = NS::Ed::CompleteActorFile(ClassOnlyActorFile("FollowCameraActor"), added);
     const nlohmann::json* vcam = NS::ClassObjFields(full, "Vcam");
     ASSERT_NE(vcam, nullptr);
     EXPECT_FALSE(vcam->contains("追従対象"));
@@ -111,7 +111,7 @@ TEST(ActorFileGenerator, LeavesTheDerivedActorFileAsWritten)
     NS::SetActorFileBase(derived, "GoalActor");
     NS::ActorJsonClassObjs(derived)["Params"] = {{"クリアの暗転秒", 2.0f}};
     std::vector<std::string> added;
-    EXPECT_EQ(NS::Editor::CompleteActorFile(derived, added), derived);
+    EXPECT_EQ(NS::Ed::CompleteActorFile(derived, added), derived);
     EXPECT_TRUE(added.empty());
 }
 
@@ -121,7 +121,7 @@ TEST(ActorFileGenerator, WritesTheCompletedActorFilesBackToTheDirectory)
     const ScopedActorFileDirectory scope("ActorFileGenerator");
     WriteActorFile(scope.Path(), "GoalActor", R"({"class": "GoalActor", "classObjs": {"Params": {"クリアの暗転秒": 0.25}}})");
 
-    EXPECT_EQ(NS::Editor::GenerateActorFiles(scope.Path()), 1);
+    EXPECT_EQ(NS::Ed::GenerateActorFiles(scope.Path()), 1);
     const std::optional<nlohmann::json> written =
         NS::ReadActorFileAt(NS::OS::FileSystem::Combine(scope.Path(), "GoalActor.actor"));
     ASSERT_TRUE(written.has_value());
@@ -130,7 +130,7 @@ TEST(ActorFileGenerator, WritesTheCompletedActorFilesBackToTheDirectory)
     EXPECT_FLOAT_EQ(params->at("クリアの暗転秒").get<float>(), 0.25f);
     EXPECT_TRUE(params->contains("クリアの明転秒"));
 
-    EXPECT_EQ(NS::Editor::GenerateActorFiles(scope.Path()), 0);
+    EXPECT_EQ(NS::Ed::GenerateActorFiles(scope.Path()), 0);
 }
 
 // Assets/Actors の .actor は、そのクラスで登録した項目を全部書いている。項目を足したら生成で書き足す
@@ -144,7 +144,7 @@ TEST(ActorFileGenerator, EveryAssetActorFileHasEveryRegisteredField)
         const std::optional<nlohmann::json> actorFile = NS::ReadActorFileAt(path);
         ASSERT_TRUE(actorFile.has_value()) << path;
         std::vector<std::string> added;
-        (void)NS::Editor::CompleteActorFile(*actorFile, added);
+        (void)NS::Ed::CompleteActorFile(*actorFile, added);
         for (const std::string& item : added)
         {
             ADD_FAILURE() << path << " に項目 " << item << " が無い";

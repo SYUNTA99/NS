@@ -4,7 +4,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         PlayToolbarState MakePlayToolbarState(PlayModeSnapshot snapshot) noexcept
         {
@@ -84,5 +84,5 @@ namespace NS
             }
             return query.cursorReleased && query.gameViewClicked;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

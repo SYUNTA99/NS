@@ -66,7 +66,7 @@ TEST(EditorMaterialParamFields, NegativeTextInUnsignedFieldStopsAtZero)
     HeadlessImGui gui;
     NS::MaterialParamValue value;
     value.numbers = {7.0};
-    gui.Type([&] { (void)NS::Editor::DragParamInteger(0, std::numeric_limits<NS::uint32>::max(), value); }, "-5");
+    gui.Type([&] { (void)NS::Ed::DragParamInteger(0, std::numeric_limits<NS::uint32>::max(), value); }, "-5");
     EXPECT_EQ(value.numbers[0], 0.0);
 }
 
@@ -76,7 +76,7 @@ TEST(EditorMaterialParamFields, TypingOneComponentLeavesTheOthers)
     HeadlessImGui gui;
     NS::MaterialParamValue value;
     value.numbers = {0.5, 0.1};
-    gui.Type([&] { (void)NS::Editor::DragParamFloats(value); }, "0.3");
+    gui.Type([&] { (void)NS::Ed::DragParamFloats(value); }, "0.3");
     EXPECT_EQ(value.numbers[0], 0.3);
     EXPECT_EQ(value.numbers[1], 0.1);
 }

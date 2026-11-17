@@ -19,7 +19,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {

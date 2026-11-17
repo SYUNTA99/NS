@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void ToolModePanel::Render(LevelEditorController& editor) noexcept
         {
@@ -20,7 +20,7 @@ namespace NS
 
                 // 感度はこの場で効き、シーンには保存しない
                 ImGui::SeparatorText("自由視点");
-                Editor::EditorCamera::FeelTuning& tuning = editor.EditorFreeCamera().Tuning();
+                Ed::EditorCamera::FeelTuning& tuning = editor.EditorFreeCamera().Tuning();
                 // 手入力も範囲に収める。非数は範囲で止まらないので EditorCamera が断る
                 constexpr ImGuiSliderFlags k_Clamp = ImGuiSliderFlags_AlwaysClamp;
                 ImGui::DragFloat("ズームバネ角速度", &tuning.springOmega, 0.1f, 0.5f, 30.0f, "%.3f", k_Clamp);
@@ -44,5 +44,5 @@ namespace NS
             }
             ImGui::End();
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

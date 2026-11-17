@@ -55,7 +55,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! シーンの編集操作と編集・プレイの切替を管理する
         class LevelEditorController : public NonCopyable
@@ -460,5 +460,5 @@ namespace NS
         [[nodiscard]] bool WriteMaterialFile(const AssetManager& assets,
                                              const Material& material,
                                              std::string_view filePath);
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

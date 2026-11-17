@@ -2,7 +2,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! 表示名を変えるパネルは 表示名###ID の形式を使い、### 以降の識別子を固定する
         inline constexpr const char* k_PanelScene = "Scene";
@@ -14,5 +14,5 @@ namespace NS
         inline constexpr const char* k_PanelAssets = "Assets";
         inline constexpr const char* k_PanelEditMode = "Edit Mode";
         inline constexpr const char* k_PanelActionTimeline = "動作のタイムライン###ActionTimeline";
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

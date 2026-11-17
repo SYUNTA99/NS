@@ -27,7 +27,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -572,5 +572,5 @@ namespace NS
                 ApplyWorking(editor);
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

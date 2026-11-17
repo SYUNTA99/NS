@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! エディタで置ける物 1 種類
         struct PlacementItem
@@ -35,5 +35,5 @@ namespace NS
 
         //! ContentRoot 相対の meshRef から地形のひな形を作る。衝突は描画と同じ三角形を使う
         [[nodiscard]] nlohmann::json MakeMeshPartsPrototype(std::string_view meshRef);
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

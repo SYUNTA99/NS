@@ -19,7 +19,7 @@
 #include <string>
 #include <system_error>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 namespace
 {
@@ -72,7 +72,7 @@ TEST(EditorMaterialFile, WritingPutsTheCurrentValuesInTheFile)
     NS::Material* material = assets.LoadMaterial("Assets/Materials/stone.mat");
     SetBlend(*material, "Additive");
 
-    ASSERT_TRUE(NS::Editor::WriteMaterialFile(assets, *material, path));
+    ASSERT_TRUE(NS::Ed::WriteMaterialFile(assets, *material, path));
     const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);
     ASSERT_TRUE(text.has_value());
     NS::MaterialFileDesc written{};
@@ -98,7 +98,7 @@ TEST(EditorMaterialFile, FailedWriteKeepsThePreviousFile)
         const std::ifstream held{std::filesystem::path{path}};
         ASSERT_TRUE(held.is_open());
         const TestLogCapture log;
-        EXPECT_FALSE(NS::Editor::WriteMaterialFile(assets, *material, path));
+        EXPECT_FALSE(NS::Ed::WriteMaterialFile(assets, *material, path));
         EXPECT_EQ(log.ErrorCount(), 1);
     }
 
@@ -126,15 +126,15 @@ TEST(EditorMaterialFile, FailedSelectionCommitIsRetriedBeforeQuitting)
     ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(blocker));
     editor.MarkAssetEdited();
     editor.SelectSceneSettings();
-    NS::Editor::ActionTimelinePanel timeline;
-    EXPECT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_FALSE(NS::Editor::SaveAllForQuit(editor, timeline));
+    NS::Ed::ActionTimelinePanel timeline;
+    EXPECT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(NS::Ed::SaveAllForQuit(editor, timeline));
     EXPECT_EQ(NS::OS::FileSystem::ReadAllText(path), source);
     std::error_code error;
     EXPECT_TRUE(std::filesystem::remove(std::filesystem::path{blocker}, error));
     EXPECT_FALSE(error);
-    EXPECT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
-    EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(NS::Ed::SaveAllForQuit(editor, timeline));
+    EXPECT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
     NS::MaterialFileDesc saved;
     std::string message;
     const std::optional<std::string> text = NS::OS::FileSystem::ReadAllText(path);

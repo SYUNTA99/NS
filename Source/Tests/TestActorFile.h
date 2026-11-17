@@ -110,7 +110,7 @@ inline nlohmann::json ClassOnlyActorFile(std::string_view className)
 inline nlohmann::json CodeValuesActorFile(std::string_view className)
 {
     std::vector<std::string> added;
-    return NS::Editor::CompleteActorFile(ClassOnlyActorFile(className), added);
+    return NS::Ed::CompleteActorFile(ClassOnlyActorFile(className), added);
 }
 
 //! name の .actor の全部の値で、シーンに入れずに作ったアクター。.actor が読まれていなければ nullptr

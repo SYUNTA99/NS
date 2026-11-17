@@ -29,7 +29,7 @@
 #include <string>
 #include <string_view>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 // エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、SceneActor のクラスごと置くことを縛る
 
@@ -37,7 +37,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
@@ -53,7 +53,7 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem(NS::Ed::k_PartsSlopeLabel);
     ASSERT_TRUE(item.has_value());
 
     editor.PlaceItem(*item);
@@ -72,19 +72,19 @@ TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 {
     nlohmann::json bare = NS::MakeActorJson();
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(bare).y, 1.0f);
-    NS::Editor::EnsureTransformClassObj(bare);
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(bare).y, 1.0f);
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(bare).y, 0.0f);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonScale(bare).y, 1.0f);
+    NS::Ed::EnsureTransformClassObj(bare);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonScale(bare).y, 1.0f);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(bare).y, 0.0f);
 
-    nlohmann::json object = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
+    nlohmann::json object = NS::Ed::MakePrototypeJson<GL::Level::GoalActor>();
     const NS::Quaternion rotation = NS::Quaternion::CreateFromYawPitchRoll(0.5f, 0.0f, 0.0f);
-    NS::Editor::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
-    NS::Editor::SetActorJsonRotation(object, rotation);
-    NS::Editor::SetActorJsonScale(object, NS::Vector3{2.0f, 2.0f, 2.0f});
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonPosition(object).z, 3.0f);
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonRotation(object).y, rotation.y);
-    EXPECT_FLOAT_EQ(NS::Editor::ActorJsonScale(object).x, 2.0f);
+    NS::Ed::SetActorJsonPosition(object, NS::Vector3{1.0f, 2.0f, 3.0f});
+    NS::Ed::SetActorJsonRotation(object, rotation);
+    NS::Ed::SetActorJsonScale(object, NS::Vector3{2.0f, 2.0f, 2.0f});
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonPosition(object).z, 3.0f);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonRotation(object).y, rotation.y);
+    EXPECT_FLOAT_EQ(NS::Ed::ActorJsonScale(object).x, 2.0f);
 
     NS::Scene scene;
     NS::SceneActor* actor = scene.SpawnFromJson(object);
@@ -186,7 +186,7 @@ TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
         NS::Scene scene;
         LevelEditorController editor(scene);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());

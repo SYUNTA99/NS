@@ -8,7 +8,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! ゲーム画面を映すパネルの矩形。スクリーン座標で、編集入力の変換と内外の判定に使う
         struct ViewRect
@@ -40,5 +40,5 @@ namespace NS
         //! 画面上の見かけの大きさを一定に近づける、世界の長さの倍率を返す
         //! 深度 10 までは 1、遠いほど深度に比例して伸ばす。clip.w が 0.001 以下なら 1
         [[nodiscard]] float ScreenConstantScale(const Vector3& point, const Matrix& viewProjection) noexcept;
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

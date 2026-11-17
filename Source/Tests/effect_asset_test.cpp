@@ -12,7 +12,7 @@
 
 TEST(EffectAssetMigration, PlayerDoesNotOwnTheObsoleteChargeRuntime)
 {
-    const nlohmann::json actor = NS::Editor::MakePrototypeJson<PlayerActor>();
+    const nlohmann::json actor = NS::Ed::MakePrototypeJson<PlayerActor>();
     const nlohmann::json& parts = NS::ActorJsonClassObjs(actor);
     EXPECT_FALSE(parts.contains("ChargeEffects"));
 }

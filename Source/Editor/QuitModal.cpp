@@ -11,7 +11,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         bool HasUnsavedWork(const LevelEditorController& editor, const ActionTimelinePanel& timeline) noexcept
         {
@@ -132,5 +132,5 @@ namespace NS
                 ImGui::EndPopup();
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

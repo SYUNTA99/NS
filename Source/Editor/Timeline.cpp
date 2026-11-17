@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void TimelinePlayback::Seek(int requestedFrame, TimelineFrameRange range) noexcept
         {
@@ -109,5 +109,5 @@ namespace NS
             ImGui::EndChild();
             return moved;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

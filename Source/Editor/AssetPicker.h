@@ -8,7 +8,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         struct AssetOption
         {

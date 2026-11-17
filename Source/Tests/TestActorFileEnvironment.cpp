@@ -50,7 +50,7 @@ namespace
                 NS::SetActorFileClass(actorFile, entry.className);
                 ASSERT_TRUE(NS::WriteActorFileAt(path, actorFile));
             }
-            (void)NS::Editor::GenerateActorFiles(m_target);
+            (void)NS::Ed::GenerateActorFiles(m_target);
             NS::ActorFileLibrary::Get().SetDirectory(m_target);
         }
 

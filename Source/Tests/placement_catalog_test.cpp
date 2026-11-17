@@ -23,7 +23,7 @@ TEST(PlacementCatalog, ActorFilesOfPlaceableClassesAppearByTheirName)
         {
             continue;
         }
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem(name);
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem(name);
         ASSERT_TRUE(item.has_value()) << name;
         EXPECT_EQ(NS::ActorJsonFile(item->prototype), name);
         ++listed;
@@ -35,7 +35,7 @@ TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
 {
     // クラスと違う名前の .actor も、敷いた後の一覧に並ぶ
     const ScopedActorFile wide{"WideGoal", CodeValuesActorFile("GoalActor")};
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("WideGoal");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("WideGoal");
     ASSERT_TRUE(item.has_value());
     EXPECT_EQ(NS::ActorJsonFile(item->prototype), "WideGoal");
 }
@@ -43,10 +43,10 @@ TEST(PlacementCatalog, ActorFileAddedLaterAppearsUnderItsName)
 TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
 {
     // 引いた物は、後で .actor が増えて一覧が組み直されても、引いた時の中身のまま読める
-    const std::optional<NS::Editor::PlacementItem> goal = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> goal = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(goal.has_value());
     const ScopedActorFile wide{"WideGoal", CodeValuesActorFile("GoalActor")};
-    ASSERT_TRUE(NS::Editor::FindPlacementItem("WideGoal").has_value());
+    ASSERT_TRUE(NS::Ed::FindPlacementItem("WideGoal").has_value());
     EXPECT_EQ(goal->label, "GoalActor");
     EXPECT_EQ(NS::ActorJsonFile(goal->prototype), "GoalActor");
 }
@@ -54,13 +54,13 @@ TEST(PlacementCatalog, ItemFoundBeforeActorFileIsAddedStaysReadable)
 TEST(PlacementCatalog, MapPartsIsSplitByMesh)
 {
     // 地形の部品はクラスとしては 1 つで、見た目のメッシュごとに並ぶ。当たりはメッシュに付いて来る
-    const std::optional<NS::Editor::PlacementItem> cube = NS::Editor::FindPlacementItem(NS::Editor::k_PartsCubeLabel);
-    const std::optional<NS::Editor::PlacementItem> sphere = NS::Editor::FindPlacementItem("地形の部品 (球)");
-    const std::optional<NS::Editor::PlacementItem> slope = NS::Editor::FindPlacementItem(NS::Editor::k_PartsSlopeLabel);
+    const std::optional<NS::Ed::PlacementItem> cube = NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel);
+    const std::optional<NS::Ed::PlacementItem> sphere = NS::Ed::FindPlacementItem("地形の部品 (球)");
+    const std::optional<NS::Ed::PlacementItem> slope = NS::Ed::FindPlacementItem(NS::Ed::k_PartsSlopeLabel);
     ASSERT_TRUE(cube.has_value());
     ASSERT_TRUE(sphere.has_value());
     ASSERT_TRUE(slope.has_value());
-    for (const NS::Editor::PlacementItem& item : {*cube, *sphere, *slope})
+    for (const NS::Ed::PlacementItem& item : {*cube, *sphere, *slope})
     {
         EXPECT_EQ(NS::ActorJsonFile(item.prototype), "MapPartsActor");
         // 個体のデータは部品を足せないので、ひな形も当たりの件を持たない
@@ -76,13 +76,13 @@ TEST(PlacementCatalog, MapPartsIsSplitByMesh)
     EXPECT_EQ(NS::FieldString(*sphereMesh, "メッシュ", ""), "sphere");
     EXPECT_EQ(NS::FieldString(*slopeMesh, "メッシュ", ""), "wedge45");
     // 形の決まらない素の「地形の部品」は並べない
-    EXPECT_FALSE(NS::Editor::FindPlacementItem("地形の部品").has_value());
+    EXPECT_FALSE(NS::Ed::FindPlacementItem("地形の部品").has_value());
 }
 
 TEST(PlacementCatalog, MeshPartsUsesTheDroppedMesh)
 {
     // メッシュ資産から置く部品は、描いた三角形そのもので当たる
-    const nlohmann::json prototype = NS::Editor::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
+    const nlohmann::json prototype = NS::Ed::MakeMeshPartsPrototype("Assets/Models/terrain.glb");
     EXPECT_EQ(NS::ActorJsonFile(prototype), "MapPartsActor");
     const nlohmann::json* renderer = NS::ClassObjFields(prototype, "Model");
     ASSERT_NE(renderer, nullptr);

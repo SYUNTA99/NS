@@ -64,14 +64,14 @@ TEST(ActorClass, FollowCameraHasFollowAndFeed)
 {
     const std::unique_ptr<GL::Level::FollowCameraActor> cameraOwned = NS::CreateActor<GL::Level::FollowCameraActor>();
     GL::Level::FollowCameraActor& camera = *cameraOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&camera), "Vcam"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Ed::MakePrototypeJson(&camera), "Vcam"), nullptr);
 }
 
 TEST(ActorClass, LightHasDirectionalLight)
 {
     const std::unique_ptr<NS::LightActor> lightOwned = NS::CreateActor<NS::LightActor>();
     NS::LightActor& light = *lightOwned;
-    EXPECT_NE(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&light), "DirectionalLight"), nullptr);
+    EXPECT_NE(NS::ClassObjFields(NS::Ed::MakePrototypeJson(&light), "DirectionalLight"), nullptr);
 }
 
 TEST(ActorClass, LightShinesAlongItsRotation)
@@ -102,7 +102,7 @@ TEST(ActorClass, PlayerBuildsWholeCompositionInInit)
     // 以前はシーンのデータが足していた当たりの部品も、クラスが組み立てる
     const std::unique_ptr<PlayerActor> playerOwned = NS::CreateActor<PlayerActor>();
     PlayerActor& player = *playerOwned;
-    const nlohmann::json prototype = NS::Editor::MakePrototypeJson(&player);
+    const nlohmann::json prototype = NS::Ed::MakePrototypeJson(&player);
     EXPECT_NE(NS::ClassObjFields(prototype, "Movement"), nullptr);
     EXPECT_NE(NS::ClassObjFields(prototype, "Input"), nullptr);
     EXPECT_EQ(NS::ClassObjFields(prototype, "PlayerInputRelay"), nullptr);

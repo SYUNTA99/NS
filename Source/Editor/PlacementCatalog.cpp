@@ -20,7 +20,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -117,5 +117,5 @@ namespace NS
             const std::unique_ptr<SceneActor> actor = CreateActorOfClass(entry->className);
             return PartsPrototypeOf(*actor, meshRef);
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

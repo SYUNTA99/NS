@@ -23,7 +23,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -589,5 +589,5 @@ namespace NS
                 editor.FocusSelectedInView();
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

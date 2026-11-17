@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         std::string StartLevelName() noexcept
         {
@@ -28,5 +28,5 @@ namespace NS
             }
             return true;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

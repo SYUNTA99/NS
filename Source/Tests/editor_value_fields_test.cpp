@@ -28,7 +28,7 @@ namespace
         HeadlessImGui& operator=(const HeadlessImGui&) = delete;
 
         // 窓を 1 つ開いて項目の欄を描く。focusFirst なら最初の欄を打ち込みの状態にする
-        NS::Editor::ValueEditResult Frame(GL::Level::HitFlashInfo& flash, bool focusFirst)
+        NS::Ed::ValueEditResult Frame(GL::Level::HitFlashInfo& flash, bool focusFirst)
         {
             ImGui::NewFrame();
             ImGui::Begin("値の欄");
@@ -36,7 +36,7 @@ namespace
             {
                 ImGui::SetKeyboardFocusHere();
             }
-            const NS::Editor::ValueEditResult result = NS::Editor::DrawReflectedValue(flash);
+            const NS::Ed::ValueEditResult result = NS::Ed::DrawReflectedValue(flash);
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -62,7 +62,7 @@ TEST(EditorValueFields, TypingIntoAnEventFieldWritesTheValue)
     const NS::FieldDesc* changedField = nullptr;
     for (int frame = 0; frame < 3; ++frame)
     {
-        const NS::Editor::ValueEditResult result = gui.Frame(flash, false);
+        const NS::Ed::ValueEditResult result = gui.Frame(flash, false);
         if (result.changed)
         {
             changed = true;
@@ -81,7 +81,7 @@ TEST(EditorValueFields, DrawingAloneLeavesTheValue)
     HeadlessImGui gui;
     GL::Level::HitFlashInfo flash;
     flash.alpha = 0.5f;
-    const NS::Editor::ValueEditResult result = gui.Frame(flash, false);
+    const NS::Ed::ValueEditResult result = gui.Frame(flash, false);
     EXPECT_FALSE(result.changed);
     EXPECT_EQ(result.changedField, nullptr);
     EXPECT_FLOAT_EQ(flash.alpha, 0.5f);
@@ -96,7 +96,7 @@ TEST(EditorValueFields, CurveGraphCoversFrameCurves)
     unit.keys[1] = NS::Curve::Key{1.0f, 1.0f};
     float low = -1.0f;
     float high = -1.0f;
-    NS::Editor::CurveGraphXRange(unit, low, high);
+    NS::Ed::CurveGraphXRange(unit, low, high);
     EXPECT_FLOAT_EQ(low, 0.0f);
     EXPECT_FLOAT_EQ(high, 1.0f);
 
@@ -105,7 +105,7 @@ TEST(EditorValueFields, CurveGraphCoversFrameCurves)
     frames.keys[0] = NS::Curve::Key{-3.0f, 1.0f};
     frames.keys[1] = NS::Curve::Key{0.0f, 0.7f};
     frames.keys[2] = NS::Curve::Key{12.0f, 1.0f};
-    NS::Editor::CurveGraphXRange(frames, low, high);
+    NS::Ed::CurveGraphXRange(frames, low, high);
     EXPECT_LE(low, -3.0f);
     EXPECT_GE(high, 12.0f);
 }

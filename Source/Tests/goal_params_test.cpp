@@ -14,10 +14,10 @@ TEST(GameTuning, GoalFadeUsesTheEditedGoalFields)
 {
     GL::Level::GameScene scene;
     nlohmann::json doc = NS::MakeSceneJson();
-    nlohmann::json playerDoc = NS::Editor::MakePrototypeJson<PlayerActor>();
+    nlohmann::json playerDoc = NS::Ed::MakePrototypeJson<PlayerActor>();
     NS::SetActorJsonId(playerDoc, 1);
     NS::SceneJsonActors(doc).push_back(std::move(playerDoc));
-    nlohmann::json goalDoc = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
+    nlohmann::json goalDoc = NS::Ed::MakePrototypeJson<GL::Level::GoalActor>();
     NS::SetActorJsonId(goalDoc, 2);
     NS::SceneJsonActors(doc).push_back(std::move(goalDoc));
     scene.ResetFromJson(std::move(doc));

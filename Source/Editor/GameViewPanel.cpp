@@ -8,7 +8,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void GameViewPanel::Render(LevelEditorController& editor) noexcept
         {
@@ -69,5 +69,5 @@ namespace NS
                 m_mouseLatch = m_hovered;
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

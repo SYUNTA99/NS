@@ -23,7 +23,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         bool ShowsOverride(const Object* comp, const char* partKey, const FieldDesc& field, const SceneActor* actor)
         {
@@ -1761,5 +1761,5 @@ namespace NS
             EndFieldTable();
             return result;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

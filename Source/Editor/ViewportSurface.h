@@ -24,7 +24,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! パネルに貼るオフスクリーン描画先。画像表示後に次フレームのサイズへ合わせる
         class ViewportSurface : public NonCopyable
@@ -83,5 +83,5 @@ namespace NS
             bool m_tabPressed = false;
             bool m_tabClicked = false;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

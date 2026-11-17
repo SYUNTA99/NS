@@ -36,7 +36,7 @@
 #include <utility>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 namespace
 {
@@ -90,15 +90,15 @@ namespace
 // 起動シーンの名前の持ち主は Game だけ。エディタのレベルの名前はそこから引く
 TEST(EditorLevelOpen, StartSceneLevelNameComesFromTheGameStartSceneName)
 {
-    EXPECT_EQ(NS::Editor::StartLevelName(), "Scenes/new_scene");
+    EXPECT_EQ(NS::Ed::StartLevelName(), "Scenes/new_scene");
 }
 
 // 名前の無いまま終了の保存をすると、起動シーンへ書き戻す。書き先の名前も Game の道から引く
 TEST(EditorLevelOpen, QuitSaveWithoutALevelNameTargetsTheStartScene)
 {
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
 
-    EXPECT_EQ(editor.QuitSaveLevelName(), NS::Editor::StartLevelName());
+    EXPECT_EQ(editor.QuitSaveLevelName(), NS::Ed::StartLevelName());
 }
 
 TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingEdits)
@@ -107,7 +107,7 @@ TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingE
     const std::string last = WriteLevel("last", NS::MakeSceneJson().dump());
     const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
     {
-        NS::Editor::EditorMode editor;
+        NS::Ed::EditorMode editor;
         editor.SetSessionPath(session);
         editor.SetLoadLevelFn([](nlohmann::json&&) {});
         ASSERT_TRUE(editor.OpenLevel(first));
@@ -115,7 +115,7 @@ TEST_F(LevelOpenTest, RestartReopensTheLastSuccessfullyOpenedSceneWithoutSavingE
         editor.MarkEdited();
         ASSERT_TRUE(editor.HasUnsavedChanges());
     }
-    NS::Editor::EditorMode restarted;
+    NS::Ed::EditorMode restarted;
     restarted.SetSessionPath(session);
     restarted.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(restarted.OpenStartupLevel(first));
@@ -132,12 +132,12 @@ TEST_F(LevelOpenTest, FailedOpenDoesNotReplaceTheRememberedScene)
     const std::string last = WriteLevel("last", NS::MakeSceneJson().dump());
     const std::string broken = WriteLevel("broken", "{ broken");
     const std::string session = NS::OS::FileSystem::Combine(m_directory, "session.json");
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
     editor.SetSessionPath(session);
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(editor.OpenLevel(last));
     EXPECT_FALSE(editor.OpenLevel(broken));
-    NS::Editor::EditorMode restarted;
+    NS::Ed::EditorMode restarted;
     restarted.SetSessionPath(session);
     restarted.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(restarted.OpenStartupLevel(fallback));
@@ -154,7 +154,7 @@ TEST_F(LevelOpenTest, DeletedOrInvalidRememberedSceneFallsBackWithoutReplacingIt
                                    nlohmann::json{{"level", 5}}.dump()})
     {
         ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(session, std::as_bytes(std::span{text.data(), text.size()})));
-        NS::Editor::EditorMode restarted;
+        NS::Ed::EditorMode restarted;
         restarted.SetSessionPath(session);
         restarted.SetLoadLevelFn([](nlohmann::json&&) {});
         ASSERT_TRUE(restarted.OpenStartupLevel(fallback));
@@ -171,13 +171,13 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
     editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
     editor.Editor().MarkEdited();
-    NS::Editor::ActionTimelinePanel timeline;
-    NS::Editor::QuitModal quit;
-    ASSERT_TRUE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_FALSE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
-    ASSERT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
-    EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
-    EXPECT_TRUE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+    NS::Ed::ActionTimelinePanel timeline;
+    NS::Ed::QuitModal quit;
+    ASSERT_TRUE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_FALSE(quit.RequestQuit(NS::Ed::HasUnsavedWork(editor, timeline)));
+    ASSERT_TRUE(NS::Ed::SaveAllForQuit(editor, timeline));
+    EXPECT_FALSE(NS::Ed::HasUnsavedWork(editor, timeline));
+    EXPECT_TRUE(quit.RequestQuit(NS::Ed::HasUnsavedWork(editor, timeline)));
 }
 
 // 編集モードで Ctrl+S を押すと開いているレベルへ上書きし、未保存でなくなる
@@ -192,7 +192,7 @@ TEST_F(LevelOpenTest, CtrlSOverwritesTheOpenLevel)
         LevelEditorController editor(scene);
         editor.Setup({});
         ASSERT_TRUE(editor.Editor().OpenLevel(name));
-        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
         ASSERT_TRUE(editor.Editor().HasUnsavedChanges());
@@ -236,7 +236,7 @@ TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
         CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}, HeadlessImGuiInput::Instant), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
     editor.SetSessionPath(session);
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
     editor.SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
@@ -272,7 +272,7 @@ TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
     frame();
     frame("Save");
     ASSERT_EQ(editor.CurrentLevelName(), saved);
-    NS::Editor::EditorMode restarted;
+    NS::Ed::EditorMode restarted;
     restarted.SetSessionPath(session);
     restarted.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(restarted.OpenStartupLevel(first));
@@ -294,7 +294,7 @@ TEST_F(LevelOpenTest, OpenLevelLoadsTheFileAsWrittenAndStartsSaved)
 {
     const std::string name = WriteLevel("empty", NS::MakeSceneJson().dump());
 
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
     nlohmann::json loaded;
     editor.SetLoadLevelFn([&loaded](nlohmann::json&& fresh) { loaded = std::move(fresh); });
     // 開く前に編集して、未保存の状態にする
@@ -315,7 +315,7 @@ TEST_F(LevelOpenTest, OpenLevelOfABrokenFileFailsAndQuitSaveGoesToTheRecoveryNam
 {
     const std::string name = WriteLevel("broken", "{ broken");
 
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
     bool loadCalled = false;
     editor.SetLoadLevelFn([&loadCalled](nlohmann::json&&) { loadCalled = true; });
 
@@ -329,13 +329,13 @@ TEST_F(LevelOpenTest, OpenLevelOfABrokenFileFailsAndQuitSaveGoesToTheRecoveryNam
 TEST_F(LevelOpenTest, CreateLevelWritesAnEmptySceneWithoutChangingTheCurrentEdits)
 {
     const std::string current = WriteLevel("current", NS::MakeSceneJson().dump());
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
     editor.SetLoadLevelFn([](nlohmann::json&&) {});
     ASSERT_TRUE(editor.OpenLevel(current));
     editor.MarkEdited();
     const std::string created = m_folder + "/nested/New Scene";
 
-    ASSERT_EQ(editor.CreateLevel(created), NS::Editor::CreateLevelResult::Created);
+    ASSERT_EQ(editor.CreateLevel(created), NS::Ed::CreateLevelResult::Created);
 
     EXPECT_EQ(editor.CurrentLevelName(), current);
     EXPECT_TRUE(editor.HasUnsavedChanges());
@@ -353,18 +353,18 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
     const std::string existing = WriteLevel("existing", "do not replace");
     const std::optional<std::string> path = NS::BuildLevelPath(existing);
     ASSERT_TRUE(path.has_value());
-    NS::Editor::EditorMode editor;
+    NS::Ed::EditorMode editor;
 
     // 作れない理由を返し、作成の窓はその理由で文を出す。窓が同じ確かめを写さずに済む
-    EXPECT_EQ(editor.CreateLevel(existing), NS::Editor::CreateLevelResult::AlreadyExists);
+    EXPECT_EQ(editor.CreateLevel(existing), NS::Ed::CreateLevelResult::AlreadyExists);
     const std::optional<std::string> contents = NS::OS::FileSystem::ReadAllText(*path);
     ASSERT_TRUE(contents.has_value());
     EXPECT_EQ(*contents, "do not replace");
-    EXPECT_EQ(editor.CreateLevel(m_folder + "/../escaped"), NS::Editor::CreateLevelResult::BadPath);
-    EXPECT_EQ(editor.CreateLevel(""), NS::Editor::CreateLevelResult::BadPath);
+    EXPECT_EQ(editor.CreateLevel(m_folder + "/../escaped"), NS::Ed::CreateLevelResult::BadPath);
+    EXPECT_EQ(editor.CreateLevel(""), NS::Ed::CreateLevelResult::BadPath);
     editor.SetSceneEditableFn([] { return false; });
     const std::string blocked = m_folder + "/blocked";
-    EXPECT_EQ(editor.CreateLevel(blocked), NS::Editor::CreateLevelResult::NotEditable);
+    EXPECT_EQ(editor.CreateLevel(blocked), NS::Ed::CreateLevelResult::NotEditable);
     EXPECT_FALSE(NS::OS::FileSystem::Exists(*NS::BuildLevelPath(blocked)));
 }
 
@@ -372,7 +372,7 @@ TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
 {
     NS::Scene scene;
     LevelEditorController editor(scene);
-    const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+    const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
     ASSERT_NE(editor.SelectedActorId(), NS::k_NoActorId);
@@ -380,7 +380,7 @@ TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
     ASSERT_FALSE(NS::SceneJsonActors(document).empty());
     NS::SceneJsonActors(document).erase(NS::SceneJsonActors(document).begin() + 1,
                                        NS::SceneJsonActors(document).end());
-    NS::Editor::SetActorJsonPosition(NS::SceneJsonActors(document).front(), {300.0f, 20.0f, -200.0f});
+    NS::Ed::SetActorJsonPosition(NS::SceneJsonActors(document).front(), {300.0f, 20.0f, -200.0f});
     const std::string name = WriteLevel("distant", document.dump());
 
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
@@ -405,7 +405,7 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
     const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
     NS::Scene scene;
     LevelEditorController editor(scene);
-    NS::Editor::AssetsPanel assets;
+    NS::Ed::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
         CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}), &ImGui::DestroyContext);
     ImGuiIO& io = ImGui::GetIO();
@@ -417,12 +417,12 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
         ImGui::NewFrame();
         ImGui::SetNextWindowPos({700.0f, 0.0f});
         ImGui::SetNextWindowSize({400.0f, 700.0f});
-        ImGui::Begin(NS::Editor::k_PanelScene);
+        ImGui::Begin(NS::Ed::k_PanelScene);
         sceneFocused = ImGui::IsWindowFocused();
         ImGui::End();
         ImGui::SetNextWindowPos({0.0f, 0.0f});
         ImGui::SetNextWindowSize({600.0f, 850.0f});
-        ImGui::Begin(NS::Editor::k_PanelAssets);
+        ImGui::Begin(NS::Ed::k_PanelAssets);
         int index = 0;
         for (const std::string& directory : NS::OS::FileSystem::ListDirectories(
                  NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets")))

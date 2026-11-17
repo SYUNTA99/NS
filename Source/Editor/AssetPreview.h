@@ -12,7 +12,7 @@ namespace NS
     {
         class D3DRenderTarget;
     }
-    namespace Editor
+    namespace Ed
     {
         struct AssetPreviewPose
         {

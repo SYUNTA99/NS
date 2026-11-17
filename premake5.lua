@@ -383,7 +383,7 @@ project "Game"
     applyCommonBuildOptions()
 
 --============================================================================
--- Editor (StaticLib) — エディタモジュール (NS::Editor)
+-- Editor (StaticLib) — エディタモジュール (NS::Ed)
 --   Editor / LevelEditorController / EditorCamera / EditorMode /
 --   GizmoEditor / LevelFileBrowser / LevelFilePaths。
 --   Game + UI(ImGui) に依存。 GameRelease では kind None で出荷から物理排除し、

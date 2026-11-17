@@ -8,7 +8,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! レベルファイルを名前を付けて保存するモーダル UI。開くのはアセットの窓のシーンから
         class LevelFileBrowser : public NonCopyable
@@ -45,5 +45,5 @@ namespace NS
             std::string m_lastMessage;
             bool m_lastMessageError = false;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

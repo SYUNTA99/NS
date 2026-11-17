@@ -20,7 +20,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -333,5 +333,5 @@ namespace NS
             m_levelDirty = true;
             return created;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

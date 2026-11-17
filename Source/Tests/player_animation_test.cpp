@@ -98,7 +98,7 @@ TEST(PlayerAnimation, ClipsLiveInTheActionsAndGaitValuesInTheAppearance)
         EXPECT_EQ(appearance[it.key()], it.value()) << it.key();
         EXPECT_FALSE(params.contains(it.key())) << it.key();
     }
-    EXPECT_EQ(NS::ClassObjFields(NS::Editor::MakePrototypeJson(&player), "Clips"), nullptr);
+    EXPECT_EQ(NS::ClassObjFields(NS::Ed::MakePrototypeJson(&player), "Clips"), nullptr);
 
     const NS::ActorAction& actions = *player.ActorActionClassObj();
     for (const char* name : {"Wait", "Walk", "Run", "Jump", "Fall", "LedgeHang"})

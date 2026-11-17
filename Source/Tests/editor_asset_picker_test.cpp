@@ -38,13 +38,13 @@ namespace
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }
 
-        NS::Editor::ClassObjEditResult Frame()
+        NS::Ed::ClassObjEditResult Frame()
         {
             ImGui::NewFrame();
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
             ImGui::SetNextWindowSize(ImVec2{740.0f, 650.0f});
             ImGui::Begin("素材の欄");
-            const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&m_model);
+            const NS::Ed::ClassObjEditResult result = NS::Ed::DrawReflectedClassObj(&m_model);
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -68,8 +68,8 @@ namespace
             buttonId = ImHashData(&fieldIndex, sizeof(fieldIndex), buttonId);
             buttonId = ImHashStr("###value", 0, buttonId);
             ImGui::ActivateItemByID(buttonId);
-            const NS::Editor::ClassObjEditResult pressed = Frame();
-            const NS::Editor::ClassObjEditResult opened = Frame();
+            const NS::Ed::ClassObjEditResult pressed = Frame();
+            const NS::Ed::ClassObjEditResult opened = Frame();
             m_activated = pressed.activated || opened.activated;
             m_committed = pressed.committed || opened.committed;
             (void)Frame();
@@ -168,7 +168,7 @@ TEST_F(EditorAssetPickerTest, SelectionWritesOnlyTheSelectedName)
     ASSERT_NE(choices, nullptr);
     // 候補の行は素材の名前で ID を積み、"##option" の項目で選ぶ
     ImGui::ActivateItemByID(ImHashStr("##option", 0, ImHashStr("capsule", 0, choices->ID)));
-    const NS::Editor::ClassObjEditResult selected = Frame();
+    const NS::Ed::ClassObjEditResult selected = Frame();
     EXPECT_TRUE(selected.changed);
     EXPECT_EQ(m_model.MeshRef(), "capsule");
     EXPECT_EQ(selected.changedTarget, &m_model);
@@ -198,11 +198,11 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
     File("Assets/Models/folder/test.GLB");
     File("Assets/Materials/folder/test.mat");
     File("Assets/Models/readme.txt");
-    const std::vector<NS::Editor::AssetOption> meshes =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Mesh, m_root.generic_string());
+    const std::vector<NS::Ed::AssetOption> meshes =
+        NS::Ed::CollectAssetOptions(NS::AssetKind::Mesh, m_root.generic_string());
     bool builtin = false;
     bool model = false;
-    for (const NS::Editor::AssetOption& option : meshes)
+    for (const NS::Ed::AssetOption& option : meshes)
     {
         builtin |= option.value == "capsule";
         model |= option.value == "Assets/Models/folder/test.GLB";
@@ -211,9 +211,9 @@ TEST_F(AssetPickerCatalogTest, ChoicesIncludeBuiltinsAndOnlyFilesOfTheRequestedK
     }
     EXPECT_TRUE(builtin);
     EXPECT_TRUE(model);
-    const std::vector<NS::Editor::AssetOption> materials =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Material, m_root.generic_string());
-    EXPECT_TRUE(std::any_of(materials.begin(), materials.end(), [](const NS::Editor::AssetOption& option) {
+    const std::vector<NS::Ed::AssetOption> materials =
+        NS::Ed::CollectAssetOptions(NS::AssetKind::Material, m_root.generic_string());
+    EXPECT_TRUE(std::any_of(materials.begin(), materials.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Materials/folder/test.mat" && option.label == "test.mat" &&
                option.location == "Assets/Materials/folder";
     }));
@@ -225,8 +225,8 @@ TEST_F(AssetPickerCatalogTest, EffectChoicesAreEfkefcUnderEffects)
     File("Assets/Effects/contact.EFKEFC");
     File("Assets/Effects/notes.txt");
     File("Assets/Other/stray.efkefc");
-    const std::vector<NS::Editor::AssetOption> options =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Effect, m_root.generic_string());
+    const std::vector<NS::Ed::AssetOption> options =
+        NS::Ed::CollectAssetOptions(NS::AssetKind::Effect, m_root.generic_string());
     ASSERT_EQ(options.size(), 2u);
     EXPECT_EQ(options[0].value, "Assets/Effects/contact.EFKEFC");
     EXPECT_EQ(options[0].label, "contact.EFKEFC");
@@ -240,8 +240,8 @@ TEST_F(AssetPickerCatalogTest, SoundChoicesAreWavUnderSounds)
     File("Assets/Sounds/goal.WAV");
     File("Assets/Sounds/notes.txt");
     File("Assets/Other/stray.wav");
-    const std::vector<NS::Editor::AssetOption> options =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
+    const std::vector<NS::Ed::AssetOption> options =
+        NS::Ed::CollectAssetOptions(NS::AssetKind::Sound, m_root.generic_string());
     ASSERT_EQ(options.size(), 2);
     EXPECT_EQ(options[0].value, "Assets/Sounds/goal.WAV");
     EXPECT_EQ(options[1].value, "Assets/Sounds/player/jump.wav");
@@ -261,8 +261,8 @@ TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
             File(incomplete.c_str());
         }
     }
-    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath((m_root / "Assets/Skybox/complete").generic_string()));
-    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath((m_root / "Assets/Skybox/incomplete").generic_string()));
+    EXPECT_TRUE(NS::Ed::IsSkyboxAssetPath((m_root / "Assets/Skybox/complete").generic_string()));
+    EXPECT_FALSE(NS::Ed::IsSkyboxAssetPath((m_root / "Assets/Skybox/incomplete").generic_string()));
     File("Assets/Skybox/invalid.dds");
     std::vector<std::byte> bytes(152);
     const auto word = [&](std::size_t offset, NS::uint32 value) {
@@ -275,40 +275,40 @@ TEST_F(AssetPickerCatalogTest, SkyboxesRequireSixFacesOrACubemapDds)
     word(76, 32);
     const std::string flat = (m_root / "Assets/Skybox/flat.dds").generic_string();
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(flat, bytes));
-    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath(flat));
+    EXPECT_FALSE(NS::Ed::IsSkyboxAssetPath(flat));
     word(112, 0xfe00);
     const std::string cube = (m_root / "Assets/Skybox/cube.DDS").generic_string();
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(cube, bytes));
-    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath(cube));
+    EXPECT_TRUE(NS::Ed::IsSkyboxAssetPath(cube));
     word(84, 0x30315844);
     word(132, 3);
     word(136, 4);
     word(140, 1);
     const std::string dx10 = (m_root / "Assets/Skybox/cube10.dds").generic_string();
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(dx10, bytes));
-    EXPECT_TRUE(NS::Editor::IsSkyboxAssetPath(dx10));
+    EXPECT_TRUE(NS::Ed::IsSkyboxAssetPath(dx10));
     word(140, 2);
     const std::string array = (m_root / "Assets/Skybox/array.dds").generic_string();
     ASSERT_TRUE(NS::OS::FileSystem::WriteAllBytes(array, bytes));
-    EXPECT_FALSE(NS::Editor::IsSkyboxAssetPath(array));
-    const std::vector<NS::Editor::AssetOption> options = NS::Editor::CollectSkyboxOptions(m_root.generic_string());
+    EXPECT_FALSE(NS::Ed::IsSkyboxAssetPath(array));
+    const std::vector<NS::Ed::AssetOption> options = NS::Ed::CollectSkyboxOptions(m_root.generic_string());
     ASSERT_EQ(options.size(), 3);
-    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Skybox/complete";
     }));
 }
 
 TEST(AssetPickerCatalog, AnimationChoicesIncludeTheNamedClipsInsideFiles)
 {
-    const std::vector<NS::Editor::AssetOption> options =
-        NS::Editor::CollectAssetOptions(NS::AssetKind::Animation, NS::OS::FileSystem::ContentRoot());
-    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+    const std::vector<NS::Ed::AssetOption> options =
+        NS::Ed::CollectAssetOptions(NS::AssetKind::Animation, NS::OS::FileSystem::ContentRoot());
+    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Models/Soldier.glb#Walk" && option.label == "Walk";
     }));
-    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Models/Soldier.glb#Run" && option.label == "Run";
     }));
-    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+    EXPECT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Models/CesiumMan.glb#" && !option.label.empty();
     }));
 }
@@ -326,7 +326,7 @@ TEST_F(EditorAssetPickerTest, PlainStringsCanBeEditedBeyondTheOldBufferLimit)
         {
             ImGui::SetKeyboardFocusHere();
         }
-        const NS::Editor::ValueEditResult result = NS::Editor::DrawReflectedValue(settings);
+        const NS::Ed::ValueEditResult result = NS::Ed::DrawReflectedValue(settings);
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -343,11 +343,11 @@ TEST_F(EditorAssetPickerTest, PlainStringsCanBeEditedBeyondTheOldBufferLimit)
 
 TEST(AssetPickerCatalog, AssetKindsIgnoreTheCaseOfTheExtension)
 {
-    EXPECT_TRUE(NS::Editor::IsModelAssetPath("Assets/Models/X.GLB"));
-    EXPECT_TRUE(NS::Editor::IsModelAssetPath("Assets/Models/X.gltf"));
-    EXPECT_TRUE(NS::Editor::IsMaterialAssetPath("Assets/Materials/X.MAT"));
-    EXPECT_TRUE(NS::Editor::IsTextureAssetPath("Assets/Textures/X.PNG"));
-    EXPECT_FALSE(NS::Editor::IsModelAssetPath("Assets/Materials/X.MAT"));
-    EXPECT_FALSE(NS::Editor::IsMaterialAssetPath("Assets/Models/X.GLB"));
-    EXPECT_FALSE(NS::Editor::IsTextureAssetPath("Assets/Models/X.GLB"));
+    EXPECT_TRUE(NS::Ed::IsModelAssetPath("Assets/Models/X.GLB"));
+    EXPECT_TRUE(NS::Ed::IsModelAssetPath("Assets/Models/X.gltf"));
+    EXPECT_TRUE(NS::Ed::IsMaterialAssetPath("Assets/Materials/X.MAT"));
+    EXPECT_TRUE(NS::Ed::IsTextureAssetPath("Assets/Textures/X.PNG"));
+    EXPECT_FALSE(NS::Ed::IsModelAssetPath("Assets/Materials/X.MAT"));
+    EXPECT_FALSE(NS::Ed::IsMaterialAssetPath("Assets/Models/X.GLB"));
+    EXPECT_FALSE(NS::Ed::IsTextureAssetPath("Assets/Models/X.GLB"));
 }

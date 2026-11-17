@@ -34,7 +34,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -704,5 +704,5 @@ namespace NS
             }
             return true;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

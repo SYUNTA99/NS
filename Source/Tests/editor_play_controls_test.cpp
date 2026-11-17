@@ -8,39 +8,39 @@ TEST(EditorPlayControls, EditShortcutsAreBlockedOnlyWhileTypingOperatingAnItemOr
     {
         SCOPED_TRACE(playMode);
 
-        NS::Editor::InputOwnerQuery typing{};
+        NS::Ed::InputOwnerQuery typing{};
         typing.playMode = playMode;
         typing.uiWantsKeyboard = true;
         typing.textInput = true;
         typing.itemActive = true;
-        EXPECT_TRUE(NS::Editor::ResolveInputOwnership(typing).editShortcutsBlocked);
+        EXPECT_TRUE(NS::Ed::ResolveInputOwnership(typing).editShortcutsBlocked);
 
-        NS::Editor::InputOwnerQuery operating{};
+        NS::Ed::InputOwnerQuery operating{};
         operating.playMode = playMode;
         operating.uiWantsKeyboard = true;
         operating.itemActive = true;
-        EXPECT_TRUE(NS::Editor::ResolveInputOwnership(operating).editShortcutsBlocked);
+        EXPECT_TRUE(NS::Ed::ResolveInputOwnership(operating).editShortcutsBlocked);
 
         // 曲線の編集のモーダルでは F が曲線を収める。選んだアクターへ寄る F を重ねない
-        NS::Editor::InputOwnerQuery modal{};
+        NS::Ed::InputOwnerQuery modal{};
         modal.playMode = playMode;
         modal.uiWantsKeyboard = true;
         modal.modalOpen = true;
-        EXPECT_TRUE(NS::Editor::ResolveInputOwnership(modal).editShortcutsBlocked);
+        EXPECT_TRUE(NS::Ed::ResolveInputOwnership(modal).editShortcutsBlocked);
 
         // 一覧やインスペクタに焦点があるだけの時は、ImGui がキーボードを欲しがっても止めない
-        NS::Editor::InputOwnerQuery panelFocused{};
+        NS::Ed::InputOwnerQuery panelFocused{};
         panelFocused.playMode = playMode;
         panelFocused.uiWantsKeyboard = true;
-        EXPECT_FALSE(NS::Editor::ResolveInputOwnership(panelFocused).editShortcutsBlocked);
+        EXPECT_FALSE(NS::Ed::ResolveInputOwnership(panelFocused).editShortcutsBlocked);
 
-        NS::Editor::InputOwnerQuery centerFocused{};
+        NS::Ed::InputOwnerQuery centerFocused{};
         centerFocused.playMode = playMode;
         centerFocused.uiWantsKeyboard = true;
-        centerFocused.focusedPanel = NS::Editor::CenterTab::Scene;
-        EXPECT_FALSE(NS::Editor::ResolveInputOwnership(centerFocused).editShortcutsBlocked);
+        centerFocused.focusedPanel = NS::Ed::CenterTab::Scene;
+        EXPECT_FALSE(NS::Ed::ResolveInputOwnership(centerFocused).editShortcutsBlocked);
 
-        const NS::Editor::InputOwnerQuery idle{.playMode = playMode};
-        EXPECT_FALSE(NS::Editor::ResolveInputOwnership(idle).editShortcutsBlocked);
+        const NS::Ed::InputOwnerQuery idle{.playMode = playMode};
+        EXPECT_FALSE(NS::Ed::ResolveInputOwnership(idle).editShortcutsBlocked);
     }
 }

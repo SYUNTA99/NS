@@ -6,17 +6,17 @@
 
 TEST(EditorCamera, BoostScalesTheFlyMove)
 {
-    NS::Editor::EditorCameraInput input;
+    NS::Ed::EditorCameraInput input;
     input.flying = true;
     input.forwardAxis = 1.0f;
     input.deltaSeconds = 0.1f;
 
-    NS::Editor::EditorCamera plain;
+    NS::Ed::EditorCamera plain;
     const NS::Vector3 plainStart = plain.Center();
     plain.ApplyInput(input);
     const float plainMove = (plain.Center() - plainStart).Length();
 
-    NS::Editor::EditorCamera boosted;
+    NS::Ed::EditorCamera boosted;
     boosted.Tuning().boostMoveScale = 3.0f;
     const NS::Vector3 boostedStart = boosted.Center();
     input.boost = true;
@@ -30,7 +30,7 @@ TEST(EditorCamera, BoostScalesTheFlyMove)
 // Inspector の手入力で 0・負・非数・無限が入っても、姿勢を壊さず動かさない
 TEST(EditorCamera, InvalidTuningLeavesThePoseUnchanged)
 {
-    using Tuning = NS::Editor::EditorCamera::FeelTuning;
+    using Tuning = NS::Ed::EditorCamera::FeelTuning;
     float Tuning::* const fields[] = {
         &Tuning::springOmega,  &Tuning::mouseSensOrbit, &Tuning::mouseSensPan,
         &Tuning::mouseSensZoom, &Tuning::padSensOrbit,  &Tuning::padSensPan,
@@ -43,7 +43,7 @@ TEST(EditorCamera, InvalidTuningLeavesThePoseUnchanged)
         std::numeric_limits<float>::infinity(),
     };
 
-    NS::Editor::EditorCameraInput input;
+    NS::Ed::EditorCameraInput input;
     input.flying = true;
     input.lookYawPixels = 4.0f;
     input.lookPitchPixels = 3.0f;
@@ -60,7 +60,7 @@ TEST(EditorCamera, InvalidTuningLeavesThePoseUnchanged)
     {
         for (const float bad : badValues)
         {
-            NS::Editor::EditorCamera camera;
+            NS::Ed::EditorCamera camera;
             const NS::CameraPose before = camera.Pose();
             camera.Tuning().*field = bad;
             for (int frame = 0; frame < 1000; ++frame)

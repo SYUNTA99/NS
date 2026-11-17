@@ -25,7 +25,7 @@ namespace NS
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -81,5 +81,5 @@ namespace NS
             bool m_uiVisible = true;
             bool m_lastModeWasPlay = false; // 前フレームがプレイモードだったか。タブ自動フォーカスの切替検知に使う
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

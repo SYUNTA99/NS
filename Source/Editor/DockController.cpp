@@ -14,7 +14,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -381,5 +381,5 @@ namespace NS
                 }
             }
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-using NS::Editor::LevelEditorController;
+using NS::Ed::LevelEditorController;
 
 namespace
 {
@@ -98,7 +98,7 @@ namespace
         void OpenAssetFolder(const char* name)
         {
             (void)Frame(true);
-            ImGuiWindow* window = ImGui::FindWindowByName(NS::Editor::k_PanelAssets);
+            ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelAssets);
             ASSERT_NE(window, nullptr);
             const char* folders[] = {"Materials", "Models", "Textures"};
             for (const char* folder : folders)
@@ -134,8 +134,8 @@ namespace
         NS::UI::ImGuiContext m_gui{m_app.Window(), m_app.Device()};
         NS::Scene m_scene;
         LevelEditorController m_editor{m_scene};
-        NS::Editor::InspectorPanel m_inspector;
-        NS::Editor::AssetsPanel m_assetsPanel;
+        NS::Ed::InspectorPanel m_inspector;
+        NS::Ed::AssetsPanel m_assetsPanel;
     };
 }
 
@@ -156,9 +156,9 @@ TEST_F(EditorAssetPreview, TextureSelectionDisplaysTheSelectedImage)
 TEST_F(EditorAssetPreview, SkyboxSettingsPreviewPreservesTheScene)
 {
     const nlohmann::json before = m_scene.ToJson();
-    const std::vector<NS::Editor::AssetOption> options =
-        NS::Editor::CollectSkyboxOptions(NS::OS::FileSystem::ContentRoot());
-    ASSERT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Editor::AssetOption& option) {
+    const std::vector<NS::Ed::AssetOption> options =
+        NS::Ed::CollectSkyboxOptions(NS::OS::FileSystem::ContentRoot());
+    ASSERT_TRUE(std::any_of(options.begin(), options.end(), [](const NS::Ed::AssetOption& option) {
         return option.value == "Assets/Skybox/kurt";
     }));
     EXPECT_FALSE(m_editor.SetSkyboxPath("../outside"));

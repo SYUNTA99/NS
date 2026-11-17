@@ -4,7 +4,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         std::size_t AddActionEvent(ActorActionInfo& action, const ActionEventInfo& item, int start)
         {
@@ -41,5 +41,5 @@ namespace NS
             }
             return range;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

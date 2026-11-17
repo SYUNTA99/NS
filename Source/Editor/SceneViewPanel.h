@@ -7,7 +7,7 @@ struct ImVec2;
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -67,5 +67,5 @@ namespace NS
             bool m_freeFlying = false;
             bool m_wasFreeFlying = false; // 前フレームの見回しドラッグ状態。立ち下がりでキー押下状態を解除する
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

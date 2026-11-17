@@ -21,7 +21,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -235,9 +235,9 @@ namespace NS
                 {
                 case GizmoTool::Move:
                 {
-                    const Ray rayStart = Editor::ScreenToWorldRay(
+                    const Ray rayStart = Ed::ScreenToWorldRay(
                         viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-                    const Ray rayNow = Editor::ScreenToWorldRay(
+                    const Ray rayNow = Ed::ScreenToWorldRay(
                         viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
                     after.position =
                         GizmoEditor::ComputeAxisMove(before.position, axis, axisOrient, rayStart, rayNow, snap);
@@ -455,7 +455,7 @@ namespace NS
             }
 
             // ハンドルに当たらなければアクターを拾う
-            const Ray ray = Editor::ScreenToWorldRay(viewProjection, viewport, localX, localY);
+            const Ray ray = Ed::ScreenToWorldRay(viewProjection, viewport, localX, localY);
             const std::vector<SceneActor*> candidates = PlacedActors(actors);
             std::vector<Matrix> worldMatrices;
             std::vector<AABB> localBounds;
@@ -784,9 +784,9 @@ namespace NS
                 return 0.0f;
             }
 
-            const Ray rayStart = Editor::ScreenToWorldRay(
+            const Ray rayStart = Ed::ScreenToWorldRay(
                 viewProjection, viewport, static_cast<int>(screenStart.x), static_cast<int>(screenStart.y));
-            const Ray rayNow = Editor::ScreenToWorldRay(
+            const Ray rayNow = Ed::ScreenToWorldRay(
                 viewProjection, viewport, static_cast<int>(screenEnd.x), static_cast<int>(screenEnd.y));
 
             Vector3 hitStart{};
@@ -996,5 +996,5 @@ namespace NS
 
             return best;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

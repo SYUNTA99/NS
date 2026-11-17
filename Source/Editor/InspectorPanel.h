@@ -22,7 +22,7 @@ namespace NS
         class D3DRenderTarget;
         class Skybox;
     } // namespace Gfx
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
         struct AssetPreviewItem;
@@ -91,5 +91,5 @@ namespace NS
 
         //! ActorRef の欄の参照先の候補。PlacedActors の並びと番号で、アクター一覧と同じ表示名を出す
         [[nodiscard]] std::vector<ActorRefOption> MakeActorRefOptions(const ActorList& objects);
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void EditorCamera::SetCenter(Vector3 center) noexcept { m_center = center; }
 
@@ -210,5 +210,5 @@ namespace NS
             pose.farPlane = m_farPlane;
             return pose;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

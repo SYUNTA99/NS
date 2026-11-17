@@ -15,7 +15,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         nlohmann::json CompleteActorFile(const nlohmann::json& actorFile, std::vector<std::string>& added)
         {
@@ -82,5 +82,5 @@ namespace NS
             }
             return written;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

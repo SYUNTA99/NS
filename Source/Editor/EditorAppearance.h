@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! エディタの見た目の欄。ファイルに書かず、起動ごとにこの既定から始まる
         struct EditorAppearance
@@ -35,5 +35,5 @@ namespace NS
             }
             return appearance.placementRowColor;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

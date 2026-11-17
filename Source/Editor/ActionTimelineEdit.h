@@ -7,7 +7,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         //! 末尾に事象を足し、行番号を返す。start は状態に入った歩を 0 とするフレーム（負は 0 に補正、長さは既定の 1）
         std::size_t AddActionEvent(ActorActionInfo& action, const ActionEventInfo& item, int start);
@@ -17,5 +17,5 @@ namespace NS
 
         //! 事象と動作の長さを含む範囲（状態に入った歩が 0、該当なしは 0〜0）
         [[nodiscard]] TimelineFrameRange ActionFrameRange(const ActorActionInfo& action) noexcept;
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

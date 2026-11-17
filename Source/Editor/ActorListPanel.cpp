@@ -22,7 +22,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -336,7 +336,7 @@ namespace NS
             {
                 flags |= ImGuiTreeNodeFlags_Selected;
             }
-            const char* label = Editor::ActorDisplayName(object);
+            const char* label = Ed::ActorDisplayName(object);
             const bool open = ImGui::TreeNodeEx("##row", flags, "%s", label);
 
             if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen())
@@ -409,8 +409,8 @@ namespace NS
             NS_ASSERT(App, object != nullptr, "BeginRename: アクターが null");
             m_renamingActorId = object->Id();
             // 導出名から始めるので、そのまま確定すると今見えている名前がそのまま実体になる
-            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Editor::ActorDisplayName(object));
+            std::snprintf(m_renameBuffer, sizeof(m_renameBuffer), "%s", Ed::ActorDisplayName(object));
             m_renameFocusPending = true;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

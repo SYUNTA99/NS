@@ -15,7 +15,7 @@ namespace NS
         class D3DRenderTarget;
         class D3DTexture;
     }
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -49,5 +49,5 @@ namespace NS
             bool m_sceneCreateRequested = false;
             bool m_revealSceneFolder = false;
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

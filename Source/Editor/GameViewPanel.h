@@ -5,7 +5,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         class LevelEditorController;
 
@@ -50,5 +50,5 @@ namespace NS
             bool m_hovered = false;    // マウスが Game パネルの画像上に居るか
             bool m_mouseLatch = false; // ボタン押下中は判定を保ち、パネル外でもドラッグを続ける
         };
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

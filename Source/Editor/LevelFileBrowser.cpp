@@ -11,7 +11,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         namespace
         {
@@ -125,5 +125,5 @@ namespace NS
             ImGui::EndPopup();
             return result;
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

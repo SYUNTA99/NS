@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         bool ViewRectContains(const ViewRect& rect, int screenX, int screenY) noexcept
         {
@@ -88,5 +88,5 @@ namespace NS
             }
             return std::max(clip.w / 10.0f, 1.0f);
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

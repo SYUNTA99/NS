@@ -33,7 +33,7 @@ namespace
 
         void TearDown() override { ImGui::DestroyContext(m_gui); }
 
-        NS::Editor::ClassObjEditResult Frame()
+        NS::Ed::ClassObjEditResult Frame()
         {
             ImGui::NewFrame();
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
@@ -42,7 +42,7 @@ namespace
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
             // 色の上書きは Model の 1 つ目の欄なので、表の 1 行目に出る
-            const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&m_model);
+            const NS::Ed::ClassObjEditResult result = NS::Ed::DrawReflectedClassObj(&m_model);
             ImGui::End();
             ImGui::EndFrame();
             return result;
@@ -56,7 +56,7 @@ namespace
             }
             const ImGuiStyle& style = ImGui::GetStyle();
             float x = m_tableMin.x + m_tableWidth - style.CellPadding.x -
-                      NS::Editor::RevertButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
+                      NS::Ed::RevertButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
             if (fromLeft)
             {
                 x = m_tableMin.x + m_tableWidth * 0.5f;
@@ -66,7 +66,7 @@ namespace
             ImGui::GetIO().AddMouseButtonEvent(0, true);
             m_openActivated = Frame().activated;
             ImGui::GetIO().AddMouseButtonEvent(0, false);
-            const NS::Editor::ClassObjEditResult result = Frame();
+            const NS::Ed::ClassObjEditResult result = Frame();
             m_openActivated |= result.activated;
             m_openCommitted = result.committed;
         }
@@ -289,7 +289,7 @@ TEST_F(EditorColorTest, ChoosingAColorWritesTheFieldAndCommitsWhenThePickerClose
     ImGui::GetIO().AddMousePosEvent(point.x, point.y);
     (void)Frame();
     ImGui::GetIO().AddMouseButtonEvent(0, true);
-    const NS::Editor::ClassObjEditResult press = Frame();
+    const NS::Ed::ClassObjEditResult press = Frame();
     EXPECT_TRUE(press.changed);
     EXPECT_FALSE(press.committed);
     EXPECT_EQ(press.changedTarget, &m_model);

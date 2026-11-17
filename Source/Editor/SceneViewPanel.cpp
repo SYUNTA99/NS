@@ -12,7 +12,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         void SceneViewPanel::Render(LevelEditorController& editor) noexcept
         {
@@ -138,7 +138,7 @@ namespace NS
             const bool flying = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Right);
             const bool panning = m_freeViewLatch && ImGui::IsMouseDown(ImGuiMouseButton_Middle);
 
-            Editor::EditorCameraInput input{};
+            Ed::EditorCameraInput input{};
             input.deltaSeconds = io.DeltaTime;
             input.flying = flying;
             if (flying)
@@ -170,5 +170,5 @@ namespace NS
             m_freeFlying = flying;
             editor.TickPlaySceneView(input);
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -9,7 +9,7 @@
 
 namespace NS
 {
-    namespace Editor
+    namespace Ed
     {
         ViewportSurface::ViewportSurface() = default;
         ViewportSurface::~ViewportSurface() = default;
@@ -122,5 +122,5 @@ namespace NS
         {
             m_target.reset();
         }
-    } // namespace Editor
+    } // namespace Ed
 } // namespace NS

@@ -65,11 +65,11 @@ namespace
     nlohmann::json CourseWithPlayer()
     {
         nlohmann::json doc = NS::MakeSceneJson();
-        nlohmann::json player = NS::Editor::MakePrototypeJson<PlayerActor>();
-        NS::Editor::SetActorJsonPosition(player, NS::Vector3{0.0f, 2.0f, 0.0f});
+        nlohmann::json player = NS::Ed::MakePrototypeJson<PlayerActor>();
+        NS::Ed::SetActorJsonPosition(player, NS::Vector3{0.0f, 2.0f, 0.0f});
         NS::SceneJsonActors(doc).push_back(std::move(player));
-        nlohmann::json zone = NS::Editor::MakePrototypeJson<GL::Level::DeathZoneActor>();
-        NS::Editor::SetActorJsonPosition(zone, NS::Vector3{0.0f, -55.0f, 0.0f});
+        nlohmann::json zone = NS::Ed::MakePrototypeJson<GL::Level::DeathZoneActor>();
+        NS::Ed::SetActorJsonPosition(zone, NS::Vector3{0.0f, -55.0f, 0.0f});
         NS::SceneJsonActors(doc).push_back(std::move(zone));
         NS::EnsureUniqueActorIds(doc);
         return doc;
@@ -77,15 +77,15 @@ namespace
 
     NS::Vector3 SpawnOf(const nlohmann::json& doc)
     {
-        return NS::Editor::ActorJsonPosition(NS::SceneJsonActors(doc)[NS::Editor::FindPlayerActorIndex(doc)]);
+        return NS::Ed::ActorJsonPosition(NS::SceneJsonActors(doc)[NS::Ed::FindPlayerActorIndex(doc)]);
     }
 
     // ゴールを自機の出現位置に重ねたシーン文書
     nlohmann::json CourseWithPlayerOnGoal()
     {
         nlohmann::json doc = CourseWithPlayer();
-        nlohmann::json goal = NS::Editor::MakePrototypeJson<GL::Level::GoalActor>();
-        NS::Editor::SetActorJsonPosition(goal, SpawnOf(doc));
+        nlohmann::json goal = NS::Ed::MakePrototypeJson<GL::Level::GoalActor>();
+        NS::Ed::SetActorJsonPosition(goal, SpawnOf(doc));
         NS::SceneJsonActors(doc).push_back(std::move(goal));
         NS::EnsureUniqueActorIds(doc);
         return doc;
@@ -290,7 +290,7 @@ TEST(GameScene, RestartReleasesAHoldStartedByAnotherActor)
     nlohmann::json doc = CourseWithPlayer();
     nlohmann::json goal = NS::MakeActorJson();
     NS::SetActorJsonFile(goal, "GoalActor");
-    NS::Editor::SetActorJsonPosition(goal, NS::Vector3{50.0f, 1.0f, 0.0f});
+    NS::Ed::SetActorJsonPosition(goal, NS::Vector3{50.0f, 1.0f, 0.0f});
     NS::SceneJsonActors(doc).push_back(std::move(goal));
     NS::EnsureUniqueActorIds(doc);
 
