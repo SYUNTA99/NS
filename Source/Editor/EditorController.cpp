@@ -1022,9 +1022,11 @@ namespace NS
                 {
                     continue;
                 }
+                // 取り消しは逆の順に戻すので、前に消した物を除いた並びでの位置を控えれば元の並びに戻る
+                const std::size_t index = m_scene.Actors().IndexOfActorId(victim);
                 m_scene.RemoveActor(victim);
                 commands.push_back(
-                    std::make_unique<ActorSnapshotCommand>(m_scene, victim, std::move(before), std::nullopt));
+                    std::make_unique<ActorSnapshotCommand>(m_scene, victim, std::move(before), std::nullopt, index));
             }
             if (commands.empty())
             {

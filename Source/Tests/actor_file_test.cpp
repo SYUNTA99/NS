@@ -29,9 +29,14 @@
 #include "NSlib/CoreObject/Scene/Scene.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/SceneActor.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 #include "TestActorFile.h"
 #include "TestLogCapture.h"
 #include "TestRegistrations.h"
+#include "Tests/TestCheckLayer.h"
+#include "Tests/TestEditorEdits.h"
+#include "Tests/TestHiddenApp.h"
 
 #include <gtest/gtest.h>
 
@@ -1138,28 +1143,44 @@ TEST(ActorFile, EditingAnUnmarkedFieldLeavesTheSceneSaved)
     EXPECT_FALSE(editor.HasUnsavedAssetWrites());
 }
 
-// .actor の欄の直しを取り消しても、やり直しても、.actor のファイルが戻るだけで、シーンは未保存にならない
+// .actor の欄の直しを Ctrl+Z で取り消しても、Ctrl+Y でやり直しても、.actor のファイルとアクターの値が戻るだけで、
+// シーンは未保存にならない
 TEST(ActorFile, UndoingAnUnmarkedFieldEditLeavesTheSceneSaved)
 {
-    const ScopedActorFileDirectory scope("UndoUnmarkedFieldKeepsSceneSaved");
-    NS::Scene scene;
-    ResetTwoPlayers(scene);
-    EditorController editor(scene);
-    NS::SceneActor* first = scene.Actors().FindByActorId(1);
-    ASSERT_NE(first, nullptr);
-    NS::Collider* collider = ColliderOf(first);
-    ASSERT_NE(collider, nullptr);
-    collider->SetCapsuleRadius(3.0f);
-    ASSERT_NO_FATAL_FAILURE(EditField(editor, first, collider, "半径"));
-    ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+    NS::Application app(HiddenAppDesc(".actor の取り消しの試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        const ScopedActorFileDirectory scope("UndoUnmarkedFieldKeepsSceneSaved");
+        NS::Scene scene;
+        ResetTwoPlayers(scene);
+        EditorController editor(scene);
+        editor.Setup({});
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        keyboard.ClearState();
+        editor.Tick();
+        NS::SceneActor* first = scene.Actors().FindByActorId(1);
+        ASSERT_NE(first, nullptr);
+        NS::Collider* collider = ColliderOf(first);
+        ASSERT_NE(collider, nullptr);
+        collider->SetCapsuleRadius(3.0f);
+        ASSERT_NO_FATAL_FAILURE(EditField(editor, first, collider, "半径"));
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
-    ASSERT_TRUE(editor.Editor().PerformUndo());
-    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
-    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+        PressCtrlKey(editor, keyboard, NS::OS::Key::Z);
+        EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 2.0f);
+        EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 2.0f);
+        EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 2.0f);
+        EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
 
-    ASSERT_TRUE(editor.Editor().PerformRedo());
-    EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
-    EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+        PressCtrlKey(editor, keyboard, NS::OS::Key::Y);
+        EXPECT_FLOAT_EQ(SavedRadius(scope.Path()), 3.0f);
+        EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(1)), 3.0f);
+        EXPECT_FLOAT_EQ(RadiusOf(scene.Actors().FindByActorId(2)), 3.0f);
+        EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+        // 共有の入力を押していない状態へ戻す。残すと後の試しが鍵を読む
+        keyboard.ClearState();
+    }));
+    EXPECT_EQ(app.Run(), 0);
 }
 
 // プレイ中にシーンで上書きできない欄を直しても .actor に書き、プレイ開始の凍結は変えない。編集へ戻っても値が残り、WARN

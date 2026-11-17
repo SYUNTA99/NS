@@ -38,8 +38,9 @@ namespace NS
         ActorSnapshotCommand::ActorSnapshotCommand(Scene& scene,
                                                      uint32 id,
                                                      std::optional<nlohmann::json> before,
-                                                     std::optional<nlohmann::json> after) noexcept
-            : m_scene(scene), m_id(id), m_before(std::move(before)), m_after(std::move(after))
+                                                     std::optional<nlohmann::json> after,
+                                                     std::size_t spawnIndex) noexcept
+            : m_scene(scene), m_id(id), m_before(std::move(before)), m_after(std::move(after)), m_spawnIndex(spawnIndex)
         {}
 
         ActorSnapshotCommand::~ActorSnapshotCommand()
@@ -87,8 +88,9 @@ namespace NS
             }
             nlohmann::json entry = *desired;
             SetActorJsonId(entry, m_id);
+            // 消した後に積んだ履歴は外したアクターを持たないので、居なければ JSON から作って消す前の並びの位置へ入れる
             std::unique_ptr<SceneActor> replaced;
-            (void)m_scene.ApplyFromJson(entry, &replaced);
+            (void)m_scene.ApplyFromJson(entry, &replaced, m_spawnIndex);
             if (replaced)
             {
                 m_replaced.push_back(std::move(replaced));

@@ -216,12 +216,17 @@ namespace NS
 
     SceneActor* Scene::SpawnFromJson(const nlohmann::json& actorJson)
     {
+        return SpawnFromJsonAt(actorJson, k_SpawnAtEnd);
+    }
+
+    SceneActor* Scene::SpawnFromJsonAt(const nlohmann::json& actorJson, std::size_t index)
+    {
         std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(actorJson);
         if (!built)
         {
             return nullptr;
         }
-        SceneActor* raw = m_actors.InsertFromJson(std::move(built), actorJson, m_actors.ActorCount());
+        SceneActor* raw = m_actors.InsertFromJson(std::move(built), actorJson, index);
         if (raw == nullptr)
         {
             return nullptr;
@@ -230,13 +235,15 @@ namespace NS
         return raw;
     }
 
-    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced)
+    SceneActor* Scene::ApplyFromJson(const nlohmann::json& snapshot,
+                                     std::unique_ptr<SceneActor>* replaced,
+                                     std::size_t spawnIndex)
     {
         NS_ASSERT(Scene, replaced != nullptr, "作り直した時の古いアクターを受ける先が無い");
         SceneActor* obj = m_actors.FindByActorId(ActorJsonId(snapshot));
         if (obj == nullptr)
         {
-            return SpawnFromJson(snapshot);
+            return SpawnFromJsonAt(snapshot, spawnIndex);
         }
         // 部品はクラスで決まるので、同じクラスなら .actor が替わっても作り直さずに値を書き直せる
         const std::string_view actorFile = ActorJsonFile(snapshot);

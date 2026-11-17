@@ -31,6 +31,7 @@
 #include "NSlib/Core/Windows/Mouse.h"
 #include "NSlib/Core/Windows/StringUtils.h"
 #include "Tests/TestActorFile.h"
+#include "Tests/TestEditorEdits.h"
 #include "Tests/TestSceneSetup.h"
 #include "Tests/TestCheckLayer.h"
 #include "Tests/TestHeadlessImGui.h"
@@ -57,25 +58,6 @@ using NS::Ed::EditorController;
 
 namespace
 {
-    // インスペクタの部品の一覧の行と同じ道で、actor の姿勢の項目 fieldName に value を書く
-    template <class Value>
-    void WritePoseField(EditorController& editor, NS::SceneActor* actor, const char* fieldName, const Value& value)
-    {
-        NS_ASSERT(Game, actor != nullptr, "WritePoseField: 渡したアクターか部品が無い");
-        const NS::ClassObjInfo* row = nullptr;
-        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& candidate, const NS::Object* part) {
-            if (part == &actor->TransformObj())
-            {
-                row = &candidate;
-            }
-        });
-        ASSERT_NE(row, nullptr);
-        const NS::FieldDesc* field = NS::FindField(actor->TransformObj().GetReflection(), fieldName);
-        ASSERT_NE(field, nullptr);
-        ASSERT_EQ(field->set(&actor->TransformObj(), &value), NS::FieldWriteResult::Written);
-        editor.NoteFieldEdit(actor, *row, fieldName);
-    }
-
     std::optional<NS::Vector2> FindMoveHandle(const NS::SceneActor* target,
                                               const NS::Matrix& viewProjection,
                                               const NS::Ed::ViewRect& view)

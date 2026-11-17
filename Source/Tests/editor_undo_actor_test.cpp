@@ -2,6 +2,7 @@
 #include "Editor/EditorController.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/EditorActors.h"
+#include "Editor/PlacementCatalog.h"
 #include "Editor/Undo/ActorSnapshotCommand.h"
 #include "Editor/Undo/UndoStack.h"
 #include "Game/Level/GameScene.h"
@@ -9,20 +10,31 @@
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GoalActor.h"
 #include "Game/PlayerActor.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/Filesystem.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
+#include "NSlib/CoreObject/Scene/SceneJson.h"
 #include "NSlib/CoreObject/System/CameraManager.h"
 #include "NSlib/CoreObject/System/HitSensorDirector.h"
 #include "TestRegistrations.h"
 #include "TestSpawn.h"
+#include "Tests/TestCheckLayer.h"
+#include "Tests/TestEditorEdits.h"
+#include "Tests/TestHiddenApp.h"
+#include "Tests/TestSceneSetup.h"
 
 #include <gtest/gtest.h>
 
+#include <functional>
 #include <memory>
 #include <optional>
+#include <string>
+#include <vector>
 
 using NS::Ed::EditorController;
 
@@ -185,4 +197,111 @@ TEST(EditorUndoActor, OpenLevelFreesHeldActorsBeforeRebuild)
     EXPECT_EQ(destroyedAtRebuild, 1);
     EXPECT_EQ(endPlaysAtRebuild, 1);
     EXPECT_EQ(editor.Undo().UndoSize(), 0u);
+}
+
+// 編集の操作ごとに、Ctrl+Z を押すと操作の前のシーンへ、続けて Ctrl+Y を押すと操作の後のシーンへ戻る
+// .actor の項目は ActorFile.UndoingAnUnmarkedFieldEditLeavesTheSceneSaved が見る
+TEST(EditorUndoActor, CtrlZAndCtrlYUndoAndRedoEachEdit)
+{
+    NS::Application app(HiddenAppDesc("Ctrl+Z と Ctrl+Y の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        struct Edit
+        {
+            const char* name;
+            std::function<void(EditorController&, NS::Scene&)> run;
+        };
+        const std::string stone =
+            NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), "Assets/Materials/stone.mat");
+        const std::vector<Edit> edits{
+            {"置く",
+             [](EditorController& editor, NS::Scene&) {
+                 const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
+                 ASSERT_TRUE(item.has_value());
+                 editor.PlaceItem(*item);
+             }},
+            {"消す",
+             [](EditorController& editor, NS::Scene&) {
+                 editor.SelectActorById(1);
+                 editor.DeleteSelectedActor();
+             }},
+            // 取り消しが消した順と逆に戻さないと、2 体の並びが入れ替わる
+            {"まとめて消す",
+             [](EditorController& editor, NS::Scene&) {
+                 editor.SelectActors({1, 2}, 1);
+                 editor.DeleteSelectedActor();
+             }},
+            {"ギズモで動かす",
+             [](EditorController& editor, NS::Scene& scene) {
+                 editor.SelectActorById(1);
+                 NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+                 ASSERT_NE(actor, nullptr);
+                 editor.BeginTransformEdit();
+                 actor->TransformObj().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
+                 editor.CommitTransformEdit();
+             }},
+            {"インスペクタの値を変える",
+             [](EditorController& editor, NS::Scene& scene) {
+                 editor.SelectActorById(1);
+                 NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+                 ASSERT_NE(actor, nullptr);
+                 editor.BeginClassObjEdit();
+                 WritePoseField(editor, actor, NS::k_PositionFieldName, NS::Vector3{0.0f, 3.0f, 0.0f});
+                 editor.FinishFieldWrite(actor, NS::FieldType::Vector3);
+                 editor.CommitClassObjEdit();
+             }},
+            {"素材を付ける",
+             [&stone](EditorController& editor, NS::Scene&) {
+                 editor.SelectActorById(1);
+                 EXPECT_TRUE(editor.ApplyMaterialToSelected(stone));
+             }},
+            {"改名", [](EditorController& editor, NS::Scene&) { editor.RenameActor(1, "改名した"); }},
+            {"親を付け替える",
+             [](EditorController& editor, NS::Scene&) { EXPECT_TRUE(editor.ReparentActor(2, 1)); }},
+            {"シーン設定",
+             [](EditorController& editor, NS::Scene&) {
+                 EXPECT_TRUE(editor.SetSceneMusic(
+                     "Assets/Sounds/bgm_course.wav", 0.4f, editor.SceneSoundFullVolumeDistance()));
+             }},
+        };
+
+        // 次に振る id は取り消しても戻さない。消したアクターの id を、後から置くアクターに使い回さないため
+        const auto shape = [](const NS::Scene& scene) {
+            nlohmann::json saved = scene.ToJson();
+            saved.erase("nextObjectId");
+            return saved;
+        };
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        for (const Edit& edit : edits)
+        {
+            nlohmann::json doc = NS::MakeSceneJson();
+            AddActorJson(doc, "GoalActor", 1);
+            AddActorJson(doc, "GoalActor", 2);
+            NS::Scene scene;
+            scene.SetSimulationEnabled(false);
+            scene.ResetFromJson(doc);
+            EditorController editor(scene);
+            editor.Setup({});
+            keyboard.ClearState();
+            editor.Tick();
+
+            const nlohmann::json before = shape(scene);
+            edit.run(editor, scene);
+            const nlohmann::json after = shape(scene);
+            // 変わらなかった操作だけを飛ばし、表の残りの操作と後の押していない状態へ戻す所は続ける
+            EXPECT_NE(after, before) << edit.name;
+            if (after == before)
+            {
+                continue;
+            }
+
+            PressCtrlKey(editor, keyboard, NS::OS::Key::Z);
+            EXPECT_EQ(shape(scene), before) << edit.name;
+            PressCtrlKey(editor, keyboard, NS::OS::Key::Y);
+            EXPECT_EQ(shape(scene), after) << edit.name;
+        }
+        // 共有の入力を押していない状態へ戻す。残すと後の試しが鍵を読む
+        keyboard.ClearState();
+    }));
+    EXPECT_EQ(app.Run(), 0);
 }
