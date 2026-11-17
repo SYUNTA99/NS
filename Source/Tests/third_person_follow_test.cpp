@@ -229,8 +229,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterASnapshotRewritesIt)
     std::optional<nlohmann::json> snapshot = NS::Editor::CaptureActor(world.scene.Actors(), world.camera->Id());
     ASSERT_TRUE(snapshot.has_value());
     NS::ActorJsonClassObjs(*snapshot)["Vcam"]["追従対象"] = nlohmann::json{{"ref", world.second->Id()}};
-    std::unique_ptr<NS::SceneActor> replaced;
-    (void)world.scene.ApplyFromJson(*snapshot, &replaced);
-    EXPECT_EQ(replaced, nullptr);
+    // 作り直さずに同じアクターへ書く
+    EXPECT_EQ(world.scene.ApplyFromJson(*snapshot), world.camera);
     EXPECT_NEAR(world.LookAfterUpdate().x, 10.0f, 1.0e-4f);
 }

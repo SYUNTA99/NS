@@ -19,6 +19,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <span>
+#include <string_view>
 
 namespace
 {
@@ -43,34 +44,39 @@ namespace
             ImGui::SetNextWindowPos(ImVec2{0.0f, 0.0f});
             ImGui::SetNextWindowSize(ImVec2{740.0f, 650.0f});
             ImGui::Begin("素材の欄");
-            m_tableMin = ImGui::GetCursorScreenPos();
-            m_tableWidth = ImGui::GetContentRegionAvail().x;
-            const NS::Editor::ClassObjEditResult result =
-                NS::Editor::DrawReflectedClassObj(&m_model, {}, nullptr, "メッシュ");
+            const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&m_model);
             ImGui::End();
             ImGui::EndFrame();
             return result;
         }
 
+        // メッシュの欄のボタンを押して候補の窓を開く。表は "##fields"、欄は並びの番号、ボタンは "###value" で ID を積む
         void OpenPicker()
         {
-            const ImVec2 at{m_tableMin.x + m_tableWidth * 0.65f,
-                            m_tableMin.y + ImGui::GetStyle().CellPadding.y + ImGui::GetFrameHeight() * 0.5f};
-            ImGui::GetIO().AddMousePosEvent(at.x, at.y);
-            (void)Frame();
-            ImGui::GetIO().AddMouseButtonEvent(0, true);
-            m_activated = Frame().activated;
-            ImGui::GetIO().AddMouseButtonEvent(0, false);
+            const NS::ReflectionInfo* info = m_model.GetReflection();
+            int fieldIndex = -1;
+            for (std::size_t i = 0; i < info->fieldCount; ++i)
+            {
+                if (std::string_view{info->fields[i].name} == "メッシュ")
+                {
+                    fieldIndex = static_cast<int>(i);
+                    break;
+                }
+            }
+            ASSERT_GE(fieldIndex, 0);
+            ImGuiID buttonId = ImHashStr("##fields", 0, ImGui::FindWindowByName("素材の欄")->ID);
+            buttonId = ImHashData(&fieldIndex, sizeof(fieldIndex), buttonId);
+            buttonId = ImHashStr("###value", 0, buttonId);
+            ImGui::ActivateItemByID(buttonId);
+            const NS::Editor::ClassObjEditResult pressed = Frame();
             const NS::Editor::ClassObjEditResult opened = Frame();
-            m_activated |= opened.activated;
-            m_committed = opened.committed;
+            m_activated = pressed.activated || opened.activated;
+            m_committed = pressed.committed || opened.committed;
             (void)Frame();
         }
 
         ImGuiContext* m_gui = nullptr;
         NS::Model m_model;
-        ImVec2 m_tableMin{};
-        float m_tableWidth = 0.0f;
         bool m_activated = false;
         bool m_committed = false;
     };
@@ -145,13 +151,11 @@ TEST_F(EditorAssetPickerTest, FileReferenceOpensChoicesBeforeChangingTheValue)
     EXPECT_EQ(NS::SerializeClassObjFields(&m_model), before);
 }
 
-TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelectedName)
+// 候補を選ぶと、選んだ名前だけを欄へ書く
+TEST_F(EditorAssetPickerTest, SelectionWritesOnlyTheSelectedName)
 {
     OpenPicker();
     ASSERT_EQ(GImGui->OpenPopupStack.Size, 1);
-    ImGui::GetIO().AddInputCharactersUTF8("capsule");
-    EXPECT_FALSE(Frame().changed);
-    (void)Frame();
     EXPECT_EQ(m_model.MeshRef(), "sphere");
     ImGuiWindow* choices = nullptr;
     for (ImGuiWindow* window : GImGui->Windows)
@@ -162,13 +166,8 @@ TEST_F(EditorAssetPickerTest, SearchFiltersChoicesAndSelectionWritesOnlyTheSelec
         }
     }
     ASSERT_NE(choices, nullptr);
-    const ImVec2 row{choices->DC.CursorStartPos.x + 60.0f,
-                     choices->DC.CursorStartPos.y + ImGui::GetTextLineHeight() * 0.5f};
-    ImGui::GetIO().AddMousePosEvent(row.x, row.y);
-    (void)Frame();
-    ImGui::GetIO().AddMouseButtonEvent(0, true);
-    (void)Frame();
-    ImGui::GetIO().AddMouseButtonEvent(0, false);
+    // 候補の行は素材の名前で ID を積み、"##option" の項目で選ぶ
+    ImGui::ActivateItemByID(ImHashStr("##option", 0, ImHashStr("capsule", 0, choices->ID)));
     const NS::Editor::ClassObjEditResult selected = Frame();
     EXPECT_TRUE(selected.changed);
     EXPECT_EQ(m_model.MeshRef(), "capsule");

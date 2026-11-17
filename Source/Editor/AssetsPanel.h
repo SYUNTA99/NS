@@ -35,8 +35,8 @@ namespace NS
             void RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder);
             void RenderSceneCreate(LevelEditorController& editor);
             [[nodiscard]] bool OpenPendingScene(LevelEditorController& editor);
-            const Gfx::D3DTexture* LoadThumbnail(const std::string& file, LevelEditorController& editor);
-            const Gfx::D3DTexture* LoadActorThumbnail(const std::string& file, LevelEditorController& editor);
+            const Gfx::D3DTexture* LoadThumbnail(const std::string& file);
+            const Gfx::D3DTexture* LoadActorThumbnail(const std::string& file);
 
             struct ActorThumbnail;
             std::map<std::string, std::unique_ptr<ActorThumbnail>> m_actorThumbnails;

@@ -334,7 +334,7 @@ TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
     const nlohmann::json snapshot = NS::ActorToJson(actor);
 
     ColliderOf(actor)->SetCapsuleRadius(9.0f);
-    NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
+    NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_EQ(applied, actor); // 同じクラスなので作り直さない
     EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
 }

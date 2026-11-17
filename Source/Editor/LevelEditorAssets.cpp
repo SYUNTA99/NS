@@ -219,9 +219,9 @@ namespace NS
             if (field->type != FieldType::ActorRef && !actor->IsSceneOverride(row.key, fieldName))
             {
                 const nlohmann::json::iterator baselinePart = baselineParts.find(row.key);
-                if (baselinePart != baselineParts.end())
+                if (baselinePart != baselineParts.end() && baselinePart->erase(std::string{fieldName}) > 0)
                 {
-                    baselinePart->erase(std::string{fieldName});
+                    m_playEdited = true;
                 }
                 return;
             }
@@ -232,6 +232,7 @@ namespace NS
                 return;
             }
             baselineParts[std::string{row.key}][std::string{fieldName}] = *value;
+            m_playEdited = true;
         }
 
         const nlohmann::json& LevelEditorController::PlayBaseline() const

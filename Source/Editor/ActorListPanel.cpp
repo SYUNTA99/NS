@@ -68,13 +68,9 @@ namespace NS
 
                 const std::vector<SceneActor*> placed = PlacedActors(editor.Actors());
                 ImGui::Text("アクター %zu 個", placed.size());
-
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputTextWithHint("##actorListFilter", "検索", m_actorListFilter, sizeof(m_actorListFilter));
-                const bool filtering = m_actorListFilter[0] != '\0';
                 ImGui::Separator();
 
-                // 改名はアクターを組み直して一覧を入れ替えるので、描き終えるまで適用を待つ
+                // 複製・削除・親の付け替えは描いている一覧を変えるので、描き終えるまで適用を待つ。改名も同じ所で当てる
                 m_renameCommitId = 0;
                 m_duplicateRequestId = 0;
                 m_deleteRequestId = 0;
@@ -91,7 +87,7 @@ namespace NS
                     }
                 }
 
-                RenderActorRows(editor, placed, filtering);
+                RenderActorRows(editor, placed);
 
                 if (placed.empty())
                 {
@@ -182,23 +178,8 @@ namespace NS
         }
 
         void ActorListPanel::RenderActorRows(LevelEditorController& editor,
-                                             const std::vector<SceneActor*>& placed,
-                                             bool filtering) noexcept
+                                             const std::vector<SceneActor*>& placed) noexcept
         {
-            if (filtering)
-            {
-                // 検索している間は、当たった行を親子に関わらず平らに並べる
-                for (SceneActor* object : placed)
-                {
-                    if (NameMatches(Editor::ActorDisplayName(object), m_actorListFilter))
-                    {
-                        ImGui::PushID(static_cast<int>(object->Id()));
-                        (void)RenderRow(editor, object, false); // 子を描かないので木は積まれない
-                        ImGui::PopID();
-                    }
-                }
-                return;
-            }
             // 子は親の下に並べる。親の居ない物と、親が居なくなった物が根になる
             std::unordered_set<uint32> placedIds;
             for (SceneActor* object : placed)

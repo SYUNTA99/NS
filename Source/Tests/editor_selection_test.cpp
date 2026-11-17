@@ -336,6 +336,45 @@ TEST(EditorSelection, PlayFieldEditIsKeptWhenReturningToEdit)
     EXPECT_EQ(app.Run(), 0);
 }
 
+// プレイ中に欄を変えてから手で元の値へ戻しても、編集モードと同じく未保存のまま残る
+// 初めから上書きにある欄で試す。上書きに無い欄は、変えた時に上書きの一覧へ入るので、戻しても文書が変わる
+TEST(EditorSelection, PlayFieldEditRevertedByHandStaysUnsaved)
+{
+    NS::Application app(HiddenAppDesc("プレイ中に戻した欄の試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([] {
+        nlohmann::json doc = NS::MakeSceneJson();
+        AddActorJson(doc, "GoalActor", 1);
+        NS::ActorJsonClassObjs(NS::SceneJsonActors(doc)[0])["Model"]["基本色"] = {0.9f, 0.1f, 0.1f, 1.0f};
+        GL::Level::GameScene scene;
+        scene.ResetFromJson(doc);
+        LevelEditorController editor(scene);
+        ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
+
+        editor.EnterPlay();
+        NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+        ASSERT_NE(actor, nullptr);
+        const NS::ClassObjInfo* modelRow = nullptr;
+        NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& row, const NS::Object* part) {
+            if (part == actor->ModelClassObj())
+            {
+                modelRow = &row;
+            }
+        });
+        ASSERT_NE(modelRow, nullptr);
+        ASSERT_TRUE(actor->IsSceneOverride(modelRow->key, "基本色"));
+        const std::optional<NS::Color> original = actor->ModelClassObj()->ColorOverride();
+        actor->ModelClassObj()->SetColorOverride(NS::Color{0.2f, 0.4f, 0.6f, 1.0f});
+        editor.NoteFieldEdit(actor, *modelRow, "基本色");
+        actor->ModelClassObj()->SetColorOverride(original);
+        editor.NoteFieldEdit(actor, *modelRow, "基本色");
+        editor.EnterEdit();
+
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
 // ドラッグでマテリアルを付けても色の上書きは変えない。空なら付けたマテリアルの色で描く
 TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
 {

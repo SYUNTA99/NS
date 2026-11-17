@@ -115,8 +115,10 @@ namespace NS
 
             // before (AllFieldValues の形) から値が変わった、シーンに書く項目を actor の上書きの一覧に足す
             // 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
-            void AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before)
+            // 戻り値は、シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
+            bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before)
             {
+                bool changed = false;
                 ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
                     const nlohmann::json now = SerializeClassObjFields(part);
                     const nlohmann::json* was = ClassObjFields(before, row.key);
@@ -128,14 +130,18 @@ namespace NS
                             continue;
                         }
                         const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                        if (field == nullptr || field->type == FieldType::ActorRef ||
-                            FieldDestinationOf(&actor, *field) != FieldDestination::Scene)
+                        if (field == nullptr || FieldDestinationOf(&actor, *field) != FieldDestination::Scene)
                         {
                             continue;
                         }
-                        actor.AddSceneOverride(row.key, entry.key());
+                        changed = true;
+                        if (field->type != FieldType::ActorRef)
+                        {
+                            actor.AddSceneOverride(row.key, entry.key());
+                        }
                     }
                 });
+                return changed;
             }
         } // namespace
 
@@ -375,9 +381,8 @@ namespace NS
 
             // 実体が唯一の出所なので組み直しは要らない。編集で動いた当たりは、世界を止めた歩が揃えている
             // 編集へ戻る時の姿として、コースを始めてメッセージが値を動かす前のシーンを JSON に書き出す
-            // 1 回だけ書き出して写すので、組み直す JSON と比べる写しはずれない
             m_playBaseline = m_scene.ToJson();
-            m_playStartBaseline = m_playBaseline;
+            m_playEdited = false;
             // 始める手順は出荷と同じく StartPlay が行う。曲は編集へ戻る時に止まるので、プレイを始めるたびに始まる
             m_scene.StartPlay();
             // 編集の自由視点からプレイ視点へ、vcam 切替と同じブレンドで繋ぐ
@@ -417,8 +422,7 @@ namespace NS
 
         bool LevelEditorController::HasUnsavedSceneChanges() const noexcept
         {
-            return m_editor.HasUnsavedChanges() || (m_mode == Mode::Play && m_playBaseline && m_playStartBaseline &&
-                                                    *m_playBaseline != *m_playStartBaseline);
+            return m_editor.HasUnsavedChanges() || (m_mode == Mode::Play && m_playEdited);
         }
 
         void LevelEditorController::RequestStepFrame() noexcept
@@ -457,21 +461,14 @@ namespace NS
                 // 戻す姿が無くても、プレイを終えるのは組み直しだけなので、今の姿で組み直す。
                 // プレイで動いた分を編集の変更にしない
                 baseline = m_scene.ToJson();
-                m_playStartBaseline.reset();
-            }
-            // 凍結へ入るのはプレイ中にインスペクタで写した欄だけなので、プレイで動いた値は比べに出ない。
-            // 比べ方は終了の確認の HasUnsavedSceneChanges と同じく文書全体で比べる
-            bool playEdited = false;
-            if (m_playStartBaseline)
-            {
-                playEdited = *m_playStartBaseline != baseline;
-                m_playStartBaseline.reset();
             }
             m_scene.ResetFromJson(std::move(baseline));
-            // プレイ中にインスペクタで変えた値は、組み直しの姿に入っている。違う物があればシーンを未保存にする
-            if (playEdited)
+            // プレイ中にインスペクタで変えた値は、組み直しの姿に入っている。書いていればシーンを未保存にする
+            // プレイで動いた値は baseline へ書かないので数えない
+            if (m_playEdited)
             {
                 m_editor.MarkEdited();
+                m_playEdited = false;
             }
 
             if (Application* app = Application::Get())
@@ -1335,16 +1332,10 @@ namespace NS
             m_editBaselines.clear();
             for (const uint32 id : ids)
             {
-                std::optional<nlohmann::json> baseline = CaptureActor(m_scene.Actors(), id);
-                if (!baseline)
-                {
-                    continue;
-                }
-                // 控えが取れたので、m_scene にこのアクターが居る
                 const SceneActor* actor = m_scene.Actors().FindByActorId(id);
                 if (actor != nullptr)
                 {
-                    m_editBaselines.push_back(TransformEditBaseline{id, std::move(*baseline), AllFieldValues(*actor)});
+                    m_editBaselines.push_back(TransformEditBaseline{id, AllFieldValues(*actor)});
                 }
             }
         }
@@ -1368,19 +1359,18 @@ namespace NS
 
         bool LevelEditorController::FinishEditBaselines()
         {
-            // 実体の Transform は既に動いている。今の姿が控えと同じなら変わっていない
+            // 実体の Transform は既に動いている。シーンに書く欄の値が控えと同じなら変わっていない
+            // .actor へ書く欄は、.actor を書き直して値が変わってもシーンの変更にしない
             bool changed = false;
-            for (TransformEditBaseline& entry : m_editBaselines)
+            for (const TransformEditBaseline& entry : m_editBaselines)
             {
-                const uint32 id = entry.id;
-                nlohmann::json& baseline = entry.snapshot;
-                // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足してから後の姿を控える
-                if (SceneActor* actor = m_scene.Actors().FindByActorId(id))
+                SceneActor* actor = m_scene.Actors().FindByActorId(entry.id);
+                if (actor == nullptr)
                 {
-                    AddChangedSceneOverrides(*actor, entry.fields);
+                    continue;
                 }
-                const std::optional<nlohmann::json> after = CaptureActor(m_scene.Actors(), id);
-                if (after && *after != baseline)
+                // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足す
+                if (AddChangedSceneOverrides(*actor, entry.fields))
                 {
                     changed = true;
                 }
@@ -1439,7 +1429,7 @@ namespace NS
                 }
             }
 
-            // プレイ中の値は、編集へ戻る時に LeavePlayForEdit が比べて未保存にする
+            // プレイ中の値は、MirrorPlayEditToBaseline が数え、編集へ戻る時に LeavePlayForEdit が未保存にする
             if (!IsSceneEditable() || !changed)
             {
                 return;

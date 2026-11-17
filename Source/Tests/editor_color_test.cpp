@@ -41,8 +41,8 @@ namespace
             ImGui::Begin("色の欄");
             m_tableMin = ImGui::GetCursorScreenPos();
             m_tableWidth = ImGui::GetContentRegionAvail().x;
-            const NS::Editor::ClassObjEditResult result =
-                NS::Editor::DrawReflectedClassObj(&m_model, {}, nullptr, "色の上書き");
+            // 色の上書きは Model の 1 つ目の欄なので、表の 1 行目に出る
+            const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&m_model);
             ImGui::End();
             ImGui::EndFrame();
             return result;

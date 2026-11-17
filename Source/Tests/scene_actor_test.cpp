@@ -377,7 +377,7 @@ TEST(SceneActor, ApplyFromJsonNumbersANameThatIsAlreadyUsed)
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[1];
     NS::SetActorJsonName(snapshot, "Ball");
-    const NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
+    const NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_NE(applied, nullptr);
     EXPECT_EQ(applied->Name(), "Ball_1");
 }
@@ -399,7 +399,7 @@ TEST(SceneActor, ApplyFromJsonShowsAHiddenActorAtTheSnapshotPosition)
     actor->Disappear();
     actor->TransformObj().Snapshot();
 
-    ASSERT_EQ(ApplySnapshot(scene, snapshot), actor);
+    ASSERT_EQ(scene.ApplyFromJson(snapshot), actor);
     EXPECT_TRUE(actor->IsAppeared());
     EXPECT_FLOAT_EQ(actor->TransformObj().Position().x, shown.x);
     EXPECT_FLOAT_EQ(actor->TransformObj().PreviousPosition().x, shown.x);
@@ -547,7 +547,7 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileKeepsTheActor)
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "HeavyRock");
-    const NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
+    const NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_NE(applied, nullptr);
     EXPECT_EQ(applied, before);
     EXPECT_EQ(applied->ActorFileName(), "HeavyRock");
@@ -569,35 +569,31 @@ TEST(SceneActor, SnapshotNamingAnotherClassActorFileIsRejected)
     nlohmann::json snapshot = NS::SceneJsonActors(saved)[0];
     NS::SetActorJsonFile(snapshot, "GoalActor");
     const TestLogCapture log;
-    EXPECT_EQ(ApplySnapshot(scene, snapshot), nullptr);
+    EXPECT_EQ(scene.ApplyFromJson(snapshot), nullptr);
     EXPECT_EQ(log.ErrorCount(), 1);
     EXPECT_EQ(scene.Actors().FindByActorId(1), before);
     EXPECT_EQ(before->ActorFileName(), "MapPartsActor");
     EXPECT_EQ(scene.ToJson(), saved);
 }
 
-TEST(SceneActor, SnapshotWithMissingActorFileHandsBackTheOldActor)
+TEST(SceneActor, SnapshotWithMissingActorFileKeepsTheJsonAndDropsTheOldActor)
 {
-    // 見つからない .actor を指す控えは JSON のまま持ち、古いアクターは解放せずに呼び手へ返す
+    // 見つからない .actor を指す控えは JSON のまま持ち、古いアクターはシーンが終わらせて解放する
+    // OnEndPlay が 1 回呼ばれる事は EditorUnsaved.ActorReplacedBySnapshotIsEndedAndFreedAtOnce が見る
     nlohmann::json doc = NS::MakeSceneJson();
     AddActorJson(doc, "GoalActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    const NS::SceneActor* before = scene.Actors().FindByActorId(1);
-    ASSERT_NE(before, nullptr);
+    ASSERT_NE(scene.Actors().FindByActorId(1), nullptr);
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "NoSuchActor");
     const TestLogCapture log;
-    std::unique_ptr<NS::SceneActor> replaced;
-    EXPECT_EQ(scene.ApplyFromJson(snapshot, &replaced), nullptr);
-    EXPECT_EQ(replaced.get(), before);
+    EXPECT_EQ(scene.ApplyFromJson(snapshot), nullptr);
     EXPECT_EQ(scene.Actors().FindByActorId(1), nullptr);
     const nlohmann::json saved = scene.ToJson();
     ASSERT_EQ(NS::SceneJsonActors(saved).size(), 1u);
     EXPECT_EQ(NS::SceneJsonActors(saved)[0], snapshot);
-    ASSERT_NE(replaced, nullptr);
-    replaced->OnEndPlay();
 }
 
 TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
@@ -624,7 +620,7 @@ TEST(SceneActor, SnapshotNamingAnotherActorFileReloadsSetsAndActions)
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "TunedPlayer");
-    const NS::SceneActor* applied = ApplySnapshot(scene, snapshot);
+    const NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
     ASSERT_NE(applied, nullptr);
     EXPECT_EQ(applied, before);
     EXPECT_NE(applied->HitReactionClassObj()->FindSet("試しの束"), nullptr);
@@ -689,7 +685,7 @@ TEST(SceneActor, SnapshotReloadsEffectAsset)
 
     nlohmann::json snapshot = NS::SceneJsonActors(scene.ToJson())[0];
     NS::SetActorJsonFile(snapshot, "SparkRock");
-    ASSERT_NE(ApplySnapshot(scene, snapshot), nullptr);
+    ASSERT_NE(scene.ApplyFromJson(snapshot), nullptr);
     EXPECT_TRUE(effects->Play(actor->part->asset->D3D(), "test", {}).IsValid());
 }
 
@@ -742,8 +738,8 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
     NS::SetActorJsonFile(lostSecond, "NoSuchActor");
 
     // 作り直す道: アクターは消え、JSON が保存に残る。同じ id を 2 回当てても 1 つ
-    EXPECT_EQ(ApplySnapshot(scene, lostFirst), nullptr);
-    EXPECT_EQ(ApplySnapshot(scene, lostFirst), nullptr);
+    EXPECT_EQ(scene.ApplyFromJson(lostFirst), nullptr);
+    EXPECT_EQ(scene.ApplyFromJson(lostFirst), nullptr);
     // 入れる道
     scene.RemoveActor(2);
     EXPECT_EQ(scene.SpawnFromJson(lostSecond), nullptr);
@@ -758,7 +754,7 @@ TEST(SceneLoad, PlacementWithoutItsActorFileIsKeptOnEveryWayIn)
 
     // 消すと持たない。組める控えを当てると、アクターに戻り JSON を持たない
     scene.RemoveActor(1);
-    EXPECT_NE(ApplySnapshot(scene, NS::SceneJsonActors(doc)[1]), nullptr);
+    EXPECT_NE(scene.ApplyFromJson(NS::SceneJsonActors(doc)[1]), nullptr);
     const nlohmann::json saved = scene.ToJson();
     ASSERT_EQ(NS::SceneJsonActors(saved).size(), 1u);
     EXPECT_EQ(NS::ActorJsonFile(NS::SceneJsonActors(saved)[0]), "GoalActor");

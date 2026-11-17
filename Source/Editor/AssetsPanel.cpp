@@ -36,7 +36,6 @@ namespace NS
         struct AssetsPanel::ActorThumbnail
         {
             nlohmann::json source;
-            uint64 editVersion = 0;
             bool rendered = false;
             std::unique_ptr<Gfx::D3DRenderTarget> target;
         };
@@ -222,7 +221,7 @@ namespace NS
             }
         }
 
-        const Gfx::D3DTexture* AssetsPanel::LoadActorThumbnail(const std::string& file, LevelEditorController& editor)
+        const Gfx::D3DTexture* AssetsPanel::LoadActorThumbnail(const std::string& file)
         {
             const std::string name = OS::FileSystem::Stem(file);
             const nlohmann::json* values = ActorFileLibrary::Get().Values(name);
@@ -235,8 +234,7 @@ namespace NS
             {
                 cached = std::make_unique<ActorThumbnail>();
             }
-            const uint64 version = editor.Editor().EditVersion();
-            if (cached->source == *values && cached->editVersion == version)
+            if (cached->source == *values)
             {
                 if (cached->rendered)
                 {
@@ -245,7 +243,6 @@ namespace NS
                 return nullptr;
             }
             cached->source = *values;
-            cached->editVersion = version;
             cached->rendered = false;
             const std::unique_ptr<SceneActor> actor =
                 CreateActorOfClass(ActorFileLibrary::Get().ClassNameOf(name), ActorInitInfo{.actorFile = name});
@@ -274,7 +271,7 @@ namespace NS
             return cached->target->Color();
         }
 
-        const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file, LevelEditorController& editor)
+        const Gfx::D3DTexture* AssetsPanel::LoadThumbnail(const std::string& file)
         {
             if (IsEffekseerAssetPath(file))
             {
@@ -287,7 +284,7 @@ namespace NS
             }
             if (IsActorFileAssetPath(file))
             {
-                return LoadActorThumbnail(file, editor);
+                return LoadActorThumbnail(file);
             }
             AssetManager& assets = AssetManager::Get();
             if (IsTextureAssetPath(file))
@@ -349,7 +346,7 @@ namespace NS
                 ImDrawList* draw = ImGui::GetWindowDrawList();
                 const ImVec2 low{start.x + (width - thumb) * 0.5f, start.y};
                 DrawCheckerboard(*draw, low, ImVec2{thumb, thumb}, 8);
-                if (const Gfx::D3DTexture* image = LoadThumbnail(file, editor))
+                if (const Gfx::D3DTexture* image = LoadThumbnail(file))
                 {
                     const Size2D size = image->Size();
                     const float scale = thumb / static_cast<float>(std::max(size.width, size.height));

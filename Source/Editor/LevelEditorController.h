@@ -437,8 +437,7 @@ namespace NS
             struct TransformEditBaseline
             {
                 uint32 id = k_NoActorId;
-                nlohmann::json snapshot; // 編集を始めた時の姿。保存と同じ形で、上書きの一覧の項目だけを持つ
-                nlohmann::json fields;   // 全部の部品の全部の欄の値。確定の時に比べ、変わった項目を上書きの一覧に足す
+                nlohmann::json fields; // 全部の部品の全部の欄の値。確定の時に比べ、変わった項目を上書きの一覧に足す
             };
             // 選択している分だけ並ぶ
             std::vector<TransformEditBaseline> m_editBaselines;
@@ -451,10 +450,9 @@ namespace NS
             // プレイを始めた時のシーンの JSON。プレイ中の手編集を写していき、編集へ戻る時にこれでシーンを組み直す
             // プレイに入っていない間は空
             std::optional<nlohmann::json> m_playBaseline;
-            // m_playBaseline
-            // の、手編集を写す前の写し。編集へ戻る時に、プレイ中に写した欄を見つけて未保存にするために比べる
-            // プレイに入っていない間は空
-            std::optional<nlohmann::json> m_playStartBaseline;
+            // このプレイの間に手編集を m_playBaseline へ書いたか。編集へ戻る時に立っていればシーンを未保存にする
+            // 手で元の値に戻しても下ろさない (編集モードの編集の版と同じ)
+            bool m_playEdited = false;
 
             //! 直したが、まだ .actor へ書いていない欄。CommitClassObjEdit・CommitAssetEdit で書いて空にする
             struct ActorFileEdit

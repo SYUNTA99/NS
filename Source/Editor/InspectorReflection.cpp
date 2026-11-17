@@ -527,9 +527,8 @@ namespace NS
 
             void DrawAssetFieldWidget(void* owner, const FieldDesc& field, FieldWidgetResult& result) noexcept
             {
-                // 開くたびに候補を取り直す。検索や表示だけではディスクを読み直さず、次の欄へ検索も持ち越さない
+                // 開くたびに候補を取り直す。表示だけではディスクを読み直さない
                 static std::vector<AssetOption> options;
-                static char search[256]{};
                 std::string value;
                 field.get(owner, &value);
                 ImGuiStorage* storage = ImGui::GetStateStorage();
@@ -545,7 +544,6 @@ namespace NS
                 if (ImGui::Button(button.c_str(), ImVec2{std::max(width, 1.0f), 0.0f}))
                 {
                     options = CollectAssetOptions(field.assetKind, OS::FileSystem::ContentRoot());
-                    search[0] = '\0';
                     result.activated = true;
                     ImGui::OpenPopup("asset-picker");
                 }
@@ -566,12 +564,6 @@ namespace NS
                 if (ImGui::BeginPopup("asset-picker"))
                 {
                     ImGui::TextUnformatted(FieldLabel(field));
-                    if (ImGui::IsWindowAppearing())
-                    {
-                        ImGui::SetKeyboardFocusHere();
-                    }
-                    ImGui::SetNextItemWidth(-1.0f);
-                    ImGui::InputTextWithHint("##asset-search", "名前・フォルダーを検索", search, sizeof(search));
                     if (ImGui::SmallButton("未設定にする"))
                     {
                         if (!value.empty())
@@ -582,18 +574,10 @@ namespace NS
                         ImGui::CloseCurrentPopup();
                     }
                     ImGui::Separator();
-                    bool found = false;
                     if (ImGui::BeginChild("##asset-options", ImVec2{0.0f, 0.0f}, ImGuiChildFlags_Borders))
                     {
                         for (const AssetOption& option : options)
                         {
-                            if (!NameMatches(option.value.c_str(), search) &&
-                                !NameMatches(option.label.c_str(), search) &&
-                                !NameMatches(option.location.c_str(), search))
-                            {
-                                continue;
-                            }
-                            found = true;
                             ImGui::PushID(option.value.c_str());
                             const float line = ImGui::GetTextLineHeight();
                             const bool chosen = ImGui::Selectable(
@@ -622,10 +606,10 @@ namespace NS
                                 break;
                             }
                         }
-                        if (!found)
+                        if (options.empty())
                         {
                             ImGui::TextWrapped(
-                                "該当する素材がありません。ファイルをAssetsに追加してから開き直してください。");
+                                "選べる素材がありません。ファイルをAssetsに追加してから開き直してください。");
                         }
                     }
                     ImGui::EndChild();
@@ -1610,16 +1594,12 @@ namespace NS
                 return result;
             }
 
-            float MinimumFieldValueWidth(const ReflectionInfo& info, const char* filter = nullptr) noexcept
+            float MinimumFieldValueWidth(const ReflectionInfo& info) noexcept
             {
                 float width = 0.0f;
                 for (std::size_t i = 0; i < info.fieldCount; ++i)
                 {
                     const FieldDesc& field = info.fields[i];
-                    if (filter != nullptr && !NameMatches(FieldLabel(field), filter))
-                    {
-                        continue;
-                    }
                     if (field.type == FieldType::Quaternion)
                     {
                         width = std::max(width, MinimumAxisFieldsWidth(3, "%.3f°"));
@@ -1651,45 +1631,24 @@ namespace NS
                 return info.fieldCount;
             }
 
-            // 見出しの行を出し、下の欄を出すかを返す。検索中は畳めない行にして、一致した欄が無ければ行ごと出さない
-            // 検索で畳んだ状態を書き換えると、検索を消した時に開け閉めが崩れる
-            bool DrawGroupRow(const ReflectionInfo& info,
-                              std::size_t groupIndex,
-                              const char* filter,
-                              bool filtering) noexcept
+            // 見出しの行を出し、下の欄を出すか (開いているか) を返す
+            bool DrawGroupRow(const ReflectionInfo& info, std::size_t groupIndex) noexcept
             {
                 const FieldGroup& group = info.groups[groupIndex];
                 const std::size_t end = GroupEnd(info, groupIndex);
-                if (filtering)
-                {
-                    const bool anyMatch = std::any_of(
-                        info.fields + group.firstField, info.fields + end, [filter](const FieldDesc& field) {
-                            return NameMatches(FieldLabel(field), filter);
-                        });
-                    if (!anyMatch)
-                    {
-                        return false;
-                    }
-                }
                 ImGui::TableNextRow();
                 ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(ImGuiCol_TableHeaderBg));
                 ImGui::TableSetColumnIndex(0);
-                if (filtering)
-                {
-                    ImGui::TextDisabled("%s", group.name);
-                    return true;
-                }
                 const ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAllColumns |
                                                  ImGuiTreeNodeFlags_NoTreePushOnOpen;
                 return ImGui::TreeNodeEx(group.name, flags, "%s (%zu)", group.name, end - group.firstField);
             }
 
-            // 欄を宣言の並びで回し、見出しの始まる所で見出しの行を挟む。畳んだ見出しの欄と、検索に外れた欄は飛ばす
+            // 欄を宣言の並びで回し、見出しの始まる所で見出しの行を挟む。畳んだ見出しの欄は飛ばす
             // 欄を持たない見出しは出さない。drawRow は出す欄の添字を受け取って 1 行を描く
             template <class DrawRow>
-            void DrawGroupedRows(const ReflectionInfo& info, const char* filter, DrawRow&& drawRow) noexcept
+            void DrawGroupedRows(const ReflectionInfo& info, DrawRow&& drawRow) noexcept
             {
-                const bool filtering = filter != nullptr && filter[0] != '\0';
                 std::size_t nextGroup = 0;
                 bool groupOpen = true;
                 for (std::size_t i = 0; i < info.fieldCount; ++i)
@@ -1700,14 +1659,10 @@ namespace NS
                         ++nextGroup;
                         if (info.groups[groupIndex].firstField < GroupEnd(info, groupIndex))
                         {
-                            groupOpen = DrawGroupRow(info, groupIndex, filter, filtering);
+                            groupOpen = DrawGroupRow(info, groupIndex);
                         }
                     }
                     if (!groupOpen)
-                    {
-                        continue;
-                    }
-                    if (filtering && !NameMatches(FieldLabel(info.fields[i]), filter))
                     {
                         continue;
                     }
@@ -1719,7 +1674,6 @@ namespace NS
         ClassObjEditResult DrawReflectedClassObj(Object* comp,
                                                  std::span<const ActorRefOption> refOptions,
                                                  const char* partKey,
-                                                 const char* filter,
                                                  const SceneActor* actor,
                                                  const EditorAppearance* appearance) noexcept
         {
@@ -1729,7 +1683,7 @@ namespace NS
             {
                 return ClassObjEditResult{};
             }
-            if (!BeginFieldTable("##fields", MinimumFieldValueWidth(*info, filter)))
+            if (!BeginFieldTable("##fields", MinimumFieldValueWidth(*info)))
             {
                 return ClassObjEditResult{};
             }
@@ -1769,7 +1723,7 @@ namespace NS
                 }
                 ImGui::PopID();
             };
-            DrawGroupedRows(*info, filter, drawRow);
+            DrawGroupedRows(*info, drawRow);
             EndFieldTable();
             return result;
         }
@@ -1803,7 +1757,7 @@ namespace NS
                 (void)OverrideButton(false);
                 ImGui::PopID();
             };
-            DrawGroupedRows(info, nullptr, drawRow);
+            DrawGroupedRows(info, drawRow);
             EndFieldTable();
             return result;
         }

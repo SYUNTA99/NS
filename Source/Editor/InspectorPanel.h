@@ -81,7 +81,6 @@ namespace NS
             char m_derivedNameBuffer[64]{}; // 作る派生の .actor の名前の欄
             bool m_deriveRequested = false; // このフレームに上書きから派生を作るを押した。描き終えてから作る
             uint32 m_actorFileTargetId = 0; // 派生を作る対象のアクター
-            char m_fieldFilter[64]{};       // 欄の検索欄。空でない間は名前に含む欄だけを並べる。選択を変えても残す
             EditorAppearance m_appearance;  // 欄の行の地の色。シーン設定の下で直す
             // 束の欄が直している写し。直し終えるまでは .actor の文書が変わっても読み直さない
             std::string m_hitSetsActorFile;

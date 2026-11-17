@@ -63,8 +63,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
         ImGui::Begin("参照の欄");
         tableMin = ImGui::GetCursorScreenPos();
         tableWidth = ImGui::GetContentRegionAvail().x;
-        const NS::Editor::ClassObjEditResult result =
-            NS::Editor::DrawReflectedClassObj(&follow, options, nullptr, "追従対象");
+        const NS::Editor::ClassObjEditResult result = NS::Editor::DrawReflectedClassObj(&follow, options);
         ImGui::End();
         ImGui::EndFrame();
         return result;
@@ -78,7 +77,7 @@ TEST(EditorInspector, ComboSelectionStartsBeforeTheChangeAndCommitsAfter)
         return results;
     };
 
-    // 検索で欄を 1 つに絞ったので、コンボは表の 1 行目の値の列にある。列の幅は数回描くと定まる
+    // 追従対象は 1 つ目の欄なので、コンボは表の 1 行目の値の列にある。列の幅は数回描くと定まる
     for (int i = 0; i < 3; ++i)
     {
         (void)frame();

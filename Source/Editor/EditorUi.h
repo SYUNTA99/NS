@@ -244,16 +244,6 @@ namespace NS
             return action;
         }
 
-        // 検索欄の一致判定。大小文字を無視して部分一致を見る
-        inline bool NameMatches(const char* name, const char* filter) noexcept
-        {
-            if (name == nullptr || filter == nullptr || filter[0] == '\0')
-            {
-                return true;
-            }
-            return ImStristr(name, nullptr, filter, nullptr) != nullptr;
-        }
-
         // 透過部分が見えるように、画像の後ろへ市松模様を描く
         inline void DrawCheckerboard(ImDrawList& draw, ImVec2 origin, ImVec2 size, int step) noexcept
         {

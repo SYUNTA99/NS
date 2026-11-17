@@ -27,10 +27,8 @@ namespace NS
             //! 親の id から、その子のアクターを一覧の並びで引く表
             using ChildrenMap = std::unordered_map<uint32, std::vector<SceneActor*>>;
 
-            //! 一覧の行を全部描く。検索している間は当たった行を平らに、ほかは子を親の下に並べる
-            void RenderActorRows(LevelEditorController& editor,
-                                 const std::vector<SceneActor*>& placed,
-                                 bool filtering) noexcept;
+            //! 一覧の行を全部描く。子は親の下に並べる
+            void RenderActorRows(LevelEditorController& editor, const std::vector<SceneActor*>& placed) noexcept;
             //! 行の右クリックのメニュー (改名・寄る・複製・削除)
             void RenderRowMenu(LevelEditorController& editor, SceneActor* object) noexcept;
             //! object の行と、その下に開いた子孫の行を描く。描いた id は rendered に入れ、輪でも 1 回だけ描く
@@ -64,8 +62,6 @@ namespace NS
             uint32 m_rangeSelectToId = 0;
             bool m_focusPending = false;
             std::vector<uint32> m_visibleOrder;
-
-            char m_actorListFilter[64]{};
         };
     } // namespace Editor
 } // namespace NS

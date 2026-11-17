@@ -395,7 +395,7 @@ TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
     ASSERT_NE(spawned, nullptr);
     EXPECT_EQ(InterpolatedStart(spawned), NS::Vector3(4.0f, 0.0f, 0.0f));
 
-    const NS::SceneActor* applied = ApplySnapshot(scene, LifeBoxJson(30, "Applied", 6.0f));
+    const NS::SceneActor* applied = scene.ApplyFromJson(LifeBoxJson(30, "Applied", 6.0f));
     ASSERT_NE(applied, nullptr);
     EXPECT_EQ(InterpolatedStart(applied), NS::Vector3(6.0f, 0.0f, 0.0f));
 }

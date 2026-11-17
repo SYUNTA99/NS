@@ -216,7 +216,7 @@ TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
     ASSERT_NE(actor, nullptr);
 
     NS::SetActorJsonFile(placed, "WideGoal");
-    ASSERT_EQ(ApplySnapshot(scene, placed), actor);
+    ASSERT_EQ(scene.ApplyFromJson(placed), actor);
 
     const NS::ShapeHitSensor* sensor = NS::Cast<NS::ShapeHitSensor>(actor->HitSensorsClassObj()->Find("Body"));
     ASSERT_NE(sensor, nullptr);

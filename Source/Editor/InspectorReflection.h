@@ -59,12 +59,10 @@ namespace NS
 
         //! リフレクション欄を編集し、編集の確定に要る編集開始・終了と変更内容を返す
         //! refOptions が空なら参照は数値入力。partKey と actor があれば上書きの表示と既定に戻すを使える
-        //! filter は欄の見せる名前の部分一致。空か nullptr なら絞らない
         //! actor は comp の持ち主。actor と appearance があれば、行の地を書く先の色で塗る
         [[nodiscard]] ClassObjEditResult DrawReflectedClassObj(Object* comp,
                                                                std::span<const ActorRefOption> refOptions = {},
                                                                const char* partKey = nullptr,
-                                                               const char* filter = nullptr,
                                                                const SceneActor* actor = nullptr,
                                                                const EditorAppearance* appearance = nullptr) noexcept;
 

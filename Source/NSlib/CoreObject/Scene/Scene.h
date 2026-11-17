@@ -183,10 +183,8 @@ namespace NS
         //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson と同じ。動いた当たりは次の歩で揃う
         //! .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
         //! 書いてから、束・動作・素材を読み直す。替えた先の .actor が違うクラスなら ERROR を出し、何も変えずに nullptr を返す。
-        //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターを解放せずに外して
-        //! replaced へ渡す。replaced を捨てる時は、呼び手が先に OnEndPlay を呼ぶ
-        //! @param[out] replaced 作り直した時の古いアクター。作り直さなければ触らない。nullptr は渡さない
-        SceneActor* ApplyFromJson(const nlohmann::json& actorJson, std::unique_ptr<SceneActor>* replaced);
+        //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターは OnEndPlay を呼んで解放する
+        SceneActor* ApplyFromJson(const nlohmann::json& actorJson);
 
         //! アクターを 1 体消す。居なければ何もしない
         //! 当たり箱も揃うので、走っている世界を止めずに消せる。.actor が見つからずに持っている同じ id の JSON も捨てる
@@ -246,8 +244,9 @@ namespace NS
         //! 作れた時は同じ id の持っていた JSON を捨てる
         [[nodiscard]] std::unique_ptr<SceneActor> BuildOrKeepUnresolved(const nlohmann::json& actorJson);
 
-        //! ApplyFromJson の作り直す道。同じ id のアクターを外して replaced へ渡し、同じ並びの位置へ JSON から作って入れる
-        SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot, std::unique_ptr<SceneActor>* replaced);
+        //! ApplyFromJson の作り直す道。同じ id のアクターを外し、同じ並びの位置へ JSON から作って入れてから、
+        //! 外した古いアクターの OnEndPlay を呼んで解放する
+        SceneActor* RebuildActorFromJson(const nlohmann::json& snapshot);
 
         //! 実行時に入れたアクターの資産を引き当ててから開始する
         void StartSpawned(SceneActor* obj);

@@ -122,7 +122,7 @@ namespace NS
 
             //! シーンを変えた後に 1 回呼び、編集の版を進める。.actor・.mat はすぐファイルへ書くので呼ばない
             void MarkEdited() noexcept { ++m_editVersion; }
-            //! シーンの編集の通算回数。保存と読込では戻らない。サムネイルの描き直しの合図にも使う
+            //! シーンの編集の通算回数。保存と読込では戻らない
             [[nodiscard]] uint64 EditVersion() const noexcept { return m_editVersion; }
             //! 最後の保存 / 読込のあとに編集が入ったか
             [[nodiscard]] bool HasUnsavedChanges() const noexcept { return EditVersion() != m_savedEditVersion; }

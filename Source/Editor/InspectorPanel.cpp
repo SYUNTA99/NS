@@ -661,8 +661,6 @@ namespace NS
                     m_derivedNameBuffer[0] = '\0';
                 }
                 ImGui::Separator();
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputTextWithHint("##actorFileFieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
                 bool committed = false;
                 ForEachReflectedClassObj(actorFile, [&](const ClassObjInfo& row, Object* part) {
                     if (part->GetReflection() == nullptr)
@@ -673,7 +671,7 @@ namespace NS
                     ImGui::PushID(row.key);
                     if (ImGui::CollapsingHeader(row.key, ImGuiTreeNodeFlags_DefaultOpen))
                     {
-                        const ClassObjEditResult edit = DrawReflectedClassObj(part, {}, nullptr, m_fieldFilter);
+                        const ClassObjEditResult edit = DrawReflectedClassObj(part);
                         if (edit.changedTarget != nullptr && edit.changedField != nullptr)
                         {
                             editor.FinishFieldWrite(actorFile, edit.changedField->type);
@@ -818,9 +816,6 @@ namespace NS
 
                 // 部品はクラスが決めるので、ここでは値だけを変える。足し引きはできない
 
-                ImGui::SetNextItemWidth(-1.0f);
-                ImGui::InputTextWithHint("##fieldFilter", "欄の検索", m_fieldFilter, sizeof(m_fieldFilter));
-
                 Editor::ClassObjEditResult classObjEdit{};
                 // 戻すは描いた後に行うので、対象の部品の行を控える
                 const ClassObjInfo* revertRow = nullptr;
@@ -850,7 +845,7 @@ namespace NS
                     if (open)
                     {
                         const Editor::ClassObjEditResult r = Editor::DrawReflectedClassObj(
-                            live, refOptions, field.key, m_fieldFilter, go, &m_appearance);
+                            live, refOptions, field.key, go, &m_appearance);
                         classObjEdit.activated |= r.activated;
                         classObjEdit.committed |= r.committed;
                         classObjEdit.changed |= r.changed;

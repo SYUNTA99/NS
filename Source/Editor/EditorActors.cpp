@@ -62,13 +62,8 @@ namespace NS
                 return;
             }
             SetActorJsonId(*desired, id);
-            std::unique_ptr<SceneActor> replaced;
             // 当てられなかった時は ApplyFromJson がログに理由を出す。呼び手は姿を確かめないので戻り値は捨てる
-            (void)scene.ApplyFromJson(*desired, &replaced);
-            if (replaced)
-            {
-                replaced->OnEndPlay();
-            }
+            (void)scene.ApplyFromJson(*desired);
         }
 
         nlohmann::json& EnsureTransformClassObj(nlohmann::json& actorJson)
