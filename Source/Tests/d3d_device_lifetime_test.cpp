@@ -3,6 +3,7 @@
 #include "NSlib/Gfx/D3DTexture.h"
 #include "TestLogCapture.h"
 
+#include <dxgi1_6.h>
 #include <gtest/gtest.h>
 
 TEST(D3DDeviceLifetime, ASecondDeviceDoesNotReplaceTheActiveDevice)
@@ -43,4 +44,33 @@ TEST(D3DDeviceLifetime, AHeadlessDeviceCreatesResourcesAndReleasesTheCurrentRefe
     NS::Gfx::D3DDevice next(NS::Gfx::D3DDeviceDesc{}, D3D_DRIVER_TYPE_WARP);
     EXPECT_TRUE(next.IsValid());
     EXPECT_EQ(NS::Gfx::D3DDevice::Current(), &next);
+}
+
+// 窓のある装置は、DXGI が性能の高い順に並べた 1 番目のアダプタで作る。2 枚持ちのノート PC で内蔵 GPU で動かさない
+TEST(D3DDeviceLifetime, AWindowDeviceUsesTheHighPerformanceAdapter)
+{
+    NS::Gfx::ComPtr<IDXGIFactory6> factory;
+    if (FAILED(::CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()))))
+    {
+        GTEST_SKIP() << "IDXGIFactory6 の無い Windows では性能の順に並べられない";
+    }
+    NS::Gfx::ComPtr<IDXGIAdapter1> expected;
+    ASSERT_TRUE(SUCCEEDED(factory->EnumAdapterByGpuPreference(
+        0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(expected.GetAddressOf()))));
+    DXGI_ADAPTER_DESC1 expectedDesc{};
+    ASSERT_TRUE(SUCCEEDED(expected->GetDesc1(&expectedDesc)));
+
+    NS::OS::Window window(NS::OS::WindowDesc{.title = "性能の高い GPU", .size = {16, 16}, .visible = false});
+    NS::Gfx::D3DDevice device(NS::Gfx::D3DDeviceDesc{}, window);
+    ASSERT_TRUE(device.IsValid());
+    NS::Gfx::ComPtr<IDXGIDevice> dxgiDevice;
+    ASSERT_TRUE(SUCCEEDED(device.Native()->QueryInterface(IID_PPV_ARGS(dxgiDevice.GetAddressOf()))));
+    NS::Gfx::ComPtr<IDXGIAdapter> used;
+    ASSERT_TRUE(SUCCEEDED(dxgiDevice->GetAdapter(used.GetAddressOf())));
+    DXGI_ADAPTER_DESC usedDesc{};
+    ASSERT_TRUE(SUCCEEDED(used->GetDesc(&usedDesc)));
+
+    // アダプタは LUID で見分ける。名前は同じ型の GPU を 2 枚挿すと重なる
+    EXPECT_EQ(usedDesc.AdapterLuid.LowPart, expectedDesc.AdapterLuid.LowPart);
+    EXPECT_EQ(usedDesc.AdapterLuid.HighPart, expectedDesc.AdapterLuid.HighPart);
 }

@@ -3,6 +3,7 @@
 
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Logger.h"
+#include "NSlib/Core/Windows/StringUtils.h"
 #include "NSlib/Gfx/D3DCommandList.h"
 #include "NSlib/Gfx/D3DCommonStates.h"
 #include "NSlib/Gfx/D3dCommon.h"
@@ -16,6 +17,7 @@
 #include <cstring>
 #include <utility>
 
+#include <dxgi1_6.h>
 #include <wincodec.h>
 
 #include <iterator>
@@ -30,7 +32,36 @@ namespace NS
 
         namespace
         {
+            // DXGI が性能の高い順に並べた 1 番目のアダプタ。2 枚持ちのノート PC で、画面につながる内蔵 GPU でなく外付けの GPU を選ぶ
+            // 選べない時 (IDXGIFactory6 の無い Windows・失敗) は空を返し、装置は既定のアダプタで作る
+            ComPtr<IDXGIAdapter1> HighPerformanceAdapter()
+            {
+                ComPtr<IDXGIFactory6> factory;
+                HRESULT hr = ::CreateDXGIFactory1(IID_PPV_ARGS(factory.GetAddressOf()));
+                if (FAILED(hr))
+                {
+                    NS_LOG_WARN(Graphics, "IDXGIFactory6 を作れないので既定のアダプタで作る (hr=0x{:X})", static_cast<uint>(hr));
+                    return nullptr;
+                }
+                ComPtr<IDXGIAdapter1> adapter;
+                hr = factory->EnumAdapterByGpuPreference(
+                    0, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf()));
+                if (FAILED(hr))
+                {
+                    NS_LOG_WARN(Graphics, "性能の高いアダプタを選べないので既定のアダプタで作る (hr=0x{:X})", static_cast<uint>(hr));
+                    return nullptr;
+                }
+                DXGI_ADAPTER_DESC1 desc{};
+                if (SUCCEEDED(adapter->GetDesc1(&desc)))
+                {
+                    NS_LOG_INFO(Graphics, "D3D11 のアダプタ: {}", OS::StringUtils::Utf8FromWide(desc.Description));
+                }
+                return adapter;
+            }
+
+            // adapter が空なら既定のアダプタで作る
             bool TryCreateDeviceAndSwapChain(HWND hwnd,
+                                             IDXGIAdapter* adapter,
                                              int width,
                                              int height,
                                              UINT createFlags,
@@ -55,8 +86,14 @@ namespace NS
                 const D3D_FEATURE_LEVEL featureLevels[] = {D3D_FEATURE_LEVEL_11_0};
                 D3D_FEATURE_LEVEL got = D3D_FEATURE_LEVEL_11_0;
 
-                const HRESULT hr = ::D3D11CreateDeviceAndSwapChain(nullptr,
-                                                                   D3D_DRIVER_TYPE_HARDWARE,
+                // アダプタを渡す時は、種類をアダプタから決めさせる (D3D11 の決まり)
+                D3D_DRIVER_TYPE driverType = D3D_DRIVER_TYPE_HARDWARE;
+                if (adapter != nullptr)
+                {
+                    driverType = D3D_DRIVER_TYPE_UNKNOWN;
+                }
+                const HRESULT hr = ::D3D11CreateDeviceAndSwapChain(adapter,
+                                                                   driverType,
                                                                    nullptr,
                                                                    createFlags,
                                                                    featureLevels,
@@ -182,12 +219,21 @@ namespace NS
                 createFlags |= D3D11_CREATE_DEVICE_DEBUG;
             }
 
-            bool ok = TryCreateDeviceAndSwapChain(hwnd, w, h, createFlags, m_device, m_context, m_swapchain);
+            const ComPtr<IDXGIAdapter1> adapter = HighPerformanceAdapter();
+            bool ok =
+                TryCreateDeviceAndSwapChain(hwnd, adapter.Get(), w, h, createFlags, m_device, m_context, m_swapchain);
             if (!ok && desc.enableDebugLayer)
             {
                 NS_LOG_WARN(Graphics, "Debug Layer 付きでの D3D11 デバイス作成に失敗、Debug Layer 無しで再試行");
                 createFlags &= ~static_cast<UINT>(D3D11_CREATE_DEVICE_DEBUG);
-                ok = TryCreateDeviceAndSwapChain(hwnd, w, h, createFlags, m_device, m_context, m_swapchain);
+                ok = TryCreateDeviceAndSwapChain(
+                    hwnd, adapter.Get(), w, h, createFlags, m_device, m_context, m_swapchain);
+            }
+            // 選んだアダプタで作れなくても、既定のアダプタなら作れる場合がある。起動できなくなる方が困る
+            if (!ok && adapter)
+            {
+                NS_LOG_WARN(Graphics, "性能の高いアダプタで D3D11 デバイスを作れないので、既定のアダプタで再試行");
+                ok = TryCreateDeviceAndSwapChain(hwnd, nullptr, w, h, createFlags, m_device, m_context, m_swapchain);
             }
             if (!ok)
             {
