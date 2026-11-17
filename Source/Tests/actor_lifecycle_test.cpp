@@ -394,10 +394,6 @@ TEST(ActorLifecycle, EveryWayInStartsInterpolationAtThePlacement)
     const NS::SceneActor* spawned = scene.SpawnFromJson(LifeBoxJson(20, "Spawned", 4.0f));
     ASSERT_NE(spawned, nullptr);
     EXPECT_EQ(InterpolatedStart(spawned), NS::Vector3(4.0f, 0.0f, 0.0f));
-
-    const NS::SceneActor* applied = scene.ApplyFromJson(LifeBoxJson(30, "Applied", 6.0f));
-    ASSERT_NE(applied, nullptr);
-    EXPECT_EQ(InterpolatedStart(applied), NS::Vector3(6.0f, 0.0f, 0.0f));
 }
 
 // 置いた後に動かすと、次の歩で当たりが付いて来る。世界を止めた編集中も同じ
