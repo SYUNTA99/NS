@@ -196,6 +196,33 @@ TEST(HitSensorsObj, ReloadValuesWritesEachNamedSensor)
     EXPECT_EQ(capture.WarningCount(), 1);
 }
 
+// 控えが同じクラスの別の .actor を指していれば、センサーの値も替えた先の .actor から読む
+TEST(HitSensorsObj, ApplyingASnapshotOfAnotherActorFileReadsItsSensorValues)
+{
+    const ScopedActorFileDirectory scope("HitSensorsApply");
+    const nlohmann::json* goal = NS::ActorFileLibrary::Get().Find("GoalActor");
+    ASSERT_NE(goal, nullptr);
+    nlohmann::json actorFile = *goal;
+    nlohmann::json body = GoalBodyValues();
+    body["半径"] = 9.0f;
+    actorFile["hitSensors"] = nlohmann::json{{"Body", body}};
+    const ScopedActorFile file("WideGoal", actorFile);
+
+    NS::Scene scene;
+    nlohmann::json placed = NS::MakeActorJson();
+    NS::SetActorJsonFile(placed, "GoalActor");
+    NS::SetActorJsonId(placed, 1);
+    NS::SceneActor* actor = scene.SpawnFromJson(placed);
+    ASSERT_NE(actor, nullptr);
+
+    NS::SetActorJsonFile(placed, "WideGoal");
+    ASSERT_EQ(scene.ApplyFromJson(placed), actor);
+
+    const NS::ShapeHitSensor* sensor = NS::Cast<NS::ShapeHitSensor>(actor->HitSensorsClassObj()->Find("Body"));
+    ASSERT_NE(sensor, nullptr);
+    EXPECT_FLOAT_EQ(sensor->Radius(), 9.0f);
+}
+
 // hitSensors に無い値を持つセンサーは、宣言した時の値へ戻して WARN を出す。前に読んだ値を残さない
 // 書き直した .actor や写しから hitSensors が消えた時に、ファイルに無い大きさで当たり続けないため
 TEST(HitSensorsObj, ReloadValuesResetsASensorMissingFromTheFile)

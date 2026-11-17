@@ -220,3 +220,21 @@ TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
     EXPECT_EQ(CountedGoal::s_destroyed, 1);
 }
 
+// ApplyActorSnapshot が作り直しで置き換えた古いアクターも、その場で OnEndPlay を呼んで解放する
+TEST(EditorUnsaved, ActorReplacedBySnapshotIsEndedAndFreedAtOnce)
+{
+    std::optional<ScopedActorFile> scope;
+    NS::Scene scene;
+    const NS::uint32 id = SpawnCountedGoal(scene, scope);
+    ASSERT_NE(id, NS::k_NoActorId);
+    std::optional<nlohmann::json> snapshot = NS::Ed::CaptureActor(scene.Actors(), id);
+    ASSERT_TRUE(snapshot.has_value());
+    // 読まれていない .actor を指すと、値を重ねられないので作り直す
+    NS::SetActorJsonFile(*snapshot, "MissingActorFileForReplace");
+
+    const TestLogCapture log;
+    NS::Ed::ApplyActorSnapshot(scene, id, snapshot);
+
+    EXPECT_EQ(CountedGoal::s_endPlays, 1);
+    EXPECT_EQ(CountedGoal::s_destroyed, 1);
+}

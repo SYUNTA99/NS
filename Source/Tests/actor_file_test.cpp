@@ -319,6 +319,26 @@ TEST(ActorFile, ChangedActorFileReachesInstancesWithoutOverride)
     EXPECT_FLOAT_EQ(DiameterOf(scene.Actors().FindByActorId(2)), 4.0f);
 }
 
+TEST(ActorFile, ApplyingSnapshotResetsFieldsWithoutOverride)
+{
+    // 写しは上書きした欄だけを持つ。写しを反映すると、写しに無い欄も .actor の値へ戻る
+    const ScopedActorFileDirectory scope("SnapshotReset");
+    NS::ActorFileLibrary::Get().Set("PlayerActor", ActorFileWith("PlayerActor", "Collider", RadiusEntry(2.0f)));
+
+    nlohmann::json doc = NS::MakeSceneJson();
+    NS::SceneJsonActors(doc).push_back(PlayerJson(1));
+    NS::Scene scene;
+    scene.ResetFromJson(doc);
+    NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+    ASSERT_NE(actor, nullptr);
+    const nlohmann::json snapshot = NS::ActorToJson(actor);
+
+    ColliderOf(actor)->SetCapsuleRadius(9.0f);
+    NS::SceneActor* applied = scene.ApplyFromJson(snapshot);
+    ASSERT_EQ(applied, actor); // 同じクラスなので作り直さない
+    EXPECT_FLOAT_EQ(RadiusOf(actor), 2.0f);
+}
+
 // 保存は値を比べず、上書きの一覧の項目を書く。.actor と同じ値の上書きも残り、書いていない項目は書かない
 TEST(ActorFile, OverrideWithTheActorFileValueIsKeptOnSave)
 {
