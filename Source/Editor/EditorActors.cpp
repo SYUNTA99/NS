@@ -55,20 +55,22 @@ namespace NS
             return ActorToJson(actor);
         }
 
-        nlohmann::json AllFieldValues(const SceneActor& actor)
+        nlohmann::json AllFieldValues(const SceneActor* actor)
         {
+            NS_ASSERT(App, actor != nullptr, "AllFieldValues: アクターが null");
             nlohmann::json values = nlohmann::json::object();
             nlohmann::json& parts = ActorJsonClassObjs(values);
-            ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
+            ForEachReflectedClassObj(actor,[&](const ClassObjInfo& row, const Object* part) {
                 parts[std::string{row.key}] = SerializeClassObjFields(part);
             });
             return values;
         }
 
-        bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before)
+        bool AddChangedSceneOverrides(SceneActor* actor, const nlohmann::json& before)
         {
+            NS_ASSERT(App, actor != nullptr, "AddChangedSceneOverrides: アクターが null");
             bool changed = false;
-            ForEachReflectedClassObj(&actor, [&](const ClassObjInfo& row, const Object* part) {
+            ForEachReflectedClassObj(actor,[&](const ClassObjInfo& row, const Object* part) {
                 const nlohmann::json now = SerializeClassObjFields(part);
                 const nlohmann::json* was = ClassObjFields(before, row.key);
                 for (nlohmann::json::const_iterator entry = now.begin(); entry != now.end(); ++entry)
@@ -79,14 +81,14 @@ namespace NS
                         continue;
                     }
                     const FieldDesc* field = FindField(part->GetReflection(), entry.key());
-                    if (field == nullptr || FieldDestinationOf(&actor, *field) != FieldDestination::Scene)
+                    if (field == nullptr || FieldDestinationOf(actor, *field) != FieldDestination::Scene)
                     {
                         continue;
                     }
                     changed = true;
                     if (field->type != FieldType::ActorRef)
                     {
-                        actor.AddSceneOverride(row.key, entry.key());
+                        actor->AddSceneOverride(row.key, entry.key());
                     }
                 }
             });

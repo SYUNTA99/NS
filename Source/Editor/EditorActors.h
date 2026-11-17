@@ -65,12 +65,12 @@ namespace NS
 
         //! actor の全部の部品の全部の欄の値。シーンの JSON と同じく classObjs の下に部品の鍵で並べる
         //! 編集の前に控え、編集の後に AddChangedSceneOverrides へ渡す
-        [[nodiscard]] nlohmann::json AllFieldValues(const SceneActor& actor);
+        [[nodiscard]] nlohmann::json AllFieldValues(const SceneActor* actor);
 
         //! before (AllFieldValues の形) から値が変わった、シーンに書く項目を actor の上書きの一覧に足す
         //! 参照の欄はいつも保存するので足さない。.actor へ書く項目は変わっていても触らない
         //! @return シーンに書く欄 (参照の欄を含む) が 1 つでも変わったか。.actor へ書く欄の変化は数えない
-        [[nodiscard]] bool AddChangedSceneOverrides(SceneActor& actor, const nlohmann::json& before);
+        [[nodiscard]] bool AddChangedSceneOverrides(SceneActor* actor, const nlohmann::json& before);
 
         //! cell ブラシが置換・削除・回転できる 1 m の升のアクターか
         //! 対象は組み込みの立方体と坂の地形の部品だけ。投げ込んだメッシュは大きさが升と限らない。

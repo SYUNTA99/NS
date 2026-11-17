@@ -608,9 +608,9 @@ namespace NS
                 return;
             }
             // 回した回転を上書きの一覧に足さないと保存されない。ギズモと同じ控えと比べで足す
-            const nlohmann::json before = AllFieldValues(*actor);
+            const nlohmann::json before = AllFieldValues(actor);
             TurnCellQuarter(actor);
-            if (!AddChangedSceneOverrides(*actor, before))
+            if (!AddChangedSceneOverrides(actor, before))
             {
                 return;
             }

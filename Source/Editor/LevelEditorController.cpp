@@ -1290,7 +1290,7 @@ namespace NS
                 const SceneActor* actor = m_scene.Actors().FindByActorId(id);
                 if (actor != nullptr)
                 {
-                    m_editBaselines.push_back(TransformEditBaseline{id, AllFieldValues(*actor)});
+                    m_editBaselines.push_back(TransformEditBaseline{id, AllFieldValues(actor)});
                 }
             }
         }
@@ -1325,7 +1325,7 @@ namespace NS
                     continue;
                 }
                 // 保存は上書きの一覧の項目だけを書くので、動かした姿勢の項目を一覧に足す
-                if (AddChangedSceneOverrides(*actor, entry.fields))
+                if (AddChangedSceneOverrides(actor, entry.fields))
                 {
                     changed = true;
                 }

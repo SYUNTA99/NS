@@ -523,10 +523,10 @@ namespace NS
 
             // matRef を実体へ書き込み、変わった欄をギズモと同じく上書きの一覧に足す。足さないと保存されない
             // 変わらなかった時 (同じマテリアル) は未保存にしない
-            const nlohmann::json before = AllFieldValues(*go);
+            const nlohmann::json before = AllFieldValues(go);
             mesh->SetMaterialRef(*stored);
             FinishFieldWrite(go, FieldType::Asset);
-            if (AddChangedSceneOverrides(*go, before))
+            if (AddChangedSceneOverrides(go, before))
             {
                 m_editor.MarkEdited();
             }
