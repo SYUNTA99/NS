@@ -28,6 +28,7 @@
 #include "Tests/TestHiddenApp.h"
 #include <cmath>
 #include <optional>
+#include <string>
 #include <string_view>
 
 using NS::Editor::LevelEditorController;
@@ -439,6 +440,13 @@ namespace
         editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
         return NS::Editor::FindActorIdAtCell(scene.Actors(), 0, 0, 0);
     }
+
+    // パレットの slot の物の .actor の名前
+    std::string SlotActorFile(LevelEditorController& editor, std::size_t slot)
+    {
+        editor.Editor().Palette().SetActiveSlot(slot);
+        return NS::ReadActorHeader(editor.Editor().Palette().CurrentTemplate()).actorFile;
+    }
 } // namespace
 
 // 升を回した向きは、シーンを書き出して読み直しても残る
@@ -475,12 +483,16 @@ TEST(EditorDirectEdit, PaintingOverACellReplacesItWithTheSameId)
     const NS::uint32 id = PaintCell(editor, scene, 0);
     ASSERT_NE(id, NS::k_NoActorId);
 
+    // 枠 0 と 1 は同じ .actor でメッシュだけが違う。置き換わったかはメッシュで見分ける
+    const std::string expected = SlotActorFile(editor, 1);
+
     EXPECT_EQ(PaintCell(editor, scene, 1), id);
 
     NS::Scene reloaded;
     reloaded.ResetFromJson(scene.ToJson());
     const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
     ASSERT_NE(loaded, nullptr);
+    EXPECT_EQ(loaded->ActorFileName(), expected);
     ASSERT_NE(loaded->ModelClassObj(), nullptr);
     EXPECT_EQ(loaded->ModelClassObj()->MeshRef(), "wedge45");
 }
@@ -493,16 +505,21 @@ TEST(EditorDirectEdit, PaintingADifferentClassOverACellReplacesIt)
     const NS::uint32 id = PaintCell(editor, scene, 0);
     ASSERT_NE(id, NS::k_NoActorId);
 
-    editor.Editor().Palette().SetActiveSlot(2);
+    const std::string before = SlotActorFile(editor, 0);
+    const std::string expected = SlotActorFile(editor, 2);
+    ASSERT_NE(expected, before);
+
     editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
     const NS::SceneActor* replaced = scene.Actors().FindByActorId(id);
     ASSERT_NE(replaced, nullptr);
     EXPECT_EQ(std::string_view{replaced->ClassName()}, "GoalActor");
+    EXPECT_EQ(replaced->ActorFileName(), expected);
 
     NS::Scene reloaded;
     reloaded.ResetFromJson(scene.ToJson());
     const NS::SceneActor* loaded = reloaded.Actors().FindByActorId(id);
     ASSERT_NE(loaded, nullptr);
     EXPECT_EQ(std::string_view{loaded->ClassName()}, "GoalActor");
+    EXPECT_EQ(loaded->ActorFileName(), expected);
 }
 
