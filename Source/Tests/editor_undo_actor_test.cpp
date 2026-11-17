@@ -15,6 +15,7 @@
 #include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/CoreObject/ActorList.h"
 #include "NSlib/CoreObject/Actors/LightActor.h"
+#include "NSlib/CoreObject/ClassObjs/Model.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Reflection/TypeRegistry.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -34,6 +35,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 using NS::Ed::EditorController;
@@ -301,6 +303,72 @@ TEST(EditorUndoActor, CtrlZAndCtrlYUndoAndRedoEachEdit)
             EXPECT_EQ(shape(scene), after) << edit.name;
         }
         // 共有の入力を押していない状態へ戻す。残すと後の試しが鍵を読む
+        keyboard.ClearState();
+    }));
+    EXPECT_EQ(app.Run(), 0);
+}
+
+// Model のメッシュの欄を変えて Ctrl+Z を押すと、欄のメッシュの名前も描くメッシュも変える前の物に戻る。
+// 自機は描くメッシュを PlayerAppearance が差し替えるので、ゴールとは別に見る
+TEST(EditorUndoActor, CtrlZRestoresTheModelMeshAndTheDrawnMesh)
+{
+    NS::Application app(HiddenAppDesc("メッシュの取り消しの試し", {160, 90}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        for (const char* actorFile : {"GoalActor", "PlayerActor"})
+        {
+            nlohmann::json doc = NS::MakeSceneJson();
+            AddActorJson(doc, actorFile, 1);
+            NS::Scene scene;
+            scene.SetSimulationEnabled(false);
+            scene.ResetFromJson(doc);
+            EditorController editor(scene);
+            editor.Setup({});
+            keyboard.ClearState();
+            editor.Tick();
+
+            NS::SceneActor* actor = scene.Actors().FindByActorId(1);
+            ASSERT_NE(actor, nullptr) << actorFile;
+            NS::Model* model = actor->ModelClassObj();
+            ASSERT_NE(model, nullptr) << actorFile;
+            const std::string meshBefore = model->MeshRef();
+            const NS::Mesh* drawnBefore = model->GetMesh();
+            ASSERT_NE(meshBefore, "wedge45") << actorFile;
+
+            // インスペクタの部品の一覧の行と同じ道で、メッシュの欄に道を書いて確定する
+            const NS::ClassObjInfo* row = nullptr;
+            NS::ForEachReflectedClassObj(actor, [&](const NS::ClassObjInfo& candidate, const NS::Object* part) {
+                if (part == model)
+                {
+                    row = &candidate;
+                }
+            });
+            ASSERT_NE(row, nullptr) << actorFile;
+            const NS::FieldDesc* field = NS::FindField(model->GetReflection(), "メッシュ");
+            ASSERT_NE(field, nullptr) << actorFile;
+            editor.SelectActorById(1);
+            editor.BeginClassObjEdit();
+            const std::string wedge = "wedge45";
+            ASSERT_EQ(field->set(model, &wedge), NS::FieldWriteResult::Written) << actorFile;
+            editor.NoteFieldEdit(actor, *row, "メッシュ");
+            editor.FinishFieldWrite(actor, NS::FieldType::Asset);
+            editor.CommitClassObjEdit();
+            ASSERT_EQ(model->MeshRef(), "wedge45") << actorFile;
+            // 自機の描くメッシュは PlayerAppearance の姿のメッシュなので、欄を変えても変わらない
+            if (std::string_view{actorFile} == "GoalActor")
+            {
+                ASSERT_NE(model->GetMesh(), drawnBefore);
+            }
+
+            PressCtrlKey(editor, keyboard, NS::OS::Key::Z);
+            const NS::SceneActor* restored = scene.Actors().FindByActorId(1);
+            ASSERT_NE(restored, nullptr) << actorFile;
+            const NS::Model* restoredModel = restored->ModelClassObj();
+            ASSERT_NE(restoredModel, nullptr) << actorFile;
+            EXPECT_EQ(restoredModel->MeshRef(), meshBefore) << actorFile;
+            EXPECT_EQ(restoredModel->GetMesh(), drawnBefore) << actorFile;
+        }
         keyboard.ClearState();
     }));
     EXPECT_EQ(app.Run(), 0);
