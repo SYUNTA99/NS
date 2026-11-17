@@ -4,7 +4,7 @@
 #include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorMode.h"
 #include "Editor/EditorUi.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "NSlib/App/Application.h"
 
 #include <imgui.h>
@@ -13,12 +13,12 @@ namespace NS
 {
     namespace Ed
     {
-        bool HasUnsavedWork(const LevelEditorController& editor, const ActionTimelinePanel& timeline) noexcept
+        bool HasUnsavedWork(const EditorController& editor, const ActionTimelinePanel& timeline) noexcept
         {
             return editor.HasUnsavedSceneChanges() || timeline.HasUnsavedChanges() || editor.HasUnsavedAssetWrites();
         }
 
-        bool SaveAllForQuit(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
+        bool SaveAllForQuit(EditorController& editor, ActionTimelinePanel& timeline) noexcept
         {
             bool sceneSaved = true;
             if (editor.HasUnsavedSceneChanges())
@@ -47,7 +47,7 @@ namespace NS
             return false;
         }
 
-        void QuitModal::Render(LevelEditorController& editor, ActionTimelinePanel& timeline) noexcept
+        void QuitModal::Render(EditorController& editor, ActionTimelinePanel& timeline) noexcept
         {
             if (!m_open)
             {
@@ -89,7 +89,7 @@ namespace NS
                     }
                 }
                 ImGui::Separator();
-                const bool playing = editor.CurrentMode() == LevelEditorController::Mode::Play;
+                const bool playing = editor.CurrentMode() == EditorController::Mode::Play;
                 ImGui::BeginDisabled(playing);
                 const bool saveClicked = ImGui::Button("保存して終了", ImVec2(180.0f, 0.0f));
                 ImGui::EndDisabled();

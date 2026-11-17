@@ -6,7 +6,7 @@
 #include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/MaterialParamFields.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
@@ -236,7 +236,7 @@ namespace NS
             return true;
         }
 
-        void InspectorPanel::DrawSceneSettings(LevelEditorController& editor)
+        void InspectorPanel::DrawSceneSettings(EditorController& editor)
         {
             ImGui::SeparatorText("シーン設定");
             if (!ImGui::CollapsingHeader("環境", ImGuiTreeNodeFlags_DefaultOpen))
@@ -346,7 +346,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawSceneMusicButtons(LevelEditorController& editor, bool playing)
+        void InspectorPanel::DrawSceneMusicButtons(EditorController& editor, bool playing)
         {
             const bool changed = m_musicDraft != editor.SceneMusic() ||
                                  m_musicVolumeDraft != editor.SceneMusicVolume() ||
@@ -371,7 +371,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::TakeSceneMusicFrom(const LevelEditorController& editor)
+        void InspectorPanel::TakeSceneMusicFrom(const EditorController& editor)
         {
             m_musicSource = std::string{editor.SceneMusic()};
             m_musicVolumeSource = editor.SceneMusicVolume();
@@ -456,7 +456,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor)
+        void InspectorPanel::DrawHitReactionSets(EditorController& editor, const SceneActor* actor)
         {
             NS_ASSERT(App, actor != nullptr, "束の欄を描くアクターが無い");
             // 束は元の .actor だけが持つので、派生を指すアクターでも元の .actor を読んで書く
@@ -551,7 +551,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawHitSensors(LevelEditorController& editor, SceneActor* actor)
+        void InspectorPanel::DrawHitSensors(EditorController& editor, SceneActor* actor)
         {
             NS_ASSERT(App, actor != nullptr, "センサーの欄を描くアクターが無い");
             HitSensorsObj* sensors = actor->HitSensorsClassObj();
@@ -600,7 +600,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::DrawSelectedAsset(LevelEditorController& editor, Object& asset)
+        void InspectorPanel::DrawSelectedAsset(EditorController& editor, Object& asset)
         {
             if (Material* material = Cast<Material>(&asset))
             {
@@ -739,7 +739,7 @@ namespace NS
             }
         }
 
-        void InspectorPanel::Render(LevelEditorController& editor) noexcept
+        void InspectorPanel::Render(EditorController& editor) noexcept
         {
             m_nameCommitId = 0;
             m_deriveRequested = false;

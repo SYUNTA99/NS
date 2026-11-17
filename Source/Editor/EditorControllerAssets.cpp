@@ -1,4 +1,4 @@
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "NSlib/Core/Assert.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
@@ -187,7 +187,7 @@ namespace NS
             }
         } // namespace
 
-        void LevelEditorController::MirrorPlayEditToBaseline(const SceneActor* actor,
+        void EditorController::MirrorPlayEditToBaseline(const SceneActor* actor,
                                                              const ClassObjInfo& row,
                                                              std::string_view fieldName)
         {
@@ -235,14 +235,14 @@ namespace NS
             m_playEdited = true;
         }
 
-        const nlohmann::json& LevelEditorController::PlayBaseline() const
+        const nlohmann::json& EditorController::PlayBaseline() const
         {
             NS_ASSERT(
                 App, m_playBaseline.has_value(), "PlayBaseline: プレイ中でないので、プレイを始めた時の JSON が無い");
             return *m_playBaseline;
         }
 
-        void LevelEditorController::NoteFieldEdit(const SceneActor* actor,
+        void EditorController::NoteFieldEdit(const SceneActor* actor,
                                                   const ClassObjInfo& row,
                                                   std::string_view fieldName)
         {
@@ -278,7 +278,7 @@ namespace NS
             m_actorFileEdits.push_back(ActorFileEdit{actor->Id(), &row, std::string{fieldName}});
         }
 
-        void LevelEditorController::NoteActorFileFieldEdit(const ClassObjInfo& row, std::string_view fieldName)
+        void EditorController::NoteActorFileFieldEdit(const ClassObjInfo& row, std::string_view fieldName)
         {
             if (m_actorFileDraft == nullptr)
             {
@@ -305,7 +305,7 @@ namespace NS
             m_actorFileEdits.push_back(ActorFileEdit{k_NoActorId, &row, std::string{fieldName}});
         }
 
-        void LevelEditorController::CommitActorFileEdits()
+        void EditorController::CommitActorFileEdits()
         {
             std::vector<ActorFileEdit> edits = std::move(m_actorFileEdits);
             m_actorFileEdits.clear();
@@ -358,21 +358,21 @@ namespace NS
             }
         }
 
-        void LevelEditorController::WriteActorFileHitReactions(std::string_view actorFileName,
+        void EditorController::WriteActorFileHitReactions(std::string_view actorFileName,
                                                                const std::vector<HitReactionSet>& sets)
         {
             PushActorFileChange(
                 actorFileName, [&sets](nlohmann::json& document) { WriteHitReactionSets(document, sets); }, "束");
         }
 
-        void LevelEditorController::WriteActorFileHitSensors(std::string_view actorFileName,
+        void EditorController::WriteActorFileHitSensors(std::string_view actorFileName,
                                                              const HitSensorsObj& sensors)
         {
             PushActorFileChange(
                 actorFileName, [&sensors](nlohmann::json& document) { sensors.WriteValues(document); }, "センサーの値");
         }
 
-        void LevelEditorController::PushActorFileChange(std::string_view actorFileName,
+        void EditorController::PushActorFileChange(std::string_view actorFileName,
                                                         const std::function<void(nlohmann::json&)>& change,
                                                         std::string_view what)
         {
@@ -393,7 +393,7 @@ namespace NS
             WriteActorFile(m_scene, m_unsavedActorFiles, name, after);
         }
 
-        bool LevelEditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
+        bool EditorController::CreateDerivedActorFile(std::string_view baseName, std::string_view name)
         {
             const std::optional<nlohmann::json> document = NewDerivedActorFile(baseName, name);
             if (!document.has_value())
@@ -403,7 +403,7 @@ namespace NS
             return AddActorFile(name, *document);
         }
 
-        bool LevelEditorController::DeriveActorFileFromActor(uint32 actorId, std::string_view name)
+        bool EditorController::DeriveActorFileFromActor(uint32 actorId, std::string_view name)
         {
             if (!IsSceneEditable())
             {
@@ -460,7 +460,7 @@ namespace NS
             return true;
         }
 
-        void LevelEditorController::FinishFieldWrite(SceneActor* actor, FieldType writtenType)
+        void EditorController::FinishFieldWrite(SceneActor* actor, FieldType writtenType)
         {
             NS_ASSERT(App, actor != nullptr, "FinishFieldWrite: アクターが null");
             // インスペクタで主対象の姿勢を書いた時は、控えた子孫へギズモと同じ差分をかける。姿勢が変わっていなければ差分は無い
@@ -483,7 +483,7 @@ namespace NS
             actor->ReloadAssets();
         }
 
-        bool LevelEditorController::ApplyMaterialToSelected(std::string_view matPath)
+        bool EditorController::ApplyMaterialToSelected(std::string_view matPath)
         {
             Application* app = Application::Get();
             if (!IsSceneEditable() || app == nullptr)
@@ -533,7 +533,7 @@ namespace NS
             return true;
         }
 
-        void LevelEditorController::SelectAsset(std::string_view assetPath)
+        void EditorController::SelectAsset(std::string_view assetPath)
         {
             std::optional<std::string> stored = OS::FileSystem::RelativeUnder(OS::FileSystem::ContentRoot(), assetPath);
             if (!stored)
@@ -565,7 +565,7 @@ namespace NS
             m_selectedAssetPath = std::move(*stored);
         }
 
-        bool LevelEditorController::IsAssetSelected(std::string_view assetPath) const
+        bool EditorController::IsAssetSelected(std::string_view assetPath) const
         {
             if (m_selectedAssetPath.empty())
             {
@@ -574,7 +574,7 @@ namespace NS
             return OS::FileSystem::RelativeUnder(OS::FileSystem::ContentRoot(), assetPath) == m_selectedAssetPath;
         }
 
-        Object* LevelEditorController::SelectedAsset()
+        Object* EditorController::SelectedAsset()
         {
             if (m_selectedAssetPath.empty())
             {
@@ -587,14 +587,14 @@ namespace NS
             return LoadSelectableAsset(m_selectedAssetPath);
         }
 
-        void LevelEditorController::ClearAssetSelection()
+        void EditorController::ClearAssetSelection()
         {
             CommitAssetEdit();
             m_selectedAssetPath.clear();
             m_actorFileDraft.reset();
         }
 
-        SceneActor* LevelEditorController::SelectedActorFile()
+        SceneActor* EditorController::SelectedActorFile()
         {
             const std::string name = OS::FileSystem::Stem(m_selectedAssetPath);
             const nlohmann::json* document = ActorFileLibrary::Get().Find(name);
@@ -613,12 +613,12 @@ namespace NS
             return m_actorFileDraft.get();
         }
 
-        void LevelEditorController::MarkAssetEdited() noexcept
+        void EditorController::MarkAssetEdited() noexcept
         {
             m_assetEdited = true;
         }
 
-        void LevelEditorController::CommitAssetEdit()
+        void EditorController::CommitAssetEdit()
         {
             if (!m_assetEdited)
             {
@@ -663,7 +663,7 @@ namespace NS
             }
         }
 
-        bool LevelEditorController::SavePendingAssets()
+        bool EditorController::SavePendingAssets()
         {
             const std::set<std::string> actorFiles = m_unsavedActorFiles;
             for (const std::string& name : actorFiles)

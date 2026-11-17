@@ -27,7 +27,7 @@ namespace NS
 {
     namespace Ed
     {
-        class LevelEditorController;
+        class EditorController;
 
         //! ゲームの更新・描画に編集用の UI と自由視点を重ねるレイヤー
         class EditorLayer : public Layer
@@ -42,29 +42,29 @@ namespace NS
             void OnRender() override;
 
         private:
-            static void HandleModeToggleInput(LevelEditorController& editor, const OS::InputPresses& presses) noexcept;
-            static void HandlePauseInput(LevelEditorController& editor, const OS::InputPresses& presses) noexcept;
+            static void HandleModeToggleInput(EditorController& editor, const OS::InputPresses& presses) noexcept;
+            static void HandlePauseInput(EditorController& editor, const OS::InputPresses& presses) noexcept;
 
             //! エディタ UI 全体の表示・非表示を切り替える入力を見る
-            void HandleUiVisibilityInput(LevelEditorController& editor, const OS::InputPresses& presses) noexcept;
+            void HandleUiVisibilityInput(EditorController& editor, const OS::InputPresses& presses) noexcept;
 
             //! 画面最上部に File / Edit / SceneActor 等のメインメニューバーを描画する
             //! 帯の高さ分だけビューポート作業領域が下がるので、後続のツールバー / ドックは自動でずれる
-            void RenderMainMenuBar(LevelEditorController& editor) noexcept;
+            void RenderMainMenuBar(EditorController& editor) noexcept;
 
             //! 画面最上部にプレイ制御ツールバーの帯を描画する
             //! @return 帯の高さ。ドックホストはこの分だけ上端を空ける
-            [[nodiscard]] static float RenderPlayToolbar(LevelEditorController& editor) noexcept;
+            [[nodiscard]] static float RenderPlayToolbar(EditorController& editor) noexcept;
 
             //! 全面化中のパネルだけをワークエリア全面へ描く。ドックの配置は別途維持する
-            void RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept;
+            void RenderMaximizedPanel(EditorController& editor, float topOffset) noexcept;
 
             //! 編集モードのキー操作を処理する。Delete = 削除、Ctrl+D = 複製、F = 選択物へ寄る
             //! 押した瞬間は OnUpdate が固定ステップごとに読むので、描画からでなく更新から呼ぶ
-            static void HandleEditShortcuts(LevelEditorController& editor, const OS::InputPresses& presses) noexcept;
+            static void HandleEditShortcuts(EditorController& editor, const OS::InputPresses& presses) noexcept;
 
             std::unique_ptr<UI::ImGuiContext> m_imgui;
-            std::unique_ptr<LevelEditorController> m_controller;
+            std::unique_ptr<EditorController> m_controller;
             OS::InputReader m_inputReader; // OnUpdate の頭で固定ステップごとに読む
 
             ActorListPanel m_actorList;

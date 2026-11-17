@@ -1,4 +1,4 @@
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/ActionTimelinePanel.h"
 #include "Editor/QuitModal.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -19,7 +19,7 @@
 #include <string>
 #include <system_error>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 namespace
 {
@@ -117,7 +117,7 @@ TEST(EditorMaterialFile, FailedSelectionCommitIsRetriedBeforeQuitting)
     NS::AssetManager assets{NS::OS::FileSystem::ContentRoot()};
     const NS::AssetManagerScope useAssets{assets};
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.SelectAsset(path);
     NS::Material* material = NS::Cast<NS::Material>(editor.SelectedAsset());
     ASSERT_NE(material, nullptr);

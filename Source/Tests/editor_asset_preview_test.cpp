@@ -2,7 +2,7 @@
 #include "Editor/AssetsPanel.h"
 #include "Editor/AssetPicker.h"
 #include "Editor/PanelIds.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/CoreObject/Asset/AssetManager.h"
 #include "NSlib/CoreObject/Asset/Material.h"
@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 namespace
 {
@@ -133,7 +133,7 @@ namespace
         NS::AssetManagerScope m_useAssets{m_assets};
         NS::UI::ImGuiContext m_gui{m_app.Window(), m_app.Device()};
         NS::Scene m_scene;
-        LevelEditorController m_editor{m_scene};
+        EditorController m_editor{m_scene};
         NS::Ed::InspectorPanel m_inspector;
         NS::Ed::AssetsPanel m_assetsPanel;
     };

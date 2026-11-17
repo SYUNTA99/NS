@@ -7,7 +7,7 @@ namespace NS
 {
     namespace Ed
     {
-        class LevelEditorController;
+        class EditorController;
 
         //! ゲーム視点を映すパネル。ゲーム操作の入力はプレイ中だけ受け付ける
         class GameViewPanel : public NonCopyable
@@ -25,14 +25,14 @@ namespace NS
             void ResetVisibility() noexcept { m_surface.ResetVisibility(); }
 
             //! Game パネルを描き、プレイ中は入力矩形とカーソルの重なりを controller へ渡す
-            void Render(LevelEditorController& editor) noexcept;
+            void Render(EditorController& editor) noexcept;
 
             //! 中央以外を全面化する間、前面の矩形とカーソルの重なりを無効化する
-            void Suppress(LevelEditorController& editor) noexcept;
+            void Suppress(EditorController& editor) noexcept;
 
             //! 描画先とゲーム視点のビューを返す
             //! @return 可視ならビュー、不可視なら nullopt
-            [[nodiscard]] std::optional<SceneView> CollectView(LevelEditorController& editor) noexcept;
+            [[nodiscard]] std::optional<SceneView> CollectView(EditorController& editor) noexcept;
 
             //! 描画先を破棄する。D3DDevice が非所有ポインタを踏まないよう外した後に呼ぶ
             void ReleaseTarget() noexcept { m_surface.Release(); }

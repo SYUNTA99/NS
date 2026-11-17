@@ -3,7 +3,7 @@
 #include "Editor/ActionTimelineEdit.h"
 #include "Editor/EditorUi.h"
 #include "Editor/InspectorReflection.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/CoreObject/Action/ActorAction.h"
@@ -102,7 +102,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::FollowSelection(LevelEditorController& editor)
+        void ActionTimelinePanel::FollowSelection(EditorController& editor)
         {
             const SceneActor* selected = editor.SelectedActor();
             if (selected == nullptr)
@@ -118,7 +118,7 @@ namespace NS
             LoadWorking(actorFile, "");
         }
 
-        void ActionTimelinePanel::ApplyWorking(LevelEditorController& editor)
+        void ActionTimelinePanel::ApplyWorking(EditorController& editor)
         {
             ActorFileLibrary& library = ActorFileLibrary::Get();
             const nlohmann::json* current = library.Find(m_actorFile);
@@ -185,9 +185,9 @@ namespace NS
             return true;
         }
 
-        void ActionTimelinePanel::Render(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::Render(EditorController& editor) noexcept
         {
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            const bool playMode = editor.CurrentMode() == EditorController::Mode::Play;
             if (ImGui::Begin(k_PanelActionTimeline))
             {
                 if (playMode)
@@ -205,7 +205,7 @@ namespace NS
             ImGui::End();
         }
 
-        void ActionTimelinePanel::RenderActionButtons(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::RenderActionButtons(EditorController& editor) noexcept
         {
             ImGui::SeparatorText("動作");
             if (const SceneActor* selected = editor.SelectedActor())
@@ -233,7 +233,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::RenderActionChoice(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::RenderActionChoice(EditorController& editor) noexcept
         {
             std::string actionLabel = "(動作が無い)";
             if (const ActorActionInfo* action = EditingAction())
@@ -295,7 +295,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::RevertDirtyActions(LevelEditorController& editor)
+        void ActionTimelinePanel::RevertDirtyActions(EditorController& editor)
         {
             ActorFileLibrary& library = ActorFileLibrary::Get();
             std::string failed;
@@ -351,7 +351,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::RenderFileButtons(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::RenderFileButtons(EditorController& editor) noexcept
         {
             if (ImGui::Button("保存"))
             {
@@ -369,7 +369,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::RenderAddButtons(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::RenderAddButtons(EditorController& editor) noexcept
         {
             ImGui::BeginDisabled(EditingAction() == nullptr);
             const std::vector<ActionEventInfo>& types = ItemTypes();
@@ -533,7 +533,7 @@ namespace NS
             }
         }
 
-        void ActionTimelinePanel::RenderSelectedRow(LevelEditorController& editor) noexcept
+        void ActionTimelinePanel::RenderSelectedRow(EditorController& editor) noexcept
         {
             ActorActionInfo* action = WorkingAction();
             if (action == nullptr || !m_selectedRow.has_value())

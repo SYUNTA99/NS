@@ -1,4 +1,4 @@
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/EditorActors.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/IGetCameraTarget.h"
@@ -18,7 +18,7 @@
 #include <string>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // 追従カメラは追う相手を取得して持つ。エディタで「追従対象」を書き換えた後は、書き換えた先の相手を追う
 
@@ -211,7 +211,7 @@ TEST(ThirdPersonFollow, FollowsTheNewTargetAfterTheInspectorRewritesIt)
     ASSERT_TRUE(world.camera->IsAppeared());
     EXPECT_NEAR(world.LookAfterUpdate().x, 0.0f, 1.0e-4f);
 
-    LevelEditorController editor(world.scene);
+    EditorController editor(world.scene);
     ASSERT_EQ(NS::ApplyJsonFields(&world.camera->Vcam(),
                                   nlohmann::json{{"追従対象", nlohmann::json{{"ref", world.second->Id()}}}}),
               0u);

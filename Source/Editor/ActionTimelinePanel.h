@@ -16,12 +16,12 @@ namespace NS
 {
     namespace Ed
     {
-        class LevelEditorController;
+        class EditorController;
 
         class ActionTimelinePanel : public NonCopyable
         {
         public:
-            void Render(LevelEditorController& editor) noexcept;
+            void Render(EditorController& editor) noexcept;
 
             [[nodiscard]] const std::string& EditingActorFile() const noexcept { return m_actorFile; }
             [[nodiscard]] const ActorActionInfo* EditingAction() const noexcept;
@@ -33,20 +33,20 @@ namespace NS
             [[nodiscard]] const std::string& Status() const noexcept { return m_status; }
 
         private:
-            void FollowSelection(LevelEditorController& editor);
-            void RenderActionButtons(LevelEditorController& editor) noexcept;
-            void RenderActionChoice(LevelEditorController& editor) noexcept;
-            void RenderFileButtons(LevelEditorController& editor) noexcept;
-            void RenderAddButtons(LevelEditorController& editor) noexcept;
+            void FollowSelection(EditorController& editor);
+            void RenderActionButtons(EditorController& editor) noexcept;
+            void RenderActionChoice(EditorController& editor) noexcept;
+            void RenderFileButtons(EditorController& editor) noexcept;
+            void RenderAddButtons(EditorController& editor) noexcept;
             void RenderBands() noexcept;
-            void RenderSelectedRow(LevelEditorController& editor) noexcept;
+            void RenderSelectedRow(EditorController& editor) noexcept;
             void RenderSelectedEvent(ActorActionEvent& event, bool& changed) noexcept;
             void RenderSelectedSensor(const SceneActor* selected, ActionSensorEvent& sensor, bool& changed) noexcept;
 
             //! 未保存の .actor ごとに、動作だけをファイルの中身へ戻す。ファイルが読めない .actor は未保存のまま残す
-            void RevertDirtyActions(LevelEditorController& editor);
+            void RevertDirtyActions(EditorController& editor);
             void LoadWorking(std::string_view name, std::string_view action);
-            void ApplyWorking(LevelEditorController& editor);
+            void ApplyWorking(EditorController& editor);
             [[nodiscard]] ActorActionInfo* WorkingAction() noexcept;
 
             std::string m_actorFile;

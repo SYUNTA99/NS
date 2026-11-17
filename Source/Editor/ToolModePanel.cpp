@@ -1,6 +1,6 @@
 #include "Editor/ToolModePanel.h"
 
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 
 #include <imgui.h>
@@ -9,7 +9,7 @@ namespace NS
 {
     namespace Ed
     {
-        void ToolModePanel::Render(LevelEditorController& editor) noexcept
+        void ToolModePanel::Render(EditorController& editor) noexcept
         {
             // 固定座標を置くとドッキング配置と競合するので位置はドッキング / imgui.ini 任せ
             if (ImGui::Begin(k_PanelEditMode))

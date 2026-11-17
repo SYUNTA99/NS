@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Game/Level/GameScene.h"
 #include "Game/PlayerActor.h"
 #include "NSlib/CoreObject/ClassObjs/PlayerInput.h"
@@ -11,7 +11,7 @@
 
 #include <gtest/gtest.h>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // エディタが世界を動かし直す時 (再開・コマ送り) に、止めている間の押しを自機へ渡さず、
 // エディタの読み手の押しは残す事を縛る。ツールバーは描画の中から呼ぶので、エディタがまだ読んでいない押しがある
@@ -47,7 +47,7 @@ TEST(EditorPlayResume, ResumeDropsPausedPressesForThePlayerOnly)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.EnterPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);
@@ -73,7 +73,7 @@ TEST(EditorPlayResume, StepFrameDropsPausedPressesForThePlayerOnly)
 {
     GL::Level::GameScene scene;
     scene.ResetFromJson(SceneWithPlayer());
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.EnterPlay();
     PlayerActor* player = FindPlayer(scene.Actors());
     ASSERT_NE(player, nullptr);

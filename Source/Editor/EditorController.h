@@ -58,11 +58,11 @@ namespace NS
     namespace Ed
     {
         //! シーンの編集操作と編集・プレイの切替を管理する
-        class LevelEditorController : public NonCopyable
+        class EditorController : public NonCopyable
         {
         public:
-            explicit LevelEditorController(Scene& scene) noexcept;
-            ~LevelEditorController();
+            explicit EditorController(Scene& scene) noexcept;
+            ~EditorController();
 
             //! scene の OnStart 完了後に呼ぶ。自由視点カメラ / EditorMode / ギズモを立ち上げ編集モードへ入り、
             //! startLevelName のレベルを EditorMode::OpenLevel で開く。空なら開かず、今のシーンのまま編集を始める

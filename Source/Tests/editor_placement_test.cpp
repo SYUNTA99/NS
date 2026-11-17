@@ -1,5 +1,5 @@
 #include "Editor/EditorActors.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/GoalActor.h"
@@ -29,14 +29,14 @@
 #include <string>
 #include <string_view>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // エディタの配置 (ヒエラルキーの追加メニュー・メッシュの投げ込み) が、SceneActor のクラスごと置くことを縛る
 
 TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
 
@@ -52,7 +52,7 @@ TEST(EditorPlacement, PlaceItemSpawnsActorOfItsClassAndSelectsIt)
 TEST(EditorPlacement, PlacedPartsUseTheItemsMesh)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem(NS::Ed::k_PartsSlopeLabel);
     ASSERT_TRUE(item.has_value());
 
@@ -98,7 +98,7 @@ TEST(EditorPlacement, PoseFunctionsWriteTheJsonTheActorReads)
 TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
 
     const TestLogCapture log;
     editor.AddMeshParts(NS::OS::FileSystem::Combine(
@@ -184,7 +184,7 @@ TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
 {
     {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
@@ -194,7 +194,7 @@ TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
     {
         NS::Scene scene;
         const NS::uint32 id = SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor")->Id();
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
         editor.SelectActorById(id);
         editor.DeleteSelectedActor();
@@ -210,7 +210,7 @@ TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
     NS::Scene scene;
     const NS::uint32 id = SpawnCountedGoal(scene, scope);
     ASSERT_NE(id, NS::k_NoActorId);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.SelectActorById(id);
 
     editor.DeleteSelectedActor();

@@ -3,7 +3,7 @@
 #include "Editor/GizmoEditor.h"
 #include "Editor/GridMath.h"
 #include "Editor/InspectorPanel.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "Editor/QuitModal.h"
@@ -53,13 +53,13 @@
 #include <system_error>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 namespace
 {
     // インスペクタの部品の一覧の行と同じ道で、actor の姿勢の項目 fieldName に value を書く
     template <class Value>
-    void WritePoseField(LevelEditorController& editor, NS::SceneActor* actor, const char* fieldName, const Value& value)
+    void WritePoseField(EditorController& editor, NS::SceneActor* actor, const char* fieldName, const Value& value)
     {
         NS_ASSERT(Game, actor != nullptr, "WritePoseField: 渡したアクターか部品が無い");
         const NS::ClassObjInfo* row = nullptr;
@@ -102,7 +102,7 @@ namespace
         return std::nullopt;
     }
 
-    void DragHandle(LevelEditorController& editor, NS::OS::Mouse& mouse, NS::Vector2 handle)
+    void DragHandle(EditorController& editor, NS::OS::Mouse& mouse, NS::Vector2 handle)
     {
         mouse.OnMove(static_cast<int>(handle.x), static_cast<int>(handle.y));
         mouse.OnButtonDown(NS::OS::MouseButton::Left);
@@ -137,7 +137,7 @@ TEST(EditorSelection, EscapeClearsTheSelection)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -163,7 +163,7 @@ TEST(EditorSelection, PlayDoesNotEditTheLevel)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -189,7 +189,7 @@ TEST(EditorSelection, PlayTransformEditReachesTheBaseline)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -221,7 +221,7 @@ TEST(EditorSelection, PlayBaselineHoldsThePositionBeforeEnterPlay)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
         editor.PlaceItem(*item);
@@ -251,7 +251,7 @@ TEST(EditorSelection, GizmoPoseEditBecomesASceneOverride)
     AddActorJson(doc, "GoalActor", 1);
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.SelectActorById(1);
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
@@ -283,7 +283,7 @@ TEST(EditorSelection, PlayFieldEditIsKeptWhenReturningToEdit)
         AddActorJson(doc, "GoalActor", 1);
         GL::Level::GameScene scene;
         scene.ResetFromJson(doc);
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const NS::uint32 id = 1;
         ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
@@ -348,7 +348,7 @@ TEST(EditorSelection, PlayFieldEditRevertedByHandStaysUnsaved)
         NS::ActorJsonClassObjs(NS::SceneJsonActors(doc)[0])["Model"]["基本色"] = {0.9f, 0.1f, 0.1f, 1.0f};
         GL::Level::GameScene scene;
         scene.ResetFromJson(doc);
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
         editor.EnterPlay();
@@ -383,7 +383,7 @@ TEST(EditorSelection, ApplyingAMaterialKeepsTheColorOverride)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::string stone = "Assets/Materials/stone.mat";
         const std::string stonePath = NS::OS::FileSystem::Combine(NS::OS::FileSystem::ContentRoot(), stone);
         const NS::Vector3 stoneColor = app.Assets().LoadMaterial(stone)->BaseColor().ToVector3();
@@ -418,7 +418,7 @@ TEST(EditorSelection, AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
         source.SetSimulationEnabled(false);
         NS::uint32 id = NS::k_NoActorId;
         {
-            LevelEditorController placing(source);
+            EditorController placing(source);
             placing.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
             id = placing.SelectedActorId();
         }
@@ -426,7 +426,7 @@ TEST(EditorSelection, AppliedMaterialIsSavedAndMarksTheSceneUnsaved)
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
         scene.ResetFromJson(source.ToJson());
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.SelectActorById(id);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges());
 
@@ -457,7 +457,7 @@ TEST(EditorSelection, DraggingTheFollowCameraMovesIt)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("FollowCameraActor");
         ASSERT_TRUE(item.has_value());
@@ -499,7 +499,7 @@ TEST(EditorSelection, DraggingMultipleSelectedActorsMovesEachOnce)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
@@ -549,7 +549,7 @@ TEST(EditorSelection, GizmoMovesAnIndependentOffsetActor)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
@@ -598,7 +598,7 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
     ImGuiIO& io = ImGui::GetIO();
 
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -638,7 +638,7 @@ TEST(EditorSelection, RenameGoesToTheActorBeingTyped)
 
 namespace
 {
-    void RenderInspectorFrame(NS::Ed::InspectorPanel& inspector, LevelEditorController& editor)
+    void RenderInspectorFrame(NS::Ed::InspectorPanel& inspector, EditorController& editor)
     {
         ImGui::NewFrame();
         inspector.Render(editor);
@@ -646,7 +646,7 @@ namespace
     }
 
     // 名前の欄を打ち始めた時に欄が持っていた文字。何も打たずに離すので改名は流れない
-    std::string ReadInspectorNameField(NS::Ed::InspectorPanel& inspector, LevelEditorController& editor)
+    std::string ReadInspectorNameField(NS::Ed::InspectorPanel& inspector, EditorController& editor)
     {
         ImGuiWindow* window = ImGui::FindWindowByName(NS::Ed::k_PanelInspector);
         if (window == nullptr)
@@ -676,7 +676,7 @@ TEST(EditorSelection, InspectorNameFieldFollowsRename)
     ImGuiContext* gui = CreateHeadlessImGui(ImVec2{800.0f, 600.0f});
 
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -718,7 +718,7 @@ TEST(EditorSelection, InspectorAxisInputsWriteOnlyThatAxis)
     ImGuiIO& io = ImGui::GetIO();
 
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.PlaceItem(*NS::Ed::FindPlacementItem("GoalActor"));
     const NS::uint32 id = editor.SelectedActorId();
     const NS::Vector3 beforePosition = editor.SelectedActor()->TransformObj().Position();
@@ -780,7 +780,7 @@ TEST(EditorSelection, InspectorAxisInputsWriteOnlyThatAxis)
 TEST(EditorSelection, AssetAndActorSelectionsExcludeEachOther)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -816,7 +816,7 @@ TEST(EditorSelection, ClearingTheAssetSelectionWritesTheEditedMaterial)
         ASSERT_TRUE(stoneText.has_value());
 
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
@@ -904,7 +904,7 @@ TEST(EditorCreate, EveryCreatePathMarksTheSceneUnsavedAndPlayCreatesNothing)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> prop = NS::Ed::FindPlacementItem("GoalActor");
         const std::optional<NS::Ed::PlacementItem> camera = NS::Ed::FindPlacementItem("FollowCameraActor");
@@ -987,7 +987,7 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             std::as_bytes(std::span<const char>{levelText.data(), levelText.size()})));
 
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::optional<NS::Ed::PlacementItem> cube =
             NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel);
@@ -1087,7 +1087,7 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 namespace
 {
     // GoalActor を count 体置き、置いた順の永続 id を返す
-    std::vector<NS::uint32> PlaceGoals(LevelEditorController& editor, int count)
+    std::vector<NS::uint32> PlaceGoals(EditorController& editor, int count)
     {
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         std::vector<NS::uint32> ids;
@@ -1117,7 +1117,7 @@ TEST(EditorParent, ParentFieldSurvivesSaveAndLoadByName)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
         SetParent(scene, ids[1], ids[0]);
         const std::string parentName = scene.Actors().FindByActorId(ids[0])->Name();
@@ -1167,7 +1167,7 @@ TEST(EditorParent, CollectsDescendantsOnceEvenInACycle)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 4);
         SetParent(scene, ids[1], ids[0]);
         SetParent(scene, ids[2], ids[1]);
@@ -1192,7 +1192,7 @@ TEST(EditorParent, CannotParentToSelfOrDescendant)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
         SetParent(scene, ids[1], ids[0]);
         SetParent(scene, ids[2], ids[1]);
@@ -1215,7 +1215,7 @@ namespace
     // 主対象 primary を選び直し、ギズモの移動の取っ手を 1 回ドラッグする。選ぶ物は selection
     void DragPrimary(NS::Application& app,
                      NS::Scene& scene,
-                     LevelEditorController& editor,
+                     EditorController& editor,
                      std::vector<NS::uint32> selection,
                      NS::uint32 primary)
     {
@@ -1248,7 +1248,7 @@ TEST(EditorParent, GizmoMovesDescendantsWithTheParent)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
         SetParent(scene, ids[1], ids[0]);
@@ -1273,7 +1273,7 @@ TEST(EditorParent, SelectingParentAndChildMovesTheChildOnce)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
         SetParent(scene, ids[1], ids[0]);
@@ -1295,7 +1295,7 @@ TEST(EditorParent, ReparentKeepsWorldAndSurvivesSaving)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         GL::Level::GameScene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
         const NS::Vector3 childBefore = WorldPosition(scene, ids[1]);
 
@@ -1330,7 +1330,7 @@ TEST(EditorParent, InspectorPoseEditMovesDescendants)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 3);
         SetParent(scene, ids[1], ids[0]);
         editor.SelectActors({ids[2], ids[0]}, ids[0]);
@@ -1358,7 +1358,7 @@ TEST(EditorParent, ParentBackAtStartPutsChildrenBack)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         const std::vector<NS::uint32> ids = PlaceGoals(editor, 2);
         SetParent(scene, ids[1], ids[0]);
         editor.SelectActorById(ids[0]);
@@ -1389,25 +1389,25 @@ TEST(EditorUnsaved, RenameGizmoAndReparentMarkTheSceneUnsaved)
     struct Edit
     {
         const char* name;
-        std::function<void(LevelEditorController&, NS::Scene&)> run;
+        std::function<void(EditorController&, NS::Scene&)> run;
     };
     const std::vector<Edit> edits{
-        {"改名", [](LevelEditorController& editor, NS::Scene&) { editor.RenameActor(1, "改名した"); }},
+        {"改名", [](EditorController& editor, NS::Scene&) { editor.RenameActor(1, "改名した"); }},
         {"ギズモ",
-         [](LevelEditorController& editor, NS::Scene& scene) {
+         [](EditorController& editor, NS::Scene& scene) {
              editor.SelectActorById(1);
              editor.BeginTransformEdit();
              scene.Actors().FindByActorId(1)->TransformObj().SetPosition(NS::Vector3{4.0f, 0.0f, 0.0f});
              editor.CommitTransformEdit();
          }},
         {"親の付け替え",
-         [](LevelEditorController& editor, NS::Scene&) { EXPECT_TRUE(editor.ReparentActor(2, 1)); }},
+         [](EditorController& editor, NS::Scene&) { EXPECT_TRUE(editor.ReparentActor(2, 1)); }},
     };
     for (const Edit& edit : edits)
     {
         NS::Scene scene;
         scene.ResetFromJson(doc);
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         ASSERT_FALSE(editor.Editor().HasUnsavedChanges()) << edit.name;
         edit.run(editor, scene);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges()) << edit.name;

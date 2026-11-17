@@ -1,6 +1,6 @@
 #include "Editor/InspectorPanel.h"
 #include "Editor/InspectorReflection.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "Game/Level/ThirdPersonFollow.h"
@@ -43,7 +43,7 @@
 #include <variant>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // コンボで参照先を選ぶと、値が変わる前に編集の始まりを、変わった後に確定を返す
 // 始まりが値の後だと、控えが変わった後の値になり、確定で変化を見落としてシーンが未保存にならない
@@ -346,7 +346,7 @@ namespace
     class InspectorFrames
     {
     public:
-        explicit InspectorFrames(LevelEditorController& editor) : m_editor(editor)
+        explicit InspectorFrames(EditorController& editor) : m_editor(editor)
         {
             m_gui = CreateHeadlessImGui(ImVec2{800.0f, 2000.0f}, HeadlessImGuiInput::Instant);
         }
@@ -364,7 +364,7 @@ namespace
         }
 
     private:
-        LevelEditorController& m_editor;
+        EditorController& m_editor;
         NS::Ed::InspectorPanel m_inspector;
         ImGuiContext* m_gui = nullptr;
     };
@@ -411,7 +411,7 @@ namespace
     class InspectorFrame
     {
     public:
-        explicit InspectorFrame(LevelEditorController& editor) : m_editor(editor)
+        explicit InspectorFrame(EditorController& editor) : m_editor(editor)
         {
             m_gui = CreateHeadlessImGui(ImVec2{800.0f, 6000.0f}, HeadlessImGuiInput::Instant);
         }
@@ -469,7 +469,7 @@ namespace
         }
 
     private:
-        LevelEditorController& m_editor;
+        EditorController& m_editor;
         NS::Ed::InspectorPanel m_inspector;
         ImGuiContext* m_gui = nullptr;
     };
@@ -547,7 +547,7 @@ TEST(EditorInspector, FieldChangeReachesTheCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("SphereProbeActor", CodeValuesActorFile("SphereProbeActor")));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.PlaceItem(*NS::Ed::FindPlacementItem("SphereProbeActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -588,7 +588,7 @@ TEST(EditorInspector, PoseRowEditBecomesASceneOverride)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.PlaceItem(*NS::Ed::FindPlacementItem("GoalActor"));
     NS::SceneActor* prop = editor.SelectedActor();
     ASSERT_NE(prop, nullptr);
@@ -626,7 +626,7 @@ TEST(EditorInspector, FieldRevertReachesTheMeshAndTheCollision)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
     NS::SceneActor* parts = editor.SelectedActor();
     ASSERT_NE(parts, nullptr);
@@ -678,7 +678,7 @@ TEST(EditorInspector, ActorFileWriteReachesTheFollowersCollision)
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("SphereProbeActor", CodeValuesActorFile("SphereProbeActor")));
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("SphereProbeActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -721,7 +721,7 @@ TEST(EditorInspector, MaterialApplyReachesTheModelDraw)
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
         NS::Scene scene;
         scene.SetSimulationEnabled(false);
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.PlaceItem(*NS::Ed::FindPlacementItem(NS::Ed::k_PartsCubeLabel));
         NS::SceneActor* parts = editor.SelectedActor();
         ASSERT_NE(parts, nullptr);
@@ -742,7 +742,7 @@ TEST(EditorInspector, SkyboxEditMarksTheSceneUnsaved)
     nlohmann::json doc = NS::MakeSceneJson();
     NS::WriteSceneEnvironment(doc, NS::SceneEnvironment{.skybox = "Assets/Skybox/kurt"});
     scene.ResetFromJson(doc);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
 
     InspectorFrames frames(editor);
     frames.Frame();
@@ -762,7 +762,7 @@ TEST(EditorInspector, MusicVolumeEditAppliesOnlyWhenApplyIsPressed)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const float volumeBefore = scene.Environment().musicVolume;
     ASSERT_NE(volumeBefore, 0.25f);
 
@@ -808,7 +808,7 @@ TEST(EditorInspector, SetSceneMusicRejectsInvalidValues)
 {
     NS::Scene scene;
     scene.SetSimulationEnabled(false);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
 
     const float distance = editor.SceneSoundFullVolumeDistance();
 
@@ -836,7 +836,7 @@ TEST(EditorInspector, SceneActorShowsItsActorFileSetsAndAnEditReachesTheNextHitA
     const ScopedActorFileDirectory scope("InspectorHitSets");
     ASSERT_TRUE(NS::ActorFileLibrary::Get().Set("PlayerActor", shipped));
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("PlayerActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);

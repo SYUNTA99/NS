@@ -1,4 +1,4 @@
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "NSlib/Core/Types.h"
 #include "NSlib/CoreObject/Reflection/ReflectedClassObjs.h"
 
@@ -187,7 +187,7 @@ namespace NS
             }
         } // namespace
 
-        void LevelEditorController::DrawSceneViewShapes(Gfx::DebugShapes& shapes, const Matrix& viewProjection) noexcept
+        void EditorController::DrawSceneViewShapes(Gfx::DebugShapes& shapes, const Matrix& viewProjection) noexcept
         {
             if (m_mode != Mode::Edit)
             {
@@ -207,7 +207,7 @@ namespace NS
             RenderSelectionOutlines(shapes);
         }
 
-        void LevelEditorController::RenderCameraGizmos(Gfx::DebugShapes& shapes,
+        void EditorController::RenderCameraGizmos(Gfx::DebugShapes& shapes,
                                                        const Matrix& viewProjection,
                                                        Size2D viewport) noexcept
         {
@@ -242,7 +242,7 @@ namespace NS
             }
         }
 
-        void LevelEditorController::RenderSelectionOutlines(Gfx::DebugShapes& shapes) noexcept
+        void EditorController::RenderSelectionOutlines(Gfx::DebugShapes& shapes) noexcept
         {
             // ギズモが出るのは主対象だけなので、一緒に選んでいる分は枠で見せる
             if (m_selectionIds.size() < 2)
@@ -272,7 +272,7 @@ namespace NS
             }
         }
 
-        void LevelEditorController::RenderCollisionWireframes(Gfx::DebugShapes& shapes, bool all) noexcept
+        void EditorController::RenderCollisionWireframes(Gfx::DebugShapes& shapes, bool all) noexcept
         {
             const Color color{0.35f, 1.0f, 0.45f, 1.0f};
             // センサーは当たりの緑と見分けが付く橙

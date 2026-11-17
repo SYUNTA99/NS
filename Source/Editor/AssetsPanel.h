@@ -17,24 +17,24 @@ namespace NS
     }
     namespace Ed
     {
-        class LevelEditorController;
+        class EditorController;
 
         class AssetsPanel : public NonCopyable
         {
         public:
             AssetsPanel();
             ~AssetsPanel();
-            void Render(LevelEditorController& editor) noexcept;
+            void Render(EditorController& editor) noexcept;
 
         private:
             //! 開いたフォルダの中身を辿り、素材の選択とドラッグを受け付ける
-            void RenderTree(std::string_view dir, LevelEditorController& editor) noexcept;
-            void RenderFiles(const std::vector<std::string>& files, LevelEditorController& editor);
-            void RenderTile(const std::string& file, LevelEditorController& editor, float width);
-            void RenderSceneOpen(LevelEditorController& editor);
-            void RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder);
-            void RenderSceneCreate(LevelEditorController& editor);
-            [[nodiscard]] bool OpenPendingScene(LevelEditorController& editor);
+            void RenderTree(std::string_view dir, EditorController& editor) noexcept;
+            void RenderFiles(const std::vector<std::string>& files, EditorController& editor);
+            void RenderTile(const std::string& file, EditorController& editor, float width);
+            void RenderSceneOpen(EditorController& editor);
+            void RenderCreateMenu(std::string_view directory, EditorController& editor, bool onFolder);
+            void RenderSceneCreate(EditorController& editor);
+            [[nodiscard]] bool OpenPendingScene(EditorController& editor);
             const Gfx::D3DTexture* LoadThumbnail(const std::string& file);
             const Gfx::D3DTexture* LoadActorThumbnail(const std::string& file);
 

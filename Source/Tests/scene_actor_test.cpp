@@ -1,6 +1,6 @@
 #include "Editor/ActionTimelinePanel.h"
 #include "Editor/EditorActors.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/QuitModal.h"
 #include "Game/Level/DeathZoneActor.h"
 #include "Game/Level/GoalActor.h"
@@ -45,7 +45,7 @@
 #include <string>
 #include <string_view>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // シーンの保存と読込が SceneActor のクラスを保つことを縛る
 // 部品の構成はクラスが決め、データは値だけを運ぶ
@@ -724,7 +724,7 @@ TEST(SceneActor, DirectEffectEditUpdatesAllActorsOfTheFile)
     });
     ASSERT_NE(row, nullptr);
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("EffectEditorRock");
-    LevelEditorController controller{scene};
+    EditorController controller{scene};
     controller.SelectActorById(1);
     controller.BeginClassObjEdit();
     ASSERT_EQ(NS::ApplyJsonFields(rock->part.get(), {{"資産", core->Path()}}), 0u);
@@ -771,7 +771,7 @@ TEST(SceneActor, FieldEditKeepsAFileChangedOutsideAndStaysPending)
     const std::string handEdit = *saved + "\n";
     WriteActorFile(directory.Path(), "ChangedGoal", handEdit);
 
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.SelectActorById(1);
     editor.BeginClassObjEdit();
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);
@@ -807,7 +807,7 @@ TEST(SceneActor, FailedDirectFieldSaveStaysPendingWhileTheSceneIsSaved)
     ASSERT_NE(row, nullptr);
     const std::string blocker = NS::OS::FileSystem::Combine(directory.Path(), "FailedGoal.actor.tmp");
     ASSERT_TRUE(NS::OS::FileSystem::CreateDirectories(blocker));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.SelectActorById(1);
     editor.BeginClassObjEdit();
     ASSERT_EQ(NS::ApplyJsonFields(&goal->Params(), {{"クリアの暗転秒", 0.8f}}), 0u);

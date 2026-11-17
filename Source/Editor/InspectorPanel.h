@@ -24,7 +24,7 @@ namespace NS
     } // namespace Gfx
     namespace Ed
     {
-        class LevelEditorController;
+        class EditorController;
         struct AssetPreviewItem;
 
         //! 選択物の名前・姿勢・部品の値を編集する。改名の適用は描画後に行う
@@ -34,24 +34,24 @@ namespace NS
             InspectorPanel();
             ~InspectorPanel();
             //! インスペクターを 1 枚描く。名前・トランスフォーム・アクターの持ち物の編集は controller へ流す
-            void Render(LevelEditorController& editor) noexcept;
+            void Render(EditorController& editor) noexcept;
 
         private:
-            void DrawSceneSettings(LevelEditorController& editor);
+            void DrawSceneSettings(EditorController& editor);
             //! 曲の下書きを適用する・戻すボタンを描く。playing の間は押せない
-            void DrawSceneMusicButtons(LevelEditorController& editor, bool playing);
+            void DrawSceneMusicButtons(EditorController& editor, bool playing);
             //! 曲・音量・音の届く距離の元の値と下書きを、シーンの今の値にする
-            void TakeSceneMusicFrom(const LevelEditorController& editor);
+            void TakeSceneMusicFrom(const EditorController& editor);
             bool DrawSkyboxPreview(std::string_view path);
-            void DrawSelectedAsset(LevelEditorController& editor, Object& asset);
+            void DrawSelectedAsset(EditorController& editor, Object& asset);
             void DrawMaterialPreview(const Material& material);
             void DrawMeshPreview(const Mesh& mesh);
             void DrawAssetPreview(const AssetPreviewItem& item);
             //! actor の元の .actor の名前の束の欄を描き、直し終えた束をその .actor へ書く。.actor
             //! が無ければ何も描かない
-            void DrawHitReactionSets(LevelEditorController& editor, const SceneActor* actor);
+            void DrawHitReactionSets(EditorController& editor, const SceneActor* actor);
             //! actor のセンサーの値の欄を描き、直し終えた値を元の .actor の hitSensors へ書く。値を持つセンサーが無ければ何も描かない
-            void DrawHitSensors(LevelEditorController& editor, SceneActor* actor);
+            void DrawHitSensors(EditorController& editor, SceneActor* actor);
             //! actor の .actor の名前と、上書きから派生を作る欄を描く。押した操作は Render を描き終えてから流す
             void DrawActorFileChoice(const SceneActor* actor);
 

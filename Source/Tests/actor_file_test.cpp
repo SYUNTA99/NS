@@ -2,7 +2,7 @@
 #include "Editor/EditorActors.h"
 #include "Editor/EditorAppearance.h"
 #include "Editor/InspectorReflection.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Game/Level/FollowCameraActor.h"
 #include "Game/Level/GameScene.h"
 #include "Game/Level/ThirdPersonFollow.h"
@@ -49,7 +49,7 @@
 #include <utility>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // 値の 3 段の重なり (コードの既定値 < .actor の値 < シーンのアクターの上書きできる欄)
 // と、差分の保存と、エディタの書く先を縛る
@@ -780,7 +780,7 @@ TEST(ActorFile, RevertingDuringPlayRemovesTheFieldFromThePlayBaseline)
     NS::SceneJsonActors(doc).push_back(std::move(object));
     GL::Level::GameScene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.EnterPlay();
     NS::SceneActor* prop = scene.Actors().FindByActorId(1);
     ASSERT_NE(prop, nullptr);
@@ -956,7 +956,7 @@ namespace
     }
 
     // インスペクタと同じ順で、actor の part の欄 fieldName を直し終える。値は呼ぶ前に part へ書いておく
-    void EditField(LevelEditorController& editor,
+    void EditField(EditorController& editor,
                    const NS::SceneActor* actor,
                    const NS::Object* part,
                    std::string_view fieldName)
@@ -996,7 +996,7 @@ TEST(ActorFile, EditorWritesAnUnmarkedFieldToTheActorFileForEveryActor)
     const ScopedActorFileDirectory scope("EditorWritesActorFile");
     NS::Scene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::Collider* collider = ColliderOf(first);
@@ -1014,7 +1014,7 @@ TEST(ActorFile, UnreadableActorFileIsNotOverwrittenAndStaysUnsaved)
     const ScopedActorFileDirectory scope("UnreadableActorFile");
     NS::Scene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::Collider* collider = ColliderOf(first);
@@ -1036,7 +1036,7 @@ TEST(ActorFile, EditorWritesAMarkedFieldToThatActorOnly)
     const ScopedActorFileDirectory scope("EditorWritesPlacement");
     NS::Scene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     PlayerActor* first = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(first, nullptr);
     const nlohmann::json before = *NS::ActorFileLibrary::Get().Find("PlayerActor");
@@ -1060,7 +1060,7 @@ TEST(ActorFile, EditingAnUnmarkedFieldLeavesTheSceneSaved)
     const ScopedActorFileDirectory scope("UnmarkedFieldKeepsSceneSaved");
     NS::Scene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
     ASSERT_NE(first, nullptr);
     NS::Collider* collider = ColliderOf(first);
@@ -1082,7 +1082,7 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
     const ScopedActorFileDirectory scope("PlayEditActorFile");
     GL::Level::GameScene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.EnterPlay();
     const nlohmann::json frozen = editor.PlayBaseline();
     NS::SceneActor* first = scene.Actors().FindByActorId(1);
@@ -1112,7 +1112,7 @@ TEST(ActorFile, PlayEditOfAnUnmarkedFieldGoesToTheActorFileAndSurvivesReturningT
 namespace
 {
     // 素材の窓で選んだ .actor の 1 体。選べなければ nullptr
-    NS::SceneActor* SelectActorFile(LevelEditorController& editor, const std::string& directory, std::string_view name)
+    NS::SceneActor* SelectActorFile(EditorController& editor, const std::string& directory, std::string_view name)
     {
         editor.SelectAsset(NS::OS::FileSystem::Combine(directory, std::string{name} + ".actor"));
         return NS::Cast<NS::SceneActor>(editor.SelectedAsset());
@@ -1120,7 +1120,7 @@ namespace
 
     // インスペクタと同じ順で、素材の窓で選んだ .actor の part の欄 fieldName を直し終える。値は呼ぶ前に part
     // へ書いておく
-    void EditActorFileField(LevelEditorController& editor,
+    void EditActorFileField(EditorController& editor,
                             const NS::SceneActor* actorFile,
                             const NS::Object* part,
                             std::string_view fieldName)
@@ -1139,7 +1139,7 @@ TEST(ActorFile, ActorFileSelectedInTheAssetWindowIsEditedForEveryActor)
     const ScopedActorFileDirectory scope("AssetWindowActorFile");
     NS::Scene scene;
     ResetTwoPlayers(scene);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::SceneActor* selected = SelectActorFile(editor, scope.Path(), "PlayerActor");
     ASSERT_NE(selected, nullptr);
     EXPECT_FALSE(editor.SelectedAssetPath().empty());
@@ -1168,7 +1168,7 @@ TEST(ActorFile, MarkedFieldEditedOnTheActorFileReachesActorsWithoutAnOverride)
     NS::SceneJsonActors(doc).push_back(std::move(overridden));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     PlayerActor* selected = NS::Cast<PlayerActor>(SelectActorFile(editor, scope.Path(), "PlayerActor"));
     ASSERT_NE(selected, nullptr);
 
@@ -1530,7 +1530,7 @@ TEST(ActorFile, WritingTheBaseUpdatesDerivedActorsAndKeepsSceneOverrides)
     NS::SceneJsonActors(doc).push_back(std::move(overridden));
     NS::Scene scene;
     scene.ResetFromJson(doc);
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     PlayerActor* selected = NS::Cast<PlayerActor>(SelectActorFile(editor, scope.Path(), "PlayerActor"));
     ASSERT_NE(selected, nullptr);
     NS::Collider* collider = ColliderOf(selected);
@@ -1605,7 +1605,7 @@ TEST(ActorFile, SharedFieldEditedOnADerivedActorIsWrittenToTheBase)
     const ScopedActorFileDirectory scope("SharedFieldOnDerived");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPlayerAndHeavyRock(scene));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const nlohmann::json derivedBefore = *NS::ActorFileLibrary::Get().Find("HeavyRock");
     NS::SceneActor* heavy = scene.Actors().FindByActorId(2);
     ASSERT_NE(heavy, nullptr);
@@ -1629,7 +1629,7 @@ TEST(ActorFile, CreatingADerivedActorFileWritesOnlyTheBase)
     const ScopedActorFileDirectory scope("CreateDerived");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPlayerAndHeavyRock(scene));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
 
     ASSERT_TRUE(editor.CreateDerivedActorFile("PlayerActor", "WideRock"));
@@ -1673,7 +1673,7 @@ TEST(ActorFile, CreatingADerivedActorFileKeepsAFileTheLibraryDidNotLoad)
     const ScopedActorFileDirectory scope("CreateDerivedKeepsFile");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPlayerAndHeavyRock(scene));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::ActorFileLibrary& library = NS::ActorFileLibrary::Get();
     const std::string path = NS::OS::FileSystem::Combine(scope.Path(), "MistypedRock.actor");
     const std::string text = DerivedActorFileWith("NoSuchActor", "Params", LinesEntry(false)).dump();
@@ -1813,7 +1813,7 @@ TEST(ActorFile, DerivingFromASceneActorMovesItsOverridesToTheDerivedActorFile)
     const ScopedActorFileDirectory scope("DeriveFromActor");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPlayerAndHeavyRock(scene));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     PlayerActor* first = NS::Cast<PlayerActor>(scene.Actors().FindByActorId(1));
     ASSERT_NE(first, nullptr);
     ASSERT_EQ(NS::ApplyJsonFields(first->ShadowClassObj(), DiameterEntry(9.0f)), 0u);
@@ -1849,7 +1849,7 @@ TEST(ActorFile, WritingTheBaseHitReactionsReachesActorsOfItsDerived)
     const ScopedActorFileDirectory scope("BaseHitReactions");
     NS::Scene scene;
     ASSERT_NO_FATAL_FAILURE(ResetPlayerAndHeavyRock(scene));
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::HitReactionSet set;
     set.name = "Hit";
     set.stopFrames = 12;

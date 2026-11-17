@@ -2,7 +2,7 @@
 
 #include "Editor/EditorActors.h"
 #include "Editor/EditorUi.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlacementCatalog.h"
 #include "NSlib/CoreObject/ActorList.h"
@@ -29,7 +29,7 @@ namespace NS
             // 一覧の行を別の行へ引きずる時の受け渡しの種類。中身は引きずった行の永続 id
             constexpr const char* k_ActorRowDragType = "NS_ACTOR_ROW";
 
-            void RenderPlacementMenu(LevelEditorController& editor)
+            void RenderPlacementMenu(EditorController& editor)
             {
                 for (const PlacementItem& item : PlacementItems())
                 {
@@ -41,7 +41,7 @@ namespace NS
             }
         } // namespace
 
-        void ActorListPanel::Render(LevelEditorController& editor) noexcept
+        void ActorListPanel::Render(EditorController& editor) noexcept
         {
             if (ImGui::Begin(k_PanelActorList))
             {
@@ -177,7 +177,7 @@ namespace NS
             ImGui::End();
         }
 
-        void ActorListPanel::RenderActorRows(LevelEditorController& editor,
+        void ActorListPanel::RenderActorRows(EditorController& editor,
                                              const std::vector<SceneActor*>& placed) noexcept
         {
             // 子は親の下に並べる。親の居ない物と、親が居なくなった物が根になる
@@ -213,7 +213,7 @@ namespace NS
             }
         }
 
-        void ActorListPanel::RenderTree(LevelEditorController& editor,
+        void ActorListPanel::RenderTree(EditorController& editor,
                                         SceneActor* object,
                                         const ChildrenMap& childrenOf,
                                         std::unordered_set<uint32>& rendered) noexcept
@@ -293,7 +293,7 @@ namespace NS
             }
         }
 
-        bool ActorListPanel::RenderRow(LevelEditorController& editor, SceneActor* object, bool hasChildren) noexcept
+        bool ActorListPanel::RenderRow(EditorController& editor, SceneActor* object, bool hasChildren) noexcept
         {
             NS_ASSERT(App, object != nullptr, "RenderRow: アクターが null");
             const uint32 id = object->Id();
@@ -370,7 +370,7 @@ namespace NS
             return open && hasChildren;
         }
 
-        void ActorListPanel::RenderRowMenu(LevelEditorController& editor, SceneActor* object) noexcept
+        void ActorListPanel::RenderRowMenu(EditorController& editor, SceneActor* object) noexcept
         {
             if (!ImGui::BeginPopupContextItem())
             {

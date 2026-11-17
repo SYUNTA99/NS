@@ -1,6 +1,6 @@
 #include "Editor/EditorLayer.h"
 
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/LevelFilePaths.h"
 #include "Editor/PanelIds.h"
 #include "Editor/PlayControls.h"
@@ -71,7 +71,7 @@ namespace NS
                 }
             });
 
-            m_controller = std::make_unique<LevelEditorController>(*scene);
+            m_controller = std::make_unique<EditorController>(*scene);
             m_controller->Editor().SetSessionPath(
                 OS::FileSystem::Combine(OS::FileSystem::ContentRoot(), "build/editor-session.json"));
             m_controller->Setup(StartLevelName());
@@ -142,7 +142,7 @@ namespace NS
             {
                 return;
             }
-            LevelEditorController& editor = *m_controller;
+            EditorController& editor = *m_controller;
             Application* app = Application::Get();
             if (app == nullptr)
             {
@@ -158,7 +158,7 @@ namespace NS
             // 終了確認は UI 非表示やプレイ中でも必ず出すため m_uiVisible のゲート外で描く
             m_quitModal.Render(editor, m_actionTimeline);
 
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            const bool playMode = editor.CurrentMode() == EditorController::Mode::Play;
 
             // プレイ中は F5 でエディタ UI を丸ごと隠せる。隠している間も 3D 描画とゲーム進行はそのまま走る
             if (m_uiVisible)
@@ -299,7 +299,7 @@ namespace NS
             }
         }
 
-        void EditorLayer::HandleModeToggleInput(LevelEditorController& editor, const OS::InputPresses& presses) noexcept
+        void EditorLayer::HandleModeToggleInput(EditorController& editor, const OS::InputPresses& presses) noexcept
         {
             Application* app = Application::Get();
             if (app == nullptr)
@@ -316,7 +316,7 @@ namespace NS
 
             if (tabPressed || startPressed)
             {
-                if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+                if (editor.CurrentMode() == EditorController::Mode::Edit)
                 {
                     editor.EnterPlay();
                 }
@@ -327,9 +327,9 @@ namespace NS
             }
         }
 
-        void EditorLayer::HandlePauseInput(LevelEditorController& editor, const OS::InputPresses& presses) noexcept
+        void EditorLayer::HandlePauseInput(EditorController& editor, const OS::InputPresses& presses) noexcept
         {
-            if (editor.CurrentMode() != LevelEditorController::Mode::Play)
+            if (editor.CurrentMode() != EditorController::Mode::Play)
             {
                 return;
             }
@@ -351,11 +351,11 @@ namespace NS
             }
         }
 
-        void EditorLayer::HandleUiVisibilityInput(LevelEditorController& editor,
+        void EditorLayer::HandleUiVisibilityInput(EditorController& editor,
                                                   const OS::InputPresses& presses) noexcept
         {
             // 編集モードでは UI を常時表示に戻す。トグルはプレイ中だけ効かせる
-            if (editor.CurrentMode() != LevelEditorController::Mode::Play)
+            if (editor.CurrentMode() != EditorController::Mode::Play)
             {
                 m_uiVisible = true;
                 return;
@@ -375,7 +375,7 @@ namespace NS
             }
         }
 
-        float EditorLayer::RenderPlayToolbar(LevelEditorController& editor) noexcept
+        float EditorLayer::RenderPlayToolbar(EditorController& editor) noexcept
         {
             const ImGuiStyle& style = ImGui::GetStyle();
             const float height = ImGui::GetFrameHeight() + style.WindowPadding.y * 2.0f;
@@ -391,7 +391,7 @@ namespace NS
                 ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
                 ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings |
                 ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse;
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            const bool playMode = editor.CurrentMode() == EditorController::Mode::Play;
             if (ImGui::Begin("##PlayToolbar", nullptr, k_ToolbarFlags))
             {
                 // レベル名と未保存の表示 (*) はアクターの一覧の見出しに出すので、この帯は再生操作だけを中央に置く
@@ -454,7 +454,7 @@ namespace NS
             return height;
         }
 
-        void EditorLayer::RenderMainMenuBar(LevelEditorController& editor) noexcept
+        void EditorLayer::RenderMainMenuBar(EditorController& editor) noexcept
         {
             EditorMode& ed = editor.Editor();
             const bool editEnabled = editor.IsSceneEditable();
@@ -497,7 +497,7 @@ namespace NS
             ImGui::PopStyleVar(2);
         }
 
-        void EditorLayer::RenderMaximizedPanel(LevelEditorController& editor, float topOffset) noexcept
+        void EditorLayer::RenderMaximizedPanel(EditorController& editor, float topOffset) noexcept
         {
             const ImGuiViewport* vp = ImGui::GetMainViewport();
             if (vp == nullptr)
@@ -562,7 +562,7 @@ namespace NS
             }
         }
 
-        void EditorLayer::HandleEditShortcuts(LevelEditorController& editor, const OS::InputPresses& presses) noexcept
+        void EditorLayer::HandleEditShortcuts(EditorController& editor, const OS::InputPresses& presses) noexcept
         {
             if (!editor.IsSceneEditable() || editor.EditShortcutsBlocked())
             {

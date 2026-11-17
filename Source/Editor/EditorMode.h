@@ -50,7 +50,7 @@ namespace NS
             //! 保存のショートカットが Ctrl と Shift を読む入力を設定する
             void SetInput(OS::Input* input) noexcept { m_input = input; }
 
-            //! シーンを変えてよいかを答える関数を差す。LevelEditorController::IsSceneEditable を差す
+            //! シーンを変えてよいかを答える関数を差す。EditorController::IsSceneEditable を差す
             //! 偽の間は作る・開く・保存を全部断る。未設定なら変えてよい
             void SetSceneEditableFn(std::function<bool()> fn) noexcept { m_sceneEditable = std::move(fn); }
 

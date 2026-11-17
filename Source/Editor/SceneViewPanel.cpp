@@ -2,7 +2,7 @@
 
 #include "Editor/DragTypes.h"
 #include "Editor/EditorCamera.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
@@ -14,11 +14,11 @@ namespace NS
 {
     namespace Ed
     {
-        void SceneViewPanel::Render(LevelEditorController& editor) noexcept
+        void SceneViewPanel::Render(EditorController& editor) noexcept
         {
             m_editHovered = false;
             m_freeViewHovered = false;
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            const bool playMode = editor.CurrentMode() == EditorController::Mode::Play;
 
             ImVec2 rectMin{};
             ImVec2 rectMax{};
@@ -76,19 +76,19 @@ namespace NS
             }
         }
 
-        void SceneViewPanel::Suppress(LevelEditorController& editor) noexcept
+        void SceneViewPanel::Suppress(EditorController& editor) noexcept
         {
             m_freeViewHovered = false;
             m_surface.ResetVisibility();
             m_freeViewLatch = false;
             m_freeFlying = false;
-            if (editor.CurrentMode() == LevelEditorController::Mode::Edit)
+            if (editor.CurrentMode() == EditorController::Mode::Edit)
             {
                 editor.HideGameView();
             }
         }
 
-        void SceneViewPanel::ClearForHiddenUi(LevelEditorController& editor) noexcept
+        void SceneViewPanel::ClearForHiddenUi(EditorController& editor) noexcept
         {
             // F5 の全画面直描き中はパネル矩形が無いので予備の全画面矩形へ戻す
             editor.ClearGameView();
@@ -96,7 +96,7 @@ namespace NS
             m_freeFlying = false;
         }
 
-        std::optional<SceneView> SceneViewPanel::CollectView(LevelEditorController& editor) noexcept
+        std::optional<SceneView> SceneViewPanel::CollectView(EditorController& editor) noexcept
         {
             std::optional<SceneView> view = m_surface.CollectView(editor.SceneViewPose());
             if (!view.has_value())
@@ -127,7 +127,7 @@ namespace NS
             }
         }
 
-        void SceneViewPanel::TickFreeViewInput(LevelEditorController& editor) noexcept
+        void SceneViewPanel::TickFreeViewInput(EditorController& editor) noexcept
         {
             const ImGuiIO& io = ImGui::GetIO();
             if (!ImGui::IsAnyMouseDown())

@@ -1,6 +1,6 @@
 #include "Editor/GameViewPanel.h"
 
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
 
@@ -10,10 +10,10 @@ namespace NS
 {
     namespace Ed
     {
-        void GameViewPanel::Render(LevelEditorController& editor) noexcept
+        void GameViewPanel::Render(EditorController& editor) noexcept
         {
             m_hovered = false;
-            const bool playMode = editor.CurrentMode() == LevelEditorController::Mode::Play;
+            const bool playMode = editor.CurrentMode() == EditorController::Mode::Play;
 
             ImVec2 rectMin{};
             ImVec2 rectMax{};
@@ -46,17 +46,17 @@ namespace NS
             }
         }
 
-        void GameViewPanel::Suppress(LevelEditorController& editor) noexcept
+        void GameViewPanel::Suppress(EditorController& editor) noexcept
         {
             m_hovered = false;
             m_surface.ResetVisibility();
-            if (editor.CurrentMode() == LevelEditorController::Mode::Play)
+            if (editor.CurrentMode() == EditorController::Mode::Play)
             {
                 editor.HideGameView();
             }
         }
 
-        std::optional<SceneView> GameViewPanel::CollectView(LevelEditorController& editor) noexcept
+        std::optional<SceneView> GameViewPanel::CollectView(EditorController& editor) noexcept
         {
             return m_surface.CollectView(editor.GameViewPose());
         }

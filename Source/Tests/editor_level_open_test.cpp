@@ -4,7 +4,7 @@
 #include "Editor/AssetsPanel.h"
 #include "Editor/PanelIds.h"
 #include "Editor/LevelFilePaths.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Game/Game.h"
 #include "NSlib/App/Application.h"
@@ -36,7 +36,7 @@
 #include <utility>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 namespace
 {
@@ -167,7 +167,7 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
 {
     const std::string name = WriteLevel("saved", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     editor.Editor().SetCaptureLevelFn([] { return NS::MakeSceneJson(); });
     ASSERT_TRUE(editor.Editor().OpenLevel(name));
     editor.Editor().MarkEdited();
@@ -189,7 +189,7 @@ TEST_F(LevelOpenTest, CtrlSOverwritesTheOpenLevel)
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app, &name] {
         NS::Scene scene;
-        LevelEditorController editor(scene);
+        EditorController editor(scene);
         editor.Setup({});
         ASSERT_TRUE(editor.Editor().OpenLevel(name));
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
@@ -371,7 +371,7 @@ TEST_F(LevelOpenTest, CreateLevelRejectsExistingInvalidAndPlayModeTargets)
 TEST_F(LevelOpenTest, ControllerLoadsSceneAndImmediatelyFocusesItsActors)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
     ASSERT_TRUE(item.has_value());
     editor.PlaceItem(*item);
@@ -404,7 +404,7 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
 {
     const std::string name = WriteLevel("clicked", NS::MakeSceneJson().dump());
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     NS::Ed::AssetsPanel assets;
     const std::unique_ptr<ImGuiContext, decltype(&ImGui::DestroyContext)> context(
         CreateHeadlessImGui(ImVec2{1200.0f, 900.0f}), &ImGui::DestroyContext);

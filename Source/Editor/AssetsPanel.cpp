@@ -4,7 +4,7 @@
 #include "Editor/AssetPreview.h"
 #include "Editor/DragTypes.h"
 #include "Editor/EditorUi.h"
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PanelIds.h"
 #include "NSlib/App/Application.h"
 #include "NSlib/Core/Logger.h"
@@ -43,7 +43,7 @@ namespace NS
         AssetsPanel::AssetsPanel() = default;
         AssetsPanel::~AssetsPanel() = default;
 
-        void AssetsPanel::Render(LevelEditorController& editor) noexcept
+        void AssetsPanel::Render(EditorController& editor) noexcept
         {
             if (ImGui::Begin(k_PanelAssets))
             {
@@ -67,7 +67,7 @@ namespace NS
             ImGui::End();
         }
 
-        void AssetsPanel::RenderCreateMenu(std::string_view directory, LevelEditorController& editor, bool onFolder)
+        void AssetsPanel::RenderCreateMenu(std::string_view directory, EditorController& editor, bool onFolder)
         {
             bool open = false;
             if (onFolder)
@@ -99,7 +99,7 @@ namespace NS
             ImGui::EndPopup();
         }
 
-        void AssetsPanel::RenderSceneCreate(LevelEditorController& editor)
+        void AssetsPanel::RenderSceneCreate(EditorController& editor)
         {
             if (m_sceneCreateRequested)
             {
@@ -159,7 +159,7 @@ namespace NS
             ImGui::EndPopup();
         }
 
-        bool AssetsPanel::OpenPendingScene(LevelEditorController& editor)
+        bool AssetsPanel::OpenPendingScene(EditorController& editor)
         {
             if (!editor.Editor().OpenLevel(m_pendingSceneName))
             {
@@ -172,7 +172,7 @@ namespace NS
             return true;
         }
 
-        void AssetsPanel::RenderSceneOpen(LevelEditorController& editor)
+        void AssetsPanel::RenderSceneOpen(EditorController& editor)
         {
             bool opened = false;
             if (!m_pendingSceneName.empty() && editor.IsSceneEditable() && !ImGui::IsPopupOpen("シーンの切り替え"))
@@ -324,7 +324,7 @@ namespace NS
             return target->Color();
         }
 
-        void AssetsPanel::RenderTile(const std::string& file, LevelEditorController& editor, float width)
+        void AssetsPanel::RenderTile(const std::string& file, EditorController& editor, float width)
         {
             const std::string name = OS::FileSystem::FileName(file);
             const float thumb = std::min(80.0f, width);
@@ -397,7 +397,7 @@ namespace NS
             ImGui::PopID();
         }
 
-        void AssetsPanel::RenderFiles(const std::vector<std::string>& files, LevelEditorController& editor)
+        void AssetsPanel::RenderFiles(const std::vector<std::string>& files, EditorController& editor)
         {
             std::vector<std::string> previewFiles;
             for (const std::string& file : files)
@@ -447,7 +447,7 @@ namespace NS
             }
         }
 
-        void AssetsPanel::RenderTree(std::string_view dir, LevelEditorController& editor) noexcept
+        void AssetsPanel::RenderTree(std::string_view dir, EditorController& editor) noexcept
         {
             // 開いた時だけ中身を走査する
             for (const std::string& sub : OS::FileSystem::ListDirectories(dir))

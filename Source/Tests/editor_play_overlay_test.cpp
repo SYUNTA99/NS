@@ -1,4 +1,4 @@
-#include "Editor/LevelEditorController.h"
+#include "Editor/EditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Game/Level/GameScene.h"
 #include "NSlib/CoreObject/Scene/Scene.h"
@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <vector>
 
-using NS::Ed::LevelEditorController;
+using NS::Ed::EditorController;
 
 // Scene タブを描く時に渡される溜め場へ、エディタが図形を積むことを縛る
 // どのビューにこの口が付くかは ImGui のパネルが決めるので、ここでは見ない
@@ -19,7 +19,7 @@ namespace
 {
 
     // 範囲のセンサーを持つゴールを 1 体置く。置いた物は選ばれる
-    void PlaceGoal(LevelEditorController& editor)
+    void PlaceGoal(EditorController& editor)
     {
         const std::optional<NS::Ed::PlacementItem> item = NS::Ed::FindPlacementItem("GoalActor");
         ASSERT_TRUE(item.has_value());
@@ -31,7 +31,7 @@ namespace
 TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 {
     GL::Level::GameScene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     editor.EnterPlay();
     NS::Gfx::ClearDebugDraw();
@@ -59,7 +59,7 @@ TEST(EditorSceneViewShapes, PlayShapesNeedNoStepAndStayOutOfTheStepShapes)
 TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     NS::Gfx::ClearDebugDraw();
 
@@ -82,7 +82,7 @@ TEST(EditorSceneViewShapes, EditShapesDoNotPileUpOverManyDraws)
 TEST(EditorSceneViewShapes, SelectionOutlinesLeaveOutThePrimary)
 {
     NS::Scene scene;
-    LevelEditorController editor(scene);
+    EditorController editor(scene);
     ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
     const NS::uint32 first = editor.SelectedActorId();
     ASSERT_NO_FATAL_FAILURE(PlaceGoal(editor));
