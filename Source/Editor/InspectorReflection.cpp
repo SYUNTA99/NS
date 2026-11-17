@@ -1617,7 +1617,7 @@ namespace NS
                 {
                     return 0.0f;
                 }
-                return width + RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x +
+                return width + OverrideButtonWidth() + ImGui::GetStyle().ItemSpacing.x +
                        ImGui::GetStyle().CellPadding.x * 2.0f;
             }
 

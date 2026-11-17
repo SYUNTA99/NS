@@ -56,7 +56,7 @@ namespace
             }
             const ImGuiStyle& style = ImGui::GetStyle();
             float x = m_tableMin.x + m_tableWidth - style.CellPadding.x -
-                      NS::Ed::RevertButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
+                      NS::Ed::OverrideButtonWidth() - style.ItemSpacing.x - ImGui::GetFrameHeight() * 0.5f;
             if (fromLeft)
             {
                 x = m_tableMin.x + m_tableWidth * 0.5f;

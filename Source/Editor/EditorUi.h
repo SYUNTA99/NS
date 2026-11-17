@@ -72,7 +72,7 @@ namespace NS
         inline const ImVec4 k_OverriddenFieldColor{1.0f, 0.78f, 0.35f, 1.0f};
 
         // 値列の右端に置く上書きボタンの幅。ボタンの無い行も同じ幅を空け、どの行も値の幅を揃える
-        inline float RevertButtonWidth() noexcept
+        inline float OverrideButtonWidth() noexcept
         {
             return ImGui::CalcTextSize("上書き").x + ImGui::GetStyle().FramePadding.x * 2.0f;
         }
@@ -134,7 +134,7 @@ namespace NS
                 }
                 SkipFieldRowGap();
             }
-            ImGui::SetNextItemWidth(-(RevertButtonWidth() + ImGui::GetStyle().ItemSpacing.x));
+            ImGui::SetNextItemWidth(-(OverrideButtonWidth() + ImGui::GetStyle().ItemSpacing.x));
         }
 
         struct AxisEditResult
@@ -209,7 +209,7 @@ namespace NS
             ImGui::SameLine();
             if (!overridden)
             {
-                ImGui::Dummy(ImVec2{RevertButtonWidth(), 0.0f});
+                ImGui::Dummy(ImVec2{OverrideButtonWidth(), 0.0f});
                 return OverrideAction::None;
             }
             if (ImGui::SmallButton("上書き"))
