@@ -1026,15 +1026,7 @@ TEST(EditorCreate, EveryCreatePathMarksTheSceneUnsavedAndPlayCreatesNothing)
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
         EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
 
-        // 筆で空いた升に置く: 今の選択を変えない
         const NS::uint32 kept = placed;
-        editor.Editor().Palette().SetActiveSlot(0);
-        objectsBefore = scene.Actors().ActorCount();
-        editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
-        EXPECT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
-        EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore + 1);
-        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
-        EXPECT_EQ(editor.SelectedActorId(), kept);
 
         // 複製: 写した物どうしの参照は写した先を指し、写した物を選ぶ
         editor.PlaceItem(*camera);
@@ -1061,7 +1053,6 @@ TEST(EditorCreate, EveryCreatePathMarksTheSceneUnsavedAndPlayCreatesNothing)
         objectsBefore = scene.Actors().ActorCount();
         editor.PlaceItem(*prop);
         editor.DuplicateSelectedActor();
-        editor.Editor().PlaceUnderCursorProgrammatic(12, 0, 12);
         EXPECT_EQ(scene.Actors().ActorCount(), objectsBefore);
         editor.EnterEdit();
     }));
@@ -1112,9 +1103,6 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
         const NS::uint32 followerId = editor.SelectedActorId();
         editor.PlaceItem(*cube);
         const NS::uint32 sourceId = editor.SelectedActorId();
-        editor.Editor().Palette().SetActiveSlot(0);
-        editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10);
-        ASSERT_NE(NS::Editor::FindActorIdAtCell(scene.Actors(), 10, 0, 10), NS::k_NoActorId);
         editor.SelectActorById(sourceId);
 
         editor.EnterPlay();
@@ -1135,9 +1123,6 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
             {"消す", [&editor] { editor.DeleteSelectedActor(); }},
             {"改名", [&editor, sourceId] { editor.RenameActor(sourceId, "改名した"); }},
             {"空の設定", [&editor] { EXPECT_FALSE(editor.SetSkyboxPath("Assets/Skybox/none.png")); }},
-            {"筆で置き換える", [&editor] { editor.Editor().PlaceUnderCursorProgrammatic(10, 0, 10); }},
-            {"筆で回す", [&editor] { editor.Editor().RotateAtProgrammatic(10, 0, 10); }},
-            {"筆で消す", [&editor] { editor.Editor().DeleteAtProgrammatic(10, 0, 10); }},
             {"レベルを開く",
              [&editor, &folder] { EXPECT_FALSE(editor.Editor().OpenLevel(folder + "/other")); }},
         };
@@ -1159,47 +1144,20 @@ TEST(EditorSelection, PlayEditsNeitherTheSceneNorTheActorFiles)
     EXPECT_EQ(app.Run(), 0);
 }
 
-// 編集のショートカットは、渡された止めるかの答えだけで止まる。
-// 偽なら R・番号・ギズモの道具のキーが効き、真ならどれも効かない
+// ギズモの道具のキーは、渡された止めるかの答えだけで止まる。偽なら効き、真なら効かない
+// コントローラーの更新が答えを見る事は LevelOpenTest.CtrlSOverwritesTheOpenLevel が Ctrl+S で見る
 TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 {
     NS::Application app(HiddenAppDesc("ショートカットを止める試し", {320, 200}));
     ASSERT_TRUE(app.IsValid());
     app.AddLayer(std::make_unique<TestCheckLayer>([&app] {
-        NS::Scene scene;
-        LevelEditorController editor(scene);
-        editor.Setup({});
-        editor.Editor().Palette().SetActiveSlot(0);
-        editor.Editor().PlaceUnderCursorProgrammatic(0, 0, 0);
-        ASSERT_EQ(scene.Actors().ActorCount(), 1u);
-        editor.SelectActorById(scene.Actors().ActorAt(0)->Id());
         const NS::Editor::ViewRect view{.x = 0, .y = 0, .width = 320, .height = 200};
-        editor.SetGameView(view.x, view.y, view.width, view.height, true);
         NS::OS::Keyboard& keyboard = app.Input().Keyboard();
         NS::OS::Mouse& mouse = app.Input().Mouse();
         const int startX = mouse.GetX();
         const int startY = mouse.GetY();
         keyboard.ClearState();
         mouse.ClearState();
-        editor.Tick();
-        editor.FocusSelectedInView();
-        editor.Tick();
-        // 置いた物は画面の中心に居るので、中心のカーソルで筆の R がその物を回す
-        mouse.OnMove(view.width / 2, view.height / 2);
-        mouse.Update();
-        editor.SetGizmoToolActive(false);
-
-        const auto press = [&keyboard, &editor](NS::OS::Key key, bool ctrl) {
-            if (ctrl)
-            {
-                keyboard.OnKeyDown(NS::OS::Key::Ctrl);
-            }
-            keyboard.OnKeyDown(key);
-            editor.Tick();
-            keyboard.OnKeyUp(key);
-            keyboard.OnKeyUp(NS::OS::Key::Ctrl);
-        };
-        const auto rotationOfPlaced = [&scene] { return scene.Actors().ActorAt(0)->TransformObj().Rotation(); };
 
         // ギズモの道具のキーは、答えを Tick で受けるギズモを直に回して見る
         NS::ActorList actors;
@@ -1210,23 +1168,8 @@ TEST(EditorSelection, EditShortcutsFollowTheBlockedAnswer)
 
         for (const bool blocked : {true, false})
         {
-            editor.SetEditShortcutsBlocked(blocked);
-
-            const NS::Quaternion beforeRotate = rotationOfPlaced();
-            press(NS::OS::Key::R, false);
-            EXPECT_EQ(rotationOfPlaced() == beforeRotate, blocked) << "R 止める=" << blocked;
-
-            editor.Editor().Palette().SetActiveSlot(0);
-            press(NS::OS::Key::Num2, false);
-            std::size_t expectedSlot = 1;
-            if (blocked)
-            {
-                expectedSlot = 0;
-            }
-            EXPECT_EQ(editor.Editor().Palette().ActiveSlot(), expectedSlot) << "番号 止める=" << blocked;
-
             const NS::Editor::GizmoTool toolBefore = gizmo.Tool();
-            // 前のキー (R など) をギズモへ渡さないよう、E の直前から読む
+            // 前のキーをギズモへ渡さないよう、E の直前から読む
             NS::OS::InputReader gizmoReader;
             keyboard.OnKeyDown(NS::OS::Key::E);
             gizmo.Tick(NS::Matrix::Identity, view, true, blocked, gizmoReader.Read(), actors);

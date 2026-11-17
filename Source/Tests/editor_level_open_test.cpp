@@ -7,6 +7,8 @@
 #include "Editor/LevelEditorController.h"
 #include "Editor/PlacementCatalog.h"
 #include "Game/Game.h"
+#include "NSlib/App/Application.h"
+#include "NSlib/Core/Windows/Keyboard.h"
 #include "NSlib/CoreObject/ActorJson.h"
 #include "NSlib/CoreObject/Reflection/ActorFile.h"
 #include "NSlib/CoreObject/Scene/SceneJson.h"
@@ -14,7 +16,9 @@
 #include "NSlib/CoreObject/Scene/SceneCamera.h"
 #include "NSlib/Core/Windows/Filesystem.h"
 #include "NSlib/Core/Windows/StringUtils.h"
+#include "Tests/TestCheckLayer.h"
 #include "Tests/TestHeadlessImGui.h"
+#include "Tests/TestHiddenApp.h"
 
 #include <gtest/gtest.h>
 #include <imgui.h>
@@ -174,6 +178,54 @@ TEST_F(LevelOpenTest, SavedSceneClosesWithoutConfirmation)
     ASSERT_TRUE(NS::Editor::SaveAllForQuit(editor, timeline));
     EXPECT_FALSE(NS::Editor::HasUnsavedWork(editor, timeline));
     EXPECT_TRUE(quit.RequestQuit(NS::Editor::HasUnsavedWork(editor, timeline)));
+}
+
+// 編集モードで Ctrl+S を押すと開いているレベルへ上書きし、未保存でなくなる
+// 編集のショートカットを止める答えが真の間は保存しない
+TEST_F(LevelOpenTest, CtrlSOverwritesTheOpenLevel)
+{
+    const std::string name = WriteLevel("ctrl_s", NS::MakeSceneJson().dump());
+    NS::Application app(HiddenAppDesc("Ctrl+S の保存の試し", {320, 200}));
+    ASSERT_TRUE(app.IsValid());
+    app.AddLayer(std::make_unique<TestCheckLayer>([&app, &name] {
+        NS::Scene scene;
+        LevelEditorController editor(scene);
+        editor.Setup({});
+        ASSERT_TRUE(editor.Editor().OpenLevel(name));
+        const std::optional<NS::Editor::PlacementItem> item = NS::Editor::FindPlacementItem("GoalActor");
+        ASSERT_TRUE(item.has_value());
+        editor.PlaceItem(*item);
+        ASSERT_TRUE(editor.Editor().HasUnsavedChanges());
+
+        NS::OS::Keyboard& keyboard = app.Input().Keyboard();
+        keyboard.ClearState();
+        editor.Tick();
+        const auto pressCtrlS = [&keyboard, &editor] {
+            keyboard.OnKeyDown(NS::OS::Key::Ctrl);
+            keyboard.OnKeyDown(NS::OS::Key::S);
+            editor.Tick();
+            keyboard.OnKeyUp(NS::OS::Key::S);
+            keyboard.OnKeyUp(NS::OS::Key::Ctrl);
+            editor.Tick();
+        };
+
+        editor.SetEditShortcutsBlocked(true);
+        pressCtrlS();
+        EXPECT_TRUE(editor.Editor().HasUnsavedChanges());
+
+        editor.SetEditShortcutsBlocked(false);
+        pressCtrlS();
+        // 共有の入力を押していない状態へ戻す。残すと後の試しが鍵を読む
+        keyboard.ClearState();
+
+        EXPECT_FALSE(editor.Editor().HasUnsavedChanges());
+        const std::optional<std::string> path = NS::BuildLevelPath(name);
+        ASSERT_TRUE(path.has_value());
+        nlohmann::json saved;
+        ASSERT_TRUE(NS::LoadSceneFromJsonFile(saved, *path));
+        EXPECT_EQ(CountActorsOfClass(saved, "GoalActor"), 1);
+    }));
+    EXPECT_EQ(app.Run(), 0);
 }
 
 TEST_F(LevelOpenTest, SaveAsUpdatesTheSceneRememberedForRestart)
