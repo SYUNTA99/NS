@@ -76,37 +76,26 @@ namespace NS
             static constexpr float k_PitchMin = -1.553f; // -89°
             static constexpr float k_PitchMax = +1.553f; // +89°
 
-            //! 自由視点の調整値。Inspector で即反映し、保存しない
-            struct FeelTuning
-            {
-                float springOmega = 6.0f; // ズーム距離の追従係数 (1/秒)
-                float mouseSensOrbit = 0.003f;
-                float mouseSensPan = 0.02f;
-                // ホイール 1 刻みのズーム倍率。距離に比例して変えるため、近距離でも遠距離でも同じ割合で動く
-                float mouseSensZoom = 1.0f;
-                float padSensOrbit = 2.5f;
-                float padSensPan = 8.0f;
-                float padSensZoom = 4.0f;
-                // 距離に比例する移動速度。寄った時も k_MinMoveDistance に相当する速さを保つ
-                float keyMoveSpeed = 0.6f;
-                // Shift の間の移動の倍率。微調整と広い地形の移動を両立する
-                float boostMoveScale = 4.0f;
-            };
-
-            [[nodiscard]] FeelTuning& Tuning() noexcept { return m_tuning; }
-            [[nodiscard]] const FeelTuning& Tuning() const noexcept { return m_tuning; }
+            // 自由視点の感度
+            static constexpr float k_SpringOmega = 6.0f; // ズーム距離の追従係数 (1/秒)
+            static constexpr float k_MouseSensOrbit = 0.003f;
+            static constexpr float k_MouseSensPan = 0.02f;
+            // ホイール 1 刻みのズーム倍率。距離に比例して変えるため、近距離でも遠距離でも同じ割合で動く
+            static constexpr float k_MouseSensZoom = 1.0f;
+            static constexpr float k_PadSensOrbit = 2.5f;
+            static constexpr float k_PadSensPan = 8.0f;
+            static constexpr float k_PadSensZoom = 4.0f;
+            // 距離に比例する移動速度。寄った時も k_MinMoveDistance に相当する速さを保つ
+            static constexpr float k_KeyMoveSpeed = 0.6f;
+            // Shift の間の移動の倍率。微調整と広い地形の移動を両立する
+            static constexpr float k_BoostMoveScale = 4.0f;
 
         private:
-            // Inspector の手入力は欄の範囲を越えるため、使う前に全部の欄が正の有限か確かめる
-            [[nodiscard]] bool HasValidTuning() const noexcept;
-
             Vector3 m_center{0.0f, 0.0f, 0.0f}; // orbit の中心 pivot
             float m_yaw = 0.0f;                     // 方位角 (ラジアン)
             float m_pitch = 0.5236f;               // 仰角 (ラジアン)
             float m_distance = 15.0f;
             float m_desiredDistance = 15.0f; // ズームの目標距離、バネで寄せる
-
-            FeelTuning m_tuning{}; // 自由視点の感触。Inspector がライブで書く
 
             Radians m_fovY{ToRadians(Degrees{60.0f})};
             float m_nearPlane = 0.1f;

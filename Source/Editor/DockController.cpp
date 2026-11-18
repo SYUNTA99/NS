@@ -19,7 +19,7 @@ namespace NS
         namespace
         {
             const char* const k_Panels[] = {k_PanelScene, k_PanelGame, k_PanelActorList, k_PanelInspector,
-                                             k_PanelConsole, k_PanelAssets, k_PanelEditMode, k_PanelActionTimeline};
+                                             k_PanelConsole, k_PanelAssets, k_PanelActionTimeline};
             const ImGuiID k_DockspaceId = ImHashStr("EditorDockSpaceV12");
 
             void SelectDefaultTab(ImGuiID nodeId, const char* windowName)
@@ -51,8 +51,6 @@ namespace NS
                 ImGuiID leftId = 0;
                 ImGui::DockBuilderSplitNode(centerId, ImGuiDir_Left, 0.24f, &leftId, &centerId);
 
-                // Edit Mode と個体一覧は左列でタブに重ねる。前面タブは下の SelectDefaultTab が決める
-                ImGui::DockBuilderDockWindow(k_PanelEditMode, leftId);
                 ImGui::DockBuilderDockWindow(k_PanelActorList, leftId);
                 ImGui::DockBuilderDockWindow(k_PanelInspector, rightId);
                 ImGui::DockBuilderDockWindow(k_PanelConsole, bottomId);
@@ -62,8 +60,7 @@ namespace NS
                 ImGui::DockBuilderDockWindow(k_PanelScene, centerId);
                 ImGui::DockBuilderDockWindow(k_PanelGame, centerId);
 
-                // ドック順や発行順に前面タブを委ねると Edit Mode が出てくるので明示する
-                SelectDefaultTab(leftId, k_PanelActorList);
+                // 前面タブはドック順や発行順に委ねず明示する
                 SelectDefaultTab(bottomId, k_PanelAssets);
                 SelectDefaultTab(centerId, k_PanelScene);
 

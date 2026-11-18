@@ -78,48 +78,35 @@ namespace NS
             // 画面右は世界の上と forward の外積。左手系なので yaw=0 では -X
             const Vector3 right{-cosYaw, 0.0f, sinYaw};
             // 近距離でも操作できる速さを残すため、距離比例の下限を設ける
-            const float step = m_tuning.keyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
+            const float step = k_KeyMoveSpeed * std::max(m_distance, k_MinMoveDistance) * dt * speedScale;
             m_center.x += (forward.x * forwardAxis + right.x * strafeAxis) * step;
             m_center.y += (forward.y * forwardAxis + verticalAxis) * step;
             m_center.z += (forward.z * forwardAxis + right.z * strafeAxis) * step;
         }
 
-        bool EditorCamera::HasValidTuning() const noexcept
-        {
-            return IsPositiveFinite(m_tuning.springOmega) && IsPositiveFinite(m_tuning.mouseSensOrbit) &&
-                   IsPositiveFinite(m_tuning.mouseSensPan) && IsPositiveFinite(m_tuning.mouseSensZoom) &&
-                   IsPositiveFinite(m_tuning.padSensOrbit) && IsPositiveFinite(m_tuning.padSensPan) &&
-                   IsPositiveFinite(m_tuning.padSensZoom) && IsPositiveFinite(m_tuning.keyMoveSpeed) &&
-                   IsPositiveFinite(m_tuning.boostMoveScale);
-        }
-
         void EditorCamera::ApplyInput(const EditorCameraInput& input) noexcept
         {
-            if (!HasValidTuning())
-            {
-                return;
-            }
             if (input.flying)
             {
-                ApplyLook(input.lookYawPixels * m_tuning.mouseSensOrbit,
-                          input.lookPitchPixels * m_tuning.mouseSensOrbit);
+                ApplyLook(input.lookYawPixels * k_MouseSensOrbit,
+                          input.lookPitchPixels * k_MouseSensOrbit);
             }
             if (input.panXPixels != 0.0f || input.panYPixels != 0.0f)
             {
-                ApplyPan(input.panXPixels * m_tuning.mouseSensPan, input.panYPixels * m_tuning.mouseSensPan);
+                ApplyPan(input.panXPixels * k_MouseSensPan, input.panYPixels * k_MouseSensPan);
             }
-            ApplyZoom(input.wheelNotches * m_tuning.mouseSensZoom);
+            ApplyZoom(input.wheelNotches * k_MouseSensZoom);
             if (input.flying)
             {
                 float speedScale = 1.0f;
                 if (input.boost)
                 {
-                    speedScale = m_tuning.boostMoveScale;
+                    speedScale = k_BoostMoveScale;
                 }
                 ApplyFlyMove(input.forwardAxis, input.strafeAxis, input.verticalAxis, input.deltaSeconds, speedScale);
             }
 
-            m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, m_tuning.springOmega * input.deltaSeconds);
+            m_distance += (m_desiredDistance - m_distance) * std::min(1.0f, k_SpringOmega * input.deltaSeconds);
         }
 
         Vector3 EditorCamera::ComputeCameraPosition() const noexcept
@@ -137,11 +124,6 @@ namespace NS
 
         void EditorCamera::Tick() noexcept
         {
-            // パッドの入力は ApplyInput より前に設定値を使うため、ここでも断る
-            if (!HasValidTuning())
-            {
-                return;
-            }
             const float dt = OS::FrameTimer::FixedDelta();
             OS::Input& input = OS::Input::Get();
 
@@ -190,9 +172,9 @@ namespace NS
                 {
                     const OS::Stick rs = gp.RightStick();
                     const OS::Stick ls = gp.LeftStick();
-                    ApplyOrbit(rs.x * m_tuning.padSensOrbit * dt, -rs.y * m_tuning.padSensOrbit * dt);
-                    ApplyPan(ls.x * m_tuning.padSensPan * dt, -ls.y * m_tuning.padSensPan * dt);
-                    ApplyZoom((gp.RightTrigger() - gp.LeftTrigger()) * m_tuning.padSensZoom * dt);
+                    ApplyOrbit(rs.x * k_PadSensOrbit * dt, -rs.y * k_PadSensOrbit * dt);
+                    ApplyPan(ls.x * k_PadSensPan * dt, -ls.y * k_PadSensPan * dt);
+                    ApplyZoom((gp.RightTrigger() - gp.LeftTrigger()) * k_PadSensZoom * dt);
                 }
             }
 

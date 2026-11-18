@@ -9,7 +9,6 @@
 #include "Editor/InspectorPanel.h"
 #include "Editor/QuitModal.h"
 #include "Editor/SceneViewPanel.h"
-#include "Editor/ToolModePanel.h"
 #include "NSlib/App/Layer.h"
 #include "NSlib/Core/Windows/InputReader.h"
 
@@ -70,7 +69,6 @@ namespace NS
             ActorListPanel m_actorList;
             InspectorPanel m_inspector;
             ConsolePanel m_console;
-            ToolModePanel m_toolMode;
             AssetsPanel m_assets;
             QuitModal m_quitModal;
             DockController m_dock;

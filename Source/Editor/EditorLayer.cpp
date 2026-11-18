@@ -178,9 +178,6 @@ namespace NS
                     // で組んだドッキングがプレイ移行で崩れないようにする
                     m_sceneView.Render(editor);
                     m_gameView.Render(editor);
-                    ImGui::BeginDisabled(!editor.IsSceneEditable());
-                    m_toolMode.Render(editor);
-                    ImGui::EndDisabled();
 
                     m_actorList.Render(editor);
                     m_inspector.Render(editor);
@@ -559,12 +556,6 @@ namespace NS
             else if (name == k_PanelAssets)
             {
                 m_assets.Render(editor);
-            }
-            else if (name == k_PanelEditMode)
-            {
-                ImGui::BeginDisabled(!editor.IsSceneEditable());
-                m_toolMode.Render(editor);
-                ImGui::EndDisabled();
             }
             else if (name == k_PanelActionTimeline)
             {

@@ -38,7 +38,7 @@ namespace
             const char* panels[] = {NS::Ed::k_PanelScene, NS::Ed::k_PanelGame,
                                     NS::Ed::k_PanelActorList, NS::Ed::k_PanelInspector,
                                     NS::Ed::k_PanelConsole, NS::Ed::k_PanelAssets,
-                                    NS::Ed::k_PanelEditMode, NS::Ed::k_PanelActionTimeline};
+                                    NS::Ed::k_PanelActionTimeline};
             for (const char* panel : panels)
             {
                 if (m_dock.IsMaximized() && m_dock.MaximizedPanel() != panel)

@@ -12,7 +12,6 @@ namespace NS
         inline constexpr const char* k_PanelInspector = "インスペクター###Inspector";
         inline constexpr const char* k_PanelConsole = "Console";
         inline constexpr const char* k_PanelAssets = "Assets";
-        inline constexpr const char* k_PanelEditMode = "Edit Mode";
         inline constexpr const char* k_PanelActionTimeline = "動作のタイムライン###ActionTimeline";
     } // namespace Ed
 } // namespace NS

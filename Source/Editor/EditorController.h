@@ -152,9 +152,6 @@ namespace NS
             //! シーン未設定、プレイ中、音量が非数、距離が非数か 0 以下の場合は変更せず false。
             bool SetSceneMusic(std::string_view music, float volume, float soundFullVolumeDistance);
 
-            //! 編集の自由視点カメラ。Inspector が感度をライブ編集する
-            [[nodiscard]] EditorCamera& EditorFreeCamera() noexcept { return m_editorCamera; }
-
             //! プレイの時間停止。実体はシーンの時間停止スイッチで、ここはエディタ操作の入口
             [[nodiscard]] bool PlayPaused() const noexcept;
             void TogglePlayPause() noexcept;
