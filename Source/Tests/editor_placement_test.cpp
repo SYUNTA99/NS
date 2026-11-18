@@ -103,16 +103,15 @@ TEST(EditorPlacement, UndoRemovesPlacedActor)
 
     editor.PlaceItem(*item);
     const NS::uint32 id = editor.SelectedActorId();
-    ASSERT_NE(scene.Actors().FindByActorId(id), nullptr);
+    const NS::SceneActor* const placed = scene.Actors().FindByActorId(id);
+    ASSERT_NE(placed, nullptr);
 
     ASSERT_TRUE(editor.Editor().Undo().Undo());
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
 
-    // やり直すと同じ id・同じクラスで戻る
+    // やり直すと、履歴が持っていた同じアクターが戻る
     ASSERT_TRUE(editor.Editor().Undo().Redo());
-    NS::SceneActor* again = scene.Actors().FindByActorId(id);
-    ASSERT_NE(again, nullptr);
-    EXPECT_EQ(std::string_view{again->ClassName()}, "GoalActor");
+    EXPECT_EQ(scene.Actors().FindByActorId(id), placed);
 }
 
 // この試しは置いた物の種類と欄の名前だけを見るので、実在しない file で足りる
@@ -140,7 +139,7 @@ TEST(EditorPlacement, DroppedMeshBecomesMapPartsWithMeshCollision)
 
 namespace
 {
-    // 消したアクターを、その場で OnEndPlay を呼んで解放したかを見るためのゴール。
+    // 消したアクターに OnEndPlay を呼んで解放した時機を見るためのゴール。
     // 数えるのは counted を立てた物だけで、JSON から作り直した PlacementCountedGoal は数えない
     class PlacementCountedGoal final : public GL::Level::GoalActor
     {
@@ -224,18 +223,33 @@ TEST(EditorUnsaved, PlaceAndDeleteMarkTheSceneUnsaved)
     }
 }
 
-// エディタで消したアクターは、その場で OnEndPlay を呼んで解放し、一覧から無くなる
-TEST(EditorUnsaved, DeletedActorIsEndedAndFreedAtOnce)
+// エディタで消したアクターは一覧から無くなり、取り消しの履歴が持つ。元に戻すと同じアクターが戻り、
+// 履歴を捨てた時に OnEndPlay を 1 回呼んで解放する
+TEST(EditorUnsaved, DeletedActorIsHeldByTheHistoryUntilItIsDiscarded)
 {
     std::optional<ScopedActorFile> scope;
     NS::Scene scene;
     const NS::uint32 id = SpawnCountedGoal(scene, scope);
     ASSERT_NE(id, NS::k_NoActorId);
+    const NS::SceneActor* const original = scene.Actors().FindByActorId(id);
     EditorController editor(scene);
     editor.SelectActorById(id);
 
     editor.DeleteSelectedActor();
+    EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
+    EXPECT_EQ(PlacementCountedGoal::s_endPlays, 0);
+    EXPECT_EQ(PlacementCountedGoal::s_destroyed, 0);
 
+    // JSON から作り直した物は counted が偽で、同じ番地に作られても見分けられる
+    ASSERT_TRUE(editor.Editor().Undo().Undo());
+    const PlacementCountedGoal* const restored =
+        NS::Cast<PlacementCountedGoal>(scene.Actors().FindByActorId(id));
+    ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(restored, original);
+    EXPECT_TRUE(restored->counted);
+
+    ASSERT_TRUE(editor.Editor().Undo().Redo());
+    editor.Editor().Undo().Clear();
     EXPECT_EQ(scene.Actors().FindByActorId(id), nullptr);
     EXPECT_EQ(PlacementCountedGoal::s_endPlays, 1);
     EXPECT_EQ(PlacementCountedGoal::s_destroyed, 1);

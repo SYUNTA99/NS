@@ -151,12 +151,15 @@ TEST(EditorUndoActor, DiscardedHistoryLeavesNoRegistration)
     EXPECT_EQ(CountRegistrations(scene), kept);
 }
 
-// 消してからプレイに入って戻ると、組み直しの前に履歴が持つアクターを解放し、元に戻すと JSON から作り直す
+// 消してからプレイに入って戻ると、組み直しの前に履歴が持つアクターを解放し、元に戻すと JSON から
+// 消す前の並びの位置へ作り直す
 TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
 {
     GL::Level::GameScene scene;
-    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor");
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "A");
     const NS::uint32 id = SpawnCountedGoal(scene);
+    (void)SpawnFromActorFile<GL::Level::GoalActor>(scene, "GoalActor", "C");
+    const std::size_t index = scene.Actors().IndexOfActorId(id);
     EditorController editor(scene);
     const Registrations before = CountRegistrations(scene);
     CountedGoal::s_endPlays = 0;
@@ -173,6 +176,7 @@ TEST(EditorUndoActor, UndoDeleteAfterLeavingPlayRebuildsFromJson)
     ASSERT_TRUE(editor.Editor().Undo().Undo());
     const NS::SceneActor* restored = scene.Actors().FindByActorId(id);
     ASSERT_NE(restored, nullptr);
+    EXPECT_EQ(scene.Actors().IndexOfActorId(id), index);
     EXPECT_EQ(CountedGoal::s_destroyed, 1);
     EXPECT_EQ(CountRegistrations(scene), before);
 }

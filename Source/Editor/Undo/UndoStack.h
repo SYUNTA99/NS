@@ -41,13 +41,11 @@ namespace NS
 
             [[nodiscard]] std::size_t UndoSize() const noexcept { return m_undo.size(); }
             [[nodiscard]] std::size_t RedoSize() const noexcept { return m_redo.size(); }
-            [[nodiscard]] std::size_t EstimatedBytes() const noexcept { return m_undoBytes + m_redoBytes; }
 
         private:
             std::deque<std::unique_ptr<ICommand>> m_undo;
             std::deque<std::unique_ptr<ICommand>> m_redo;
             std::size_t m_undoBytes = 0;
-            std::size_t m_redoBytes = 0;
 
             void PushRecorded(std::unique_ptr<ICommand> cmd) noexcept;
             void TrimOldest() noexcept;

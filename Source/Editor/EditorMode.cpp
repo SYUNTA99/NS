@@ -334,13 +334,11 @@ namespace NS
             for (std::size_t i = 0; i < objects.size(); ++i)
             {
                 RemapActorRefs(objects[i], idMap);
-                // 組めない姿は Scene が JSON のまま持って保存に残すので、作れたかは確かめない
-                (void)m_scene->SpawnFromJson(objects[i]);
                 commands.push_back(
                     std::make_unique<ActorSnapshotCommand>(*m_scene, created[i], std::nullopt, std::move(objects[i])));
             }
-            // 作り終えた変更を、Do を呼ばずに 1 回の履歴として積む
-            m_undo.Record(MakeUndoUnit(std::move(commands)));
+            // コマンドの Do が JSON から作る。組めない姿は Scene が JSON のまま持って保存に残す
+            m_undo.Push(MakeUndoUnit(std::move(commands)));
             MarkEdited();
             m_levelDirty = true;
             return created;

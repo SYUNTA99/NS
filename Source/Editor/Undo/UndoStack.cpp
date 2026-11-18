@@ -34,7 +34,6 @@ namespace NS
 
             // 編集が走った瞬間に Redo 履歴は無効になる
             m_redo.clear();
-            m_redoBytes = 0;
 
             TrimOldest();
         }
@@ -47,9 +46,7 @@ namespace NS
             }
             std::unique_ptr<ICommand>& back = m_undo.back();
             back->Undo();
-            const std::size_t bytes = back->EstimatedBytes();
-            m_undoBytes -= bytes;
-            m_redoBytes += bytes;
+            m_undoBytes -= back->EstimatedBytes();
             m_redo.push_back(std::move(back));
             m_undo.pop_back();
             return true;
@@ -63,9 +60,7 @@ namespace NS
             }
             std::unique_ptr<ICommand>& back = m_redo.back();
             back->Do();
-            const std::size_t bytes = back->EstimatedBytes();
-            m_redoBytes -= bytes;
-            m_undoBytes += bytes;
+            m_undoBytes += back->EstimatedBytes();
             m_undo.push_back(std::move(back));
             m_redo.pop_back();
             return true;
@@ -76,7 +71,6 @@ namespace NS
             m_undo.clear();
             m_redo.clear();
             m_undoBytes = 0;
-            m_redoBytes = 0;
         }
 
         void UndoStack::ReleaseHeldActors() noexcept

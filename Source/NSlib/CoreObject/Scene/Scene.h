@@ -177,21 +177,17 @@ namespace NS
         //! 描く補間の割合 0〜1。frameAlpha をそのまま返し、世界を回さない間と時間停止中は絵の変動を避けるため 1
         [[nodiscard]] float RenderAlpha(float frameAlpha) const noexcept;
 
-        //! アクターの JSON から 1 体を組んで並びの末尾へ入れる。id と名前は JSON のまま使う
-        //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
-        //! エディタの置く・複製 (EditorMode::CreateActors) が通る。
-        //! .actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
-        SceneActor* SpawnFromJson(const nlohmann::json& actorJson);
-
-        //! SpawnFromJson と同じく組んで、並びの index 番目へ入れる。index が末尾より先なら末尾
-        //! ApplyFromJson の居ない id が通る
-        SceneActor* SpawnFromJsonAt(const nlohmann::json& actorJson, std::size_t index);
-
-        //! SpawnFromJsonAt と ApplyFromJson に渡すと、並びの末尾へ入れる
+        //! SpawnFromJson と ApplyFromJson に渡すと、並びの末尾へ入れる
         static constexpr std::size_t k_SpawnAtEnd = std::numeric_limits<std::size_t>::max();
 
-        //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJsonAt で並びの spawnIndex 番目へ入れる。
-        //! 消した後に積んだ取り消しは、消す前の位置を spawnIndex に渡す。動いた当たりは次の歩で揃う
+        //! アクターの JSON から 1 体を組んで、並びの index 番目へ入れる。index が末尾より先なら末尾。id と名前は JSON のまま使う
+        //! 名前は既存と重なれば番号を付ける。資産を引き当ててから開始し、出ていれば当たりも入る
+        //! ApplyFromJson の居ない id が通る (エディタの置く・複製と、消したアクターを持たない取り消し)。
+        //! .actor が見つからなければ、読む時と同じく JSON のまま持って nullptr を返す
+        SceneActor* SpawnFromJson(const nlohmann::json& actorJson, std::size_t index = k_SpawnAtEnd);
+
+        //! 同じ id のアクターへ JSON の姿を当てる。居なければ SpawnFromJson で並びの spawnIndex 番目へ入れる。
+        //! 動いた当たりは次の歩で揃う
         //! .actor が替わっても同じクラスならアクターを使い回し、替えた先の .actor の全部の値とシーンの上書きを
         //! 書いてから、束・動作・素材を読み直す。替えた先の .actor が違うクラスなら ERROR を出し、何も変えずに nullptr を返す。
         //! 替えた先の .actor が見つからない時と重ねるのに失敗した時だけ作り直し、古いアクターを解放せずに外して

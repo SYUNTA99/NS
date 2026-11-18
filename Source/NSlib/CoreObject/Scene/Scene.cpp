@@ -214,12 +214,7 @@ namespace NS
         return nullptr;
     }
 
-    SceneActor* Scene::SpawnFromJson(const nlohmann::json& actorJson)
-    {
-        return SpawnFromJsonAt(actorJson, k_SpawnAtEnd);
-    }
-
-    SceneActor* Scene::SpawnFromJsonAt(const nlohmann::json& actorJson, std::size_t index)
+    SceneActor* Scene::SpawnFromJson(const nlohmann::json& actorJson, std::size_t index)
     {
         std::unique_ptr<SceneActor> built = BuildOrKeepUnresolved(actorJson);
         if (!built)
@@ -243,7 +238,7 @@ namespace NS
         SceneActor* obj = m_actors.FindByActorId(ActorJsonId(snapshot));
         if (obj == nullptr)
         {
-            return SpawnFromJsonAt(snapshot, spawnIndex);
+            return SpawnFromJson(snapshot, spawnIndex);
         }
         // 部品はクラスで決まるので、同じクラスなら .actor が替わっても作り直さずに値を書き直せる
         const std::string_view actorFile = ActorJsonFile(snapshot);
