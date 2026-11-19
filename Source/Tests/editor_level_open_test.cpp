@@ -435,9 +435,8 @@ TEST_F(LevelOpenTest, ClickingSceneInAssetsLoadsItAndFocusesSceneTab)
             ImGui::GetStateStorage()->SetInt(ImGui::GetID(label.c_str()), label == m_folder);
             if (label == m_folder)
             {
-                // 木の前に、選択の見出しの 1 行と区切り線が入る
-                ImVec2 origin = ImGui::GetCursorScreenPos();
-                origin.y += ImGui::GetTextLineHeightWithSpacing() + 1.0f + ImGui::GetStyle().ItemSpacing.y;
+                // 木はパネルの一番上から始まる
+                const ImVec2 origin = ImGui::GetCursorScreenPos();
                 folderClick = {origin.x + 60.0f,
                                origin.y + (static_cast<float>(index) + 0.5f) * ImGui::GetTextLineHeightWithSpacing()};
                 click = {origin.x + 60.0f,

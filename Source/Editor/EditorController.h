@@ -238,8 +238,6 @@ namespace NS
             //! 編集カメラの注視点を選択中のアクターへ寄せる。広がりに応じて距離も取り直す
             void FocusSelectedInView() noexcept;
 
-            //! ギズモがアクターを選択しているか
-            [[nodiscard]] bool HasGizmoSelection() const noexcept { return m_gizmo.Selected() != nullptr; }
             //! 選択中のアクターの Model に材質を割り当て、変わった時だけ履歴へ積んでシーンを未保存にする。対象外なら false
             bool ApplyMaterialToSelected(std::string_view matPath);
 
